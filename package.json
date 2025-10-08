@@ -1,6 +1,8 @@
 {
   "name": "template-starter",
   "version": "0.0.1",
+  "license": "MIT",
+  "author": "LuvenApps <github@luvenapps.com>",
   "main": "expo-router/entry",
   "scripts": {
     "prestart": "npm run troubleshoot",
