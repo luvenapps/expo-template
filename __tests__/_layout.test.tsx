@@ -1,0 +1,44 @@
+import { render } from '@testing-library/react-native';
+import React from 'react';
+import RootLayout from '../app/_layout';
+
+const recordedScreens: string[] = [];
+let recordedProps: Record<string, unknown> | undefined;
+
+jest.mock('expo-router', () => {
+  const MockStack: any = ({
+    children,
+    ...props
+  }: React.PropsWithChildren<Record<string, unknown>>) => {
+    recordedProps = props;
+    return <>{children}</>;
+  };
+
+  MockStack.Screen = ({ name, children }: { name: string; children?: React.ReactNode }) => {
+    recordedScreens.push(name);
+    return <>{children}</>;
+  };
+  MockStack.Screen.displayName = 'MockStack.Screen';
+
+  return { Stack: MockStack };
+});
+
+describe('RootLayout', () => {
+  beforeEach(() => {
+    recordedScreens.length = 0;
+    recordedProps = undefined;
+  });
+
+  test('applies shared header options and registers screens', () => {
+    render(<RootLayout />);
+
+    expect(recordedProps?.screenOptions).toMatchObject({
+      headerStyle: { backgroundColor: '#f4511e' },
+      headerTintColor: '#fff',
+      headerTitleStyle: { fontWeight: 'bold' },
+    });
+
+    expect(recordedScreens).toEqual(expect.arrayContaining(['index', 'details']));
+    expect(recordedScreens).toHaveLength(2);
+  });
+});
