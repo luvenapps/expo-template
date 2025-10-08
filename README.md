@@ -145,7 +145,7 @@ brew install openjdk
 Run the following command to setup your project:  
 
 ```bash
-npx create-expo-app <repo_name> --template github:luvenapps/expo-template
+npx create-expo-app <repo_name> --template https://github.com/luvenapps/expo-template
 ```
 
 ## 🧱 Project Structure
