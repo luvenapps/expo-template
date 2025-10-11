@@ -1,10 +1,9 @@
 import { Stack } from 'expo-router';
-import { TamaguiProvider } from 'tamagui';
-import { tamaguiConfig } from '../tamagui.config';
+import { AppProviders } from '@/ui/providers/AppProviders';
 
 export default function RootLayout() {
   return (
-    <TamaguiProvider config={tamaguiConfig}>
+    <AppProviders>
       <Stack
         screenOptions={{
           headerStyle: {
@@ -18,6 +17,6 @@ export default function RootLayout() {
         <Stack.Screen name="index" />
         <Stack.Screen name="details" />
       </Stack>
-    </TamaguiProvider>
+    </AppProviders>
   );
 }
