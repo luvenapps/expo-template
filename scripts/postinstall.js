@@ -11,9 +11,10 @@
  *  5) Replace tokens in README.md (if present)
  *  6) Restore .gitignore from "gitignore" (if present)
  *  7) Enable Husky hooks *without* using deprecated `husky install` (set hooksPath + chmod +x)
- *  8) Run Prettier to format updated files
- *  9) Self-delete this script
- *  10) Print a friendly summary
+ *  8) Materialize .maestro from _maestro if needed
+ *  9) Run Prettier to format updated files
+ *  10) Self-delete this script
+ *  11) Print a friendly summary
  *
  * Notes:
  *  - Intentionally does NOT run `npx husky install`. Husky v9+ works with `core.hooksPath` + executable hooks.
@@ -43,6 +44,19 @@ const runSilent = (cmd, args, opts = {}) => {
     return true;
   } catch {
     return false;
+  }
+};
+
+// Simple recursive directory copy (used for _husky → .husky and _maestro → .maestro)
+const copyDir = (src, dst) => {
+  if (!exists(src)) return;
+  if (!exists(dst)) fs.mkdirSync(dst, { recursive: true });
+  for (const entry of fs.readdirSync(src)) {
+    const s = path.join(src, entry);
+    const d = path.join(dst, entry);
+    const stat = fs.lstatSync(s);
+    if (stat.isDirectory()) copyDir(s, d);
+    else if (stat.isFile()) fs.copyFileSync(s, d);
   }
 };
 
@@ -80,7 +94,7 @@ let summary = { appName: null, slug: null, appId: null };
     .toLowerCase()
     .replace(/[^a-z0-9-]+/g, '-')
     .replace(/^-+|-+$/g, '');
-  const appId = `${bundleIdBase}.${slugSafe}`.replace(/\.\.+/g, '.');
+  const appId = `${bundleIdBase}.${slugSafe}`.replace(/\.+/g, '.');
   summary.slug = slugSafe;
   summary.appId = appId;
 
@@ -151,7 +165,7 @@ let summary = { appName: null, slug: null, appId: null };
     }
   }
 
-  // 6) Restore .gitignore (delete existing .gitignore and rename gitignore → .gitignore)
+  // 6) Restore .gitignore (delete existing .gitignore and rename _gitignore → .gitignore)
   const giSrc = path.join(CWD, '_gitignore');
   const giDst = path.join(CWD, '.gitignore');
 
@@ -172,37 +186,79 @@ let summary = { appName: null, slug: null, appId: null };
     console.log('⚠️  No gitignore found in template directory — skipping');
   }
 
-  // 7) Husky v9+ (no `husky install`): set hooksPath + chmod
+  // 7) Husky v9+ (no `husky install`): set hooksPath + chmod, and materialize from _husky if needed
   const isGit = runSilent('git', ['rev-parse', '--is-inside-work-tree']);
   if (!isGit) runSilent('git', ['init']);
-  const huskyDir = path.join(CWD, '.husky');
-  if (exists(huskyDir)) {
-    runSilent('git', ['config', 'core.hooksPath', '.husky']);
+  const huskyDst = path.join(CWD, '.husky');
+  const huskySrcCandidates = [
+    path.join(CWD, '.husky'),  // present for local copies
+    path.join(CWD, '_husky'),  // present when installed from GitHub/npm tarball
+  ];
+  const huskySrc = huskySrcCandidates.find(exists);
+
+  if (huskySrc) {
     try {
-      for (const f of fs.readdirSync(huskyDir)) {
-        const p = path.join(huskyDir, f);
+      copyDir(huskySrc, huskyDst);
+      runSilent('git', ['config', 'core.hooksPath', '.husky']);
+      for (const f of fs.readdirSync(huskyDst)) {
+        const p = path.join(huskyDst, f);
         if (fs.lstatSync(p).isFile()) {
-          try {
-            fs.chmodSync(p, 0o755);
-          } catch {}
+          try { fs.chmodSync(p, 0o755); } catch {}
         }
       }
       console.log('✅ Husky hooks installed');
-    } catch {
-      console.log('⚠️  Husky chmod failed (hooks may not be executable)');
+      if (huskySrc === path.join(CWD, '_husky')) {
+        try {
+          fs.rmSync(huskySrc, { recursive: true, force: true });
+          console.log('🧹 Removed _husky template folder');
+        } catch (e) {
+          console.log(`⚠️  Failed to remove _husky folder (${e.message})`);
+        }
+      }
+    } catch (e) {
+      console.log(`⚠️  Husky setup failed (${e.message})`);
     }
+  } else {
+    console.log('⚠️  No .husky/_husky found in template directory — skipping');
   }
 
-  // 8) Run Prettier to format updated files
-  process.stdout.write('🧩 Formatting with Prettier...');
+  // 8) Materialize Maestro folder (.maestro) from _maestro if needed
+  const maestroDst = path.join(CWD, '.maestro');
+  const maestroSrcCandidates = [
+    path.join(CWD, '.maestro'),
+    path.join(CWD, '_maestro'),
+  ];
+  const maestroSrc = maestroSrcCandidates.find(exists);
+
+  if (maestroSrc) {
+    try {
+      copyDir(maestroSrc, maestroDst);
+      console.log('✅ Maestro folder restored from template');
+      if (maestroSrc === path.join(CWD, '_maestro')) {
+        try {
+          fs.rmSync(maestroSrc, { recursive: true, force: true });
+          console.log('🧹 Removed _maestro template folder');
+        } catch (e) {
+          console.log(`⚠️  Failed to remove _maestro folder (${e.message})`);
+        }
+      }
+    } catch (e) {
+      console.log(`⚠️  Maestro restore failed (${e.message})`);
+    }
+  } else {
+    console.log('⚠️  No .maestro/_maestro found in template directory — skipping');
+  }
+
+  // 9) Run Prettier to format updated files (single-line status)
   try {
+    process.stdout.write('🧩 Formatting with Prettier...');
     cp.execSync('npx prettier --write .', { stdio: 'ignore' });
     process.stdout.write(' ✅ Done!\n');
   } catch (err) {
     console.log(`\n⚠️  Prettier formatting skipped or failed: ${err.message}`);
   }
 
-  // 9) Self-delete
+  // 10) Self-delete
   const self = path.join(CWD, 'scripts', 'postinstall.js');
   try {
     process.on('exit', () => {
@@ -213,7 +269,7 @@ let summary = { appName: null, slug: null, appId: null };
     });
   } catch {}
 
-  // 10) Summary
+  // 11) Summary
   const bar = '============================================================';
   console.log(`
 ${bar}
