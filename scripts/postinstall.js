@@ -10,11 +10,13 @@
  *  4) Replace placeholders in Maestro flows (.maestro/flows/*.yml|yaml)
  *  5) Replace tokens in README.md (if present)
  *  6) Restore .gitignore from "gitignore" (if present)
- *  7) Enable Husky hooks *without* using deprecated `husky install` (set hooksPath + chmod +x)
- *  8) Materialize .maestro from _maestro if needed
- *  9) Run Prettier to format updated files
- *  10) Self-delete this script
- *  11) Print a friendly summary
+ *  7) Rename _prettierrc.json → .prettierrc.json if present
+ *  8) Rename _prettierignore → .prettierignore if present
+ *  9) Enable Husky hooks *without* using deprecated `husky install` (set hooksPath + chmod +x)
+ *  10) Materialize .maestro from _maestro if needed
+ *  11) Run Prettier to format updated files
+ *  12) Self-delete this script
+ *  13) Print a friendly summary
  *
  * Notes:
  *  - Intentionally does NOT run `npx husky install`. Husky v9+ works with `core.hooksPath` + executable hooks.
@@ -196,7 +198,43 @@ let summary = { appName: null, slug: null, appId: null };
     console.log('⚠️  No gitignore found in template directory — skipping');
   }
 
-  // 7) Husky v9+ (no `husky install`): set hooksPath + chmod, and materialize from _husky if needed
+  // 7) Rename _prettierrc.json → .prettierrc.json if present
+  const prettierrcSrc = path.join(CWD, '_prettierrc.json');
+  const prettierrcDst = path.join(CWD, '.prettierrc.json');
+  if (exists(prettierrcSrc)) {
+    try {
+      if (exists(prettierrcDst)) {
+        fs.unlinkSync(prettierrcDst);
+        console.log('🧹 Removed existing .prettierrc.json to replace with template version');
+      }
+      fs.renameSync(prettierrcSrc, prettierrcDst);
+      console.log('✅ Restored .prettierrc.json from template');
+    } catch (e) {
+      console.log(`⚠️  Failed to restore .prettierrc.json (${e.message})`);
+    }
+  } else {
+    console.log('⚠️  No _prettierrc.json found in template directory — skipping');
+  }
+
+  // 8) Rename _prettierignore → .prettierignore if present
+  const prettierignoreSrc = path.join(CWD, '_prettierignore');
+  const prettierignoreDst = path.join(CWD, '.prettierignore');
+  if (exists(prettierignoreSrc)) {
+    try {
+      if (exists(prettierignoreDst)) {
+        fs.unlinkSync(prettierignoreDst);
+        console.log('🧹 Removed existing .prettierignore to replace with template version');
+      }
+      fs.renameSync(prettierignoreSrc, prettierignoreDst);
+      console.log('✅ Restored .prettierignore from template');
+    } catch (e) {
+      console.log(`⚠️  Failed to restore .prettierignore (${e.message})`);
+    }
+  } else {
+    console.log('⚠️  No _prettierignore found in template directory — skipping');
+  }
+
+  // 9) Husky v9+ (no `husky install`): set hooksPath + chmod, and materialize from _husky if needed
   const isGit = runSilent('git', ['rev-parse', '--is-inside-work-tree']);
   if (!isGit) runSilent('git', ['init']);
   const huskyDst = path.join(CWD, '.husky');
@@ -232,7 +270,7 @@ let summary = { appName: null, slug: null, appId: null };
     console.log('⚠️  No .husky/_husky found in template directory — skipping');
   }
 
-  // 8) Materialize Maestro folder (.maestro) from _maestro if needed
+  // 10) Materialize Maestro folder (.maestro) from _maestro if needed
   const maestroDst = path.join(CWD, '.maestro');
   const maestroSrcCandidates = [
     path.join(CWD, '.maestro'),
@@ -259,7 +297,7 @@ let summary = { appName: null, slug: null, appId: null };
     console.log('⚠️  No .maestro/_maestro found in template directory — skipping');
   }
 
-  // 9) Run Prettier to format updated files (single-line status)
+  // 11) Run Prettier to format updated files (single-line status)
   try {
     process.stdout.write('🧩 Formatting with Prettier...');
     cp.execSync('npx prettier --write .', { stdio: 'ignore' });
@@ -268,7 +306,7 @@ let summary = { appName: null, slug: null, appId: null };
     console.log(`\n⚠️  Prettier formatting skipped or failed: ${err.message}`);
   }
 
-  // 10) Self-delete
+  // 12) Self-delete
   const self = path.join(CWD, 'scripts', 'postinstall.js');
   try {
     process.on('exit', () => {
@@ -279,7 +317,7 @@ let summary = { appName: null, slug: null, appId: null };
     });
   } catch {}
 
-  // 11) Summary
+  // 13) Summary
   const bar = '============================================================';
   console.log(`
 ${bar}
