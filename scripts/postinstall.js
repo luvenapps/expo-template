@@ -11,8 +11,9 @@
  *  5) Replace tokens in README.md (if present)
  *  6) Restore .gitignore from "gitignore" (if present)
  *  7) Enable Husky hooks *without* using deprecated `husky install` (set hooksPath + chmod +x)
- *  8) Self-delete this script
- *  9) Print a friendly summary
+ *  8) Run Prettier to format updated files
+ *  9) Self-delete this script
+ *  10) Print a friendly summary
  *
  * Notes:
  *  - Intentionally does NOT run `npx husky install`. Husky v9+ works with `core.hooksPath` + executable hooks.
@@ -192,7 +193,16 @@ let summary = { appName: null, slug: null, appId: null };
     }
   }
 
-  // 8) Self-delete
+  // 8) Run Prettier to format updated files
+  process.stdout.write('🧩 Formatting with Prettier...');
+  try {
+    cp.execSync('npx prettier --write .', { stdio: 'ignore' });
+    process.stdout.write(' ✅ Done!\n');
+  } catch (err) {
+    console.log(`\n⚠️  Prettier formatting skipped or failed: ${err.message}`);
+  }
+
+  // 9) Self-delete
   const self = path.join(CWD, 'scripts', 'postinstall.js');
   try {
     process.on('exit', () => {
@@ -203,7 +213,7 @@ let summary = { appName: null, slug: null, appId: null };
     });
   } catch {}
 
-  // 9) Summary
+  // 10) Summary
   const bar = '============================================================';
   console.log(`
 ${bar}
