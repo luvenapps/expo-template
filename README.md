@@ -142,7 +142,7 @@ brew install openjdk
 
 ### 🧩 8. Expo Template Install
 
-Run the following command to setup your project:  
+Run the following command to setup your project:
 
 ```bash
 npx create-expo-app <repo_name> --template https://github.com/luvenapps/expo-template
