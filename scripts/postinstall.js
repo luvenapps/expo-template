@@ -137,10 +137,16 @@ let summary = { appName: null, slug: null, appId: null };
     }
   }
 
-  // 4) Maestro flows
-  const flowsDir = path.join(CWD, '.maestro', 'flows');
-  if (exists(flowsDir)) {
-    let touched = 0;
+  // 4) Maestro flows (update in .maestro or _maestro if present)
+  const flowRoots = [
+    path.join(CWD, '.maestro', 'flows'),
+    path.join(CWD, '_maestro', 'flows'),
+  ];
+
+  let touchedTotal = 0;
+  for (const flowsDir of flowRoots) {
+    if (!exists(flowsDir)) continue;
+
     for (const f of fs.readdirSync(flowsDir)) {
       if (!/\.(ya?ml)$/.test(f)) continue;
       const p = path.join(flowsDir, f);
@@ -148,13 +154,13 @@ let summary = { appName: null, slug: null, appId: null };
       const after = before
         .replace(/__APP_ID__/g, summary.appId)
         .replace(/__APP_NAME__/g, summary.appName);
-      if (after != before) {
+      if (after !== before) {
         fs.writeFileSync(p, after, 'utf8');
-        touched++;
+        touchedTotal++;
       }
     }
-    console.log(`✅ Maestro flows updated (${touched} file(s))`);
   }
+  console.log(`✅ Maestro flows updated (${touchedTotal} file(s))`);
 
   // 5) README tokens
   const readmePath = path.join(CWD, 'README.md');
