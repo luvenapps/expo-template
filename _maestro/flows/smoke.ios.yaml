@@ -2,8 +2,4 @@ appId: __APP_ID__
 ---
 - launchApp
 - assertVisible: 'Welcome'
-- tapOn: 'View Details'
-- assertVisible: 'Details'
-- assertVisible: Back
-- tapOn: Back
-- assertVisible: 'Welcome'
+

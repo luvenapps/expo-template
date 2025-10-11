@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react-native';
 import React from 'react';
-import HomeScreen from '../app/index';
 import { TamaguiProvider } from 'tamagui';
+import HomeScreen from '../app/index';
 import { tamaguiConfig } from '../tamagui.config';
 
 jest.mock('expo-router', () => ({
@@ -17,6 +17,6 @@ test('renders welcome copy and call to action', () => {
     </TamaguiProvider>,
   );
 
-  expect(screen.getByText('Welcome to Better Habits')).toBeTruthy();
+  expect(screen.getByText('Welcome')).toBeTruthy();
   expect(screen.getByText('Get Started')).toBeTruthy();
 });

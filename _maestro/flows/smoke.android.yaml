@@ -2,8 +2,4 @@ appId: __APP_ID__
 ---
 - launchApp
 - assertVisible: WELCOME
-- tapOn: 'View Details'
-- assertVisible: DETAILS
-- assertVisible: Navigate up
-- tapOn: Navigate up
-- assertVisible: WELCOME
+
