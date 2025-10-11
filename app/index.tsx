@@ -1,46 +1,18 @@
-import { Link, Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Stack } from 'expo-router';
+import { Button, H2, Paragraph, YStack } from 'tamagui';
 
 export default function HomeScreen() {
   return (
     <>
-      <Stack.Screen options={{ title: '' }} />
-      <View style={styles.container}>
-        <Text style={styles.text}>Welcome</Text>
-        <Link href="/details" asChild>
-          <Pressable style={styles.button}>
-            <Text style={styles.buttonText}>View Details</Text>
-          </Pressable>
-        </Link>
-        <StatusBar style="auto" />
-      </View>
+      <Stack.Screen options={{ title: 'Better Habits' }} />
+      <YStack f={1} jc="center" ai="center" px="$6" bg="$background" gap="$4">
+        <H2 fontWeight="700">Welcome to Better Habits</H2>
+        <Paragraph ta="center" color="$colorMuted">
+          This is a fresh start. We&apos;ll grow the experience together as we add offline data,
+          sync, and more polished visuals.
+        </Paragraph>
+        <Button size="$4">Get Started</Button>
+      </YStack>
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  text: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#333',
-    textTransform: 'uppercase',
-  },
-  button: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginTop: 20,
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});

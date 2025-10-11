@@ -33,9 +33,8 @@ describe('RootLayout', () => {
     render(<RootLayout />);
 
     expect(recordedProps?.screenOptions).toMatchObject({
-      headerStyle: { backgroundColor: '#f4511e' },
-      headerTintColor: '#fff',
-      headerTitleStyle: { fontWeight: 'bold' },
+      headerStyle: { backgroundColor: 'transparent' },
+      headerTitleStyle: { fontWeight: '600' },
     });
 
     expect(recordedScreens).toEqual(expect.arrayContaining(['index', 'details']));

@@ -1,21 +1,22 @@
 import { render, screen } from '@testing-library/react-native';
 import React from 'react';
 import HomeScreen from '../app/index';
+import { TamaguiProvider } from 'tamagui';
+import { tamaguiConfig } from '../tamagui.config';
 
 jest.mock('expo-router', () => ({
-  Link: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
   Stack: {
     Screen: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
   },
 }));
 
-jest.mock('expo-status-bar', () => ({
-  StatusBar: () => null,
-}));
+test('renders welcome copy and call to action', () => {
+  render(
+    <TamaguiProvider config={tamaguiConfig}>
+      <HomeScreen />
+    </TamaguiProvider>,
+  );
 
-test('renders welcome message and details button', () => {
-  render(<HomeScreen />);
-
-  expect(screen.getByText('Welcome')).toBeTruthy();
-  expect(screen.getByText('View Details')).toBeTruthy();
+  expect(screen.getByText('Welcome to Better Habits')).toBeTruthy();
+  expect(screen.getByText('Get Started')).toBeTruthy();
 });
