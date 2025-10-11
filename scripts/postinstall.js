@@ -111,6 +111,10 @@ let summary = { appName: null, slug: null, appId: null };
         typeof expo.slug === 'string'
           ? expo.slug.replace(/__APP_NAME__/g, slugSafe)
           : slugSafe;
+      expo.scheme =
+        typeof expo.scheme === 'string'
+          ? expo.scheme.replace(/__APP_NAME__/g, slugSafe)
+          : slugSafe;
 
       expo.ios = expo.ios || {};
       expo.ios.bundleIdentifier =
