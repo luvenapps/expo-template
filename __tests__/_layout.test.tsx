@@ -5,6 +5,18 @@ import RootLayout from '../app/_layout';
 const recordedScreens: string[] = [];
 let recordedProps: Record<string, unknown> | undefined;
 
+jest.mock('react-native-gesture-handler', () => ({
+  GestureHandlerRootView: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+}));
+
+jest.mock('react-native-safe-area-context', () => ({
+  SafeAreaProvider: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+}));
+
+jest.mock('expo-status-bar', () => ({
+  StatusBar: () => null,
+}));
+
 jest.mock('expo-router', () => {
   const MockStack: any = ({
     children,
@@ -37,7 +49,7 @@ describe('RootLayout', () => {
       headerTitleStyle: { fontWeight: '600' },
     });
 
-    expect(recordedScreens).toEqual(expect.arrayContaining(['index', 'details']));
+    expect(recordedScreens).toEqual(expect.arrayContaining(['(tabs)', 'details']));
     expect(recordedScreens).toHaveLength(2);
   });
 });

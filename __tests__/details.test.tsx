@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react-native';
 import React from 'react';
-import DetailsScreen from '../app/details';
 import { TamaguiProvider } from 'tamagui';
+import DetailsScreen from '../app/details';
 import { tamaguiConfig } from '../tamagui.config';
 
 jest.mock('expo-router', () => ({
@@ -18,5 +18,5 @@ test('shows the details heading', () => {
   );
 
   expect(screen.getByText('Details')).toBeTruthy();
-  expect(screen.getByText(/habit detail view/i)).toBeTruthy();
+  expect(screen.getByText(/detail view/i)).toBeTruthy();
 });
