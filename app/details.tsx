@@ -5,9 +5,16 @@ export default function DetailsScreen() {
   return (
     <>
       <Stack.Screen options={{ title: 'Details' }} />
-      <YStack f={1} jc="center" ai="center" px="$6" gap="$4" bg="$background">
+      <YStack
+        flex={1}
+        justifyContent="center"
+        alignItems="center"
+        paddingHorizontal="$6"
+        gap="$4"
+        backgroundColor="$background"
+      >
         <H3 fontWeight="700">Details</H3>
-        <Paragraph ta="center" color="$colorMuted">
+        <Paragraph textAlign="center" color="$colorMuted">
           This screen will evolve into the detail view with charts, streaks, and history once
           the data layer is in place.
         </Paragraph>
