@@ -1,29 +1,20 @@
 import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { Button, H3, Paragraph, YStack } from 'tamagui';
 
 export default function DetailsScreen() {
   return (
     <>
-      <Stack.Screen options={{ title: '' }} />
-      <View style={styles.container}>
-        <Text style={styles.text}>Details</Text>
-        <StatusBar style="auto" />
-      </View>
+      <Stack.Screen options={{ title: 'Details' }} />
+      <YStack f={1} jc="center" ai="center" px="$6" gap="$4" bg="$background">
+        <H3 fontWeight="700">Details</H3>
+        <Paragraph ta="center" color="$colorMuted">
+          This screen will evolve into the habit detail view with charts, streaks, and history once
+          the data layer is in place.
+        </Paragraph>
+        <Button size="$3" disabled>
+          Coming Soon
+        </Button>
+      </YStack>
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  text: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    textTransform: 'uppercase',
-  },
-});
