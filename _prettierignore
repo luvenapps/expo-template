@@ -4,3 +4,5 @@ build
 .expo
 android
 ios
+.tamagui
+.github/runner/_

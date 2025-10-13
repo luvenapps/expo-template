@@ -1,5 +1,5 @@
-appId: __APP_ID__
+appId: com.luvenapps.betterhabits
 ---
 - launchApp
-- assertVisible: WELCOME
-
+- assertVisible:
+    id: 'welcome-title'

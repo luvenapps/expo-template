@@ -191,6 +191,18 @@ beontime/
 
 ---
 
+## ⚙️ Continuous Integration (GitHub Actions)
+
+This project includes a comprehensive GitHub Actions workflow to automate testing, linting, and building for multiple platforms. The CI pipeline runs unit tests with Jest, linting checks with ESLint, and end-to-end tests using Maestro on both iOS and Android environments. It also supports building the app for production to ensure the build process remains stable.
+
+For teams using self-hosted runners, detailed setup instructions are provided to configure macOS and Linux runners with all necessary dependencies installed, including Node.js, Expo CLI, Java (for Maestro), and Android/iOS build tools. Environment variables and secrets are managed securely via GitHub repository settings.
+
+The workflows are designed to trigger on pull requests and pushes to main branches, providing fast feedback on code quality and preventing regressions before merging. This setup enables a smooth and reliable continuous integration process tailored for React Native projects using Expo and Maestro.
+
+For full detailed instructions on configuring the GitHub Actions workflows and setting up self-hosted runners, please see the [Github Actions document](docs/GITHUBACTIONS.md).
+
+---
+
 ## 🧭 References
 
 - [Expo Docs](https://docs.expo.dev)

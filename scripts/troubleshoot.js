@@ -128,6 +128,61 @@ function compareVersions(actual, expected) {
   // Maestro
   cmd('maestro', '--version');
 
+  // Self-hosted GitHub Actions runner (optional)
+  header('Self-hosted GitHub Actions Runner (optional)');
+  try {
+    const REPO_ROOT = process.cwd();
+    const RUNTIME_ROOT = path.join(REPO_ROOT, '.github', 'runner', '_');
+    const RUNNER_DIR = path.join(RUNTIME_ROOT, 'actions-runner');
+
+    const hasRunnerDir = fs.existsSync(RUNNER_DIR);
+    if (!hasRunnerDir) {
+      warn('No local runner found (expected at .github/runner/_/actions-runner).');
+      console.log('   ➜ To set one up: .github/runner/register-runner.sh');
+      console.log('   ➜ Then start it: .github/runner/runner.local.sh');
+    } else {
+      const hasRun = fs.existsSync(path.join(RUNNER_DIR, 'run.sh'));
+      const hasConfig = fs.existsSync(path.join(RUNNER_DIR, 'config.sh'));
+      const isConfigured =
+        fs.existsSync(path.join(RUNNER_DIR, '.runner')) ||
+        fs.existsSync(path.join(RUNNER_DIR, '.credentials'));
+
+      if (hasRun && hasConfig) {
+        ok('Runner binaries present.');
+      } else {
+        warn('Runner folder exists but binaries are incomplete. Re-run registration script.');
+      }
+
+      if (isConfigured) {
+        ok('Runner appears configured. You can start it with: .github/runner/runner.local.sh');
+      } else {
+        warn('Runner not configured yet. Run: .github/runner/register-runner.sh');
+      }
+
+      // On macOS, check if a listener is currently running (best-effort)
+      if (process.platform === 'darwin') {
+        try {
+          const p = execSync("pgrep -fl 'Runner.Listener' || true", {
+            stdio: ['ignore', 'pipe', 'pipe'],
+          })
+            .toString()
+            .trim();
+          if (p) {
+            ok('Runner process seems to be running.');
+          } else {
+            warn(
+              'Runner process not running. Start it when needed: .github/runner/runner.local.sh',
+            );
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+  } catch (e) {
+    warn(`Runner check skipped: ${e.message}`);
+  }
+
   // Expo peer deps
   header('Expo peer dependency alignment');
   const appPkg = getPackageJson(path.join(process.cwd(), 'package.json'));

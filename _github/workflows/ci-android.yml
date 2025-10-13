@@ -1,0 +1,334 @@
+name: Android CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ANDROID_DEVICE: 'pixel_8'
+  ANDROID_TARGET: 'google_apis'
+  ANDROID_ARCH: 'arm64-v8a'
+  ANDROID_API_LEVEL: 35
+  MAESTRO_VERSION: 'v2.0.3'
+
+concurrency:
+  group: android-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android-quality-hosted:
+    name: Format • Lint • Unit tests (Android) - Hosted Ubuntu
+    if: vars.USE_SELF_HOSTED != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.1.0
+          cache: 'npm'
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Doctor
+        run: npm run doctor
+        continue-on-error: true
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm run test
+
+  android-hosted:
+    name: Lint • Test • Build • E2E (Android) - Hosted
+    if: vars.USE_SELF_HOSTED != 'true'
+    runs-on: macos-latest
+    timeout-minutes: 45
+    env:
+      ANDROID_SDK_DIR: $HOME/Library/Android/sdk
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Make CI scripts executable
+        run: chmod +x .github/scripts/*.sh
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.1.0
+          cache: 'npm'
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Doctor
+        run: npm run doctor
+        continue-on-error: true
+
+      - name: Check Expo/RN dependency alignment
+        shell: bash
+        run: |
+          set -e
+          npx expo --version || true
+          node -e "console.log('react-native', require('react-native/package.json').version)" || true
+          node -e "console.log('expo', require('expo/package.json').version)" || true
+          # Strict: fail if mismatched so lockfile must be updated in a PR
+          if ! npx expo install --check; then
+            echo "❌ Expo dependency mismatch. Run 'npx expo install --fix' locally and commit the updated package-lock.json."
+            exit 1
+          fi
+
+      - name: Clear Metro cache
+        run: |
+          rm -rf "$TMPDIR"/metro-* node_modules/.cache/metro || true
+
+      - name: Cache Maestro CLI
+        id: maestro-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.maestro
+          key: maestro-${{ runner.os }}-v1
+
+      - name: Setup Maestro
+        if: steps.maestro-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: .github/scripts/setup_maestro.sh "${{ env.MAESTRO_VERSION }}"
+
+      # Lean caching: only Gradle + Maestro to stay under 10GB org-wide cache budget
+      - name: Cache Gradle (caches + wrapper + project .gradle)
+        id: gradle-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            android/.gradle
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'android/**/build.gradle', 'android/**/gradle.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: Build Android app
+        shell: bash
+        run: .github/scripts/android_build_release.sh
+
+      - name: Upload Gradle reports (hosted)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-reports-android-hosted
+          path: |
+            android/build/reports/**
+            android/app/build/reports/**
+          if-no-files-found: ignore
+
+      - name: Save Gradle cache (post-build)
+        if: always() && steps.gradle-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            android/.gradle
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'android/**/build.gradle', 'android/**/gradle.properties') }}
+
+      - name: Run E2E tests
+        id: e2e_android
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ env.ANDROID_API_LEVEL }}
+          target: ${{ env.ANDROID_TARGET }}
+          arch: ${{ env.ANDROID_ARCH }}
+          profile: ${{ env.ANDROID_DEVICE }}
+          emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect
+          script: .github/scripts/android_emulator_e2e.sh
+
+      - name: Upload E2E artifacts on failure (hosted)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-artifacts-android-hosted
+          path: |
+            e2e-artifacts/**/*
+            android/app/build/reports/**
+          include-hidden-files: true
+
+      - name: Fail if E2E failed
+        if: always()
+        shell: bash
+        run: |
+          if [ -f e2e-artifacts/EXITCODE ] && [ "$(cat e2e-artifacts/EXITCODE)" != "0" ]; then
+            echo "❌ E2E failed (see artifacts)."
+            exit 1
+          fi
+
+  android-selfhosted:
+    name: Lint • Test • Build • E2E (Android) - Self-hosted
+    if: vars.USE_SELF_HOSTED == 'true'
+    runs-on: [self-hosted, macos, arm64]
+    timeout-minutes: 45
+    concurrency:
+      group: selfhosted-mobile-${{ github.repository }}
+      cancel-in-progress: false
+    env:
+      ANDROID_SDK_DIR: $HOME/Library/Android/sdk
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Make CI scripts executable
+        run: chmod +x .github/scripts/*.sh
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.1.0
+          cache: 'npm'
+
+      - name: Remove stale node_modules (safety)
+        run: rm -rf node_modules
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Check Expo/RN dependency alignment
+        shell: bash
+        run: |
+          set -e
+          npx expo --version || true
+          node -e "console.log('react-native', require('react-native/package.json').version)" || true
+          node -e "console.log('expo', require('expo/package.json').version)" || true
+          # Strict: fail if mismatched so lockfile must be updated in a PR
+          if ! npx expo install --check; then
+            echo "❌ Expo dependency mismatch. Run 'npx expo install --fix' locally and commit the updated package-lock.json."
+            exit 1
+          fi
+
+      - name: Clear Metro cache
+        run: |
+          rm -rf "$TMPDIR"/metro-* node_modules/.cache/metro || true
+
+      - name: Cache Maestro CLI
+        id: maestro-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.maestro
+          key: maestro-${{ runner.os }}-v1
+
+      - name: Setup Maestro
+        if: steps.maestro-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: .github/scripts/setup_maestro.sh "${{ env.MAESTRO_VERSION }}"
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm run test
+
+      - name: Doctor
+        run: npm run doctor
+        continue-on-error: true
+
+      # Lean caching: only Gradle + Maestro to stay under 10GB org-wide cache budget
+      - name: Cache Gradle (caches + wrapper + project .gradle)
+        id: gradle-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            android/.gradle
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'android/**/build.gradle', 'android/**/gradle.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: Build Android app
+        shell: bash
+        run: .github/scripts/android_build_release.sh
+
+      - name: Upload Gradle reports (self-hosted)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-reports-android-selfhosted
+          path: |
+            android/build/reports/**
+            android/app/build/reports/**
+          if-no-files-found: ignore
+
+      - name: Save Gradle cache (post-build)
+        if: always() && steps.gradle-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            android/.gradle
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'android/**/build.gradle', 'android/**/gradle.properties') }}
+
+      # Self-hosted macOS (Apple Silicon) runner must have Android SDK & emulator installed; hardware accel uses Hypervisor.framework (no KVM).
+      - name: Run E2E tests
+        id: e2e_android
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ env.ANDROID_API_LEVEL }}
+          target: ${{ env.ANDROID_TARGET }}
+          arch: ${{ env.ANDROID_ARCH }}
+          profile: ${{ env.ANDROID_DEVICE }}
+          emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect
+          script: .github/scripts/android_emulator_e2e.sh
+
+      - name: Upload E2E artifacts on failure (self-hosted)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-artifacts-android-selfhosted
+          path: |
+            e2e-artifacts/**/*
+            android/app/build/reports/**
+          include-hidden-files: true
+
+      - name: Fail if E2E failed
+        if: always()
+        shell: bash
+        run: |
+          if [ -f e2e-artifacts/EXITCODE ] && [ "$(cat e2e-artifacts/EXITCODE)" != "0" ]; then
+            echo "❌ E2E failed (see artifacts)."
+            exit 1
+          fi
+
+      - name: Clean self-hosted workspace (safe)
+        if: ${{ always() }}
+        shell: bash
+        run: .github/scripts/clean_selfhosted_workspace.sh

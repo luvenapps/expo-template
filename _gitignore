@@ -43,3 +43,6 @@ yarn-error.*
 /ios
 /android
 .tamagui/
+
+# === GitHub Actions Self-Hosted Runner (Local Runtime) ===
+.github/runner/_
