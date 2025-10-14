@@ -94,12 +94,21 @@ let summary = { appName: null, slug: null, appId: null };
   // 3) app.json tokens
   const appJsonPath = path.join(CWD, 'app.json');
   const bundleIdBase = 'com.luvenapps';
-  const slugSafe = (pkg.name || folderName)
-    .trim()
-    .toLowerCase()
+
+  // Slug for Expo (keep dashes for readability in slug/name)
+  const rawName = (pkg.name || folderName).trim().toLowerCase();
+  const slugSafe = rawName
     .replace(/[^a-z0-9-]+/g, '-')
     .replace(/^-+|-+$/g, '');
-  const appId = `${bundleIdBase}.${slugSafe}`.replace(/\.+/g, '.');
+
+  // Android/iOS bundle id segment: letters/digits only, no dashes/underscores; must start with a letter
+  const idSegmentBase = rawName.replace(/[^a-z0-9]+/g, '');
+  const idSegment = /^[a-z]/.test(idSegmentBase) && idSegmentBase.length
+    ? idSegmentBase
+    : `app${idSegmentBase}`; // ensure it starts with a letter
+
+  const appId = `${bundleIdBase}.${idSegment}`.replace(/\.+/g, '.');
+
   summary.slug = slugSafe;
   summary.appId = appId;
 
