@@ -201,6 +201,8 @@ jobs:
       - name: Ensure iPhone simulator exists & booted
         timeout-minutes: 5
         shell: bash
+        env:
+          ERASE_SIMULATOR: 'true'
         run: .github/scripts/ios_boot_simulator.sh "${{ env.IOS_DEVICE }}"
 
       - name: Build iOS (Simulator, headless)

@@ -87,7 +87,7 @@ jobs:
         run: npm run test
 
   android-hosted:
-    name: Lint • Test • Build • E2E (Android) - Hosted
+    name: Build • E2E (Android) - Hosted
     if: vars.USE_SELF_HOSTED != 'true'
     runs-on: macos-latest
     timeout-minutes: 45

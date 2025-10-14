@@ -22,9 +22,14 @@ if [ -z "$EXISTING_UDID" ]; then
   EXISTING_UDID=$(printf "%s" "$DEVICES_JSON" | python3 -c 'import sys,json,os;j=json.load(sys.stdin);name=os.environ["DEVICE_NAME"];rt=os.environ["RUNTIME_ID"];print(next((d.get("udid","") for d in j.get("devices",{}).get(rt,[]) if d.get("name")==name),"") )')
 fi
 
-echo "Current device state:"
 xcrun simctl list devices | grep -A 2 "$EXISTING_UDID" || true
 
+if [[ "${ERASE_SIMULATOR:-}" =~ ^(1|true|yes)$ ]]; then
+  echo "Erasing simulator to ensure clean state..."
+  xcrun simctl erase "$EXISTING_UDID" || true
+else
+  echo "Skipping erase (ERASE_SIMULATOR not set to true)"
+fi
 echo "Shutting down any existing instance..."
 xcrun simctl shutdown "$EXISTING_UDID" 2>/dev/null || true
 

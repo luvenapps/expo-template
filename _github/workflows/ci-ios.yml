@@ -84,7 +84,7 @@ jobs:
         run: npm run test
 
   ios-hosted:
-    name: Lint • Test • Build • E2E (iOS) - Hosted
+    name: Build • E2E (iOS) - Hosted MacOS
     if: vars.USE_SELF_HOSTED != 'true'
     runs-on: macos-latest
     timeout-minutes: 45
@@ -160,6 +160,8 @@ jobs:
       - name: Ensure iPhone simulator exists & booted
         timeout-minutes: 5
         shell: bash
+        env:
+          ERASE_SIMULATOR: 'true'
         run: .github/scripts/ios_boot_simulator.sh "${{ env.IOS_DEVICE }}"
 
       - name: Build iOS (Simulator, headless)
@@ -212,7 +214,7 @@ jobs:
           rm -rf ios/build e2e-artifacts || true
 
   ios-selfhosted:
-    name: Lint • Test • Build • E2E (iOS) - Self-hosted
+    name: Lint • Test • Build • E2E (iOS) - Self-hosted MacOS
     if: vars.USE_SELF_HOSTED == 'true'
     runs-on: [self-hosted, macos, arm64]
     timeout-minutes: 45
