@@ -203,7 +203,20 @@ jobs:
         shell: bash
         env:
           ERASE_SIMULATOR: 'true'
-        run: .github/scripts/ios_boot_simulator.sh "${{ env.IOS_DEVICE }}"
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            echo "🚀 Attempt $attempt/3: boot iOS simulator"
+            if .github/scripts/ios_boot_simulator.sh "${{ env.IOS_DEVICE }}"; then
+              echo "✅ Simulator booted"
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "⚠️  Boot failed, retrying in 10s..."; sleep 10
+            else
+              echo "❌ Failed to boot simulator after 3 attempts"; exit 1
+            fi
+          done
 
       - name: Build iOS (Simulator, headless)
         shell: bash
@@ -222,11 +235,37 @@ jobs:
 
       - name: Install built app on simulator
         shell: bash
-        run: .github/scripts/ios_install_and_warmup.sh
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            echo "📲 Attempt $attempt/3: install & warm up app"
+            if .github/scripts/ios_install_and_warmup.sh; then
+              echo "✅ App installed"
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "⚠️  Install failed, retrying in 10s..."; sleep 10
+            else
+              echo "❌ Failed to install app after 3 attempts"; exit 1
+            fi
+          done
 
       - name: Run E2E tests
         shell: bash
-        run: .github/scripts/ios_run_e2e.sh
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            echo "🧪 Attempt $attempt/3: run E2E tests"
+            if .github/scripts/ios_run_e2e.sh; then
+              echo "✅ E2E passed"
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "⚠️  E2E failed, retrying in 10s..."; sleep 10
+            else
+              echo "❌ E2E failed after 3 attempts"; exit 1
+            fi
+          done
 
       - name: Upload E2E artifacts on failure
         if: failure()
@@ -352,7 +391,20 @@ jobs:
 
       - name: Ensure iPhone simulator exists & booted
         shell: bash
-        run: .github/scripts/ios_boot_simulator.sh "${{ env.IOS_DEVICE }}"
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            echo "🚀 Attempt $attempt/3: boot iOS simulator"
+            if .github/scripts/ios_boot_simulator.sh "${{ env.IOS_DEVICE }}"; then
+              echo "✅ Simulator booted"
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "⚠️  Boot failed, retrying in 10s..."; sleep 10
+            else
+              echo "❌ Failed to boot simulator after 3 attempts"; exit 1
+            fi
+          done
 
       - name: Build iOS (Simulator, headless)
         shell: bash
@@ -371,11 +423,37 @@ jobs:
 
       - name: Install built app on simulator
         shell: bash
-        run: .github/scripts/ios_install_and_warmup.sh
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            echo "📲 Attempt $attempt/3: install & warm up app"
+            if .github/scripts/ios_install_and_warmup.sh; then
+              echo "✅ App installed"
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "⚠️  Install failed, retrying in 10s..."; sleep 10
+            else
+              echo "❌ Failed to install app after 3 attempts"; exit 1
+            fi
+          done
 
       - name: Run E2E tests
         shell: bash
-        run: .github/scripts/ios_run_e2e.sh
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            echo "🧪 Attempt $attempt/3: run E2E tests"
+            if .github/scripts/ios_run_e2e.sh; then
+              echo "✅ E2E passed"
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "⚠️  E2E failed, retrying in 10s..."; sleep 10
+            else
+              echo "❌ E2E failed after 3 attempts"; exit 1
+            fi
+          done
 
       - name: Upload E2E artifacts on failure
         if: failure()
