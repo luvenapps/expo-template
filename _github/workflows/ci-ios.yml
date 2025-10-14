@@ -158,6 +158,7 @@ jobs:
           key: pods-macOS-${{ hashFiles('ios/Podfile.lock') }}
 
       - name: Ensure iPhone simulator exists & booted
+        timeout-minutes: 5
         shell: bash
         run: .github/scripts/ios_boot_simulator.sh "${{ env.IOS_DEVICE }}"
 
