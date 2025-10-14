@@ -70,7 +70,7 @@ jobs:
           cache: 'npm'
 
       - name: Install deps
-        run: npm ci
+        run: npm i
 
       - name: Doctor
         run: npm run doctor
@@ -115,7 +115,7 @@ jobs:
         run: chmod +x .github/scripts/*.sh
 
       - name: Install deps
-        run: npm ci
+        run: npm i
 
       - name: Doctor
         run: npm run doctor
@@ -242,7 +242,7 @@ jobs:
         run: chmod +x .github/scripts/*.sh
 
       - name: Install deps
-        run: npm ci
+        run: npm i
 
       - name: Verify Expo/RN dependency alignment
         shell: bash

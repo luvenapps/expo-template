@@ -76,7 +76,7 @@ jobs:
           cache: 'npm'
 
       - name: Install deps
-        run: npm ci
+        run: npm i
 
       - name: Doctor
         run: npm run doctor
@@ -123,7 +123,7 @@ jobs:
           cache: 'npm'
 
       - name: Install deps
-        run: npm ci
+        run: npm i
 
       - name: Doctor
         run: npm run doctor
@@ -259,7 +259,7 @@ jobs:
         run: rm -rf node_modules
 
       - name: Install deps
-        run: npm ci
+        run: npm i
 
       - name: Check Expo/RN dependency alignment
         shell: bash
