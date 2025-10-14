@@ -128,7 +128,7 @@ let summary = { appName: null, slug: null, appId: null };
       // URL scheme should follow the appId (deep links like app://)
       expo.scheme =
         typeof expo.scheme === 'string'
-          ? expo.scheme.replace(/__APP_ID__/g, appId)
+          ? expo.scheme.replace(/__APP_NAME__/g, idSegmentBase)
           : appId;
 
       expo.ios = expo.ios || {};
