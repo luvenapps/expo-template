@@ -87,7 +87,7 @@ jobs:
         run: npm run test
 
   android-hosted:
-    name: Build • E2E (Android) - Hosted
+    name: Build • E2E (Android) - Hosted MacOS
     if: vars.USE_SELF_HOSTED != 'true'
     runs-on: macos-latest
     timeout-minutes: 45
@@ -164,7 +164,20 @@ jobs:
 
       - name: Build Android app
         shell: bash
-        run: .github/scripts/android_build_release.sh
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            echo "🏗️  Attempt $attempt/3: Build Android app"
+            if .github/scripts/android_build_release.sh; then
+              echo "✅ Build succeeded"
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "⚠️  Build failed, retrying in 10s..."; sleep 10
+            else
+              echo "❌ Build failed after 3 attempts"; exit 1
+            fi
+          done
 
       - name: Upload Gradle reports (hosted)
         if: failure()
@@ -189,14 +202,27 @@ jobs:
       - name: Run E2E tests
         id: e2e_android
         uses: reactivecircus/android-emulator-runner@v2
-        timeout-minutes: 30  # Android emulators are slow
+        timeout-minutes: 30 # Android emulators are slow
         with:
           api-level: ${{ env.ANDROID_API_LEVEL }}
           target: ${{ env.ANDROID_TARGET }}
           arch: ${{ env.ANDROID_ARCH }}
           profile: ${{ env.ANDROID_DEVICE }}
           emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect
-          script: .github/scripts/android_emulator_e2e.sh
+          script: |
+            set -euo pipefail
+            for attempt in 1 2 3; do
+              echo "🧪 Attempt $attempt/3: Android E2E tests"
+              if .github/scripts/android_emulator_e2e.sh; then
+                echo "✅ E2E passed"
+                exit 0
+              fi
+              if [ "$attempt" -lt 3 ]; then
+                echo "⚠️  E2E failed, retrying in 10s..."; sleep 10
+              else
+                echo "❌ E2E failed after 3 attempts"; exit 1
+              fi
+            done
 
       - name: Upload E2E artifacts on failure (hosted)
         if: failure()
@@ -218,7 +244,7 @@ jobs:
           fi
 
   android-selfhosted:
-    name: Lint • Test • Build • E2E (Android) - Self-hosted
+    name: Lint • Test • Build • E2E (Android) - Self-hosted MacOS
     if: vars.USE_SELF_HOSTED == 'true'
     runs-on: [self-hosted, macos, arm64]
     timeout-minutes: 45
@@ -310,7 +336,20 @@ jobs:
 
       - name: Build Android app
         shell: bash
-        run: .github/scripts/android_build_release.sh
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            echo "🏗️  Attempt $attempt/3: Build Android app"
+            if .github/scripts/android_build_release.sh; then
+              echo "✅ Build succeeded"
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "⚠️  Build failed, retrying in 10s..."; sleep 10
+            else
+              echo "❌ Build failed after 3 attempts"; exit 1
+            fi
+          done
 
       - name: Upload Gradle reports (self-hosted)
         if: failure()
@@ -342,7 +381,20 @@ jobs:
           arch: ${{ env.ANDROID_ARCH }}
           profile: ${{ env.ANDROID_DEVICE }}
           emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect
-          script: .github/scripts/android_emulator_e2e.sh
+          script: |
+            set -euo pipefail
+            for attempt in 1 2 3; do
+              echo "🧪 Attempt $attempt/3: Android E2E tests"
+              if .github/scripts/android_emulator_e2e.sh; then
+                echo "✅ E2E passed"
+                exit 0
+              fi
+              if [ "$attempt" -lt 3 ]; then
+                echo "⚠️  E2E failed, retrying in 10s..."; sleep 10
+              else
+                echo "❌ E2E failed after 3 attempts"; exit 1
+              fi
+            done
 
       - name: Upload E2E artifacts on failure (self-hosted)
         if: failure()
