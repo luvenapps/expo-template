@@ -37,41 +37,24 @@ if [ -n "${EXPO_NAME:-}" ] && [ "${EXPO_NAME}" != "null" ]; then
   CANDIDATE_FROM_NAME="$(sanitize_scheme "$EXPO_NAME")"
 fi
 
-# Ask Xcode for actual schemes
-SCHEMES=()
+# Ask Xcode for actual schemes (take the first if jq is available)
+SCHEMES_OUTPUT=""
 if command -v jq >/dev/null 2>&1; then
-  # Use jq for simplicity
-  readarray -t SCHEMES < <(xcodebuild -workspace "$WORKSPACE_PATH" -list -json | jq -r '.workspace.schemes[]')
+  SCHEMES_OUTPUT="$(xcodebuild -workspace "$WORKSPACE_PATH" -list -json | jq -r '.workspace.schemes[]' | grep -vE 'Pods|Tests' | head -n1 || true)"
 else
-  # Python fallback if jq is missing
-  readarray -t SCHEMES < <(xcodebuild -workspace "$WORKSPACE_PATH" -list -json 2>/dev/null \
-    | python3 -c 'import sys,json; d=json.load(sys.stdin); [print(s) for s in d.get("workspace",{}).get("schemes",[])]' 2>/dev/null || true)
+  SCHEMES_OUTPUT="$(xcodebuild -workspace "$WORKSPACE_PATH" -list -json 2>/dev/null \
+    | python3 -c 'import sys,json; d=json.load(sys.stdin); schemes=d.get(\"workspace\",{}).get(\"schemes\",[]); [print(s) for s in schemes if not (s.startswith(\"Pods\") or s.endswith(\"Tests\") or s.endswith(\"UITests\"))]' 2>/dev/null | head -n1 || true)"
 fi
 
 SCHEME=""
-# 1) Prefer exact (case-insensitive) match to sanitized Expo name
-if [ -n "${CANDIDATE_FROM_NAME:-}" ]; then
-  for s in "${SCHEMES[@]}"; do
-    sl=$(printf "%s" "$s" | tr '[:upper:]' '[:lower:]')
-    if [ "$sl" = "$CANDIDATE_FROM_NAME" ]; then
-      SCHEME="$s"
-      break
-    fi
-  done
+if [ -n "${CANDIDATE_FROM_NAME:-}" ] && [ -n "${SCHEMES_OUTPUT:-}" ]; then
+  lower_candidate="$(printf "%s" "$CANDIDATE_FROM_NAME" | tr '[:upper:]' '[:lower:]')"
+  lower_scheme="$(printf "%s" "$SCHEMES_OUTPUT" | tr '[:upper:]' '[:lower:]')"
+  if [ "$lower_candidate" = "$lower_scheme" ]; then
+    SCHEME="$SCHEMES_OUTPUT"
+  fi
 fi
-# 2) Otherwise pick a sensible scheme (skip Pods and *Tests)
-if [ -z "$SCHEME" ]; then
-  for s in "${SCHEMES[@]}"; do
-    case "$s" in
-      Pods|Pods-*) continue ;;
-      *Tests|*UITests) continue ;;
-    esac
-    SCHEME="$s"
-    break
-  done
-fi
-# 3) Fallback: first available
-[ -z "$SCHEME" ] && [ ${#SCHEMES[@]} -gt 0 ] && SCHEME="${SCHEMES[0]}"
+[ -z "$SCHEME" ] && SCHEME="${SCHEMES_OUTPUT}"
 
 if [ -z "$SCHEME" ]; then
   echo "❌ Could not determine Xcode scheme. Ensure 'npx expo prebuild -p ios' ran successfully."
