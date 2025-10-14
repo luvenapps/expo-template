@@ -125,10 +125,11 @@ let summary = { appName: null, slug: null, appId: null };
         typeof expo.slug === 'string'
           ? expo.slug.replace(/__APP_NAME__/g, slugSafe)
           : slugSafe;
+      // URL scheme should follow the appId (deep links like app://)
       expo.scheme =
         typeof expo.scheme === 'string'
-          ? expo.scheme.replace(/__APP_NAME__/g, slugSafe)
-          : slugSafe;
+          ? expo.scheme.replace(/__APP_ID__/g, appId)
+          : appId;
 
       expo.ios = expo.ios || {};
       expo.ios.bundleIdentifier =

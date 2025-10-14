@@ -3,7 +3,7 @@
     "name": "__APP_NAME__",
     "slug": "__APP_SLUG__",
     "version": "1.0.0",
-    "scheme": "__APP_NAME__",
+    "scheme": "__APP_ID__",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
