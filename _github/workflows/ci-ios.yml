@@ -3,7 +3,41 @@ name: iOS CI
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.mdx'
+      - 'docs/**'
+      - 'scripts/**'
+      - '.editorconfig'
+      - '.gitattributes'
+      - '.gitignore'
+      - '.nvmrc'
+      - '.node-version'
+      - '.prettierignore'
+      - '.prettierrc'
+      - '.prettierrc.*'
+      - '.eslintrc'
+      - '.eslintrc.*'
+      - 'CODEOWNERS'
+      - 'LICENSE*'
   pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.mdx'
+      - 'docs/**'
+      - 'scripts/**'
+      - '.editorconfig'
+      - '.gitattributes'
+      - '.gitignore'
+      - '.nvmrc'
+      - '.node-version'
+      - '.prettierignore'
+      - '.prettierrc'
+      - '.prettierrc.*'
+      - '.eslintrc'
+      - '.eslintrc.*'
+      - 'CODEOWNERS'
+      - 'LICENSE*'
   workflow_dispatch:
 
 permissions:

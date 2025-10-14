@@ -12,6 +12,7 @@
  *  - CocoaPods (macOS)
  *  - Watchman (macOS)
  *  - Maestro
+ *  - Self-hosted GitHub Actions runner
  *  - Expo peer dependency alignment (react, react-native, react-dom)
  *  - Expo doctor
  */

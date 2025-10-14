@@ -12,11 +12,14 @@
  *  6) Restore .gitignore from "gitignore" (if present)
  *  7) Rename _prettierrc.json → .prettierrc.json if present
  *  8) Rename _prettierignore → .prettierignore if present
- *  9) Enable Husky hooks *without* using deprecated `husky install` (set hooksPath + chmod +x)
- *  10) Materialize .maestro from _maestro if needed
- *  11) Run Prettier to format updated files
- *  12) Self-delete this script
- *  13) Print a friendly summary
+ *  9) Rename _nvmrc → .nvmrc if present
+ *  10) Enable Husky hooks *without* using deprecated `husky install` (set hooksPath + chmod +x)
+ *  11) Materialize .maestro from _maestro if needed
+ *  12) Restore .github (delete existing .github and rename _github → .github
+ *  13) Ensure all shell scripts in .github are executable
+ *  14) Run Prettier to format updated files
+ *  15) Self-delete this script
+ *  16) Print a friendly summary
  *
  * Notes:
  *  - Intentionally does NOT run `npx husky install`. Husky v9+ works with `core.hooksPath` + executable hooks.
@@ -234,7 +237,25 @@ let summary = { appName: null, slug: null, appId: null };
     console.log('⚠️  No _prettierignore found in template directory — skipping');
   }
 
-  // 9) Husky v9+ (no `husky install`): set hooksPath + chmod, and materialize from _husky if needed
+  // 9) Rename _nvmrc → .nvmrc if present
+  const nvmrcSrc = path.join(CWD, '_nvmrc');
+  const nvmrcDst = path.join(CWD, '.nvmrc');
+  if (exists(nvmrcSrc)) {
+    try {
+      if (exists(nvmrcDst)) {
+        fs.unlinkSync(nvmrcDst);
+        console.log('🧹 Removed existing .nvmrc to replace with template version');
+      }
+      fs.renameSync(nvmrcSrc, nvmrcDst);
+      console.log('✅ Restored .nvmrc from template');
+    } catch (e) {
+      console.log(`⚠️  Failed to restore .nvmrc (${e.message})`);
+    }
+  } else {
+    console.log('⚠️  No _nvmrc found in template directory — skipping');
+  }
+
+  // 10) Husky v9+ (no `husky install`): set hooksPath + chmod, and materialize from _husky if needed
   const isGit = runSilent('git', ['rev-parse', '--is-inside-work-tree']);
   if (!isGit) runSilent('git', ['init']);
   const huskyDst = path.join(CWD, '.husky');
@@ -270,7 +291,7 @@ let summary = { appName: null, slug: null, appId: null };
     console.log('⚠️  No .husky/_husky found in template directory — skipping');
   }
 
-  // 10) Materialize Maestro folder (.maestro) from _maestro if needed
+  // 11) Materialize Maestro folder (.maestro) from _maestro if needed
   const maestroDst = path.join(CWD, '.maestro');
   const maestroSrcCandidates = [
     path.join(CWD, '.maestro'),
@@ -297,7 +318,60 @@ let summary = { appName: null, slug: null, appId: null };
     console.log('⚠️  No .maestro/_maestro found in template directory — skipping');
   }
 
-  // 11) Run Prettier to format updated files (single-line status)
+  // 12) Restore .github (delete existing .github and rename _github → .github)
+  const githubDst = path.join(CWD, '.github');
+  const githubSrcCandidates = [
+    path.join(CWD, '.github'),
+    path.join(CWD, '_github'),
+  ];
+  const githubSrc = githubSrcCandidates.find(exists);
+
+  if (githubSrc) {
+    try {
+      copyDir(githubSrc, githubDst);
+      console.log('✅ github folder restored from template');
+      if (githubSrc === path.join(CWD, '_github')) {
+        try {
+          fs.rmSync(githubSrc, { recursive: true, force: true });
+          console.log('🧹 Removed _github template folder');
+        } catch (e) {
+          console.log(`⚠️  Failed to remove _github folder (${e.message})`);
+        }
+      }
+    } catch (e) {
+      console.log(`⚠️  github restore failed (${e.message})`);
+    }
+  } else {
+    console.log('⚠️  No .github/_maestro found in template directory — skipping');
+  }
+
+  // 13) Ensure all shell scripts in .github are executable
+  const githubDir = path.join(CWD, '.github');
+  if (exists(githubDir)) {
+    try {
+      const makeExecutable = (dir) => {
+        for (const file of fs.readdirSync(dir)) {
+          const fullPath = path.join(dir, file);
+          const stat = fs.statSync(fullPath);
+          if (stat.isDirectory()) {
+            makeExecutable(fullPath);
+          } else if (stat.isFile() && fullPath.endsWith('.sh')) {
+            try {
+              fs.chmodSync(fullPath, 0o755);
+            } catch (e) {
+              console.log(`⚠️  Failed to chmod ${fullPath}: ${e.message}`);
+            }
+          }
+        }
+      };
+      makeExecutable(githubDir);
+      console.log('✅ All .sh scripts in .github are executable');
+    } catch (e) {
+      console.log(`⚠️  Failed to make .github scripts executable (${e.message})`);
+    }
+  }
+
+  // 14) Run Prettier to format updated files (single-line status)
   try {
     process.stdout.write('🧩 Formatting with Prettier...');
     cp.execSync('npx prettier --write .', { stdio: 'ignore' });
@@ -306,7 +380,7 @@ let summary = { appName: null, slug: null, appId: null };
     console.log(`\n⚠️  Prettier formatting skipped or failed: ${err.message}`);
   }
 
-  // 12) Self-delete
+  // 15) Self-delete
   const self = path.join(CWD, 'scripts', 'postinstall.js');
   try {
     process.on('exit', () => {
@@ -317,7 +391,7 @@ let summary = { appName: null, slug: null, appId: null };
     });
   } catch {}
 
-  // 13) Summary
+  // 16) Summary
   const bar = '============================================================';
   console.log(`
 ${bar}
