@@ -179,7 +179,20 @@ jobs:
 
       - name: Build iOS (Simulator, headless)
         shell: bash
-        run: .github/scripts/ios_build.sh
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            echo "🏗️ Attempt $attempt/3: build iOS (sim)"
+            if .github/scripts/ios_build.sh; then
+              echo "✅ Build succeeded"
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "⚠️ Build failed, retrying in 10s..."; sleep 10
+            else
+              echo "❌ Build failed after 3 attempts"; exit 1
+            fi
+          done
 
       - name: Upload Xcode build artifacts (hosted)
         if: failure()
@@ -350,7 +363,20 @@ jobs:
 
       - name: Build iOS (Simulator, headless)
         shell: bash
-        run: .github/scripts/ios_build.sh
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            echo "🏗️ Attempt $attempt/3: build iOS (sim)"
+            if .github/scripts/ios_build.sh; then
+              echo "✅ Build succeeded"
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "⚠️ Build failed, retrying in 10s..."; sleep 10
+            else
+              echo "❌ Build failed after 3 attempts"; exit 1
+            fi
+          done
 
       - name: Upload Xcode build artifacts (self-hosted)
         if: failure()
