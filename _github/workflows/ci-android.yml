@@ -120,7 +120,7 @@ jobs:
         run: npm run doctor
         continue-on-error: true
 
-      - name: Check Expo/RN dependency alignment
+      - name: Verify Expo/RN dependency alignment
         shell: bash
         run: |
           set -e
@@ -252,7 +252,7 @@ jobs:
       - name: Install deps
         run: npm ci
 
-      - name: Check Expo/RN dependency alignment
+      - name: Verify Expo/RN dependency alignment
         shell: bash
         run: |
           set -e
