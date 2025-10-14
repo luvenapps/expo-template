@@ -23,7 +23,26 @@ sanitize_scheme() {
   printf "%s" "$1" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]'
 }
 
-WORKSPACE_PATH="$(ls ios/*.xcworkspace | head -n1)"
+# ----- Find a valid .xcworkspace (avoid fragile globs) -----
+find_workspace() {
+  find ios -maxdepth 1 -type d -name "*.xcworkspace" -print -quit 2>/dev/null || true
+}
+
+WORKSPACE_PATH="$(find_workspace)"
+if [ -z "${WORKSPACE_PATH:-}" ] || [ ! -f "$WORKSPACE_PATH/contents.xcworkspacedata" ]; then
+  echo "⚠️  .xcworkspace missing or invalid. Re-running clean prebuild + pods..."
+  rm -rf ios
+  npx expo prebuild -p ios --no-install
+  npx pod-install
+  WORKSPACE_PATH="$(find_workspace)"
+fi
+
+if [ -z "${WORKSPACE_PATH:-}" ] || [ ! -f "$WORKSPACE_PATH/contents.xcworkspacedata" ]; then
+  echo "❌ Still no valid .xcworkspace. Dumping iOS folder:"
+  ls -la ios || true
+  find ios -maxdepth 2 -name "contents.xcworkspacedata" -print || true
+  exit 1
+fi
 
 # Candidate from Expo name (NOT ios.scheme, which is a URL scheme)
 CANDIDATE_FROM_NAME=""
