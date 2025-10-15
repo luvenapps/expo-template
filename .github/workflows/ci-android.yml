@@ -302,8 +302,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-
-
       - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
@@ -316,7 +314,10 @@ jobs:
           node-version: 24.1.0
           cache: 'npm'
 
-
+      - name: Clean self-hosted workspace
+        shell: bash
+        run: .github/scripts/clean_selfhosted_workspace.sh
+        
       - name: Scaffold & verify (retry once)
         working-directory: .
         shell: bash
@@ -471,7 +472,3 @@ jobs:
             exit 1
           fi
 
-      - name: Clean self-hosted workspace (safe)
-        if: ${{ always() }}
-        shell: bash
-        run: .github/scripts/clean_selfhosted_workspace.sh

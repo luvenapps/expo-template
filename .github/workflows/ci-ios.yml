@@ -322,12 +322,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-
       - name: Setup Node 24
         uses: actions/setup-node@v4
         with:
           node-version: 24.1.0
           cache: 'npm'
+      
+      - name: Clean self-hosted workspace
+        shell: bash
+        run: .github/scripts/clean_selfhosted_workspace.sh
 
       - name: Scaffold & verify (retry once)
         working-directory: .
@@ -500,7 +503,3 @@ jobs:
             exit 1
           fi
 
-      - name: Clean self-hosted workspace (safe)
-        if: ${{ always() }}
-        shell: bash
-        run: .github/scripts/clean_selfhosted_workspace.sh

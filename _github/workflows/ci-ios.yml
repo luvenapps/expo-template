@@ -284,8 +284,9 @@ jobs:
           node-version: 24.1.0
           cache: 'npm'
 
-      - name: Remove stale node_modules (safety)
-        run: rm -rf node_modules
+      - name: Clean self-hosted workspace
+        shell: bash
+        run: .github/scripts/clean_selfhosted_workspace.sh
 
       - name: Make CI scripts executable
         run: chmod +x .github/scripts/*.sh
@@ -441,8 +442,3 @@ jobs:
             echo "❌ E2E failed (see artifacts)."
             exit 1
           fi
-
-      - name: Clean self-hosted workspace (safe)
-        if: ${{ always() }}
-        shell: bash
-        run: .github/scripts/clean_selfhosted_workspace.sh
