@@ -20,10 +20,11 @@ expo-env.d.ts
 *.p12
 *.key
 *.mobileprovision
+build-*
 
 # Metro
 .metro-health-check*
-
+ 
 # debug
 npm-debug.*
 yarn-debug.*
@@ -42,3 +43,12 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+.tamagui/
+
+# GitHub Actions Self-Hosted Runner (Local Runtime)
+.github/runner/_
+
+# other
+.builds
+e2e-artifacts
+debug.keystore

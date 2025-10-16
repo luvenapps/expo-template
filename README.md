@@ -80,6 +80,20 @@ expo --version
 
 ### 🧩 5. Core dependencies (via Homebrew)
 
+#### 🚀 Fastlane — for local iOS builds
+
+Fastlane is required for EAS local iOS builds.
+
+```bash
+brew install fastlane
+```
+
+Verify installation:
+
+```bash
+fastlane --version
+```
+
 #### 🕵️‍♂️ Watchman — for fast rebuilds
 
 ```bash
@@ -188,6 +202,30 @@ beontime/
 | Run Maestro tests (Android) | `npm run e2e:android` |
 | Lint code                   | `npm run lint`        |
 | Format code                 | `npm run format`      |
+
+---
+
+## 🧭 EAS Project Setup
+
+Before using local or CI builds, create an EAS project for your app on Expo:
+
+1. Go to [https://expo.dev/](https://expo.dev/) and sign in or create an account.
+2. Create a new project and note its **Project ID**.
+3. In your project’s `app.json`, update the EAS configuration with the new ID under `expo.extra.eas.projectId`:
+
+```json
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "YOUR_PROJECT_ID"
+      }
+    }
+  }
+}
+```
+
+This ID links your local or CI builds to your Expo project so that features like builds, submissions, and updates work correctly.
 
 ---
 

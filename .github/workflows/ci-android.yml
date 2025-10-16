@@ -130,6 +130,29 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.1.0
+          cache: 'npm'
+
+      - name: Install EAS CLI
+        shell: bash
+        run: |
+          npm i -g eas-cli@16.23.0
+          eas --version
+
+      - name: Make CI scripts executable
+        run: chmod +x .github/scripts/*.sh
+
+      - name: Setup Ruby (for Fastlane)
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler: 'none'
+      - name: Setup Fastlane
+        shell: bash
+        run: .github/scripts/setup_fastlane.sh
 
       - name: Setup Java 17
         uses: actions/setup-java@v4
@@ -137,11 +160,12 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Node 24
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24.1.0
-          cache: 'npm'
+      - name: Accept Android SDK licenses
+        shell: bash
+        env:
+          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_DIR }}
+        run: |
+          yes | "$ANDROID_SDK_ROOT/tools/bin/sdkmanager" --licenses || true
 
       - name: Scaffold & verify (retry once)
         working-directory: .
@@ -174,16 +198,31 @@ jobs:
             fi
           done
 
-      - name: Clear Metro cache
+      - name: Doctor
+        run: npm run doctor
+        continue-on-error: true
+
+      - name: Verify Expo/RN dependency alignment
+        shell: bash
         run: |
-          rm -rf "$TMPDIR"/metro-* node_modules/.cache/metro || true
+          set -e
+          npx expo --version || true
+          node -e "console.log('react-native', require('react-native/package.json').version)" || true
+          node -e "console.log('expo', require('expo/package.json').version)" || true
+          # Strict: fail if mismatched so lockfile must be updated in a PR
+          if ! npx expo install --check; then
+            echo "❌ Expo dependency mismatch. Run 'npx expo install --fix' locally and commit the updated package-lock.json."
+            exit 1
+          fi
 
       - name: Cache Maestro CLI
         id: maestro-cache
         uses: actions/cache@v4
         with:
           path: ~/.maestro
-          key: maestro-${{ runner.os }}-v1
+          key: maestro-${{ runner.os }}-${{ env.MAESTRO_VERSION }}
+          restore-keys: |
+            maestro-${{ runner.os }}-
 
       - name: Setup Maestro
         if: steps.maestro-cache.outputs.cache-hit != 'true'
@@ -203,24 +242,41 @@ jobs:
           restore-keys: |
             gradle-${{ runner.os }}-
 
-      - name: Build Android app
+      - name: Create debug keystore
+        run: |
+          mkdir -p android
+          keytool -genkeypair -v \
+            -keystore "android/debug.keystore" \
+            -storepass android -keypass android \
+            -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US"
+
+      - name: Write signing props for Gradle
+        run: |
+          echo "android.injected.signing.store.file=$PWD/android/debug.keystore" >> android/gradle.properties
+          echo "android.injected.signing.store.password=android"               >> android/gradle.properties
+          echo "android.injected.signing.key.alias=androiddebugkey"            >> android/gradle.properties
+          echo "android.injected.signing.key.password=android"                 >> android/gradle.properties
+
+      - name: Build e2erelease APK (signed via injected props in eas.json)
+        run: eas build --platform android --profile e2eRelease --local --non-interactive
+
+      - name: Locate APK artifact & app.json
+        id: find_apk
         shell: bash
         run: |
           set -euo pipefail
-          for attempt in 1 2 3; do
-            echo "🏗️  Attempt $attempt/3: Build Android app"
-            if .github/scripts/android_build_release.sh; then
-              echo "✅ Build succeeded"
-              exit 0
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              echo "⚠️  Build failed, retrying in 10s..."; sleep 10
-            else
-              echo "❌ Build failed after 3 attempts"; exit 1
-            fi
-          done
+          APK="$(ls -1t ./*.apk 2>/dev/null | head -n1 || true)"
+          echo "APK=$APK"
+          echo "apk=$APK" >> $GITHUB_OUTPUT
+          [ -n "$APK" ] || (echo "No APK found in repo root."; ls -alh .; exit 1)
 
-      - name: Upload Gradle reports (hosted)
+          PKG=$(node -p "require('./app.json').expo.android.package")
+          echo "PKG=$PKG"
+          echo "pkg=$PKG" >> $GITHUB_OUTPUT
+          [ -n "$PKG" ] || (echo "No PKG found in repo root."; ls -alh .; exit 1)
+
+      - name: Upload Gradle reports
         if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -243,29 +299,49 @@ jobs:
       - name: Run E2E tests
         id: e2e_android
         uses: reactivecircus/android-emulator-runner@v2
-        timeout-minutes: 30  # Android emulators are slow
+        timeout-minutes: 30 # Android emulators are slow
         with:
           api-level: ${{ env.ANDROID_API_LEVEL }}
           target: ${{ env.ANDROID_TARGET }}
           arch: ${{ env.ANDROID_ARCH }}
           profile: ${{ env.ANDROID_DEVICE }}
-          emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect
+          emulator-options: -no-snapshot -no-snapshot-save -no-window -gpu swiftshader_indirect -no-audio -no-boot-anim
+          disable-animations: true
           script: |
             set -euo pipefail
-            for attempt in 1 2 3; do
-              echo "🧪 Attempt $attempt/3: Android E2E tests"
-              if .github/scripts/android_emulator_e2e.sh; then
-                echo "✅ E2E passed"
-                exit 0
-              fi
-              if [ "$attempt" -lt 3 ]; then
-                echo "⚠️  E2E failed, retrying in 10s..."; sleep 10
-              else
-                echo "❌ E2E failed after 3 attempts"; exit 1
-              fi
-            done
 
-      - name: Upload E2E artifacts on failure (hosted)
+            echo "📦 Attempting uninstall of ${{ steps.find_apk.outputs.pkg }}"
+            adb uninstall "${{ steps.find_apk.outputs.pkg }}" || true
+
+            echo "📥 Installing ${{ steps.find_apk.outputs.apk }}"
+            adb install -r "${{ steps.find_apk.outputs.apk }}"
+
+            echo "🔌 ADB state before tests:"
+            adb devices -l || true
+
+            # Stabilize ADB & wait until emulator is truly ready
+            adb start-server >/dev/null 2>&1 || true
+
+            # Wait for device to report "device"
+            for i in {1..60}; do state="$(adb get-state 2>/dev/null || true)"; [ "$state" = "device" ] && break; sleep 1; done
+
+            adb wait-for-device
+
+            # Wait for Android boot to complete & boot animation to stop
+            until [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; do sleep 2; done
+            until adb shell getprop init.svc.bootanim 2>/dev/null | grep -q "stopped"; do sleep 2; done
+
+            # Unlock just in case
+            adb shell input keyevent 82 || true
+
+            mkdir -p e2e-artifacts
+            set +e
+            npm run e2e:android -- --format junit --output e2e-artifacts/results-android.xml
+            CODE=$?
+            set -e
+            echo $CODE > e2e-artifacts/EXITCODE
+            exit $CODE
+      - name: Upload E2E artifacts on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -274,15 +350,6 @@ jobs:
             e2e-artifacts/**/*
             android/app/build/reports/**
           include-hidden-files: true
-
-      - name: Fail if E2E failed
-        if: always()
-        shell: bash
-        run: |
-          if [ -f e2e-artifacts/EXITCODE ] && [ "$(cat e2e-artifacts/EXITCODE)" != "0" ]; then
-            echo "❌ E2E failed (see artifacts)."
-            exit 1
-          fi
 
   android-selfhosted:
     name: Lint • Test • Build • E2E (Android) - Self-hosted MacOS
@@ -302,6 +369,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Make CI scripts executable
+        run: chmod +x .github/scripts/*.sh
+
+      - name: Check EAS CLI
+        shell: bash
+        run: |
+          if ! command -v eas >/dev/null 2>&1; then
+            echo "❌ EAS CLI not found on this runner."
+            echo "Install it globally: npm i -g eas-cli@16.23.0"
+            exit 1
+          fi
+          eas --version
+
+      - name: Setup Fastlane
+        shell: bash
+        run: .github/scripts/setup_fastlane.sh
+
       - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
@@ -317,7 +401,7 @@ jobs:
       - name: Clean self-hosted workspace
         shell: bash
         run: .github/scripts/clean_selfhosted_workspace.sh
-        
+
       - name: Scaffold & verify (retry once)
         working-directory: .
         shell: bash
@@ -349,16 +433,27 @@ jobs:
             fi
           done
 
-      - name: Clear Metro cache
+      - name: Verify Expo/RN dependency alignment
+        shell: bash
         run: |
-          rm -rf "$TMPDIR"/metro-* node_modules/.cache/metro || true
+          set -e
+          npx expo --version || true
+          node -e "console.log('react-native', require('react-native/package.json').version)" || true
+          node -e "console.log('expo', require('expo/package.json').version)" || true
+          # Strict: fail if mismatched so lockfile must be updated in a PR
+          if ! npx expo install --check; then
+            echo "❌ Expo dependency mismatch. Run 'npx expo install --fix' locally and commit the updated package-lock.json."
+            exit 1
+          fi
 
       - name: Cache Maestro CLI
         id: maestro-cache
         uses: actions/cache@v4
         with:
           path: ~/.maestro
-          key: maestro-${{ runner.os }}-v1
+          key: maestro-${{ runner.os }}-${{ env.MAESTRO_VERSION }}
+          restore-keys: |
+            maestro-${{ runner.os }}-
 
       - name: Setup Maestro
         if: steps.maestro-cache.outputs.cache-hit != 'true'
@@ -391,24 +486,41 @@ jobs:
           restore-keys: |
             gradle-${{ runner.os }}-
 
-      - name: Build Android app
+      - name: Create debug keystore
+        run: |
+          mkdir -p android
+          keytool -genkeypair -v \
+            -keystore "android/debug.keystore" \
+            -storepass android -keypass android \
+            -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US"
+
+      - name: Write signing props for Gradle
+        run: |
+          echo "android.injected.signing.store.file=$PWD/android/debug.keystore" >> android/gradle.properties
+          echo "android.injected.signing.store.password=android"                 >> android/gradle.properties
+          echo "android.injected.signing.key.alias=androiddebugkey"              >> android/gradle.properties
+          echo "android.injected.signing.key.password=android"                   >> android/gradle.properties
+
+      - name: Build e2erelease APK (signed via injected props in eas.json)
+        run: eas build --platform android --profile e2eRelease --local --non-interactive
+
+      - name: Locate APK artifact & app.json
+        id: find_apk
         shell: bash
         run: |
           set -euo pipefail
-          for attempt in 1 2 3; do
-            echo "🏗️  Attempt $attempt/3: Build Android app"
-            if .github/scripts/android_build_release.sh; then
-              echo "✅ Build succeeded"
-              exit 0
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              echo "⚠️  Build failed, retrying in 10s..."; sleep 10
-            else
-              echo "❌ Build failed after 3 attempts"; exit 1
-            fi
-          done
+          APK="$(ls -1t ./*.apk 2>/dev/null | head -n1 || true)"
+          echo "APK=$APK"
+          echo "apk=$APK" >> $GITHUB_OUTPUT
+          [ -n "$APK" ] || (echo "No APK found in repo root."; ls -alh .; exit 1)
 
-      - name: Upload Gradle reports (self-hosted)
+          PKG=$(node -p "require('./app.json').expo.android.package")
+          echo "PKG=$PKG"
+          echo "pkg=$PKG" >> $GITHUB_OUTPUT
+          [ -n "$PKG" ] || (echo "No PKG found in repo root."; ls -alh .; exit 1)
+
+      - name: Upload Gradle reports
         if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -437,23 +549,44 @@ jobs:
           target: ${{ env.ANDROID_TARGET }}
           arch: ${{ env.ANDROID_ARCH }}
           profile: ${{ env.ANDROID_DEVICE }}
-          emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect
+          emulator-options: -no-snapshot -no-snapshot-save -no-window -gpu swiftshader_indirect -no-audio -no-boot-anim
+          disable-animations: true
           script: |
             set -euo pipefail
-            for attempt in 1 2 3; do
-              echo "🧪 Attempt $attempt/3: Android E2E tests"
-              if .github/scripts/android_emulator_e2e.sh; then
-                echo "✅ E2E passed"
-                exit 0
-              fi
-              if [ "$attempt" -lt 3 ]; then
-                echo "⚠️  E2E failed, retrying in 10s..."; sleep 10
-              else
-                echo "❌ E2E failed after 3 attempts"; exit 1
-              fi
-            done
 
-      - name: Upload E2E artifacts on failure (self-hosted)
+            echo "📦 Attempting uninstall of ${{ steps.find_apk.outputs.pkg }}"
+            adb uninstall "${{ steps.find_apk.outputs.pkg }}" || true
+
+            echo "📥 Installing ${{ steps.find_apk.outputs.apk }}"
+            adb install -r "${{ steps.find_apk.outputs.apk }}"
+
+            echo "🔌 ADB state before tests:"
+            adb devices -l || true
+
+            # Stabilize ADB & wait until emulator is truly ready
+            adb start-server >/dev/null 2>&1 || true
+
+            # Wait for device to report "device"
+            for i in {1..60}; do state="$(adb get-state 2>/dev/null || true)"; [ "$state" = "device" ] && break; sleep 1; done
+
+            adb wait-for-device
+
+            # Wait for Android boot to complete & boot animation to stop
+            until [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; do sleep 2; done
+            until adb shell getprop init.svc.bootanim 2>/dev/null | grep -q "stopped"; do sleep 2; done
+
+            # Unlock just in case
+            adb shell input keyevent 82 || true
+
+            mkdir -p e2e-artifacts
+            set +e
+            npm run e2e:android -- --format junit --output e2e-artifacts/results-android.xml
+            CODE=$?
+            set -e
+            echo $CODE > e2e-artifacts/EXITCODE
+            exit $CODE
+
+      - name: Upload E2E artifacts on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -462,13 +595,3 @@ jobs:
             e2e-artifacts/**/*
             android/app/build/reports/**
           include-hidden-files: true
-
-      - name: Fail if E2E failed
-        if: always()
-        shell: bash
-        run: |
-          if [ -f e2e-artifacts/EXITCODE ] && [ "$(cat e2e-artifacts/EXITCODE)" != "0" ]; then
-            echo "❌ E2E failed (see artifacts)."
-            exit 1
-          fi
-

@@ -93,7 +93,8 @@ let summary = { appName: null, slug: null, appId: null };
 
   // 3) app.json tokens
   const appJsonPath = path.join(CWD, 'app.json');
-  const bundleIdBase = 'com.luvenapps';
+  const owner = 'luvenapps';
+  const bundleIdBase = `com.${owner}`;
 
   // Slug for Expo (keep dashes for readability in slug/name)
   const rawName = (pkg.name || folderName).trim().toLowerCase();
@@ -143,6 +144,30 @@ let summary = { appName: null, slug: null, appId: null };
           ? expo.android.package.replace(/__APP_ID__/g, appId)
           : expo.android.package || appId;
 
+      // Android intentFilters: populate/replace scheme tokens (e.g., { data: [{ scheme: "__APP_NAME__" }] })
+      try {
+        const filters = (expo.android.intentFilters ||= []);
+        for (const f of filters) {
+          // Normalize single object to array if needed
+          if (f && f.data && !Array.isArray(f.data)) f.data = [f.data];
+          if (Array.isArray(f?.data)) {
+            for (const d of f.data) {
+              if (!d || typeof d !== 'object') continue;
+              if (typeof d.scheme === 'string') {
+                // Replace placeholder with a safe scheme value
+                d.scheme = d.scheme.replace(/__APP_NAME__/g, idSegmentBase);
+              } else if (d.scheme == null) {
+                // Default missing scheme to a safe value
+                d.scheme = idSegmentBase;
+              }
+            }
+          }
+        }
+      } catch {}
+
+      expo.owner = typeof expo.owner === 'string'
+          ? expo.owner.replace(/__OWNER__/g, owner)
+          : owner;
       if (appJson.expo) appJson.expo = expo;
       else Object.assign(appJson, expo);
       writeJson(appJsonPath, appJson);

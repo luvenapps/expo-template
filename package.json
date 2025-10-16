@@ -1,6 +1,6 @@
 {
   "name": "template-starter",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "license": "MIT",
   "author": "LuvenApps <github@luvenapps.com>",
   "main": "expo-router/entry",
@@ -16,6 +16,7 @@
     "format:check": "prettier --check .",
     "format": "prettier --write .",
     "doctor": "expo-doctor --verbose",
+    "start:ci": "expo start --dev-client --no-dev --minify --port 8081 --clear",
     "e2e:ios": "maestro test .maestro/flows/smoke.ios.yaml",
     "e2e:android": "maestro test .maestro/flows/smoke.android.yaml",
     "commit": "cz",
@@ -31,6 +32,7 @@
     "eslint": "^9.37.0",
     "expo": "~54.0.12",
     "expo-constants": "~18.0.9",
+    "expo-dev-client": "~6.0.15",
     "expo-linking": "~8.0.8",
     "expo-router": "~6.0.12",
     "expo-status-bar": "~3.0.8",

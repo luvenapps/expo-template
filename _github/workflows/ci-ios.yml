@@ -105,8 +105,23 @@ jobs:
           node-version: 24.1.0
           cache: 'npm'
 
+      - name: Install EAS CLI
+        shell: bash
+        run: |
+          npm i -g eas-cli@16.23.0
+          eas --version
+
       - name: Make CI scripts executable
         run: chmod +x .github/scripts/*.sh
+
+      - name: Setup Ruby (for Fastlane)
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler: 'none'
+      - name: Setup Fastlane
+        shell: bash
+        run: .github/scripts/setup_fastlane.sh
 
       - name: Install deps
         run: npm ci
@@ -128,73 +143,76 @@ jobs:
             exit 1
           fi
 
-      - name: Clear Metro cache
-        run: |
-          rm -rf "$TMPDIR"/metro-* node_modules/.cache/metro || true
-
       - name: Cache Maestro CLI
         id: maestro-cache
         uses: actions/cache@v4
         with:
           path: ~/.maestro
-          key: maestro-${{ runner.os }}-v1
+          key: maestro-${{ runner.os }}-${{ env.MAESTRO_VERSION }}
+          restore-keys: |
+            maestro-${{ runner.os }}-
 
       - name: Setup Maestro
         if: steps.maestro-cache.outputs.cache-hit != 'true'
         shell: bash
         run: .github/scripts/setup_maestro.sh "${{ env.MAESTRO_VERSION }}"
 
-      - name: Cache CocoaPods
-        id: pods-cache
-        uses: actions/cache@v4
-        with:
-          path: ios/Pods
-          key: pods-macOS-${{ hashFiles('ios/Podfile.lock') }}
-      - name: Save CocoaPods cache (post-build)
-        if: always() && steps.pods-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: ios/Pods
-          key: pods-macOS-${{ hashFiles('ios/Podfile.lock') }}
-
-      - name: Ensure iPhone simulator exists & booted
-        timeout-minutes: 15
+      - name: Boot simulator
         shell: bash
-        env:
-          ERASE_SIMULATOR: 'true'
         run: |
-          set -euo pipefail
-          for attempt in 1 2 3; do
-            echo "🚀 Attempt $attempt/3: boot iOS simulator"
-            if .github/scripts/ios_boot_simulator.sh "${{ env.IOS_DEVICE }}"; then
-              echo "✅ Simulator booted"
-              exit 0
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              echo "⚠️  Boot failed, retrying in 10s..."; sleep 10
-            else
-              echo "❌ Failed to boot simulator after 3 attempts"; exit 1
-            fi
-          done
+          xcrun simctl bootstatus "${{ env.IOS_DEVICE }}" -b || xcrun simctl boot "${{ env.IOS_DEVICE }}"
+          xcrun simctl list | grep "${{ env.IOS_DEVICE }}" || exit 1
 
-      - name: Build iOS (Simulator, headless)
+      - name: Build e2erelease on simulator
+        run: eas build --platform ios --profile e2eRelease --local --non-interactive
+
+      - name: Locate .app artifact
+        id: find_app
         shell: bash
         run: |
           set -euo pipefail
-          for attempt in 1 2 3; do
-            echo "🏗️ Attempt $attempt/3: build iOS (sim)"
-            if .github/scripts/ios_build.sh; then
-              echo "✅ Build succeeded"
-              exit 0
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              echo "⚠️ Build failed, retrying in 10s..."; sleep 10
-            else
-              echo "❌ Build failed after 3 attempts"; exit 1
-            fi
-          done
+          ARTIFACT_TAR=$(ls -1t ./*.tar.gz 2>/dev/null | head -n1 || true)
+          if [ -n "$ARTIFACT_TAR" ]; then
+            echo "📦 Extracting $ARTIFACT_TAR ..."
+            mkdir -p extracted_app
+            tar -xzf "$ARTIFACT_TAR" -C extracted_app
+          fi
+          APP=$(find extracted_app -type d -name "*.app" -maxdepth 6 | head -n1 || true)
+          echo "app=$APP" >> $GITHUB_OUTPUT
+          [ -n "$APP" ] || (echo "No .app found after extracting $ARTIFACT_TAR"; ls -alh extracted_app || true; exit 1)
 
-      - name: Upload Xcode build artifacts (hosted)
+      - name: Install on simulator and warm up
+        shell: bash
+        run: |
+          APP="${{ steps.find_app.outputs.app }}"
+          BID=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist")
+
+          # Uninstall any existing copy first
+          echo "🧹 Uninstalling $BID if already installed..."
+          xcrun simctl uninstall booted "$BID" || true
+
+          # Install fresh build
+          echo "📦 Installing $APP ..."
+          xcrun simctl install booted "$APP"
+
+          # Launch once to warm it up
+          echo "🚀 Launching $BID ..."
+          xcrun simctl launch booted "$BID"
+          sleep 5
+
+      - name: Run E2E tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p e2e-artifacts
+          set +e
+          npm run e2e:ios -- --format junit --output e2e-artifacts/results-ios.xml
+          CODE=$?
+          set -e
+          echo $CODE > e2e-artifacts/EXITCODE
+          exit $CODE
+
+      - name: Upload Xcode build artifacts
         if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -204,40 +222,6 @@ jobs:
             ios/build/**/*.log
             ~/Library/Developer/Xcode/DerivedData/**/Logs/Build/*.log
           if-no-files-found: ignore
-
-      - name: Install built app on simulator
-        shell: bash
-        run: |
-          set -euo pipefail
-          for attempt in 1 2 3; do
-            echo "📲 Attempt $attempt/3: install & warm up app"
-            if .github/scripts/ios_install_and_warmup.sh; then
-              echo "✅ App installed"
-              exit 0
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              echo "⚠️  Install failed, retrying in 10s..."; sleep 10
-            else
-              echo "❌ Failed to install app after 3 attempts"; exit 1
-            fi
-          done
-
-      - name: Run E2E tests
-        shell: bash
-        run: |
-          set -euo pipefail
-          for attempt in 1 2 3; do
-            echo "🧪 Attempt $attempt/3: run E2E tests"
-            if .github/scripts/ios_run_e2e.sh; then
-              echo "✅ E2E passed"
-              exit 0
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              echo "⚠️  E2E failed, retrying in 10s..."; sleep 10
-            else
-              echo "❌ E2E failed after 3 attempts"; exit 1
-            fi
-          done
 
       - name: Upload E2E artifacts on failure
         if: failure()
@@ -249,16 +233,7 @@ jobs:
             ios/build/**/*.log
           include-hidden-files: true
 
-      - name: Fail if E2E failed
-        if: always()
-        shell: bash
-        run: |
-          if [ -f e2e-artifacts/EXITCODE ] && [ "$(cat e2e-artifacts/EXITCODE)" != "0" ]; then
-            echo "❌ E2E failed (see artifacts)."
-            exit 1
-          fi
-
-      - name: Clean workspace (hosted)
+      - name: Clean workspace
         if: ${{ always() }}
         shell: bash
         run: |
@@ -291,6 +266,20 @@ jobs:
       - name: Make CI scripts executable
         run: chmod +x .github/scripts/*.sh
 
+      - name: Check EAS CLI
+        shell: bash
+        run: |
+          if ! command -v eas >/dev/null 2>&1; then
+            echo "❌ EAS CLI not found on this runner."
+            echo "Install it globally: npm i -g eas-cli@16.23.0"
+            exit 1
+          fi
+          eas --version
+
+      - name: Setup Fastlane
+        shell: bash
+        run: .github/scripts/setup_fastlane.sh
+
       - name: Install deps
         run: npm ci
 
@@ -303,16 +292,14 @@ jobs:
           # Check (non-fatal) Expo SDK alignment
           npx expo install --check || true
 
-      - name: Clear Metro cache
-        run: |
-          rm -rf "$TMPDIR"/metro-* node_modules/.cache/metro || true
-
       - name: Cache Maestro CLI
         id: maestro-cache
         uses: actions/cache@v4
         with:
           path: ~/.maestro
-          key: maestro-${{ runner.os }}-v1
+          key: maestro-${{ runner.os }}-${{ env.MAESTRO_VERSION }}
+          restore-keys: |
+            maestro-${{ runner.os }}-
 
       - name: Setup Maestro
         if: steps.maestro-cache.outputs.cache-hit != 'true'
@@ -332,54 +319,62 @@ jobs:
         run: npm run doctor
         continue-on-error: true
 
-      - name: Cache CocoaPods
-        id: pods-cache
-        uses: actions/cache@v4
-        with:
-          path: ios/Pods
-          key: pods-macOS-${{ hashFiles('ios/Podfile.lock') }}
-      - name: Save CocoaPods cache (post-build)
-        if: always() && steps.pods-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: ios/Pods
-          key: pods-macOS-${{ hashFiles('ios/Podfile.lock') }}
+      - name: Boot simulator
+        shell: bash
+        run: |
+          xcrun simctl bootstatus "${{ env.IOS_DEVICE }}" -b || xcrun simctl boot "${{ env.IOS_DEVICE }}"
+          xcrun simctl list | grep "${{ env.IOS_DEVICE }}" || exit 1
 
-      - name: Ensure iPhone simulator exists & booted
+      - name: Build e2erelease on simulator
+        run: eas build --platform ios --profile e2eRelease --local --non-interactive
+
+      - name: Locate .app artifact
+        id: find_app
         shell: bash
         run: |
           set -euo pipefail
-          for attempt in 1 2 3; do
-            echo "🚀 Attempt $attempt/3: boot iOS simulator"
-            if .github/scripts/ios_boot_simulator.sh "${{ env.IOS_DEVICE }}"; then
-              echo "✅ Simulator booted"
-              exit 0
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              echo "⚠️  Boot failed, retrying in 10s..."; sleep 10
-            else
-              echo "❌ Failed to boot simulator after 3 attempts"; exit 1
-            fi
-          done
+          ARTIFACT_TAR=$(ls -1t ./*.tar.gz 2>/dev/null | head -n1 || true)
+          if [ -n "$ARTIFACT_TAR" ]; then
+            echo "📦 Extracting $ARTIFACT_TAR ..."
+            mkdir -p extracted_app
+            tar -xzf "$ARTIFACT_TAR" -C extracted_app
+          fi
+          APP=$(find extracted_app -type d -name "*.app" -maxdepth 6 | head -n1 || true)
+          echo "app=$APP" >> $GITHUB_OUTPUT
+          [ -n "$APP" ] || (echo "No .app found after extracting $ARTIFACT_TAR"; ls -alh extracted_app || true; exit 1)
 
-      - name: Build iOS (Simulator, headless)
+      - name: Install on simulator and warm up
+        shell: bash
+        run: |
+          APP="${{ steps.find_app.outputs.app }}"
+          BID=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist")
+
+          # Uninstall any existing copy first
+          echo "🧹 Uninstalling $BID if already installed..."
+          xcrun simctl uninstall booted "$BID" || true
+
+          # Install fresh build
+          echo "📦 Installing $APP ..."
+          xcrun simctl install booted "$APP"
+
+          # Launch once to warm it up
+          echo "🚀 Launching $BID ..."
+          xcrun simctl launch booted "$BID"
+          sleep 5
+
+      - name: Run E2E tests
         shell: bash
         run: |
           set -euo pipefail
-          for attempt in 1 2 3; do
-            echo "🏗️ Attempt $attempt/3: build iOS (sim)"
-            if .github/scripts/ios_build.sh; then
-              echo "✅ Build succeeded"
-              exit 0
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              echo "⚠️ Build failed, retrying in 10s..."; sleep 10
-            else
-              echo "❌ Build failed after 3 attempts"; exit 1
-            fi
-          done
+          mkdir -p e2e-artifacts
+          set +e
+          npm run e2e:ios -- --format junit --output e2e-artifacts/results-ios.xml
+          CODE=$?
+          set -e
+          echo $CODE > e2e-artifacts/EXITCODE
+          exit $CODE
 
-      - name: Upload Xcode build artifacts (self-hosted)
+      - name: Upload Xcode build artifacts
         if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -390,40 +385,6 @@ jobs:
             ~/Library/Developer/Xcode/DerivedData/**/Logs/Build/*.log
           if-no-files-found: ignore
 
-      - name: Install built app on simulator
-        shell: bash
-        run: |
-          set -euo pipefail
-          for attempt in 1 2 3; do
-            echo "📲 Attempt $attempt/3: install & warm up app"
-            if .github/scripts/ios_install_and_warmup.sh; then
-              echo "✅ App installed"
-              exit 0
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              echo "⚠️  Install failed, retrying in 10s..."; sleep 10
-            else
-              echo "❌ Failed to install app after 3 attempts"; exit 1
-            fi
-          done
-
-      - name: Run E2E tests
-        shell: bash
-        run: |
-          set -euo pipefail
-          for attempt in 1 2 3; do
-            echo "🧪 Attempt $attempt/3: run E2E tests"
-            if .github/scripts/ios_run_e2e.sh; then
-              echo "✅ E2E passed"
-              exit 0
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              echo "⚠️  E2E failed, retrying in 10s..."; sleep 10
-            else
-              echo "❌ E2E failed after 3 attempts"; exit 1
-            fi
-          done
-
       - name: Upload E2E artifacts on failure
         if: failure()
         uses: actions/upload-artifact@v4
@@ -433,12 +394,3 @@ jobs:
             e2e-artifacts/**/*
             ios/build/**/*.log
           include-hidden-files: true
-
-      - name: Fail if E2E failed
-        if: always()
-        shell: bash
-        run: |
-          if [ -f e2e-artifacts/EXITCODE ] && [ "$(cat e2e-artifacts/EXITCODE)" != "0" ]; then
-            echo "❌ E2E failed (see artifacts)."
-            exit 1
-          fi
