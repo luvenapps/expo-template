@@ -45,7 +45,11 @@ permissions:
 
 env:
   IOS_DEVICE: 'iPhone 17'
-  MAESTRO_VERSION: 'v2.0.3'
+  MAESTRO_VERSION: '2.0.6'
+  FASTLANE_VERSION: '2.228.0'
+  RETRIES: ${{ vars.RETRIES }}
+  RETRY_DELAY: ${{ vars.RETRY_DELAY }}
+  MAESTRO_DRIVER_STARTUP_TIMEOUT: 60000
 
 concurrency:
   group: ios-ci-${{ github.ref }}
@@ -105,6 +109,15 @@ jobs:
           node-version: 24.1.0
           cache: 'npm'
 
+      - name: Setup Ruby (for Fastlane)
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler: 'none'
+
+      - name: Install deps
+        run: npm ci
+
       - name: Install EAS CLI
         shell: bash
         run: |
@@ -114,17 +127,9 @@ jobs:
       - name: Make CI scripts executable
         run: chmod +x .github/scripts/*.sh
 
-      - name: Setup Ruby (for Fastlane)
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.2'
-          bundler: 'none'
       - name: Setup Fastlane
         shell: bash
-        run: .github/scripts/setup_fastlane.sh
-
-      - name: Install deps
-        run: npm ci
+        run: .github/scripts/setup_fastlane.sh  "${{ env.FASTLANE_VERSION }}"
 
       - name: Doctor
         run: npm run doctor
@@ -143,28 +148,76 @@ jobs:
             exit 1
           fi
 
-      - name: Cache Maestro CLI
-        id: maestro-cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.maestro
-          key: maestro-${{ runner.os }}-${{ env.MAESTRO_VERSION }}
-          restore-keys: |
-            maestro-${{ runner.os }}-
-
       - name: Setup Maestro
-        if: steps.maestro-cache.outputs.cache-hit != 'true'
         shell: bash
         run: .github/scripts/setup_maestro.sh "${{ env.MAESTRO_VERSION }}"
 
-      - name: Boot simulator
+      - name: Compute iOS build fingerprint
+        id: ios_fp
         shell: bash
         run: |
-          xcrun simctl bootstatus "${{ env.IOS_DEVICE }}" -b || xcrun simctl boot "${{ env.IOS_DEVICE }}"
-          xcrun simctl list | grep "${{ env.IOS_DEVICE }}" || exit 1
+          set -euo pipefail
+          FILES="$(git ls-files \
+            'app.json' \
+            'app.config.*' \
+            'eas.json' \
+            'package.json' \
+            'package-lock.json' \
+            'babel.config.*' \
+            'metro.config.*' \
+            'tsconfig.*' \
+            'index.*' \
+            '*.env' '.env.*' \
+            'scripts/**' \
+            'app/**' 'src/**' 'components/**' 'screens/**' \
+            'App.*' \
+            'plugins/**' \
+            'assets/**' \
+            '**/*.png' '**/*.svg' '**/*.ttf' '**/*.otf' \
+            'ios/**' \
+          )"
+          SALT="node=$(node -v);xcode=$(xcodebuild -version | tr '\n' ' ')"
+          HASH=$( (echo "$SALT"; echo "$FILES"; echo "$FILES" | xargs -I{} shasum "{}") | shasum -a 256 | awk '{print $1}' )
+          echo "key=ios-app-${HASH}" >> "$GITHUB_OUTPUT"
 
-      - name: Build e2erelease on simulator
-        run: eas build --platform ios --profile e2eRelease --local --non-interactive
+      - name: Restore the tar.gz iOS app
+        id: ios_cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ./*.tar.gz
+          key: ${{ steps.ios_fp.outputs.key }}
+
+      - name: Build e2erelease
+        if: steps.ios_cache.outputs.cache-hit != 'true'
+        shell: bash
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          set -euo pipefail
+          ATTEMPTS="${RETRIES:-2}"
+          DELAY="${RETRY_DELAY:-2}"
+          i=1
+          while [ "$i" -le "$ATTEMPTS" ]; do
+            echo "🏗️  iOS build attempt $i/$ATTEMPTS..."
+            if eas build --platform ios --profile e2eRelease --local --non-interactive; then
+              echo "✅ Build succeeded on attempt $i"
+              exit 0
+            fi
+            if [ "$i" -lt "$ATTEMPTS" ]; then
+              echo "❌ Build attempt $i failed — retrying in ${DELAY}s..."
+              sleep "$DELAY"
+            fi
+            i=$((i+1))
+          done
+          echo "❌ Build failed after $ATTEMPTS attempts"
+          exit 1
+
+      - name: Save the tar.gz iOS app
+        if: steps.ios_cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ./*.tar.gz
+          key: ${{ steps.ios_fp.outputs.key }}
 
       - name: Locate .app artifact
         id: find_app
@@ -181,36 +234,18 @@ jobs:
           echo "app=$APP" >> $GITHUB_OUTPUT
           [ -n "$APP" ] || (echo "No .app found after extracting $ARTIFACT_TAR"; ls -alh extracted_app || true; exit 1)
 
+      - name: Boot simulator
+        shell: bash
+        run: .github/scripts/ios_boot_simulator.sh
+
       - name: Install on simulator and warm up
         shell: bash
-        run: |
-          APP="${{ steps.find_app.outputs.app }}"
-          BID=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist")
-
-          # Uninstall any existing copy first
-          echo "🧹 Uninstalling $BID if already installed..."
-          xcrun simctl uninstall booted "$BID" || true
-
-          # Install fresh build
-          echo "📦 Installing $APP ..."
-          xcrun simctl install booted "$APP"
-
-          # Launch once to warm it up
-          echo "🚀 Launching $BID ..."
-          xcrun simctl launch booted "$BID"
-          sleep 5
+        timeout-minutes: 10
+        run: .github/scripts/ios_install_app.sh "${{ steps.find_app.outputs.app }}"
 
       - name: Run E2E tests
         shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p e2e-artifacts
-          set +e
-          npm run e2e:ios -- --format junit --output e2e-artifacts/results-ios.xml
-          CODE=$?
-          set -e
-          echo $CODE > e2e-artifacts/EXITCODE
-          exit $CODE
+        run: .github/scripts/ios_run_e2e.sh
 
       - name: Upload Xcode build artifacts
         if: failure()
@@ -259,12 +294,8 @@ jobs:
           node-version: 24.1.0
           cache: 'npm'
 
-      - name: Clean self-hosted workspace
-        shell: bash
-        run: .github/scripts/clean_selfhosted_workspace.sh
-
-      - name: Make CI scripts executable
-        run: chmod +x .github/scripts/*.sh
+      - name: Install deps
+        run: npm ci
 
       - name: Check EAS CLI
         shell: bash
@@ -276,13 +307,6 @@ jobs:
           fi
           eas --version
 
-      - name: Setup Fastlane
-        shell: bash
-        run: .github/scripts/setup_fastlane.sh
-
-      - name: Install deps
-        run: npm ci
-
       - name: Verify Expo/RN dependency alignment
         shell: bash
         run: |
@@ -292,17 +316,14 @@ jobs:
           # Check (non-fatal) Expo SDK alignment
           npx expo install --check || true
 
-      - name: Cache Maestro CLI
-        id: maestro-cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.maestro
-          key: maestro-${{ runner.os }}-${{ env.MAESTRO_VERSION }}
-          restore-keys: |
-            maestro-${{ runner.os }}-
+      - name: Make CI scripts executable
+        run: chmod +x .github/scripts/*.sh
+
+      - name: Setup Fastlane
+        shell: bash
+        run: .github/scripts/setup_fastlane.sh  "${{ env.FASTLANE_VERSION }}"
 
       - name: Setup Maestro
-        if: steps.maestro-cache.outputs.cache-hit != 'true'
         shell: bash
         run: .github/scripts/setup_maestro.sh "${{ env.MAESTRO_VERSION }}"
 
@@ -319,14 +340,72 @@ jobs:
         run: npm run doctor
         continue-on-error: true
 
-      - name: Boot simulator
+      - name: Compute iOS build fingerprint
+        id: ios_fp
         shell: bash
         run: |
-          xcrun simctl bootstatus "${{ env.IOS_DEVICE }}" -b || xcrun simctl boot "${{ env.IOS_DEVICE }}"
-          xcrun simctl list | grep "${{ env.IOS_DEVICE }}" || exit 1
+          set -euo pipefail
+          FILES="$(git ls-files \
+            'app.json' \
+            'app.config.*' \
+            'eas.json' \
+            'package.json' \
+            'package-lock.json' \
+            'babel.config.*' \
+            'metro.config.*' \
+            'tsconfig.*' \
+            'index.*' \
+            '*.env' '.env.*' \
+            'scripts/**' \
+            'app/**' 'src/**' 'components/**' 'screens/**' \
+            'App.*' \
+            'plugins/**' \
+            'assets/**' \
+            '**/*.png' '**/*.svg' '**/*.ttf' '**/*.otf' \
+            'ios/**' \
+          )"
+          SALT="node=$(node -v);xcode=$(xcodebuild -version | tr '\n' ' ')"
+          HASH=$( (echo "$SALT"; echo "$FILES"; echo "$FILES" | xargs -I{} shasum "{}") | shasum -a 256 | awk '{print $1}' )
+          echo "key=ios-app-${HASH}" >> "$GITHUB_OUTPUT"
 
-      - name: Build e2erelease on simulator
-        run: eas build --platform ios --profile e2eRelease --local --non-interactive
+      - name: Restore the tar.gz iOS app
+        id: ios_cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ./*.tar.gz
+          key: ${{ steps.ios_fp.outputs.key }}
+
+      - name: Build e2erelease
+        if: steps.ios_cache.outputs.cache-hit != 'true'
+        shell: bash
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          set -euo pipefail
+          ATTEMPTS="${RETRIES:-2}"
+          DELAY="${RETRY_DELAY:-2}"
+          i=1
+          while [ "$i" -le "$ATTEMPTS" ]; do
+            echo "🏗️  iOS build attempt $i/$ATTEMPTS..."
+            if eas build --platform ios --profile e2eRelease --local --non-interactive; then
+              echo "✅ Build succeeded on attempt $i"
+              exit 0
+            fi
+            if [ "$i" -lt "$ATTEMPTS" ]; then
+              echo "❌ Build attempt $i failed — retrying in ${DELAY}s..."
+              sleep "$DELAY"
+            fi
+            i=$((i+1))
+          done
+          echo "❌ Build failed after $ATTEMPTS attempts"
+          exit 1
+
+      - name: Save the tar.gz iOS app
+        if: steps.ios_cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ./*.tar.gz
+          key: ${{ steps.ios_fp.outputs.key }}
 
       - name: Locate .app artifact
         id: find_app
@@ -343,36 +422,18 @@ jobs:
           echo "app=$APP" >> $GITHUB_OUTPUT
           [ -n "$APP" ] || (echo "No .app found after extracting $ARTIFACT_TAR"; ls -alh extracted_app || true; exit 1)
 
+      - name: Boot simulator
+        shell: bash
+        run: .github/scripts/ios_boot_simulator.sh
+
       - name: Install on simulator and warm up
         shell: bash
-        run: |
-          APP="${{ steps.find_app.outputs.app }}"
-          BID=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist")
-
-          # Uninstall any existing copy first
-          echo "🧹 Uninstalling $BID if already installed..."
-          xcrun simctl uninstall booted "$BID" || true
-
-          # Install fresh build
-          echo "📦 Installing $APP ..."
-          xcrun simctl install booted "$APP"
-
-          # Launch once to warm it up
-          echo "🚀 Launching $BID ..."
-          xcrun simctl launch booted "$BID"
-          sleep 5
+        timeout-minutes: 10
+        run: .github/scripts/ios_install_app.sh "${{ steps.find_app.outputs.app }}"
 
       - name: Run E2E tests
         shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p e2e-artifacts
-          set +e
-          npm run e2e:ios -- --format junit --output e2e-artifacts/results-ios.xml
-          CODE=$?
-          set -e
-          echo $CODE > e2e-artifacts/EXITCODE
-          exit $CODE
+        run: .github/scripts/ios_run_e2e.sh
 
       - name: Upload Xcode build artifacts
         if: failure()
@@ -394,3 +455,8 @@ jobs:
             e2e-artifacts/**/*
             ios/build/**/*.log
           include-hidden-files: true
+
+      - name: Clean self-hosted workspace
+        if: ${{ always() }}
+        shell: bash
+        run: .github/scripts/clean_selfhosted_workspace.sh

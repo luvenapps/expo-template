@@ -1,4 +1,4 @@
-appId: com.luvenapps.betterhabits
+appId: __APP_ID__
 ---
 - launchApp
 - assertVisible:

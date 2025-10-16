@@ -1,46 +1,58 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Optional version argument: e.g., ./setup_fastlane.sh 2.222.0
-VER="${1:-}"
-echo "🚀 Setting up Fastlane ${VER:+(version: $VER)}..."
+VER="${1:?Fastlane version required}"
 
-# If Fastlane already exists, print version and exit
-if command -v fastlane >/dev/null 2>&1; then
-  echo "✅ Fastlane already installed at $(command -v fastlane)"
-  fastlane --version
-  exit 0
-fi
+echo "🔧 Ensuring fastlane ${VER}..."
 
-# Install via RubyGems into the current user's gem directory (no Homebrew required)
-echo "⬇️ Installing Fastlane via RubyGems..."
-if [ -n "$VER" ]; then
-  gem install fastlane -v "$VER" -NV --user-install
-else
-  gem install fastlane -NV --user-install
-fi
+# Ensure the user gem bin dir is on PATH FIRST before checking/installing
+BIN_DIR="$(ruby -e 'require "rubygems"; print Gem.user_dir')/bin"
+case ":$PATH:" in
+  *":$BIN_DIR:"*) : ;;
+  *) export PATH="$BIN_DIR:$PATH" ;;
+esac
 
-# Determine the user's gem bin path (where fastlane gets installed)
-GEM_BIN_DIR="$(ruby -e 'require \"rubygems\"; print Gem.user_dir')/bin"
-echo "🔗 Gem bin dir: $GEM_BIN_DIR"
-
-# Add gem bin dir to PATH
+# Persist to later GitHub Actions steps
 if [ -n "${GITHUB_PATH:-}" ]; then
-  # Running in GitHub Actions
-  echo "$GEM_BIN_DIR" >> "$GITHUB_PATH"
-  echo "🔗 Added gem bin dir to GitHub Actions PATH"
-else
-  # Running locally
-  SHELL_RC="$HOME/.zshrc"
-  [ -n "${BASH_VERSION:-}" ] && SHELL_RC="$HOME/.bashrc"
-  if ! grep -q "$GEM_BIN_DIR" "$SHELL_RC" 2>/dev/null; then
-    echo "export PATH=\"\$PATH:$GEM_BIN_DIR\"" >> "$SHELL_RC"
-    echo "🔗 Added gem bin dir to PATH in $SHELL_RC"
-    echo "⚠️  Restart your terminal or run: source $SHELL_RC"
-  fi
-  export PATH="$PATH:$GEM_BIN_DIR"
+  echo "$BIN_DIR" >> "$GITHUB_PATH"
 fi
 
-echo ""
-echo "✅ Fastlane setup complete."
-fastlane --version || echo "⚠️  Please restart your shell to activate Fastlane."
+# Detect currently installed fastlane version (if any)
+CUR_VER=""
+if command -v fastlane >/dev/null 2>&1; then
+  # `fastlane --version` prints like: fastlane 2.228.0
+  CUR_VER="$(fastlane --version 2>&1 | awk '{for(i=1;i<=NF;i++) if($i ~ /^[0-9]+\.[0-9]+\.[0-9]+$/) print $i}' | head -1)"
+fi
+
+# Install or switch versions if needed
+if [ -z "$CUR_VER" ] || [ "$CUR_VER" != "$VER" ]; then
+  echo "📦 Installing fastlane ${VER}..."
+  # Remove any existing fastlane to avoid mixed dependencies
+  gem uninstall -aIx fastlane >/dev/null 2>&1 || true
+  gem install -N -q --user-install fastlane -v "$VER"
+else
+  echo "✅ fastlane ${VER} already installed"
+fi
+
+# Give the system a moment to recognize the newly installed gem
+sleep 1
+
+# Refresh hash to ensure we find the newly installed fastlane
+hash -r
+
+# Final sanity checks
+command -v fastlane >/dev/null 2>&1 || { echo "❌ Fastlane not found in PATH"; exit 1; }
+ACT_VER="$(fastlane --version 2>&1 | awk '{for(i=1;i<=NF;i++) if($i ~ /^[0-9]+\.[0-9]+\.[0-9]+$/) print $i}' | head -1)"
+
+if [ -z "$ACT_VER" ]; then
+  echo "❌ Could not determine fastlane version"
+  echo "Full output: $(fastlane --version 2>&1)"
+  exit 1
+fi
+
+if [ "$ACT_VER" != "$VER" ]; then
+  echo "❌ Fastlane version mismatch: expected $VER, got $ACT_VER"
+  exit 1
+fi
+
+echo "✅ fastlane ${ACT_VER} successfully installed and verified"

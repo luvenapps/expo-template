@@ -211,7 +211,9 @@ Before using local or CI builds, create an EAS project for your app on Expo:
 
 1. Go to [https://expo.dev/](https://expo.dev/) and sign in or create an account.
 2. Create a new project and note its **Project ID**.
-3. In your project’s `app.json`, update the EAS configuration with the new ID under `expo.extra.eas.projectId`:
+3. Run the command `eas init --id <Project_ID>`
+
+It should update you `app.json` with
 
 ```json
 {

@@ -18,8 +18,9 @@
  *  12) Restore .github (delete existing .github and rename _github → .github
  *  13) Ensure all shell scripts in .github are executable
  *  14) Run Prettier to format updated files
- *  15) Self-delete this script
- *  16) Print a friendly summary
+ *  15) Remove postinstall from package.json
+ *  16) Self-delete this script
+ *  17) Print a friendly summary
  *
  * Notes:
  *  - Intentionally does NOT run `npx husky install`. Husky v9+ works with `core.hooksPath` + executable hooks.
@@ -165,9 +166,6 @@ let summary = { appName: null, slug: null, appId: null };
         }
       } catch {}
 
-      expo.owner = typeof expo.owner === 'string'
-          ? expo.owner.replace(/__OWNER__/g, owner)
-          : owner;
       if (appJson.expo) appJson.expo = expo;
       else Object.assign(appJson, expo);
       writeJson(appJsonPath, appJson);
@@ -414,8 +412,24 @@ let summary = { appName: null, slug: null, appId: null };
   } catch (err) {
     console.log(`\n⚠️  Prettier formatting skipped or failed: ${err.message}`);
   }
+  
+  // 15) Remove postinstall from package.json
+  try {
+    if (
+      pkg.scripts &&
+      pkg.scripts.postinstall &&
+      typeof pkg.scripts.postinstall === 'string' &&
+      pkg.scripts.postinstall.includes('scripts/postinstall.js')
+    ) {
+      delete pkg.scripts.postinstall;
+      writeJson(pkgPath, pkg);
+      console.log('🧹 Removed postinstall script from package.json');
+    }
+  } catch (e) {
+    console.log(`⚠️  Failed to remove postinstall script from package.json (${e.message})`);
+  }
 
-  // 15) Self-delete
+  // 16) Self-delete
   const self = path.join(CWD, 'scripts', 'postinstall.js');
   try {
     process.on('exit', () => {
@@ -426,7 +440,7 @@ let summary = { appName: null, slug: null, appId: null };
     });
   } catch {}
 
-  // 16) Summary
+  // 17) Summary
   const bar = '============================================================';
   console.log(`
 ${bar}

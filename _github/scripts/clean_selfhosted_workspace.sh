@@ -29,7 +29,19 @@ say "Workspace: $WORKSPACE"
 
 # 1) App & build outputs (workspace)
 action "node_modules"
-action "e2e-artifacts"
+
+# Archive e2e-artifacts with timestamp and keep only last 4
+if [[ -d "e2e-artifacts" ]]; then
+  TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+  say "archiving e2e-artifacts -> e2e-artifacts-$TIMESTAMP"
+  mv "e2e-artifacts" "e2e-artifacts-$TIMESTAMP"
+
+  # Keep only last 4 archived folders (delete older ones)
+  say "cleaning old e2e-artifacts archives (keeping last 4)"
+  ls -dt e2e-artifacts-* 2>/dev/null | tail -n +5 | xargs rm -rf || true
+else
+  say "skip (missing): e2e-artifacts"
+fi
 
 # Android project artifacts (workspace)
 # Android app build: clean heavy outputs but keep reports for postmortem

@@ -44,13 +44,6 @@
     "plugins": ["expo-router", "expo-system-ui"],
     "experiments": {
       "typedRoutes": true
-    },
-    "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "___ADD_AN_EAS_ID_FROM_THE_EXPO_WEBSITE___"
-      }
-    },
-    "owner": "__OWNER__"
+    }
   }
 }

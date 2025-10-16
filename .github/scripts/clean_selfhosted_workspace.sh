@@ -29,7 +29,22 @@ say "Workspace: $WORKSPACE"
 
 # 1) App & build outputs (workspace)
 action "node_modules"
-action "e2e-artifacts"
+
+# Archive e2e-artifacts one level up (outside git workspace, survives git clean)
+# e.g., workspace is _work/repo/repo, archive to _work/repo/e2e-artifacts-archive/
+if [[ -d "e2e-artifacts" ]]; then
+  ARCHIVE_DIR="$(dirname "$WORKSPACE")/e2e-artifacts-archive"
+  mkdir -p "$ARCHIVE_DIR"
+  TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+  say "archiving e2e-artifacts -> $ARCHIVE_DIR/e2e-artifacts-$TIMESTAMP"
+  mv "e2e-artifacts" "$ARCHIVE_DIR/e2e-artifacts-$TIMESTAMP"
+
+  # Keep only last 4 archived folders (delete older ones)
+  say "cleaning old e2e-artifacts archives (keeping last 4)"
+  ls -dt "$ARCHIVE_DIR"/e2e-artifacts-* 2>/dev/null | tail -n +5 | xargs rm -rf || true
+else
+  say "skip (missing): e2e-artifacts"
+fi
 
 # Android project artifacts (workspace)
 # Android app build: clean heavy outputs but keep reports for postmortem

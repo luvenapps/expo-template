@@ -42,11 +42,13 @@ permissions:
   contents: read
 
 env:
-  ANDROID_DEVICE: 'pixel_8'
   ANDROID_TARGET: 'google_apis'
-  ANDROID_ARCH: 'arm64-v8a'
   ANDROID_API_LEVEL: 35
-  MAESTRO_VERSION: 'v2.0.3'
+  MAESTRO_VERSION: '2.0.6'
+  FASTLANE_VERSION: '2.228.0'
+  EAS_PROJECT_ID: ${{ vars.EAS_PROJECT_ID }}
+  RETRIES: ${{ vars.RETRIES }}
+  RETRY_DELAY: ${{ vars.RETRY_DELAY }}
 
 concurrency:
   group: android-ci-${{ github.ref }}
@@ -116,9 +118,9 @@ jobs:
         run: npm run test
 
   android-hosted:
-    name: Build • E2E (Android) - Hosted MacOS
+    name: Build • E2E (Android) - Hosted Ubuntu
     if: vars.USE_SELF_HOSTED != 'true'
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     timeout-minutes: 45
     defaults:
       run:
@@ -136,36 +138,17 @@ jobs:
           node-version: 24.1.0
           cache: 'npm'
 
-      - name: Install EAS CLI
-        shell: bash
-        run: |
-          npm i -g eas-cli@16.23.0
-          eas --version
-
-      - name: Make CI scripts executable
-        run: chmod +x .github/scripts/*.sh
-
       - name: Setup Ruby (for Fastlane)
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.2'
           bundler: 'none'
-      - name: Setup Fastlane
-        shell: bash
-        run: .github/scripts/setup_fastlane.sh
 
       - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
-
-      - name: Accept Android SDK licenses
-        shell: bash
-        env:
-          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_DIR }}
-        run: |
-          yes | "$ANDROID_SDK_ROOT/tools/bin/sdkmanager" --licenses || true
 
       - name: Scaffold & verify (retry once)
         working-directory: .
@@ -198,6 +181,19 @@ jobs:
             fi
           done
 
+      - name: Install EAS CLI
+        shell: bash
+        run: |
+          npm i -g eas-cli@16.23.0
+          eas --version
+
+      - name: Make CI scripts executable
+        run: chmod +x .github/scripts/*.sh
+        
+      - name: Setup Fastlane
+        shell: bash
+        run: .github/scripts/setup_fastlane.sh  "${{ env.FASTLANE_VERSION }}"
+
       - name: Doctor
         run: npm run doctor
         continue-on-error: true
@@ -215,19 +211,37 @@ jobs:
             exit 1
           fi
 
-      - name: Cache Maestro CLI
-        id: maestro-cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.maestro
-          key: maestro-${{ runner.os }}-${{ env.MAESTRO_VERSION }}
-          restore-keys: |
-            maestro-${{ runner.os }}-
-
       - name: Setup Maestro
-        if: steps.maestro-cache.outputs.cache-hit != 'true'
         shell: bash
         run: .github/scripts/setup_maestro.sh "${{ env.MAESTRO_VERSION }}"
+      
+      - name: Inject EAS projectId, slug and owner into app.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = './app.json';
+          const EAS_PROJECT_ID = '${{ env.EAS_PROJECT_ID }}';
+          const OWNER = 'luvenapps';
+          const SLUG = 'expo-template';
+
+          if (!fs.existsSync(path)) {
+            console.error(`app.json not found at ${path}`);
+            process.exit(1);
+          }
+
+          const json = JSON.parse(fs.readFileSync(path, 'utf8'));
+          json.expo = json.expo || {};
+          json.expo.extra = json.expo.extra || {};
+          json.expo.extra.router = json.expo.extra.router || {};
+          json.expo.extra.eas = Object.assign({}, json.expo.extra.eas || {}, { projectId: EAS_PROJECT_ID });
+          json.expo.owner = OWNER;
+          json.expo.slug = SLUG;
+
+          fs.writeFileSync(path, JSON.stringify(json, null, 2) + '\n');
+          console.log('Updated app.json with extra.eas.projectId, slug and owner.');
+          NODE
 
       # Lean caching: only Gradle + Maestro to stay under 10GB org-wide cache budget
       - name: Cache Gradle (caches + wrapper + project .gradle)
@@ -237,8 +251,8 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-            android/.gradle
-          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'android/**/build.gradle', 'android/**/gradle.properties') }}
+            expo-template-testing/android/.gradle
+          key: gradle-${{ runner.os }}-${{ hashFiles('expo-template-testing/**/*.gradle*', 'expo-template-testing/**/gradle-wrapper.properties', 'expo-template-testing/android/**/build.gradle', 'expo-template-testing/android/**/gradle.properties') }}
           restore-keys: |
             gradle-${{ runner.os }}-
 
@@ -258,8 +272,78 @@ jobs:
           echo "android.injected.signing.key.alias=androiddebugkey"            >> android/gradle.properties
           echo "android.injected.signing.key.password=android"                 >> android/gradle.properties
 
-      - name: Build e2erelease APK (signed via injected props in eas.json)
-        run: eas build --platform android --profile e2eRelease --local --non-interactive
+      - name: Compute Android build fingerprint
+        id: android_fingerprint
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          FILES="$(git ls-files \
+            'android/**' \
+            'app.json' \
+            'app.config.*' \
+            'eas.json' \
+            'package.json' \
+            'package-lock.json' \
+            'gradlew' \
+            '**/*.gradle*' \
+            'gradle.properties' \
+            'babel.config.*' \
+            'metro.config.*' \
+            'tsconfig.json' \
+            'index.*' \
+            'src/**' \
+            'assets/**' \
+            '**/*.png' '**/*.svg' '**/*.ttf' '**/*.otf' \
+            '.env*' \
+            'patches/**' \
+          )"
+
+          # Add environment "salt" so changes in toolchain also invalidate cache
+          SALT="node=$(node -v);java=$(java -version 2>&1 | head -n1)"
+
+          if [ -z "$FILES" ]; then
+            # No matching files (unlikely) – still produce a stable, non-empty key
+            HASH=$( (echo "$SALT"; echo "<no-files>") | shasum -a 256 | awk '{print $1}' )
+          else
+            # Hash SALT + file list + per-file contents
+            HASH=$( (echo "$SALT"; echo "$FILES"; echo "$FILES" | xargs -I{} shasum "{}") \
+              | shasum -a 256 | awk '{print $1}' )
+          fi
+
+          echo "hash=$HASH" >> "$GITHUB_OUTPUT"
+          echo "🔑 ANDROID_FINGERPRINT=$HASH"
+
+      - name: Restore cached APK
+        id: apk-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: expo-template-testing/*.apk
+          key: android-apk-${{ steps.android_fingerprint.outputs.hash }}
+
+      - name: Build e2erelease APK
+        if: steps.apk-cache.outputs.cache-hit != 'true'
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          set -e
+          ATTEMPTS="${RETRIES:-2}"
+          DELAY="${RETRY_DELAY:-5}"
+
+          for attempt in $(seq 1 "$ATTEMPTS"); do
+            echo "🏗️ Build attempt $attempt/$ATTEMPTS"
+            if eas build --platform android --profile e2eRelease --local --non-interactive; then
+              echo "✅ Build succeeded"
+              exit 0
+            fi
+            if [ "$attempt" -lt "$ATTEMPTS" ]; then
+              echo "⚠️ Build failed; retrying in $DELAY s..."
+              sleep "$DELAY"
+            fi
+          done
+
+          echo "❌ Build failed after $ATTEMPTS attempts"
+          exit 1
 
       - name: Locate APK artifact & app.json
         id: find_apk
@@ -268,7 +352,9 @@ jobs:
           set -euo pipefail
           APK="$(ls -1t ./*.apk 2>/dev/null | head -n1 || true)"
           echo "APK=$APK"
-          echo "apk=$APK" >> $GITHUB_OUTPUT
+          # Strip leading ./ for cache path compatibility
+          APK_BASENAME="${APK#./}"
+          echo "apk=$APK_BASENAME" >> $GITHUB_OUTPUT
           [ -n "$APK" ] || (echo "No APK found in repo root."; ls -alh .; exit 1)
 
           PKG=$(node -p "require('./app.json').expo.android.package")
@@ -276,14 +362,21 @@ jobs:
           echo "pkg=$PKG" >> $GITHUB_OUTPUT
           [ -n "$PKG" ] || (echo "No PKG found in repo root."; ls -alh .; exit 1)
 
+      - name: Save APK to cache
+        if: steps.apk-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: expo-template-testing/*.apk
+          key: android-apk-${{ steps.android_fingerprint.outputs.hash }}
+
       - name: Upload Gradle reports
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: gradle-reports-android-hosted
           path: |
-            android/build/reports/**
-            android/app/build/reports/**
+            expo-template-testing/android/build/reports/**
+            expo-template-testing/android/app/build/reports/**
           if-no-files-found: ignore
 
       - name: Save Gradle cache (post-build)
@@ -293,8 +386,14 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-            android/.gradle
-          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'android/**/build.gradle', 'android/**/gradle.properties') }}
+            expo-template-testing/android/.gradle
+          key: gradle-${{ runner.os }}-${{ hashFiles('expo-template-testing/**/*.gradle*', 'expo-template-testing/**/gradle-wrapper.properties', 'expo-template-testing/android/**/build.gradle', 'expo-template-testing/android/**/gradle.properties') }}
+
+      - name: Enable KVM group perms
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
 
       - name: Run E2E tests
         id: e2e_android
@@ -303,295 +402,28 @@ jobs:
         with:
           api-level: ${{ env.ANDROID_API_LEVEL }}
           target: ${{ env.ANDROID_TARGET }}
-          arch: ${{ env.ANDROID_ARCH }}
-          profile: ${{ env.ANDROID_DEVICE }}
-          emulator-options: -no-snapshot -no-snapshot-save -no-window -gpu swiftshader_indirect -no-audio -no-boot-anim
+          arch: x86_64
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           disable-animations: true
-          script: |
-            set -euo pipefail
+          working-directory: expo-template-testing
+          script: ../.github/scripts/android_run_e2e.sh ${{ steps.find_apk.outputs.apk }} ${{ steps.find_apk.outputs.pkg }}
 
-            echo "📦 Attempting uninstall of ${{ steps.find_apk.outputs.pkg }}"
-            adb uninstall "${{ steps.find_apk.outputs.pkg }}" || true
+      - name: Collect emulator logs on failure
+        if: failure() && steps.e2e_android.outcome == 'failure'
+        shell: bash
+        run: |
+          echo "Collecting emulator diagnostics..."
+          adb logcat -d > e2e-artifacts/emulator.log || true
+          adb shell "getprop" > e2e-artifacts/device-props.txt || true
+          mkdir -p e2e-artifacts
+          echo "✅ Logs collected"
 
-            echo "📥 Installing ${{ steps.find_apk.outputs.apk }}"
-            adb install -r "${{ steps.find_apk.outputs.apk }}"
-
-            echo "🔌 ADB state before tests:"
-            adb devices -l || true
-
-            # Stabilize ADB & wait until emulator is truly ready
-            adb start-server >/dev/null 2>&1 || true
-
-            # Wait for device to report "device"
-            for i in {1..60}; do state="$(adb get-state 2>/dev/null || true)"; [ "$state" = "device" ] && break; sleep 1; done
-
-            adb wait-for-device
-
-            # Wait for Android boot to complete & boot animation to stop
-            until [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; do sleep 2; done
-            until adb shell getprop init.svc.bootanim 2>/dev/null | grep -q "stopped"; do sleep 2; done
-
-            # Unlock just in case
-            adb shell input keyevent 82 || true
-
-            mkdir -p e2e-artifacts
-            set +e
-            npm run e2e:android -- --format junit --output e2e-artifacts/results-android.xml
-            CODE=$?
-            set -e
-            echo $CODE > e2e-artifacts/EXITCODE
-            exit $CODE
       - name: Upload E2E artifacts on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: e2e-artifacts-android-hosted
           path: |
-            e2e-artifacts/**/*
-            android/app/build/reports/**
-          include-hidden-files: true
-
-  android-selfhosted:
-    name: Lint • Test • Build • E2E (Android) - Self-hosted MacOS
-    if: vars.USE_SELF_HOSTED == 'true'
-    runs-on: [self-hosted, macos, arm64]
-    timeout-minutes: 45
-    concurrency:
-      group: selfhosted-mobile-${{ github.repository }}
-      cancel-in-progress: false
-    defaults:
-      run:
-        working-directory: expo-template-testing
-    env:
-      ANDROID_SDK_DIR: $HOME/Library/Android/sdk
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Make CI scripts executable
-        run: chmod +x .github/scripts/*.sh
-
-      - name: Check EAS CLI
-        shell: bash
-        run: |
-          if ! command -v eas >/dev/null 2>&1; then
-            echo "❌ EAS CLI not found on this runner."
-            echo "Install it globally: npm i -g eas-cli@16.23.0"
-            exit 1
-          fi
-          eas --version
-
-      - name: Setup Fastlane
-        shell: bash
-        run: .github/scripts/setup_fastlane.sh
-
-      - name: Setup Java 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Setup Node 24
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24.1.0
-          cache: 'npm'
-
-      - name: Clean self-hosted workspace
-        shell: bash
-        run: .github/scripts/clean_selfhosted_workspace.sh
-
-      - name: Scaffold & verify (retry once)
-        working-directory: .
-        shell: bash
-        run: |
-          set -euo pipefail
-          max=2
-          attempt=1
-          while [ "$attempt" -le "$max" ]; do
-            echo "==> Attempt $attempt/$max: scaffold + verify"
-            rm -rf expo-template-testing || true
-            npx create-expo-app expo-template-testing --template "$GITHUB_WORKSPACE" --yes
-            pushd expo-template-testing >/dev/null
-            npx expo --version || true
-            node -e "console.log('react-native', require('react-native/package.json').version)" || true
-            node -e "console.log('expo', require('expo/package.json').version)" || true
-            if npx expo install --check; then
-              echo "✅ Expo dependency alignment OK"
-              popd >/dev/null
-              break
-            fi
-            popd >/dev/null
-            if [ "$attempt" -lt "$max" ]; then
-              echo "⚠️ Verification failed. Retrying from scratch..." >&2
-              attempt=$((attempt+1))
-              continue
-            else
-              echo "❌ Verification failed after $max attempts." >&2
-              exit 1
-            fi
-          done
-
-      - name: Verify Expo/RN dependency alignment
-        shell: bash
-        run: |
-          set -e
-          npx expo --version || true
-          node -e "console.log('react-native', require('react-native/package.json').version)" || true
-          node -e "console.log('expo', require('expo/package.json').version)" || true
-          # Strict: fail if mismatched so lockfile must be updated in a PR
-          if ! npx expo install --check; then
-            echo "❌ Expo dependency mismatch. Run 'npx expo install --fix' locally and commit the updated package-lock.json."
-            exit 1
-          fi
-
-      - name: Cache Maestro CLI
-        id: maestro-cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.maestro
-          key: maestro-${{ runner.os }}-${{ env.MAESTRO_VERSION }}
-          restore-keys: |
-            maestro-${{ runner.os }}-
-
-      - name: Setup Maestro
-        if: steps.maestro-cache.outputs.cache-hit != 'true'
-        shell: bash
-        run: .github/scripts/setup_maestro.sh "${{ env.MAESTRO_VERSION }}"
-
-      - name: Check formatting
-        run: npm run format:check
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Unit tests
-        run: npm run test
-
-      - name: Doctor
-        run: npm run doctor
-        continue-on-error: true
-
-      # Lean caching: only Gradle + Maestro to stay under 10GB org-wide cache budget
-      - name: Cache Gradle (caches + wrapper + project .gradle)
-        id: gradle-cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-            android/.gradle
-          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'android/**/build.gradle', 'android/**/gradle.properties') }}
-          restore-keys: |
-            gradle-${{ runner.os }}-
-
-      - name: Create debug keystore
-        run: |
-          mkdir -p android
-          keytool -genkeypair -v \
-            -keystore "android/debug.keystore" \
-            -storepass android -keypass android \
-            -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
-            -dname "CN=Android Debug,O=Android,C=US"
-
-      - name: Write signing props for Gradle
-        run: |
-          echo "android.injected.signing.store.file=$PWD/android/debug.keystore" >> android/gradle.properties
-          echo "android.injected.signing.store.password=android"                 >> android/gradle.properties
-          echo "android.injected.signing.key.alias=androiddebugkey"              >> android/gradle.properties
-          echo "android.injected.signing.key.password=android"                   >> android/gradle.properties
-
-      - name: Build e2erelease APK (signed via injected props in eas.json)
-        run: eas build --platform android --profile e2eRelease --local --non-interactive
-
-      - name: Locate APK artifact & app.json
-        id: find_apk
-        shell: bash
-        run: |
-          set -euo pipefail
-          APK="$(ls -1t ./*.apk 2>/dev/null | head -n1 || true)"
-          echo "APK=$APK"
-          echo "apk=$APK" >> $GITHUB_OUTPUT
-          [ -n "$APK" ] || (echo "No APK found in repo root."; ls -alh .; exit 1)
-
-          PKG=$(node -p "require('./app.json').expo.android.package")
-          echo "PKG=$PKG"
-          echo "pkg=$PKG" >> $GITHUB_OUTPUT
-          [ -n "$PKG" ] || (echo "No PKG found in repo root."; ls -alh .; exit 1)
-
-      - name: Upload Gradle reports
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: gradle-reports-android-selfhosted
-          path: |
-            android/build/reports/**
-            android/app/build/reports/**
-          if-no-files-found: ignore
-
-      - name: Save Gradle cache (post-build)
-        if: always() && steps.gradle-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-            android/.gradle
-          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'android/**/build.gradle', 'android/**/gradle.properties') }}
-
-      # Self-hosted macOS (Apple Silicon) runner must have Android SDK & emulator installed; hardware accel uses Hypervisor.framework (no KVM).
-      - name: Run E2E tests
-        id: e2e_android
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: ${{ env.ANDROID_API_LEVEL }}
-          target: ${{ env.ANDROID_TARGET }}
-          arch: ${{ env.ANDROID_ARCH }}
-          profile: ${{ env.ANDROID_DEVICE }}
-          emulator-options: -no-snapshot -no-snapshot-save -no-window -gpu swiftshader_indirect -no-audio -no-boot-anim
-          disable-animations: true
-          script: |
-            set -euo pipefail
-
-            echo "📦 Attempting uninstall of ${{ steps.find_apk.outputs.pkg }}"
-            adb uninstall "${{ steps.find_apk.outputs.pkg }}" || true
-
-            echo "📥 Installing ${{ steps.find_apk.outputs.apk }}"
-            adb install -r "${{ steps.find_apk.outputs.apk }}"
-
-            echo "🔌 ADB state before tests:"
-            adb devices -l || true
-
-            # Stabilize ADB & wait until emulator is truly ready
-            adb start-server >/dev/null 2>&1 || true
-
-            # Wait for device to report "device"
-            for i in {1..60}; do state="$(adb get-state 2>/dev/null || true)"; [ "$state" = "device" ] && break; sleep 1; done
-
-            adb wait-for-device
-
-            # Wait for Android boot to complete & boot animation to stop
-            until [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; do sleep 2; done
-            until adb shell getprop init.svc.bootanim 2>/dev/null | grep -q "stopped"; do sleep 2; done
-
-            # Unlock just in case
-            adb shell input keyevent 82 || true
-
-            mkdir -p e2e-artifacts
-            set +e
-            npm run e2e:android -- --format junit --output e2e-artifacts/results-android.xml
-            CODE=$?
-            set -e
-            echo $CODE > e2e-artifacts/EXITCODE
-            exit $CODE
-
-      - name: Upload E2E artifacts on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: e2e-artifacts-android-selfhosted
-          path: |
-            e2e-artifacts/**/*
-            android/app/build/reports/**
+            expo-template-testing/e2e-artifacts/**/*
+            expo-template-testing/android/app/build/reports/**
           include-hidden-files: true

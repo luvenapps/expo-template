@@ -81,7 +81,7 @@ do_install_if_needed() {
     return 0
   fi
 
-  note "Installing runner service (may prompt for password)…"
+  note "Installing runner service (may prompt for password)..."
   if ! "${SVC}" install >/dev/null 2>&1; then
     # Try with sudo if plain install fails due to permissions
     if command -v sudo >/dev/null 2>&1; then
@@ -102,7 +102,7 @@ cmd_start() {
     return 0
   fi
 
-  note "Starting runner service…"
+  note "Starting runner service..."
   if ! "${SVC}" start >/dev/null 2>&1; then
     if command -v sudo >/dev/null 2>&1; then
       sudo "${SVC}" start
@@ -136,7 +136,7 @@ cmd_stop() {
     return 0
   fi
 
-  note "Stopping runner service…"
+  note "Stopping runner service..."
   if ! "${SVC}" stop >/dev/null 2>&1; then
     if command -v sudo >/dev/null 2>&1; then
       sudo "${SVC}" stop
