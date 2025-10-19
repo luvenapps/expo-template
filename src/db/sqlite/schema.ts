@@ -19,9 +19,7 @@ export const habits = sqliteTable(
     version: versionColumn(),
     deletedAt: optionalTimestamp('deleted_at'),
   },
-  (table) => ({
-    userUpdatedIdx: index('habits_user_updated_idx').on(table.userId, table.updatedAt),
-  }),
+  (table) => [index('habits_user_updated_idx').on(table.userId, table.updatedAt)],
 );
 
 export const habitEntries = sqliteTable(
@@ -38,14 +36,10 @@ export const habitEntries = sqliteTable(
     version: versionColumn(),
     deletedAt: optionalTimestamp('deleted_at'),
   },
-  (table) => ({
-    habitDateUnique: uniqueIndex('habit_entries_unique').on(
-      table.habitId,
-      table.date,
-      table.deletedAt,
-    ),
-    userHabitIdx: index('habit_entries_user_habit_idx').on(table.userId, table.habitId, table.date),
-  }),
+  (table) => [
+    uniqueIndex('habit_entries_unique').on(table.habitId, table.date, table.deletedAt),
+    index('habit_entries_user_habit_idx').on(table.userId, table.habitId, table.date),
+  ],
 );
 
 export const reminders = sqliteTable(
@@ -63,13 +57,9 @@ export const reminders = sqliteTable(
     version: versionColumn(),
     deletedAt: optionalTimestamp('deleted_at'),
   },
-  (table) => ({
-    remindersEnabledIdx: index('reminders_user_habit_enabled_idx').on(
-      table.userId,
-      table.habitId,
-      table.isEnabled,
-    ),
-  }),
+  (table) => [
+    index('reminders_user_habit_enabled_idx').on(table.userId, table.habitId, table.isEnabled),
+  ],
 );
 
 export const devices = sqliteTable('devices', {

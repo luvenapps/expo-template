@@ -1,9 +1,9 @@
 import { render, screen } from '@testing-library/react-native';
 import React from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import DetailsScreen from '../app/details';
 import { TamaguiProvider } from 'tamagui';
-import { tamaguiConfig } from '../tamagui.config';
+import TodayScreen from '../../app/(tabs)/index';
+import { tamaguiConfig } from '../../tamagui.config';
 
 jest.mock('expo-router', () => ({
   Stack: {
@@ -11,7 +11,7 @@ jest.mock('expo-router', () => ({
   },
 }));
 
-test('shows the details heading', () => {
+test('renders welcome copy and call to action', async () => {
   render(
     <SafeAreaProvider
       initialMetrics={{
@@ -20,11 +20,11 @@ test('shows the details heading', () => {
       }}
     >
       <TamaguiProvider config={tamaguiConfig}>
-        <DetailsScreen />
+        <TodayScreen />
       </TamaguiProvider>
     </SafeAreaProvider>,
   );
 
-  expect(screen.getByText('Details')).toBeTruthy();
-  expect(screen.getByText(/detail view/i)).toBeTruthy();
+  expect(await screen.findByText('Welcome')).toBeTruthy();
+  expect(await screen.findByText('Get Started')).toBeTruthy();
 });

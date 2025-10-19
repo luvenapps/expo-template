@@ -1,6 +1,6 @@
 import { render } from '@testing-library/react-native';
 import React from 'react';
-import RootLayout from '../app/_layout';
+import RootLayout from '../../app/_layout';
 
 const recordedScreens: string[] = [];
 let recordedProps: Record<string, unknown> | undefined;

@@ -84,6 +84,6 @@ jobs:
       #   with:
       #     token: ${{ secrets.CODECOV_TOKEN }}
       #     files: ./coverage/lcov.info
-      #     slug: luvenapps/betterhabits
+      #     slug: org/repo
       #     flags: quality
       #     fail_ci_if_error: false
