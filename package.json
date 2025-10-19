@@ -21,7 +21,9 @@
     "e2e:android": "maestro test .maestro/flows/smoke.android.yaml",
     "commit": "cz",
     "troubleshoot": "node scripts/troubleshoot.js",
-    "postinstall": "node scripts/postinstall.js"
+    "postinstall": "node scripts/postinstall.js",
+    "db:generate": "drizzle-kit generate:sqlite",
+    "db:push": "drizzle-kit push:sqlite"
   },
   "dependencies": {
     "@tamagui/babel-plugin": "^1.135.2",
@@ -29,12 +31,15 @@
     "@tamagui/font-inter": "^1.135.2",
     "@tamagui/lucide-icons": "^1.135.2",
     "@tamagui/metro-plugin": "^1.135.2",
+    "drizzle-kit": "^0.31.5",
+    "drizzle-orm": "^0.44.6",
     "eslint": "^9.37.0",
     "expo": "~54.0.12",
     "expo-constants": "~18.0.9",
     "expo-dev-client": "~6.0.15",
     "expo-linking": "~8.0.8",
     "expo-router": "~6.0.12",
+    "expo-sqlite": "~16.0.8",
     "expo-status-bar": "~3.0.8",
     "expo-system-ui": "~6.0.7",
     "jest": "~29.7.0",

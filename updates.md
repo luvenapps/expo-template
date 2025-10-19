@@ -10,3 +10,4 @@
 - **Safe area padding** — Today and Settings screens now respect native safe-area insets to ensure hero copy is visible on iOS/Android builds.
 - **Tamagui cleanup** — Replaced shorthand props with explicit padding/alignment on Details and Settings screens to standardise style usage.
 - **ScreenContainer** — Added a shared safe-area aware layout component and migrated Today, Settings, and Details screens to it while removing Tamagui shorthands.
+- **SQLite scaffolding** — Installed expo-sqlite with Drizzle, added drizzle.config.ts, schema definitions, and helper scripts for upcoming offline data work.

@@ -16,4 +16,11 @@ module.exports = defineConfig([
 
   // Existing Expo base config
   expoConfig,
+
+  // Custom rules
+  {
+    rules: {
+      'import/no-unresolved': ['error', { ignore: ['expo-sqlite/next'] }],
+    },
+  },
 ]);
