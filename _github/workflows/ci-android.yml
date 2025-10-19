@@ -56,36 +56,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  android-quality-hosted:
-    name: Format • Lint • Unit tests (Android) - Hosted Ubuntu
-    if: vars.USE_SELF_HOSTED != 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node 24
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24.1.0
-          cache: 'npm'
-
-      - name: Install deps
-        run: npm ci
-
-      - name: Doctor
-        run: npm run doctor
-        continue-on-error: true
-
-      - name: Check formatting
-        run: npm run format:check
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Unit tests
-        run: npm run test
 
   android-hosted:
     name: Build • E2E (Android) - Hosted Ubuntu
@@ -201,6 +171,7 @@ jobs:
             'gradle.properties' \
             'babel.config.*' \
             'metro.config.*' \
+            'tamagui.config.ts' \
             'tsconfig.json' \
             'index.*' \
             'src/**' \
@@ -407,7 +378,21 @@ jobs:
         run: npm run lint
 
       - name: Unit tests
-        run: npm run test
+        run: npm run test -- --coverage
+
+      # - name: Install GPG
+      #   run: |
+      #     sudo apt-get update
+      #     sudo apt-get install -y gnupg
+
+      # - name: Upload coverage to Codecov
+      #   uses: codecov/codecov-action@v5
+      #   with:
+      #     token: ${{ secrets.CODECOV_TOKEN }}
+      #     files: ./coverage/lcov.info
+      #     slug: org/repo
+      #     flags: selfhosted-android
+      #     fail_ci_if_error: false
 
       - name: Doctor
         run: npm run doctor
@@ -460,6 +445,7 @@ jobs:
             'gradle.properties' \
             'babel.config.*' \
             'metro.config.*' \
+            'tamagui.config.ts' \
             'tsconfig.json' \
             'index.*' \
             'src/**' \

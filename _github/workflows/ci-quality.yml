@@ -1,0 +1,89 @@
+name: Quality CI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.mdx'
+      - 'docs/**'
+      - 'scripts/**'
+      - '.editorconfig'
+      - '.gitattributes'
+      - '.gitignore'
+      - '.nvmrc'
+      - '.node-version'
+      - '.prettierignore'
+      - '.prettierrc*'
+      - '.eslintrc*'
+      - 'CODEOWNERS'
+      - 'LICENSE*'
+  pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.mdx'
+      - 'docs/**'
+      - 'scripts/**'
+      - '.editorconfig'
+      - '.gitattributes'
+      - '.gitignore'
+      - '.nvmrc'
+      - '.node-version'
+      - '.prettierignore'
+      - '.prettierrc*'
+      - '.eslintrc*'
+      - 'CODEOWNERS'
+      - 'LICENSE*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality-hosted:
+    name: Quality Checks - Hosted Ubuntu
+    if: vars.USE_SELF_HOSTED != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.1.0
+          cache: 'npm'
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Doctor
+        run: npm run doctor
+        continue-on-error: true
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests (with coverage)
+        run: npm run test -- --coverage
+
+      # - name: Install GPG
+      #   run: |
+      #     sudo apt-get update
+      #     sudo apt-get install -y gnupg
+
+      # - name: Upload coverage to Codecov
+      #   uses: codecov/codecov-action@v5
+      #   with:
+      #     token: ${{ secrets.CODECOV_TOKEN }}
+      #     files: ./coverage/lcov.info
+      #     slug: luvenapps/betterhabits
+      #     flags: quality
+      #     fail_ci_if_error: false

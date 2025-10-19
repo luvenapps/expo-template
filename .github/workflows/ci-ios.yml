@@ -55,67 +55,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  ios-quality-hosted:
-    name: Format • Lint • Unit tests (iOS) - Hosted Ubuntu
-    if: vars.USE_SELF_HOSTED != 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    defaults:
-      run:
-        working-directory: expo-template-testing
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node 24
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24.1.0
-          cache: 'npm'
-
-      - name: Scaffold & verify (retry once)
-        working-directory: .
-        shell: bash
-        run: |
-          set -euo pipefail
-          max=2
-          attempt=1
-          while [ "$attempt" -le "$max" ]; do
-            echo "==> Attempt $attempt/$max: scaffold + verify"
-            rm -rf expo-template-testing || true
-            npx create-expo-app expo-template-testing --template "$GITHUB_WORKSPACE" --yes
-            pushd expo-template-testing >/dev/null
-            npx expo --version || true
-            node -e "console.log('react-native', require('react-native/package.json').version)" || true
-            node -e "console.log('expo', require('expo/package.json').version)" || true
-            if npx expo install --check; then
-              echo "✅ Expo dependency alignment OK"
-              popd >/dev/null
-              break
-            fi
-            popd >/dev/null
-            if [ "$attempt" -lt "$max" ]; then
-              echo "⚠️ Verification failed. Retrying from scratch..." >&2
-              attempt=$((attempt+1))
-              continue
-            else
-              echo "❌ Verification failed after $max attempts." >&2
-              exit 1
-            fi
-          done
-
-      - name: Doctor
-        run: npm run doctor
-        continue-on-error: true
-
-      - name: Check formatting
-        run: npm run format:check
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Unit tests
-        run: npm run test
 
   ios-hosted:
     name: Build • E2E (iOS) - Hosted MacOS
@@ -254,6 +193,7 @@ jobs:
             'package-lock.json' \
             'babel.config.*' \
             'metro.config.*' \
+            'tamagui.config.ts' \
             'tsconfig.*' \
             'index.*' \
             '*.env' '.env.*' \

@@ -20,7 +20,7 @@ A modern, production-ready Expo React Native template with **TypeScript**, **Jes
 
 Before running this project, ensure the following tools are installed on macOS.
 
-### 📱 3. Platform SDKs
+### 📱 1. Platform SDKs
 
 #### 🧭 Xcode (for iOS)
 
@@ -49,7 +49,7 @@ Verify installation:
 adb devices
 ```
 
-### 🧩 3. Homebrew (Package Manager)
+### 🧩 2. Homebrew (Package Manager)
 
 If you don’t already have [Homebrew](https://brew.sh/):
 
@@ -64,7 +64,7 @@ brew update
 brew upgrade
 ```
 
-### 🧭 4. Expo CLI (optional but recommended globally)
+### 🧭 3. Expo CLI (optional but recommended globally)
 
 You can run Expo commands with `npx`, but installing globally is convenient:
 
@@ -78,7 +78,7 @@ Check:
 expo --version
 ```
 
-### 🧩 5. Core dependencies (via Homebrew)
+### 🧩 4. Core dependencies (via Homebrew)
 
 #### 🚀 Fastlane — for local iOS builds
 
@@ -106,7 +106,7 @@ brew install watchman
 brew install node
 ```
 
-### ☕ 6. Java Runtime (for Maestro and Android builds)
+### ☕ 5. Java Runtime (for Maestro and Android builds)
 
 Install OpenJDK 17 via Homebrew:
 
@@ -133,7 +133,7 @@ Expected output:
 openjdk version "17.x.x"
 ```
 
-### 🧪 7. Maestro (E2E Testing)
+### 🧪 6. Maestro (E2E Testing)
 
 Maestro is used for cross-platform end-to-end (E2E) testing on iOS and Android.
 
@@ -154,7 +154,7 @@ brew install openjdk
 
 ---
 
-### 🧩 8. Expo Template Install
+### 🧩 7. Expo Template Install
 
 Run the following command to setup your project:
 
@@ -243,6 +243,28 @@ For full detailed instructions on configuring the GitHub Actions workflows and s
 
 ---
 
+### 🧩 7. Misc
+
+Connect code coverage to a tool lile CodeCov. Generate a token in CodeCov and add it to the repo's Github secrets
+
+Add to your selfhosted workflow and ci-quality.yml after the unit test run with coverage.
+
+```
+- name: Install GPG
+  run: |
+    sudo apt-get update
+    sudo apt-get install -y gnupg
+
+- name: Upload coverage to Codecov
+  uses: codecov/codecov-action@v5
+  with:
+    token: ${{ secrets.CODECOV_TOKEN }}
+    files: ./coverage/lcov.info
+    slug: luvenapps/__APP_NAME__
+    flag: quality                         # Optional
+    fail_ci_if_error: false
+```
+
 ## 🧭 References
 
 - [Expo Docs](https://docs.expo.dev)
@@ -251,6 +273,7 @@ For full detailed instructions on configuring the GitHub Actions workflows and s
 - [Testing Library](https://testing-library.com/docs/react-native-testing-library/intro/)
 - [ESLint Config Expo](https://docs.expo.dev/guides/using-eslint/)
 - [Prettier](https://prettier.io/)
+- [CodeCov](https://about.codecov.io/)
 
 ---
 

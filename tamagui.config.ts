@@ -1,5 +1,6 @@
-import { createFont, createTamagui, createTokens } from 'tamagui';
+/* istanbul ignore file */
 import { createInterFont } from '@tamagui/font-inter';
+import { createFont, createTamagui, createTokens } from 'tamagui';
 
 const tokens = createTokens({
   color: {

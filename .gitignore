@@ -52,3 +52,4 @@ yarn-error.*
 .builds
 e2e-artifacts
 debug.keystore
+coverage
