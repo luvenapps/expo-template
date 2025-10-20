@@ -7,17 +7,17 @@ describe('queryClient singleton', () => {
   });
 
   test('returns same instance across calls', () => {
-    const first = getQueryClient();
-    const second = getQueryClient();
+    const a = getQueryClient();
+    const b = getQueryClient();
 
-    expect(first).toBe(second);
+    expect(a).toBe(b);
   });
 
-  test('reset clears cached instance', () => {
-    const original = getQueryClient();
+  test('reset creates a new instance', () => {
+    const a = getQueryClient();
     resetQueryClient();
-    const next = getQueryClient();
+    const b = getQueryClient();
 
-    expect(next).not.toBe(original);
+    expect(b).not.toBe(a);
   });
 });

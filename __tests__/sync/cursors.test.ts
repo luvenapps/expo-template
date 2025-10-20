@@ -6,18 +6,18 @@ describe('cursor storage', () => {
     resetCursors();
   });
 
-  test('returns null when no cursor set', () => {
-    expect(getCursor('sync-habits')).toBeNull();
+  test('defaults to null when not set', () => {
+    expect(getCursor('test')).toBeNull();
   });
 
-  test('persists cursor value', () => {
-    setCursor('sync-habits', '2025-01-01T00:00:00Z');
-    expect(getCursor('sync-habits')).toBe('2025-01-01T00:00:00Z');
+  test('stores and retrieves values', () => {
+    setCursor('test', 'cursor-value');
+    expect(getCursor('test')).toBe('cursor-value');
   });
 
-  test('clears a specific cursor', () => {
-    setCursor('sync-habits', 'cursor');
-    clearCursor('sync-habits');
-    expect(getCursor('sync-habits')).toBeNull();
+  test('clears a stored cursor', () => {
+    setCursor('test', 'cursor-value');
+    clearCursor('test');
+    expect(getCursor('test')).toBeNull();
   });
 });

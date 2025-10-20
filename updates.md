@@ -12,3 +12,4 @@
 - **ScreenContainer** — Added a shared safe-area aware layout component and migrated Today, Settings, and Details screens to it while removing Tamagui shorthands.
 - **SQLite scaffolding** — Installed expo-sqlite with Drizzle, added drizzle.config.ts, schema definitions, and helper scripts for upcoming offline data work.
 - **Sync groundwork** — Added TanStack Query + Zustand deps, a reusable ScreenContainer, safe-area cursor storage (MMKV fallback), and outbox utilities for upcoming sync flows.
+- **Sync utils tests** — Added unit coverage for queryClient singleton, cursor storage, repository helper, and outbox DB interactions using mock adapters.

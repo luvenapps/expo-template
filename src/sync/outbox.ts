@@ -15,15 +15,25 @@ export type EnqueueParams = {
 
 const serializePayload = (payload: Record<string, unknown>) => JSON.stringify(payload);
 
+let database = db;
+
+export function setOutboxDatabase(customDb: typeof db) {
+  database = customDb;
+}
+
+export function resetOutboxDatabase() {
+  database = db;
+}
+
 export async function enqueue({ tableName, rowId, operation, payload, version }: EnqueueParams) {
   const id = uuidv4();
 
-  await db.insert(outbox).values({
+  await database.insert(outbox).values({
     id,
     tableName,
     rowId,
     operation,
-    payload: serializePayload(payload),
+    payloadJson: serializePayload(payload),
     version: version ?? 1,
     attempts: 0,
     createdAt: new Date().toISOString(),
@@ -33,25 +43,25 @@ export async function enqueue({ tableName, rowId, operation, payload, version }:
 }
 
 export async function getPending(limit = 100) {
-  return db.select().from(outbox).orderBy(asc(outbox.createdAt)).limit(limit);
+  return database.select().from(outbox).orderBy(asc(outbox.createdAt)).limit(limit);
 }
 
 export async function markProcessed(ids: string[]) {
   if (!ids.length) return;
-  await db.delete(outbox).where(inArray(outbox.id, ids));
+  await database.delete(outbox).where(inArray(outbox.id, ids));
 }
 
 export async function incrementAttempt(id: string) {
-  await db
+  await database
     .update(outbox)
     .set({ attempts: sql`${outbox.attempts} + 1` })
     .where(eq(outbox.id, id));
 }
 
 export async function clearTable(tableName: string) {
-  await db.delete(outbox).where(eq(outbox.tableName, tableName));
+  await database.delete(outbox).where(eq(outbox.tableName, tableName));
 }
 
 export async function clearAll() {
-  await db.delete(outbox);
+  await database.delete(outbox);
 }
