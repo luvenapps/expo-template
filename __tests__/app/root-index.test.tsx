@@ -11,7 +11,9 @@ jest.mock('expo-router', () => ({
   },
 }));
 
-test('redirects to tabs', () => {
-  render(<RootRedirect />);
-  expect(mockRedirect).toHaveBeenCalledWith('/(tabs)');
+describe('RootRedirect', () => {
+  test('redirects to tabs', () => {
+    render(<RootRedirect />);
+    expect(mockRedirect).toHaveBeenCalledWith('/(tabs)');
+  });
 });

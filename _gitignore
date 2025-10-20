@@ -53,3 +53,4 @@ yarn-error.*
 e2e-artifacts
 debug.keystore
 coverage
+junit.xml

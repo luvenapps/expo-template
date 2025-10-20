@@ -5,7 +5,17 @@ module.exports = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
+  reporters: [
+    'default',
+    [
+      'jest-junit',
+      {
+        classNameTemplate: '{filepath}',
+      },
+    ],
+  ],
   testPathIgnorePatterns: ['<rootDir>/.github/runner/_'],
+  modulePathIgnorePatterns: ['<rootDir>/.github/runner/_'],
   collectCoverageFrom: ['{src,app}/**/*.{ts,tsx}', '!**/*.d.ts'],
   coverageThreshold: {
     global: {

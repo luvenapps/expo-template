@@ -56,7 +56,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-
   ios-hosted:
     name: Build • E2E (iOS) - Hosted MacOS
     if: vars.USE_SELF_HOSTED != 'true'
@@ -305,19 +304,23 @@ jobs:
         run: npm run lint
 
       - name: Unit tests
-        run: npm run test -- --coverage
-
-      # - name: Install GPG
-      #   run: |
-      #     sudo apt-get update
-      #     sudo apt-get install -y gnupg
+        run: npm test -- --coverage
 
       # - name: Upload coverage to Codecov
+      #   if: ${{ !cancelled() }}
       #   uses: codecov/codecov-action@v5
       #   with:
       #     token: ${{ secrets.CODECOV_TOKEN }}
       #     files: ./coverage/lcov.info
       #     slug: org/repo
+      #     flags: selfhosted-ios
+      #     fail_ci_if_error: false
+
+      # - name: Upload test results to Codecov
+      #   if: ${{ !cancelled() }}
+      #   uses: codecov/test-results-action@v1
+      #   with:
+      #     token: ${{ secrets.CODECOV_TOKEN }}
       #     flags: selfhosted-ios
       #     fail_ci_if_error: false
 

@@ -104,11 +104,13 @@ jobs:
         run: npm run test -- --coverage
 
       - name: Install GPG
+        if: ${{ !cancelled() }}
         run: |
           sudo apt-get update
           sudo apt-get install -y gnupg
 
       - name: Upload coverage to Codecov
+        if: ${{ !cancelled() }}
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -116,3 +118,13 @@ jobs:
           slug: luvenapps/expo-template
           flags: quality
           fail_ci_if_error: false
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: quality
+          fail_ci_if_error: false
+
+      

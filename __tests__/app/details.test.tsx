@@ -11,20 +11,22 @@ jest.mock('expo-router', () => ({
   },
 }));
 
-test('shows the details heading', () => {
-  render(
-    <SafeAreaProvider
-      initialMetrics={{
-        frame: { x: 0, y: 0, width: 390, height: 844 },
-        insets: { top: 0, left: 0, right: 0, bottom: 0 },
-      }}
-    >
-      <TamaguiProvider config={tamaguiConfig}>
-        <DetailsScreen />
-      </TamaguiProvider>
-    </SafeAreaProvider>,
-  );
+describe('DetailsScreen', () => {
+  test('shows the details heading', () => {
+    render(
+      <SafeAreaProvider
+        initialMetrics={{
+          frame: { x: 0, y: 0, width: 390, height: 844 },
+          insets: { top: 0, left: 0, right: 0, bottom: 0 },
+        }}
+      >
+        <TamaguiProvider config={tamaguiConfig}>
+          <DetailsScreen />
+        </TamaguiProvider>
+      </SafeAreaProvider>,
+    );
 
-  expect(screen.getByText('Details')).toBeTruthy();
-  expect(screen.getByText(/detail view/i)).toBeTruthy();
+    expect(screen.getByText('Details')).toBeTruthy();
+    expect(screen.getByText(/detail view/i)).toBeTruthy();
+  });
 });

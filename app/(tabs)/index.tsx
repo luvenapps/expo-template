@@ -2,7 +2,7 @@ import { ScreenContainer } from '@/ui';
 import { Stack } from 'expo-router';
 import { Button, H2, Paragraph } from 'tamagui';
 
-export default function TodayScreen() {
+export default function HomeScreen() {
   return (
     <>
       <Stack.Screen options={{ title: 'Home', headerShown: true }} />
