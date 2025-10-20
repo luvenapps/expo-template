@@ -185,29 +185,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          FILES="$(git ls-files \
-            'app.json' \
-            'app.config.*' \
-            'eas.json' \
-            'package.json' \
-            'package-lock.json' \
-            'babel.config.*' \
-            'metro.config.*' \
-            'tamagui.config.ts' \
-            'tsconfig.*' \
-            'index.*' \
-            '*.env' '.env.*' \
-            'scripts/**' \
-            'app/**' 'src/**' 'components/**' 'screens/**' \
-            'App.*' \
-            'plugins/**' \
-            'assets/**' \
-            '**/*.png' '**/*.svg' '**/*.ttf' '**/*.otf' \
-            'ios/**' \
-          )"
-          SALT="node=$(node -v);xcode=$(xcodebuild -version | tr '\n' ' ')"
-          HASH=$( (echo "$SALT"; echo "$FILES"; echo "$FILES" | xargs -I{} shasum "{}") | shasum -a 256 | awk '{print $1}' )
+
+          # Use Expo's native fingerprint tool to detect changes that require a rebuild
+          HASH=$(npx @expo/fingerprint fingerprint:generate --platform ios | node -e "console.log(JSON.parse(require('fs').readFileSync(0, 'utf-8')).hash)")
+
           echo "key=ios-app-${HASH}" >> "$GITHUB_OUTPUT"
+          echo "🔑 iOS_FINGERPRINT=$HASH"
 
       - name: Restore the tar.gz iOS app
         id: ios_cache

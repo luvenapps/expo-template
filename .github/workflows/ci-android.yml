@@ -217,41 +217,10 @@ jobs:
         run: |
           set -euo pipefail
 
-          FILES="$(git ls-files \
-            'android/**' \
-            'app.json' \
-            'app.config.*' \
-            'eas.json' \
-            'package.json' \
-            'package-lock.json' \
-            'gradlew' \
-            '**/*.gradle*' \
-            'gradle.properties' \
-            'babel.config.*' \
-            'metro.config.*' \
-            'tamagui.config.ts' \
-            'tsconfig.json' \
-            'index.*' \
-            'src/**' \
-            'assets/**' \
-            '**/*.png' '**/*.svg' '**/*.ttf' '**/*.otf' \
-            '.env*' \
-            'patches/**' \
-          )"
+          # Use Expo's native fingerprint tool to detect changes that require a rebuild
+          HASH=$(npx @expo/fingerprint fingerprint:generate --platform android | node -e "console.log(JSON.parse(require('fs').readFileSync(0, 'utf-8')).hash)")
 
-          # Add environment "salt" so changes in toolchain also invalidate cache
-          SALT="node=$(node -v);java=$(java -version 2>&1 | head -n1)"
-
-          if [ -z "$FILES" ]; then
-            # No matching files (unlikely) – still produce a stable, non-empty key
-            HASH=$( (echo "$SALT"; echo "<no-files>") | shasum -a 256 | awk '{print $1}' )
-          else
-            # Hash SALT + file list + per-file contents
-            HASH=$( (echo "$SALT"; echo "$FILES"; echo "$FILES" | xargs -I{} shasum "{}") \
-              | shasum -a 256 | awk '{print $1}' )
-          fi
-
-          echo "hash=$HASH" >> "$GITHUB_OUTPUT"
+          echo "key=android-apk-${HASH}" >> "$GITHUB_OUTPUT"
           echo "🔑 ANDROID_FINGERPRINT=$HASH"
 
       - name: Restore cached APK
@@ -259,7 +228,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: expo-template-testing/*.apk
-          key: android-apk-${{ steps.android_fingerprint.outputs.hash }}
+          key: ${{ steps.android_fingerprint.outputs.key }}
 
       - name: Build e2erelease APK
         if: steps.apk-cache.outputs.cache-hit != 'true'
@@ -307,7 +276,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: expo-template-testing/*.apk
-          key: android-apk-${{ steps.android_fingerprint.outputs.hash }}
+          key: ${{ steps.android_fingerprint.outputs.key }}
 
       - name: Upload Gradle reports
         if: failure()
