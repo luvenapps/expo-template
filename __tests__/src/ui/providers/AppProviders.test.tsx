@@ -1,8 +1,3 @@
-import React from 'react';
-import { render } from '@testing-library/react-native';
-import { Text, View } from 'react-native';
-import { AppProviders } from '../../../../src/ui/providers/AppProviders';
-
 // Mock react-native-gesture-handler
 jest.mock('react-native-gesture-handler', () => {
   const mockReact = jest.requireActual('react');
@@ -31,6 +26,11 @@ jest.mock('expo-status-bar', () => ({
     return mockReact.createElement('StatusBar', { testID: 'status-bar', style });
   },
 }));
+
+import React from 'react';
+import { render } from '@testing-library/react-native';
+import { Text, View } from 'react-native';
+import { AppProviders } from '../../../../src/ui/providers/AppProviders';
 
 describe('AppProviders', () => {
   beforeEach(() => {

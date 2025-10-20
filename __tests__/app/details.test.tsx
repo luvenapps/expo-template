@@ -1,15 +1,15 @@
+jest.mock('expo-router', () => ({
+  Stack: {
+    Screen: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+  },
+}));
+
 import { render, screen } from '@testing-library/react-native';
 import React from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { TamaguiProvider } from 'tamagui';
 import DetailsScreen from '../../app/details';
 import { tamaguiConfig } from '../../tamagui.config';
-
-jest.mock('expo-router', () => ({
-  Stack: {
-    Screen: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
-  },
-}));
 
 describe('DetailsScreen', () => {
   test('shows the details heading', () => {

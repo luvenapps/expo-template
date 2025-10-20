@@ -1,9 +1,3 @@
-import { render } from '@testing-library/react-native';
-import React from 'react';
-import { Text } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ScreenContainer } from '../../../../src/ui/components/ScreenContainer';
-
 // Mock react-native-safe-area-context
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: jest.fn(() => ({
@@ -13,6 +7,12 @@ jest.mock('react-native-safe-area-context', () => ({
     right: 0,
   })),
 }));
+
+import { render } from '@testing-library/react-native';
+import React from 'react';
+import { Text } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScreenContainer } from '../../../../src/ui/components/ScreenContainer';
 
 describe('ScreenContainer', () => {
   beforeEach(() => {

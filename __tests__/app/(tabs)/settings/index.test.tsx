@@ -1,8 +1,3 @@
-import { render } from '@testing-library/react-native';
-import React from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import SettingsScreen from '../../../../app/(tabs)/settings/index';
-
 // Mock expo-router
 jest.mock('expo-router', () => {
   const mockReact = jest.requireActual('react');
@@ -44,6 +39,11 @@ jest.mock('react-native-gesture-handler', () => {
       mockReact.createElement('GestureHandlerRootView', { style }, children),
   };
 });
+
+import { render } from '@testing-library/react-native';
+import React from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import SettingsScreen from '../../../../app/(tabs)/settings/index';
 
 describe('SettingsScreen', () => {
   beforeEach(() => {

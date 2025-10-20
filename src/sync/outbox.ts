@@ -33,7 +33,7 @@ export async function enqueue({ tableName, rowId, operation, payload, version }:
     tableName,
     rowId,
     operation,
-    payloadJson: serializePayload(payload),
+    payload: serializePayload(payload),
     version: version ?? 1,
     attempts: 0,
     createdAt: new Date().toISOString(),

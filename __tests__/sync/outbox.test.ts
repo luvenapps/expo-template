@@ -1,26 +1,22 @@
-import { beforeEach, describe, expect, test } from '@jest/globals';
-import {
-  setOutboxDatabase,
-  resetOutboxDatabase,
-  enqueue,
-  getPending,
-  markProcessed,
-  incrementAttempt,
-  clearAll,
-} from '@/sync/outbox';
-import { outbox } from '@/db/sqlite';
-
-jest.mock('expo-sqlite/next', () => ({
-  openDatabaseSync: jest.fn(() => ({})),
-  deleteDatabaseSync: jest.fn(),
-}));
-
 jest.mock('uuid', () => {
   let counter = 0;
   return {
     v4: jest.fn(() => `mock-uuid-${++counter}`),
   };
 });
+
+import { outbox } from '@/db/sqlite';
+import {
+  clearAll,
+  clearTable,
+  enqueue,
+  getPending,
+  incrementAttempt,
+  markProcessed,
+  resetOutboxDatabase,
+  setOutboxDatabase,
+} from '@/sync/outbox';
+import { describe, expect, test } from '@jest/globals';
 
 function createSelectChain(result: unknown) {
   const limit = jest.fn().mockResolvedValue(result);
@@ -53,7 +49,7 @@ describe('outbox helpers', () => {
     expect(insert).toHaveBeenCalledWith(outbox);
     expect(values).toHaveBeenCalledWith(
       expect.objectContaining({
-        payloadJson: JSON.stringify(payload),
+        payload: JSON.stringify(payload),
         tableName: 'test',
         rowId: '1',
       }),
@@ -79,6 +75,21 @@ describe('outbox helpers', () => {
     expect(result).toEqual(records);
   });
 
+  test('getPending uses default limit of 100', async () => {
+    const records = [{ id: 'mock-uuid-3', rowId: '2' }];
+    const chain = createSelectChain(records);
+
+    setOutboxDatabase({
+      insert: jest.fn(),
+      select: chain.select,
+      delete: jest.fn(),
+      update: jest.fn(),
+    } as any);
+
+    await getPending();
+    expect(chain.limit).toHaveBeenCalledWith(100);
+  });
+
   test('markProcessed deletes in batch', async () => {
     const where = jest.fn();
     const deleteFn = jest.fn(() => ({ where }));
@@ -94,6 +105,20 @@ describe('outbox helpers', () => {
 
     expect(deleteFn).toHaveBeenCalledWith(outbox);
     expect(where).toHaveBeenCalled();
+  });
+
+  test('markProcessed does nothing when id list empty', async () => {
+    const deleteFn = jest.fn(() => ({ where: jest.fn() }));
+
+    setOutboxDatabase({
+      insert: jest.fn(),
+      select: jest.fn(),
+      delete: deleteFn,
+      update: jest.fn(),
+    } as any);
+
+    await markProcessed([]);
+    expect(deleteFn).not.toHaveBeenCalled();
   });
 
   test('incrementAttempt updates attempts column', async () => {
@@ -112,6 +137,23 @@ describe('outbox helpers', () => {
 
     expect(update).toHaveBeenCalledWith(outbox);
     expect(set).toHaveBeenCalledWith(expect.objectContaining({ attempts: expect.any(Object) }));
+    expect(where).toHaveBeenCalled();
+  });
+
+  test('clearTable deletes by table name', async () => {
+    const where = jest.fn();
+    const deleteFn = jest.fn(() => ({ where }));
+
+    setOutboxDatabase({
+      insert: jest.fn(),
+      select: jest.fn(),
+      delete: deleteFn,
+      update: jest.fn(),
+    } as any);
+
+    await clearTable('habits');
+
+    expect(deleteFn).toHaveBeenCalledWith(outbox);
     expect(where).toHaveBeenCalled();
   });
 

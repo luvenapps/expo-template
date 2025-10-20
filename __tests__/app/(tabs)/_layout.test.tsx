@@ -1,8 +1,3 @@
-import { render } from '@testing-library/react-native';
-import React from 'react';
-import * as RN from 'react-native';
-import TabsLayout from '../../../app/(tabs)/_layout';
-
 // Mock expo-router
 jest.mock('expo-router', () => {
   const mockReact = jest.requireActual('react');
@@ -23,6 +18,11 @@ jest.mock('expo-router', () => {
 
   return { Tabs };
 });
+
+import { render } from '@testing-library/react-native';
+import React from 'react';
+import * as RN from 'react-native';
+import TabsLayout from '../../../app/(tabs)/_layout';
 
 describe('TabsLayout', () => {
   let useColorSchemeSpy: jest.SpyInstance;

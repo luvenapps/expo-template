@@ -32,7 +32,7 @@ export function createRepository<
   type Insert = TTable['_']['inferInsert'];
   type Select = TTable['_']['inferSelect'];
 
-  const pkColumn = table[primaryKey as keyof typeof table];
+  const pkColumn = table[primaryKey as keyof typeof table] as any;
 
   const applyTimestamps = (payload: Insert | Partial<Select>) => {
     const next = { ...payload } as Record<string, unknown>;
@@ -93,7 +93,7 @@ export function createRepository<
       if (createSoftDeletePayload) {
         await database
           .update(table)
-          .set(createSoftDeletePayload())
+          .set(createSoftDeletePayload() as any)
           .where(eq(pkColumn, id as any));
         return;
       }

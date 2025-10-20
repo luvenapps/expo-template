@@ -1,7 +1,3 @@
-import { render } from '@testing-library/react-native';
-import React from 'react';
-import RootRedirect from '../../app/index';
-
 const mockRedirect = jest.fn();
 
 jest.mock('expo-router', () => ({
@@ -10,6 +6,10 @@ jest.mock('expo-router', () => ({
     return null;
   },
 }));
+
+import { render } from '@testing-library/react-native';
+import React from 'react';
+import RootRedirect from '../../app/index';
 
 describe('RootRedirect', () => {
   test('redirects to tabs', () => {

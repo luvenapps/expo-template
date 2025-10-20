@@ -23,4 +23,21 @@ module.exports = defineConfig([
       'import/no-unresolved': ['error', { ignore: ['expo-sqlite/next'] }],
     },
   },
+  // Jest globals for test files
+  {
+    files: ['**/*.test.{js,jsx,ts,tsx}', '**/*.spec.{js,jsx,ts,tsx}'],
+    languageOptions: {
+      globals: {
+        jest: 'readonly',
+        describe: 'readonly',
+        test: 'readonly',
+        expect: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+      },
+    },
+    rules: {
+      'import/first': 'off',
+    },
+  },
 ]);
