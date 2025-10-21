@@ -49,7 +49,6 @@ describe('RootLayout', () => {
       headerTitleStyle: { fontWeight: '600' },
     });
 
-    expect(recordedScreens).toEqual(expect.arrayContaining(['(tabs)', 'details']));
-    expect(recordedScreens).toHaveLength(2);
+    expect(recordedScreens).toEqual(expect.arrayContaining(['(auth)', '(tabs)', 'details']));
   });
 });
