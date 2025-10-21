@@ -20,7 +20,7 @@ module.exports = defineConfig([
   // Custom rules
   {
     rules: {
-      'import/no-unresolved': ['error', { ignore: ['expo-sqlite/next'] }],
+      'import/no-unresolved': ['error', { ignore: ['expo-sqlite/next', '@supabase/supabase-js'] }],
     },
   },
   // Jest globals for test files
@@ -38,6 +38,7 @@ module.exports = defineConfig([
     },
     rules: {
       'import/first': 'off',
+      '@typescript-eslint/no-require-imports': 'off',
     },
   },
 ]);

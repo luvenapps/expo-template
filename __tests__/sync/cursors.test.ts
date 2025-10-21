@@ -5,7 +5,6 @@ type CursorModule = typeof import('@/sync/cursors');
 const loadModule = () => {
   let moduleExports: CursorModule | undefined;
   jest.isolateModules(() => {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     moduleExports = require('@/sync/cursors');
   });
   return moduleExports!;

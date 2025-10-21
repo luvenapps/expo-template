@@ -26,6 +26,7 @@
     "db:push": "drizzle-kit push:sqlite"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.76.0",
     "@tamagui/babel-plugin": "^1.135.2",
     "@tamagui/core": "^1.135.2",
     "@tamagui/font-inter": "^1.135.2",
