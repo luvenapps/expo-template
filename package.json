@@ -100,5 +100,10 @@
   "x-template": {
     "bundleIdBase": "com.luvenapps",
     "templateName": "template-starter"
+  },
+  "expo": {
+    "autolinking": {
+      "legacy_shallowReactNativeLinking": true
+    }
   }
 }
