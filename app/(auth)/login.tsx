@@ -1,5 +1,5 @@
 import { Stack, useRouter } from 'expo-router';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button, Paragraph, YStack } from 'tamagui';
 import { TextInput } from 'react-native';
 import { useSessionStore } from '@/auth/session';
@@ -11,17 +11,13 @@ export default function LoginScreen() {
   const signInWithEmail = useSessionStore((state) => state.signInWithEmail);
   const isLoading = useSessionStore((state) => state.isLoading);
   const error = useSessionStore((state) => state.error);
-  const status = useSessionStore((state) => state.status);
-
-  // Redirect to tabs when authenticated
-  useEffect(() => {
-    if (status === 'authenticated') {
-      router.replace('/(tabs)');
-    }
-  }, [status, router]);
 
   const handleSubmit = async () => {
-    await signInWithEmail(email, password);
+    const result = await signInWithEmail(email, password);
+    if (result.success) {
+      // Navigate back to previous screen after successful login
+      router.back();
+    }
   };
 
   return (
