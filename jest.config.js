@@ -1,5 +1,6 @@
 module.exports = {
   preset: 'jest-expo',
+  setupFiles: ['<rootDir>/__tests__/setup.ts'],
   setupFilesAfterEnv: ['@testing-library/jest-native/extend-expect'],
   watchman: false,
   moduleNameMapper: {
@@ -15,7 +16,7 @@ module.exports = {
       },
     ],
   ],
-  testPathIgnorePatterns: ['<rootDir>/.github/runner/_'],
+  testPathIgnorePatterns: ['<rootDir>/.github/runner/_', '<rootDir>/__tests__/setup.ts'],
   modulePathIgnorePatterns: ['<rootDir>/.github/runner/_'],
   collectCoverageFrom: ['{src,app}/**/*.{ts,tsx}', '!**/*.d.ts'],
   coverageThreshold: {

@@ -7,10 +7,16 @@ const SUPABASE_ANON_KEY =
   Constants.expoConfig?.extra?.supabaseAnonKey || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  console.warn('Supabase credentials are not configured.');
+  throw new Error(
+    'Supabase credentials not configured.\n\n' +
+      'Please add the following to your .env.local file:\n' +
+      'EXPO_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co\n' +
+      'EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key\n\n' +
+      'Get these from: https://supabase.com/dashboard/project/_/settings/api',
+  );
 }
 
-export const supabase = createClient(SUPABASE_URL ?? '', SUPABASE_ANON_KEY ?? '', {
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     persistSession: true,
     storageKey: 'betterhabits-supabase-session',
