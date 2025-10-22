@@ -16,3 +16,5 @@
 - **Sync engine scaffold** — Added Zustand sync store, generic sync engine with tests, and mocked outbox/cursor coverage to keep infrastructure reusable.
 - **Auth shell** — Added Supabase client/session store scaffolding with Zustand, plus initial auth listener test coverage.
 - **Auth navigation** — Added /app/(auth) stack with placeholder login, session-aware root redirect, and updated tests for the new guard.
+- **Auth service** — Extended session store with loading/error states, wired the login form to Supabase helpers, and added comprehensive tests while keeping auth optional.
+- **Auth refactor: local-first** — Removed authentication wall; all users now access the full app immediately with local storage. Moved Sign In/Out to Settings screen, simplified root redirect.Authentication is now opt-in for sync and future premium features.

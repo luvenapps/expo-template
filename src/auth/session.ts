@@ -1,7 +1,11 @@
 import { create } from 'zustand';
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import { supabase } from './client';
-import { signInWithEmail, signOut as supabaseSignOut, type AuthResult } from './service';
+import {
+  signInWithEmail as supabaseSignInWithEmail,
+  signOut as supabaseSignOut,
+  type AuthResult,
+} from './service';
 
 type SupabaseSession = Session | null;
 
@@ -32,7 +36,7 @@ export const useSessionStore = create<SessionState>((set) => ({
   setError: (error) => set({ error }),
   signInWithEmail: async (email, password) => {
     set({ isLoading: true, error: null });
-    const result = await signInWithEmail(email, password);
+    const result = await supabaseSignInWithEmail(email, password);
     if (!result.success && result.error) {
       set({ error: result.error, isLoading: false, status: 'unauthenticated' });
     } else {
