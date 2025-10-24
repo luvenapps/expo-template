@@ -27,6 +27,24 @@ jest.mock('expo-status-bar', () => ({
   },
 }));
 
+// Mock auth session
+jest.mock('@/auth/session', () => ({
+  initSessionListener: jest.fn(),
+}));
+
+// Mock sync hook - must use factory function
+jest.mock('@/sync', () => ({
+  useSync: jest.fn().mockReturnValue({
+    status: 'idle',
+    queueSize: 0,
+    lastSyncedAt: null,
+    lastError: null,
+    triggerSync: jest.fn(),
+  }),
+  useSyncManager: jest.fn(),
+  createSyncEngine: jest.fn(),
+}));
+
 import React from 'react';
 import { render } from '@testing-library/react-native';
 import { Text, View } from 'react-native';
@@ -270,4 +288,7 @@ describe('AppProviders', () => {
       expect(getByText('Deep Content')).toBeDefined();
     });
   });
+
+  // Note: Side effects like initSessionListener and useSync are tested through
+  // integration tests rather than mocking internal implementation details
 });

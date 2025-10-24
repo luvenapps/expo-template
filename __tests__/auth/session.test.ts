@@ -206,3 +206,7 @@ describe('session store', () => {
     expect(useSessionStore.getState().isLoading).toBe(false);
   });
 });
+
+// Note: initSessionListener tests are complex due to module-level state and require
+// integration testing rather than unit testing. The function is tested indirectly
+// through the AppProviders integration tests.

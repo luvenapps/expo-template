@@ -26,6 +26,16 @@ jest.mock('@/auth/session', () => ({
   useSessionStore: jest.fn(),
 }));
 
+jest.mock('@/sync/hooks', () => ({
+  useSync: jest.fn(() => ({
+    status: 'idle',
+    queueSize: 0,
+    lastSyncedAt: null,
+    lastError: null,
+    triggerSync: jest.fn(),
+  })),
+}));
+
 // Mock react-native-safe-area-context
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: jest.fn(() => ({

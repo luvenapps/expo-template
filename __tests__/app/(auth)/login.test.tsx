@@ -89,4 +89,41 @@ describe('LoginScreen', () => {
     const { getByText } = render(<LoginScreen />);
     expect(getByText('Signing in…')).toBeTruthy();
   });
+
+  test('displays error message when error is present', () => {
+    mockedUseSessionStore.mockImplementation((selector: any) =>
+      selector({
+        signInWithEmail: jest.fn(),
+        isLoading: false,
+        error: 'Invalid email or password',
+      }),
+    );
+
+    const { getByText } = render(<LoginScreen />);
+    expect(getByText('Invalid email or password')).toBeTruthy();
+  });
+
+  test('does not navigate back on failed login', async () => {
+    const signInMock = jest
+      .fn()
+      .mockResolvedValue({ success: false, error: 'Authentication failed' });
+    mockedUseSessionStore.mockImplementation((selector: any) =>
+      selector({
+        signInWithEmail: signInMock,
+        isLoading: false,
+        error: null,
+      }),
+    );
+
+    const { getByPlaceholderText, getByText } = render(<LoginScreen />);
+
+    fireEvent.changeText(getByPlaceholderText('Email'), 'user@example.com');
+    fireEvent.changeText(getByPlaceholderText('Password'), 'wrongpassword');
+    fireEvent.press(getByText('Sign In'));
+
+    // Wait for async signIn to complete
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(mockBack).not.toHaveBeenCalled();
+  });
 });

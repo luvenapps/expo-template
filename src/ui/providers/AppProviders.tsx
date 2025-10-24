@@ -6,6 +6,7 @@ import { TamaguiProvider } from 'tamagui';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { getQueryClient } from '@/state';
 import { initSessionListener } from '@/auth/session';
+import { useSync } from '@/sync';
 import { tamaguiConfig } from '../../../tamagui.config';
 
 const queryClient = getQueryClient();
@@ -14,6 +15,11 @@ export function AppProviders({ children }: PropsWithChildren) {
   useEffect(() => {
     initSessionListener();
   }, []);
+
+  useSync({
+    push: async () => undefined,
+    enabled: false,
+  });
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
