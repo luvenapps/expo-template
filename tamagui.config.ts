@@ -14,6 +14,7 @@ const tokens = createTokens({
     accentHover: '#1D4ED8',
     borderColor: '#CBD5F5',
     borderColorPress: '#94A3B8',
+    outlineColor: '#000000',
   },
   space: {
     0: 0,
