@@ -215,6 +215,31 @@ describe('AppProviders', () => {
     });
   });
 
+  describe('Hooks and Effects', () => {
+    it('should call initSessionListener on mount', () => {
+      const { initSessionListener } = require('@/auth/session');
+      render(
+        <AppProviders>
+          <Text>Test</Text>
+        </AppProviders>,
+      );
+      expect(initSessionListener).toHaveBeenCalled();
+    });
+
+    it('should initialize sync with disabled state', () => {
+      const { useSync } = require('@/sync');
+      render(
+        <AppProviders>
+          <Text>Test</Text>
+        </AppProviders>,
+      );
+      expect(useSync).toHaveBeenCalledWith({
+        push: expect.any(Function),
+        enabled: false,
+      });
+    });
+  });
+
   describe('Edge Cases', () => {
     it('should render with no children', () => {
       const { UNSAFE_root } = render(<AppProviders />);

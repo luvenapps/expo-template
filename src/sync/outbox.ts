@@ -1,5 +1,5 @@
 import { asc, eq, inArray, sql } from 'drizzle-orm';
-import { db, outbox } from '@/db/sqlite';
+import { getDb, outbox } from '@/db/sqlite';
 import { v4 as uuidv4 } from 'uuid';
 
 export type OutboxRecord = typeof outbox.$inferSelect;
@@ -15,18 +15,23 @@ export type EnqueueParams = {
 
 const serializePayload = (payload: Record<string, unknown>) => JSON.stringify(payload);
 
-let database = db;
+let customDatabase: Awaited<ReturnType<typeof getDb>> | null = null;
 
-export function setOutboxDatabase(customDb: typeof db) {
-  database = customDb;
+async function getDatabase() {
+  return customDatabase ?? (await getDb());
+}
+
+export function setOutboxDatabase(customDb: Awaited<ReturnType<typeof getDb>>) {
+  customDatabase = customDb;
 }
 
 export function resetOutboxDatabase() {
-  database = db;
+  customDatabase = null;
 }
 
 export async function enqueue({ tableName, rowId, operation, payload, version }: EnqueueParams) {
   const id = uuidv4();
+  const database = await getDatabase();
 
   await database.insert(outbox).values({
     id,
@@ -43,15 +48,18 @@ export async function enqueue({ tableName, rowId, operation, payload, version }:
 }
 
 export async function getPending(limit = 100) {
+  const database = await getDatabase();
   return database.select().from(outbox).orderBy(asc(outbox.createdAt)).limit(limit);
 }
 
 export async function markProcessed(ids: string[]) {
   if (!ids.length) return;
+  const database = await getDatabase();
   await database.delete(outbox).where(inArray(outbox.id, ids));
 }
 
 export async function incrementAttempt(id: string) {
+  const database = await getDatabase();
   await database
     .update(outbox)
     .set({ attempts: sql`${outbox.attempts} + 1` })
@@ -59,9 +67,11 @@ export async function incrementAttempt(id: string) {
 }
 
 export async function clearTable(tableName: string) {
+  const database = await getDatabase();
   await database.delete(outbox).where(eq(outbox.tableName, tableName));
 }
 
 export async function clearAll() {
+  const database = await getDatabase();
   await database.delete(outbox);
 }

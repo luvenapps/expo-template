@@ -25,3 +25,17 @@ jest.mock('expo-constants', () => ({
     },
   },
 }));
+
+// Mock expo-sqlite to avoid native module errors in tests
+const mockDatabase = {
+  execSync: jest.fn(),
+  runSync: jest.fn(),
+  getAllSync: jest.fn(() => []),
+  getFirstSync: jest.fn(),
+  closeSync: jest.fn(),
+};
+
+jest.mock('expo-sqlite', () => ({
+  openDatabaseSync: jest.fn(() => mockDatabase),
+  openDatabaseAsync: jest.fn(() => Promise.resolve(mockDatabase)),
+}));

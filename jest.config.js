@@ -5,7 +5,6 @@ module.exports = {
   watchman: false,
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
-    '^expo-sqlite/next$': '<rootDir>/__mocks__/expo-sqlite-next.ts',
     '^uuid$': '<rootDir>/__mocks__/uuid.ts',
   },
   reporters: [

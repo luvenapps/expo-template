@@ -33,10 +33,10 @@ export function createSyncEngine({
 
     try {
       await push(pending);
-      await markProcessed(pending.map((record) => record.id));
+      await markProcessed(pending.map((record: OutboxRecord) => record.id));
       store.getState().recordSuccess();
     } catch (error) {
-      await Promise.all(pending.map((record) => incrementAttempt(record.id)));
+      await Promise.all(pending.map((record: OutboxRecord) => incrementAttempt(record.id)));
       store.getState().recordError(error instanceof Error ? error.message : String(error));
       throw error;
     }
