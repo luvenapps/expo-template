@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # Usage: android_run_e2e.sh <apk_path> <package_name>
-set -eu
+set -u
 
 APK="${1:?apk path required}"
 PKG="${2:?package name required}"
@@ -19,7 +19,18 @@ while [ "$i" -le "$ATTEMPTS" ]; do
   adb uninstall "$PKG" || true
 
   echo "📥 Install: $APK"
-  adb install -r "$APK"
+  if ! adb install -r "$APK"; then
+    echo "⚠️  Install failed on attempt $i"
+    if [ "$i" -lt "$ATTEMPTS" ]; then
+      echo "🧹 Cooling down ${DELAY}s before retry..."
+      sleep "$DELAY"
+      i=$((i + 1))
+      continue
+    else
+      echo "❌ Install failed after $ATTEMPTS attempts"
+      exit 1
+    fi
+  fi
 
   echo "🔌 Wait for device ready"
   j=1
