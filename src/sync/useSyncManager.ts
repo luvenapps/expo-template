@@ -68,7 +68,6 @@ export function useSyncManager({
   }, [engine, intervalMs, enabled, autoStart]);
 
   const triggerSync = async () => {
-    if (!enabled) return;
     await engine.runSync();
   };
 

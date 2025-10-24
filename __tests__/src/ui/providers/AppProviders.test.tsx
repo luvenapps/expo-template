@@ -43,6 +43,8 @@ jest.mock('@/sync', () => ({
   }),
   useSyncManager: jest.fn(),
   createSyncEngine: jest.fn(),
+  pushOutbox: jest.fn(),
+  pullUpdates: jest.fn(),
 }));
 
 import React from 'react';
@@ -227,15 +229,17 @@ describe('AppProviders', () => {
     });
 
     it('should initialize sync with disabled state', () => {
-      const { useSync } = require('@/sync');
+      const { useSync, pushOutbox, pullUpdates } = require('@/sync');
       render(
         <AppProviders>
           <Text>Test</Text>
         </AppProviders>,
       );
       expect(useSync).toHaveBeenCalledWith({
-        push: expect.any(Function),
+        push: pushOutbox,
+        pull: pullUpdates,
         enabled: false,
+        autoStart: false,
       });
     });
   });

@@ -27,13 +27,7 @@ jest.mock('@/auth/session', () => ({
 }));
 
 jest.mock('@/sync/hooks', () => ({
-  useSync: jest.fn(() => ({
-    status: 'idle',
-    queueSize: 0,
-    lastSyncedAt: null,
-    lastError: null,
-    triggerSync: jest.fn(),
-  })),
+  useSync: jest.fn(),
 }));
 
 // Mock react-native-safe-area-context
@@ -65,14 +59,23 @@ jest.mock('react-native-gesture-handler', () => {
 import { fireEvent, render } from '@testing-library/react-native';
 import React from 'react';
 import { useSessionStore } from '@/auth/session';
+import { useSync } from '@/sync/hooks';
 import SettingsScreen from '../../../../app/(tabs)/settings/index';
 
 const mockedUseSessionStore = useSessionStore as unknown as jest.Mock;
+const mockedUseSync = useSync as unknown as jest.Mock;
 
 describe('SettingsScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockPush.mockClear();
+    mockedUseSync.mockImplementation(() => ({
+      status: 'idle',
+      queueSize: 0,
+      lastSyncedAt: null,
+      lastError: null,
+      triggerSync: jest.fn(),
+    }));
   });
 
   describe('Unauthenticated State', () => {
@@ -187,6 +190,36 @@ describe('SettingsScreen', () => {
       expect(
         getByText('Additional settings will arrive alongside theme controls and data export.'),
       ).toBeDefined();
+    });
+
+    it('renders sync status section', () => {
+      mockedUseSync.mockReturnValue({
+        status: 'syncing',
+        queueSize: 5,
+        lastSyncedAt: '2025-10-10T00:00:00.000Z',
+        lastError: 'Network error',
+        triggerSync: jest.fn(),
+      });
+
+      const { getByText } = render(<SettingsScreen />);
+      expect(getByText(/Sync Status:/)).toBeDefined();
+      expect(getByText(/Queue size: 5/)).toBeDefined();
+      expect(getByText(/Last error: Network error/)).toBeDefined();
+    });
+
+    it('calls triggerSync when pressing Sync now', () => {
+      const triggerSync = jest.fn();
+      mockedUseSync.mockReturnValue({
+        status: 'idle',
+        queueSize: 0,
+        lastSyncedAt: null,
+        lastError: null,
+        triggerSync,
+      });
+
+      const { getByText } = render(<SettingsScreen />);
+      fireEvent.press(getByText('Sync now'));
+      expect(triggerSync).toHaveBeenCalled();
     });
   });
 });

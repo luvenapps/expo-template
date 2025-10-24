@@ -82,10 +82,11 @@ describe('useSyncManager', () => {
     expect(engine.runSync).toHaveBeenCalledTimes(2);
   });
 
-  test('does not run when disabled', async () => {
+  test('manual trigger still runs when disabled', async () => {
     render(<TestComponent enabled={false} />);
     await Promise.resolve();
-    expect(engine.runSync).not.toHaveBeenCalled();
+    await triggerRef?.();
+    expect(engine.runSync).toHaveBeenCalledTimes(1);
   });
 
   test('does not run on mount when autoStart is false', async () => {
@@ -122,18 +123,12 @@ describe('useSyncManager', () => {
     expect(engine.runSync).toHaveBeenCalledTimes(1);
   });
 
-  test('does not trigger sync when disabled via triggerSync', async () => {
-    const TestComponentDisabled = () => {
-      const result = useSyncManager({ engine: engine as any, intervalMs: 1000, enabled: false });
-      useEffect(() => {
-        triggerRef = result.triggerSync;
-      }, [result.triggerSync]);
-      return null;
-    };
-    render(<TestComponentDisabled />);
+  test('manual trigger runs even when disabled', async () => {
+    render(<TestComponent enabled={false} />);
     await Promise.resolve();
+    engine.runSync.mockClear();
     await triggerRef?.();
-    expect(engine.runSync).not.toHaveBeenCalled();
+    expect(engine.runSync).toHaveBeenCalledTimes(1);
   });
 
   test('cleans up interval and listener on unmount', () => {

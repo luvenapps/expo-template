@@ -9,19 +9,21 @@ export function useSync({
   batchSize,
   enabled = true,
   intervalMs,
+  autoStart = true,
 }: {
   push: Parameters<typeof createSyncEngine>[0]['push'];
   pull?: Parameters<typeof createSyncEngine>[0]['pull'];
   batchSize?: number;
   enabled?: boolean;
   intervalMs?: number;
+  autoStart?: boolean;
 }) {
   const engine = useMemo(
     () => createSyncEngine({ push, pull, batchSize }),
     [push, pull, batchSize],
   );
 
-  const { triggerSync } = useSyncManager({ engine, enabled, intervalMs });
+  const { triggerSync } = useSyncManager({ engine, enabled, intervalMs, autoStart });
 
   const { status, queueSize, lastSyncedAt, lastError } = useSyncStore();
 

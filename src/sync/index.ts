@@ -4,3 +4,4 @@ export * from './outbox';
 export * from './engine';
 export * from './useSyncManager';
 export * from './hooks';
+export * from './driver';
