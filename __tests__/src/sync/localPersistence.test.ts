@@ -20,10 +20,10 @@ jest.mock('@/db/sqlite', () => {
   const createTable = (name: string) => ({ name, id: `${name}-id` });
   return {
     __esModule: true,
-    habits: createTable('habits'),
-    habitEntries: createTable('habit_entries'),
-    reminders: createTable('reminders'),
-    devices: createTable('devices'),
+    primaryEntity: createTable('habits'),
+    entryEntity: createTable('habit_entries'),
+    reminderEntity: createTable('reminders'),
+    deviceEntity: createTable('devices'),
     getDb: mockGetDb,
   };
 });
@@ -32,7 +32,7 @@ type LocalPersistenceModule = typeof import('@/sync/localPersistence');
 
 const { upsertRecords, registerPersistenceTable, resetPersistenceRegistry } =
   require('@/sync/localPersistence') as LocalPersistenceModule;
-const { habits, habitEntries } = require('@/db/sqlite');
+const { primaryEntity, entryEntity } = require('@/db/sqlite');
 
 describe('localPersistence', () => {
   beforeEach(() => {
@@ -41,12 +41,12 @@ describe('localPersistence', () => {
     conflictCalls.length = 0;
     resetPersistenceRegistry();
     registerPersistenceTable('habits', {
-      table: habits,
-      primaryKey: habits.id,
+      table: primaryEntity,
+      primaryKey: primaryEntity.id,
     });
     registerPersistenceTable('habit_entries', {
-      table: habitEntries,
-      primaryKey: habitEntries.id,
+      table: entryEntity,
+      primaryKey: entryEntity.id,
     });
   });
 

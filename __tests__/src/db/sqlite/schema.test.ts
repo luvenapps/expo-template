@@ -1,16 +1,22 @@
 import { getTableConfig } from 'drizzle-orm/sqlite-core';
-import { habits, habitEntries, reminders, devices, outbox } from '../../../../src/db/sqlite/schema';
+import {
+  primaryEntity,
+  entryEntity,
+  reminderEntity,
+  deviceEntity,
+  outbox,
+} from '../../../../src/db/sqlite/schema';
 
 describe('Database Schema', () => {
-  describe('habits table', () => {
+  describe('primary entity table', () => {
     it('should have correct table name', () => {
-      expect(habits).toBeDefined();
-      const config = getTableConfig(habits);
+      expect(primaryEntity).toBeDefined();
+      const config = getTableConfig(primaryEntity);
       expect(config.name).toBe('habits');
     });
 
     it('should have all required columns', () => {
-      const columns = Object.keys(habits);
+      const columns = Object.keys(primaryEntity);
 
       expect(columns).toContain('id');
       expect(columns).toContain('userId');
@@ -26,7 +32,7 @@ describe('Database Schema', () => {
     });
 
     it('should have user updated index', () => {
-      const config = getTableConfig(habits);
+      const config = getTableConfig(primaryEntity);
       expect(config.indexes).toBeDefined();
       expect(config.indexes.length).toBeGreaterThan(0);
 
@@ -40,70 +46,70 @@ describe('Database Schema', () => {
     });
 
     it('should have id as primary key', () => {
-      expect(habits.id).toBeDefined();
-      expect(habits.id.primary).toBe(true);
+      expect(primaryEntity.id).toBeDefined();
+      expect(primaryEntity.id.primary).toBe(true);
     });
 
     it('should have userId as not null', () => {
-      expect(habits.userId).toBeDefined();
-      expect(habits.userId.notNull).toBe(true);
+      expect(primaryEntity.userId).toBeDefined();
+      expect(primaryEntity.userId.notNull).toBe(true);
     });
 
     it('should have name as not null', () => {
-      expect(habits.name).toBeDefined();
-      expect(habits.name.notNull).toBe(true);
+      expect(primaryEntity.name).toBeDefined();
+      expect(primaryEntity.name.notNull).toBe(true);
     });
 
     it('should have cadence as not null', () => {
-      expect(habits.cadence).toBeDefined();
-      expect(habits.cadence.notNull).toBe(true);
+      expect(primaryEntity.cadence).toBeDefined();
+      expect(primaryEntity.cadence.notNull).toBe(true);
     });
 
     it('should have color as not null', () => {
-      expect(habits.color).toBeDefined();
-      expect(habits.color.notNull).toBe(true);
+      expect(primaryEntity.color).toBeDefined();
+      expect(primaryEntity.color.notNull).toBe(true);
     });
 
     it('should have sortOrder with default value', () => {
-      expect(habits.sortOrder).toBeDefined();
-      expect(habits.sortOrder.default).toBe(0);
-      expect(habits.sortOrder.notNull).toBe(true);
+      expect(primaryEntity.sortOrder).toBeDefined();
+      expect(primaryEntity.sortOrder.default).toBe(0);
+      expect(primaryEntity.sortOrder.notNull).toBe(true);
     });
 
     it('should have isArchived as boolean with default false', () => {
-      expect(habits.isArchived).toBeDefined();
-      expect(habits.isArchived.default).toBe(false);
-      expect(habits.isArchived.notNull).toBe(true);
+      expect(primaryEntity.isArchived).toBeDefined();
+      expect(primaryEntity.isArchived.default).toBe(false);
+      expect(primaryEntity.isArchived.notNull).toBe(true);
     });
 
     it('should have version with default value', () => {
-      expect(habits.version).toBeDefined();
-      expect(habits.version.default).toBe(1);
-      expect(habits.version.notNull).toBe(true);
+      expect(primaryEntity.version).toBeDefined();
+      expect(primaryEntity.version.default).toBe(1);
+      expect(primaryEntity.version.notNull).toBe(true);
     });
 
     it('should have timestamp columns', () => {
-      expect(habits.createdAt).toBeDefined();
-      expect(habits.updatedAt).toBeDefined();
-      expect(habits.createdAt.notNull).toBe(true);
-      expect(habits.updatedAt.notNull).toBe(true);
+      expect(primaryEntity.createdAt).toBeDefined();
+      expect(primaryEntity.updatedAt).toBeDefined();
+      expect(primaryEntity.createdAt.notNull).toBe(true);
+      expect(primaryEntity.updatedAt.notNull).toBe(true);
     });
 
     it('should have optional deletedAt', () => {
-      expect(habits.deletedAt).toBeDefined();
+      expect(primaryEntity.deletedAt).toBeDefined();
       // Optional column should not have notNull
     });
   });
 
-  describe('habitEntries table', () => {
+  describe('entryEntity table', () => {
     it('should have correct table name', () => {
-      expect(habitEntries).toBeDefined();
-      const config = getTableConfig(habitEntries);
+      expect(entryEntity).toBeDefined();
+      const config = getTableConfig(entryEntity);
       expect(config.name).toBe('habit_entries');
     });
 
     it('should have all required columns', () => {
-      const columns = Object.keys(habitEntries);
+      const columns = Object.keys(entryEntity);
 
       expect(columns).toContain('id');
       expect(columns).toContain('userId');
@@ -118,7 +124,7 @@ describe('Database Schema', () => {
     });
 
     it('should have unique index on habitId, date, deletedAt', () => {
-      const config = getTableConfig(habitEntries);
+      const config = getTableConfig(entryEntity);
       expect(config.indexes).toBeDefined();
       expect(config.indexes.length).toBeGreaterThan(0);
 
@@ -132,7 +138,7 @@ describe('Database Schema', () => {
     });
 
     it('should have user habit index', () => {
-      const config = getTableConfig(habitEntries);
+      const config = getTableConfig(entryEntity);
       const hasUserHabitIdx = config.indexes.some((idx) => {
         const indexName = (idx as any).config?.name || (idx as any).name;
         return indexName === 'habit_entries_user_habit_idx';
@@ -141,61 +147,61 @@ describe('Database Schema', () => {
     });
 
     it('should have id as primary key', () => {
-      expect(habitEntries.id).toBeDefined();
-      expect(habitEntries.id.primary).toBe(true);
+      expect(entryEntity.id).toBeDefined();
+      expect(entryEntity.id.primary).toBe(true);
     });
 
     it('should have required foreign key columns', () => {
-      expect(habitEntries.userId).toBeDefined();
-      expect(habitEntries.userId.notNull).toBe(true);
-      expect(habitEntries.habitId).toBeDefined();
-      expect(habitEntries.habitId.notNull).toBe(true);
+      expect(entryEntity.userId).toBeDefined();
+      expect(entryEntity.userId.notNull).toBe(true);
+      expect(entryEntity.habitId).toBeDefined();
+      expect(entryEntity.habitId.notNull).toBe(true);
     });
 
     it('should have date as not null', () => {
-      expect(habitEntries.date).toBeDefined();
-      expect(habitEntries.date.notNull).toBe(true);
+      expect(entryEntity.date).toBeDefined();
+      expect(entryEntity.date.notNull).toBe(true);
     });
 
     it('should have amount with default value', () => {
-      expect(habitEntries.amount).toBeDefined();
-      expect(habitEntries.amount.default).toBe(0);
-      expect(habitEntries.amount.notNull).toBe(true);
+      expect(entryEntity.amount).toBeDefined();
+      expect(entryEntity.amount.default).toBe(0);
+      expect(entryEntity.amount.notNull).toBe(true);
     });
 
     it('should have source with default value', () => {
-      expect(habitEntries.source).toBeDefined();
-      expect(habitEntries.source.default).toBe('local');
-      expect(habitEntries.source.notNull).toBe(true);
+      expect(entryEntity.source).toBeDefined();
+      expect(entryEntity.source.default).toBe('local');
+      expect(entryEntity.source.notNull).toBe(true);
     });
 
     it('should have version with default value', () => {
-      expect(habitEntries.version).toBeDefined();
-      expect(habitEntries.version.default).toBe(1);
-      expect(habitEntries.version.notNull).toBe(true);
+      expect(entryEntity.version).toBeDefined();
+      expect(entryEntity.version.default).toBe(1);
+      expect(entryEntity.version.notNull).toBe(true);
     });
 
     it('should have timestamp columns', () => {
-      expect(habitEntries.createdAt).toBeDefined();
-      expect(habitEntries.updatedAt).toBeDefined();
-      expect(habitEntries.createdAt.notNull).toBe(true);
-      expect(habitEntries.updatedAt.notNull).toBe(true);
+      expect(entryEntity.createdAt).toBeDefined();
+      expect(entryEntity.updatedAt).toBeDefined();
+      expect(entryEntity.createdAt.notNull).toBe(true);
+      expect(entryEntity.updatedAt.notNull).toBe(true);
     });
 
     it('should have optional deletedAt', () => {
-      expect(habitEntries.deletedAt).toBeDefined();
+      expect(entryEntity.deletedAt).toBeDefined();
     });
   });
 
-  describe('reminders table', () => {
+  describe('reminderEntity table', () => {
     it('should have correct table name', () => {
-      expect(reminders).toBeDefined();
-      const config = getTableConfig(reminders);
+      expect(reminderEntity).toBeDefined();
+      const config = getTableConfig(reminderEntity);
       expect(config.name).toBe('reminders');
     });
 
     it('should have all required columns', () => {
-      const columns = Object.keys(reminders);
+      const columns = Object.keys(reminderEntity);
 
       expect(columns).toContain('id');
       expect(columns).toContain('userId');
@@ -211,7 +217,7 @@ describe('Database Schema', () => {
     });
 
     it('should have reminders enabled index', () => {
-      const config = getTableConfig(reminders);
+      const config = getTableConfig(reminderEntity);
       expect(config.indexes).toBeDefined();
       expect(config.indexes.length).toBeGreaterThan(0);
 
@@ -223,65 +229,65 @@ describe('Database Schema', () => {
     });
 
     it('should have id as primary key', () => {
-      expect(reminders.id).toBeDefined();
-      expect(reminders.id.primary).toBe(true);
+      expect(reminderEntity.id).toBeDefined();
+      expect(reminderEntity.id.primary).toBe(true);
     });
 
     it('should have required foreign key columns', () => {
-      expect(reminders.userId).toBeDefined();
-      expect(reminders.userId.notNull).toBe(true);
-      expect(reminders.habitId).toBeDefined();
-      expect(reminders.habitId.notNull).toBe(true);
+      expect(reminderEntity.userId).toBeDefined();
+      expect(reminderEntity.userId.notNull).toBe(true);
+      expect(reminderEntity.habitId).toBeDefined();
+      expect(reminderEntity.habitId.notNull).toBe(true);
     });
 
     it('should have timeLocal as not null', () => {
-      expect(reminders.timeLocal).toBeDefined();
-      expect(reminders.timeLocal.notNull).toBe(true);
+      expect(reminderEntity.timeLocal).toBeDefined();
+      expect(reminderEntity.timeLocal.notNull).toBe(true);
     });
 
     it('should have daysOfWeek as not null', () => {
-      expect(reminders.daysOfWeek).toBeDefined();
-      expect(reminders.daysOfWeek.notNull).toBe(true);
+      expect(reminderEntity.daysOfWeek).toBeDefined();
+      expect(reminderEntity.daysOfWeek.notNull).toBe(true);
     });
 
     it('should have timezone as not null', () => {
-      expect(reminders.timezone).toBeDefined();
-      expect(reminders.timezone.notNull).toBe(true);
+      expect(reminderEntity.timezone).toBeDefined();
+      expect(reminderEntity.timezone.notNull).toBe(true);
     });
 
     it('should have isEnabled as boolean with default true', () => {
-      expect(reminders.isEnabled).toBeDefined();
-      expect(reminders.isEnabled.default).toBe(true);
-      expect(reminders.isEnabled.notNull).toBe(true);
+      expect(reminderEntity.isEnabled).toBeDefined();
+      expect(reminderEntity.isEnabled.default).toBe(true);
+      expect(reminderEntity.isEnabled.notNull).toBe(true);
     });
 
     it('should have version with default value', () => {
-      expect(reminders.version).toBeDefined();
-      expect(reminders.version.default).toBe(1);
-      expect(reminders.version.notNull).toBe(true);
+      expect(reminderEntity.version).toBeDefined();
+      expect(reminderEntity.version.default).toBe(1);
+      expect(reminderEntity.version.notNull).toBe(true);
     });
 
     it('should have timestamp columns', () => {
-      expect(reminders.createdAt).toBeDefined();
-      expect(reminders.updatedAt).toBeDefined();
-      expect(reminders.createdAt.notNull).toBe(true);
-      expect(reminders.updatedAt.notNull).toBe(true);
+      expect(reminderEntity.createdAt).toBeDefined();
+      expect(reminderEntity.updatedAt).toBeDefined();
+      expect(reminderEntity.createdAt.notNull).toBe(true);
+      expect(reminderEntity.updatedAt.notNull).toBe(true);
     });
 
     it('should have optional deletedAt', () => {
-      expect(reminders.deletedAt).toBeDefined();
+      expect(reminderEntity.deletedAt).toBeDefined();
     });
   });
 
-  describe('devices table', () => {
+  describe('deviceEntity table', () => {
     it('should have correct table name', () => {
-      expect(devices).toBeDefined();
-      const config = getTableConfig(devices);
+      expect(deviceEntity).toBeDefined();
+      const config = getTableConfig(deviceEntity);
       expect(config.name).toBe('devices');
     });
 
     it('should have all required columns', () => {
-      const columns = Object.keys(devices);
+      const columns = Object.keys(deviceEntity);
 
       expect(columns).toContain('id');
       expect(columns).toContain('userId');
@@ -294,39 +300,39 @@ describe('Database Schema', () => {
     });
 
     it('should have id as primary key', () => {
-      expect(devices.id).toBeDefined();
-      expect(devices.id.primary).toBe(true);
+      expect(deviceEntity.id).toBeDefined();
+      expect(deviceEntity.id.primary).toBe(true);
     });
 
     it('should have userId as not null', () => {
-      expect(devices.userId).toBeDefined();
-      expect(devices.userId.notNull).toBe(true);
+      expect(deviceEntity.userId).toBeDefined();
+      expect(deviceEntity.userId.notNull).toBe(true);
     });
 
     it('should have platform as not null', () => {
-      expect(devices.platform).toBeDefined();
-      expect(devices.platform.notNull).toBe(true);
+      expect(deviceEntity.platform).toBeDefined();
+      expect(deviceEntity.platform.notNull).toBe(true);
     });
 
     it('should have optional lastSyncAt', () => {
-      expect(devices.lastSyncAt).toBeDefined();
+      expect(deviceEntity.lastSyncAt).toBeDefined();
     });
 
     it('should have version with default value', () => {
-      expect(devices.version).toBeDefined();
-      expect(devices.version.default).toBe(1);
-      expect(devices.version.notNull).toBe(true);
+      expect(deviceEntity.version).toBeDefined();
+      expect(deviceEntity.version.default).toBe(1);
+      expect(deviceEntity.version.notNull).toBe(true);
     });
 
     it('should have timestamp columns', () => {
-      expect(devices.createdAt).toBeDefined();
-      expect(devices.updatedAt).toBeDefined();
-      expect(devices.createdAt.notNull).toBe(true);
-      expect(devices.updatedAt.notNull).toBe(true);
+      expect(deviceEntity.createdAt).toBeDefined();
+      expect(deviceEntity.updatedAt).toBeDefined();
+      expect(deviceEntity.createdAt.notNull).toBe(true);
+      expect(deviceEntity.updatedAt.notNull).toBe(true);
     });
 
     it('should have optional deletedAt', () => {
-      expect(devices.deletedAt).toBeDefined();
+      expect(deviceEntity.deletedAt).toBeDefined();
     });
   });
 
@@ -395,55 +401,55 @@ describe('Database Schema', () => {
 
   describe('Schema Consistency', () => {
     it('all tables should have id as primary key', () => {
-      expect(habits.id.primary).toBe(true);
-      expect(habitEntries.id.primary).toBe(true);
-      expect(reminders.id.primary).toBe(true);
-      expect(devices.id.primary).toBe(true);
+      expect(primaryEntity.id.primary).toBe(true);
+      expect(entryEntity.id.primary).toBe(true);
+      expect(reminderEntity.id.primary).toBe(true);
+      expect(deviceEntity.id.primary).toBe(true);
       expect(outbox.id.primary).toBe(true);
     });
 
     it('user-related tables should have userId column', () => {
-      expect(habits.userId).toBeDefined();
-      expect(habitEntries.userId).toBeDefined();
-      expect(reminders.userId).toBeDefined();
-      expect(devices.userId).toBeDefined();
+      expect(primaryEntity.userId).toBeDefined();
+      expect(entryEntity.userId).toBeDefined();
+      expect(reminderEntity.userId).toBeDefined();
+      expect(deviceEntity.userId).toBeDefined();
     });
 
     it('all versioned tables should have version column with default 1', () => {
-      expect(habits.version.default).toBe(1);
-      expect(habitEntries.version.default).toBe(1);
-      expect(reminders.version.default).toBe(1);
-      expect(devices.version.default).toBe(1);
+      expect(primaryEntity.version.default).toBe(1);
+      expect(entryEntity.version.default).toBe(1);
+      expect(reminderEntity.version.default).toBe(1);
+      expect(deviceEntity.version.default).toBe(1);
       expect(outbox.version.default).toBe(1);
     });
 
     it('soft-deletable tables should have deletedAt column', () => {
-      expect(habits.deletedAt).toBeDefined();
-      expect(habitEntries.deletedAt).toBeDefined();
-      expect(reminders.deletedAt).toBeDefined();
-      expect(devices.deletedAt).toBeDefined();
+      expect(primaryEntity.deletedAt).toBeDefined();
+      expect(entryEntity.deletedAt).toBeDefined();
+      expect(reminderEntity.deletedAt).toBeDefined();
+      expect(deviceEntity.deletedAt).toBeDefined();
     });
 
     it('timestamped tables should have createdAt and updatedAt', () => {
-      expect(habits.createdAt).toBeDefined();
-      expect(habits.updatedAt).toBeDefined();
-      expect(habitEntries.createdAt).toBeDefined();
-      expect(habitEntries.updatedAt).toBeDefined();
-      expect(reminders.createdAt).toBeDefined();
-      expect(reminders.updatedAt).toBeDefined();
-      expect(devices.createdAt).toBeDefined();
-      expect(devices.updatedAt).toBeDefined();
+      expect(primaryEntity.createdAt).toBeDefined();
+      expect(primaryEntity.updatedAt).toBeDefined();
+      expect(entryEntity.createdAt).toBeDefined();
+      expect(entryEntity.updatedAt).toBeDefined();
+      expect(reminderEntity.createdAt).toBeDefined();
+      expect(reminderEntity.updatedAt).toBeDefined();
+      expect(deviceEntity.createdAt).toBeDefined();
+      expect(deviceEntity.updatedAt).toBeDefined();
       expect(outbox.createdAt).toBeDefined();
     });
 
     it('all indexed tables should have indexes configured', () => {
-      const habitsConfig = getTableConfig(habits);
-      const habitEntriesConfig = getTableConfig(habitEntries);
-      const remindersConfig = getTableConfig(reminders);
+      const primaryEntityConfig = getTableConfig(primaryEntity);
+      const entryEntityConfig = getTableConfig(entryEntity);
+      const reminderEntityConfig = getTableConfig(reminderEntity);
 
-      expect(habitsConfig.indexes.length).toBeGreaterThan(0);
-      expect(habitEntriesConfig.indexes.length).toBeGreaterThan(0);
-      expect(remindersConfig.indexes.length).toBeGreaterThan(0);
+      expect(primaryEntityConfig.indexes.length).toBeGreaterThan(0);
+      expect(entryEntityConfig.indexes.length).toBeGreaterThan(0);
+      expect(reminderEntityConfig.indexes.length).toBeGreaterThan(0);
     });
   });
 });

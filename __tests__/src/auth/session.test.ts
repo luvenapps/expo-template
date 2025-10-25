@@ -1,12 +1,19 @@
-// Mock supabase client before imports
-const mockGetSession = jest.fn();
-const mockOnAuthStateChange = jest.fn();
+const mockSubscription = { unsubscribe: jest.fn() };
+const authChangeCallbacks: Function[] = [];
+const mockGetSession = jest
+  .fn()
+  .mockImplementation(() => Promise.resolve({ data: { session: null } }));
+const mockOnAuthStateChange = jest.fn().mockImplementation((callback: Function) => {
+  authChangeCallbacks.push(callback);
+  return { data: { subscription: mockSubscription } };
+});
 
+// Mock the client module with explicit function implementations
 jest.mock('@/auth/client', () => ({
   supabase: {
     auth: {
-      getSession: mockGetSession,
-      onAuthStateChange: mockOnAuthStateChange,
+      getSession: () => mockGetSession(),
+      onAuthStateChange: (callback: Function) => mockOnAuthStateChange(callback),
     },
   },
 }));
@@ -20,7 +27,7 @@ jest.mock('@/auth/service', () => ({
   signOut: (...args: any[]) => mockSignOut(...args),
 }));
 
-import { resetSessionStore, useSessionStore, initSessionListener } from '@/auth/session';
+import { initSessionListener, resetSessionStore, useSessionStore } from '@/auth/session';
 import { beforeEach, describe, expect, test } from '@jest/globals';
 
 // Create a mock session type for testing
@@ -207,7 +214,94 @@ describe('session store', () => {
   });
 });
 
-// Note: initSessionListener tests are complex due to module-level state (listenerInitialized)
-// that persists across test runs and causes test interference. The function is tested
-// indirectly through the AppProviders integration tests, which provides sufficient coverage
-// (session.ts is at 81.81% statements, above the 80% threshold).
+describe('initSessionListener', () => {
+  beforeEach(() => {
+    mockSubscription.unsubscribe.mockClear();
+    mockGetSession.mockClear();
+    resetSessionStore();
+    authChangeCallbacks.length = 0; // Clear the callbacks array
+
+    // Reset default mock implementation
+    mockGetSession.mockImplementation(() => Promise.resolve({ data: { session: null } }));
+  });
+
+  test('initializes auth listener and fetches current session', async () => {
+    mockGetSession.mockResolvedValueOnce({
+      data: { session: mockSession },
+    });
+
+    const result = await initSessionListener();
+
+    expect(mockGetSession).toHaveBeenCalledTimes(1);
+    expect(useSessionStore.getState().session).toEqual(mockSession);
+    expect(useSessionStore.getState().status).toBe('authenticated');
+    expect(result).toBe(mockSubscription);
+  });
+
+  test('calls optional callback when auth state changes', async () => {
+    const mockCallback = jest.fn();
+    mockGetSession.mockResolvedValueOnce({
+      data: { session: null },
+    });
+
+    await initSessionListener(mockCallback);
+
+    // Get the last registered callback and simulate auth state change
+    const callback = authChangeCallbacks[authChangeCallbacks.length - 1];
+    if (callback) {
+      callback('SIGNED_IN', mockSession);
+    }
+
+    expect(mockCallback).toHaveBeenCalledWith(mockSession);
+    expect(useSessionStore.getState().session).toEqual(mockSession);
+  });
+
+  test('handles null session on initialization', async () => {
+    mockGetSession.mockResolvedValueOnce({
+      data: { session: null },
+    });
+
+    await initSessionListener();
+
+    expect(useSessionStore.getState().session).toBeNull();
+    expect(useSessionStore.getState().status).toBe('unauthenticated');
+  });
+
+  test('returns early if listener already initialized', async () => {
+    mockGetSession.mockResolvedValue({
+      data: { session: mockSession },
+    });
+
+    // First call
+    await initSessionListener();
+
+    // Second call should return early
+    const result = await initSessionListener();
+    expect(result).toBeUndefined();
+  });
+
+  test('updates session through auth state change handler', async () => {
+    mockGetSession.mockResolvedValueOnce({
+      data: { session: null },
+    });
+
+    await initSessionListener();
+
+    // Initial state
+    expect(useSessionStore.getState().session).toBeNull();
+
+    // Get the last registered callback and simulate auth state changes
+    const callback = authChangeCallbacks[authChangeCallbacks.length - 1];
+    if (callback) {
+      // Simulate sign in
+      callback('SIGNED_IN', mockSession);
+      expect(useSessionStore.getState().session).toEqual(mockSession);
+      expect(useSessionStore.getState().status).toBe('authenticated');
+
+      // Simulate sign out
+      callback('SIGNED_OUT', null);
+      expect(useSessionStore.getState().session).toBeNull();
+      expect(useSessionStore.getState().status).toBe('unauthenticated');
+    }
+  });
+});

@@ -3,10 +3,11 @@ import { AppState, AppStateStatus, Platform } from 'react-native';
 import { registerTaskAsync, unregisterTaskAsync, isTaskDefined } from 'expo-task-manager';
 import * as BackgroundTask from 'expo-background-task';
 import type { createSyncEngine } from './engine';
+import { DOMAIN } from '@/config/domain.config';
 
 type SyncEngine = ReturnType<typeof createSyncEngine>;
 
-const BACKGROUND_TASK_NAME = 'betterhabits-sync-task';
+const BACKGROUND_TASK_NAME = DOMAIN.app.syncTask;
 const DEFAULT_INTERVAL = 60000;
 const DEFAULT_FETCH_INTERVAL = 15 * 60; // 15 minutes
 

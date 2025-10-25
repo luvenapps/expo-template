@@ -20,3 +20,4 @@
 - **Auth refactor: local-first** — Removed authentication wall; all users now access the full app immediately with local storage. Moved Sign In/Out to Settings screen, simplified root redirect.Authentication is now opt-in for sync and future premium features.
 - **Sync manager** — Added useSync hook with auto scheduling and interval handling plus generic settings integration.
 - **Notifications baseline** — Added reusable notification helpers with permission handling, scheduling, and Jest coverage across native/web fallbacks.
+- **Domain config system** — Extracted all entity and app names to `src/config/domain.config.ts`, making the codebase template-ready. Schema exports renamed to generic `primaryEntity`, `entryEntity`, `reminderEntity`, `deviceEntity` while maintaining runtime table names and full type safety.

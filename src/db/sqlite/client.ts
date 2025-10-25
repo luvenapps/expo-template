@@ -1,4 +1,5 @@
 /* istanbul ignore file */
+import { DOMAIN } from '@/config/domain.config';
 import { Platform } from 'react-native';
 
 /**
@@ -33,7 +34,7 @@ export async function getDb() {
     dbPromise = (async () => {
       const { drizzle } = await import('drizzle-orm/expo-sqlite');
       const { openDatabaseSync } = await import('expo-sqlite');
-      dbInstance = drizzle(openDatabaseSync('expotemplate.db'));
+      dbInstance = drizzle(openDatabaseSync(DOMAIN.app.database));
       return dbInstance;
     })();
   }
@@ -50,7 +51,7 @@ function initializeDb() {
     const { drizzle } = require('drizzle-orm/expo-sqlite');
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { openDatabaseSync } = require('expo-sqlite');
-    dbInstance = drizzle(openDatabaseSync('expotemplate.db'));
+    dbInstance = drizzle(openDatabaseSync(DOMAIN.app.database));
   }
   return dbInstance;
 }

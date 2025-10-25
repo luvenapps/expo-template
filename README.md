@@ -205,6 +205,75 @@ beontime/
 
 ---
 
+## 🔧 Domain Configuration
+
+This project uses a centralized domain configuration system to make it template-ready and easy to customize for different use cases.
+
+### `src/config/domain.config.ts`
+
+All app-specific and entity-specific naming is defined in a single configuration file. 
+
+Example:
+
+```typescript
+export const DOMAIN = {
+  app: {
+    name: 'betterhabits',
+    displayName: 'Better Habits',
+    database: 'betterhabits.db',
+    syncTask: 'betterhabits-sync-task',
+    storageKey: 'betterhabits-supabase-session',
+    cursorStorageId: 'betterhabits-sync-cursors',
+  },
+  entities: {
+    primary: {
+      name: 'habit',
+      plural: 'habits',
+      tableName: 'habits',
+      remoteTableName: 'habits',
+      displayName: 'Habit',
+    },
+    entries: {
+      name: 'entry',
+      plural: 'entries',
+      tableName: 'habit_entries',
+      remoteTableName: 'habit_entries',
+      displayName: 'Entry',
+      foreignKey: 'habitId',
+    },
+    // ... reminders, devices
+  },
+} as const;
+```
+
+### Benefits
+
+- **Single Source of Truth** — Change entity names in one place to customize for different apps (e.g., tasks, workouts, notes)
+- **Template-Ready** — Easy to fork and adapt for new projects
+- **Type Safety** — Full TypeScript inference maintained throughout the codebase
+- **Generic Naming** — Schema exports use generic names (`primaryEntity`, `entryEntity`) while table names remain configurable
+
+### Usage
+
+The codebase references configuration values instead of hardcoded strings:
+
+```typescript
+// Database schema
+export const primaryEntity = sqliteTable(DOMAIN.entities.primary.tableName, { ... });
+
+// Sync tables
+const SYNC_TABLES = [
+  DOMAIN.entities.primary.tableName,
+  DOMAIN.entities.entries.tableName,
+  // ...
+] as const;
+
+// Database file
+const db = openDatabaseSync(DOMAIN.app.database);
+```
+
+---
+
 ## 🧭 EAS Project Setup
 
 Before using local or CI builds, create an EAS project for your app on Expo:

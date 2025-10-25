@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import Constants from 'expo-constants';
+import { DOMAIN } from '@/config/domain.config';
 
 const SUPABASE_URL =
   Constants.expoConfig?.extra?.supabaseUrl || process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -19,6 +20,6 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     persistSession: true,
-    storageKey: 'betterhabits-supabase-session',
+    storageKey: DOMAIN.app.storageKey,
   },
 });

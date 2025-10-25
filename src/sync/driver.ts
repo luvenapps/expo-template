@@ -4,34 +4,46 @@ import { useSessionStore } from '@/auth/session';
 import { getCursor, setCursor, clearCursor } from './cursors';
 import type { OutboxRecord } from './outbox';
 import { upsertRecords, registerPersistenceTable } from './localPersistence';
-import { habits, habitEntries, reminders, devices } from '@/db/sqlite';
+import { primaryEntity, entryEntity, reminderEntity, deviceEntity } from '@/db/sqlite';
+import { DOMAIN } from '@/config/domain.config';
 
-type HabitRecord = typeof habits.$inferInsert;
-type HabitEntryRecord = typeof habitEntries.$inferInsert;
-type ReminderRecord = typeof reminders.$inferInsert;
-type DeviceRecord = typeof devices.$inferInsert;
+/**
+ * Generic type aliases for entity records
+ * Inferred from Drizzle schema definitions
+ */
+export type PrimaryEntityRecord = typeof primaryEntity.$inferInsert;
+export type EntryRecord = typeof entryEntity.$inferInsert;
+export type ReminderRecord = typeof reminderEntity.$inferInsert;
+export type DeviceRecord = typeof deviceEntity.$inferInsert;
 
-registerPersistenceTable('habits', {
-  table: habits,
-  primaryKey: habits.id,
+// Register all syncable tables with the persistence layer
+registerPersistenceTable(DOMAIN.entities.primary.tableName, {
+  table: primaryEntity,
+  primaryKey: primaryEntity.id,
 });
 
-registerPersistenceTable('habit_entries', {
-  table: habitEntries,
-  primaryKey: habitEntries.id,
+registerPersistenceTable(DOMAIN.entities.entries.tableName, {
+  table: entryEntity,
+  primaryKey: entryEntity.id,
 });
 
-registerPersistenceTable('reminders', {
-  table: reminders,
-  primaryKey: reminders.id,
+registerPersistenceTable(DOMAIN.entities.reminders.tableName, {
+  table: reminderEntity,
+  primaryKey: reminderEntity.id,
 });
 
-registerPersistenceTable('devices', {
-  table: devices,
-  primaryKey: devices.id,
+registerPersistenceTable(DOMAIN.entities.devices.tableName, {
+  table: deviceEntity,
+  primaryKey: deviceEntity.id,
 });
 
-const SYNC_TABLES = ['habits', 'habit_entries', 'reminders', 'devices'] as const;
+// Build sync tables list from domain configuration
+const SYNC_TABLES = [
+  DOMAIN.entities.primary.tableName,
+  DOMAIN.entities.entries.tableName,
+  DOMAIN.entities.reminders.tableName,
+  DOMAIN.entities.devices.tableName,
+] as const;
 
 type SyncTable = (typeof SYNC_TABLES)[number];
 
@@ -133,20 +145,29 @@ export async function pullUpdates() {
 }
 
 async function applyRemoteRecords(records: Partial<Record<SyncTable, RemoteRow[]>>) {
-  const habitRows = mapHabits(records.habits);
-  const habitEntryRows = mapHabitEntries(records.habit_entries);
-  const reminderRows = mapReminders(records.reminders);
-  const deviceRows = mapDevices(records.devices);
+  // Map remote records using remote table names from config
+  const primaryRows = mapPrimaryEntities(
+    records[DOMAIN.entities.primary.remoteTableName as SyncTable],
+  );
+  const entryRows = mapEntries(records[DOMAIN.entities.entries.remoteTableName as SyncTable]);
+  const reminderRows = mapReminders(
+    records[DOMAIN.entities.reminders.remoteTableName as SyncTable],
+  );
+  const deviceRows = mapDevices(records[DOMAIN.entities.devices.remoteTableName as SyncTable]);
 
+  // Upsert to local tables using local table names from config
   await Promise.all([
-    upsertRecords('habits', habitRows),
-    upsertRecords('habit_entries', habitEntryRows),
-    upsertRecords('reminders', reminderRows),
-    upsertRecords('devices', deviceRows),
+    upsertRecords(DOMAIN.entities.primary.tableName, primaryRows),
+    upsertRecords(DOMAIN.entities.entries.tableName, entryRows),
+    upsertRecords(DOMAIN.entities.reminders.tableName, reminderRows),
+    upsertRecords(DOMAIN.entities.devices.tableName, deviceRows),
   ]);
 }
 
-function mapHabits(rows: RemoteRow[] | undefined): HabitRecord[] {
+/**
+ * Maps remote primary entity records to local schema
+ */
+function mapPrimaryEntities(rows: RemoteRow[] | undefined): PrimaryEntityRecord[] {
   if (!rows?.length) return [];
   return rows
     .filter((row) => row?.id && row?.user_id)
@@ -165,7 +186,10 @@ function mapHabits(rows: RemoteRow[] | undefined): HabitRecord[] {
     }));
 }
 
-function mapHabitEntries(rows: RemoteRow[] | undefined): HabitEntryRecord[] {
+/**
+ * Maps remote entry records to local schema
+ */
+function mapEntries(rows: RemoteRow[] | undefined): EntryRecord[] {
   if (!rows?.length) return [];
   return rows
     .filter((row) => row?.id && row?.user_id && row?.habit_id && row?.date)
@@ -183,6 +207,9 @@ function mapHabitEntries(rows: RemoteRow[] | undefined): HabitEntryRecord[] {
     }));
 }
 
+/**
+ * Maps remote reminder records to local schema
+ */
 function mapReminders(rows: RemoteRow[] | undefined): ReminderRecord[] {
   if (!rows?.length) return [];
   return rows
@@ -202,6 +229,9 @@ function mapReminders(rows: RemoteRow[] | undefined): ReminderRecord[] {
     }));
 }
 
+/**
+ * Maps remote device records to local schema
+ */
 function mapDevices(rows: RemoteRow[] | undefined): DeviceRecord[] {
   if (!rows?.length) return [];
   return rows

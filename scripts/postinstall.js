@@ -4,23 +4,24 @@
  * This script runs once after dependencies are installed when creating a new app from the template.
  *
  * Responsibilities (minimal + working Husky v9+):
- *  1) Update package.json name (if still "template-starter")
- *  2) Remove template-only metadata ("x-template") from package.json
- *  3) Replace placeholders (__APP_NAME__, __APP_ID__) in app.json
- *  4) Replace placeholders in Maestro flows (.maestro/flows/*.yml|yaml)
- *  5) Replace tokens in README.md (if present)
- *  6) Restore .gitignore from "gitignore" (if present)
- *  7) Rename _prettierrc.json → .prettierrc.json if present
- *  8) Rename _prettierignore → .prettierignore if present
- *  9) Rename _nvmrc → .nvmrc if present
- *  10) Enable Husky hooks *without* using deprecated `husky install` (set hooksPath + chmod +x)
- *  11) Materialize .maestro from _maestro if needed
- *  12) Restore .github (delete existing .github and rename _github → .github
- *  13) Ensure all shell scripts in .github are executable
- *  14) Run Prettier to format updated files
- *  15) Remove postinstall from package.json
- *  16) Self-delete this script
- *  17) Print a friendly summary
+ *  - Update package.json name (if still "template-starter")
+ *  - Remove template-only metadata ("x-template") from package.json
+ *  - Replace placeholders (__APP_NAME__, __APP_ID__) in app.json
+ *  - Replace placeholders in Maestro flows (.maestro/flows/*.yml|yaml)
+ *  - Replace tokens in README.md (if present)
+ *  - Replace tockens in Domain Config if present
+ *  - Restore .gitignore from "gitignore" (if present)
+ *  - Rename _prettierrc.json → .prettierrc.json if present
+ *  - Rename _prettierignore → .prettierignore if present
+ *  - Rename _nvmrc → .nvmrc if present
+ *  - Enable Husky hooks *without* using deprecated `husky install` (set hooksPath + chmod +x)
+ *  - Materialize .maestro from _maestro if needed
+ *  - Restore .github (delete existing .github and rename _github → .github
+ *  - Ensure all shell scripts in .github are executable
+ *  - Run Prettier to format updated files
+ *  - Remove postinstall from package.json
+ *  - Self-delete this script
+ *  - Print a friendly summary
  *
  * Notes:
  *  - Intentionally does NOT run `npx husky install`. Husky v9+ works with `core.hooksPath` + executable hooks.
@@ -66,11 +67,33 @@ const copyDir = (src, dst) => {
   }
 };
 
+const singularize = (word) => {
+  const endings = {
+    ves: 'f', // wives -> wife
+    ies: 'y', // strategies -> strategy
+    i: 'us',  // cacti -> cactus (irregular)
+    zes: 'ze', // dozes -> doze
+    ses: 's', // classes -> class
+    es: '',   // boxes -> box
+    s: ''     // papers -> paper
+  };
+
+  // Iterate through the endings in reverse order of length to prioritize longer matches
+  for (const ending in endings) {
+    if (word.endsWith(ending)) {
+      return word.slice(0, -ending.length) + endings[ending];
+    }
+  }
+
+  // If no specific rule applies, assume it's already singular or an irregular plural not covered
+  return word;
+}
+
 // Summary for the footer
-let summary = { appName: null, slug: null, appId: null };
+let summary = { appName: null, slug: null, appId: null, singular: null };
 
 (function main() {
-  // 1) package.json: update name (keep minimal behavior)
+  // package.json: update name (keep minimal behavior)
   const pkgPath = path.join(CWD, 'package.json');
   if (!exists(pkgPath)) {
     console.log('⚠️  package.json not found — aborting postinstall');
@@ -84,7 +107,7 @@ let summary = { appName: null, slug: null, appId: null };
   summary.appName = pkg.name;
   writeJson(pkgPath, pkg);
 
-  // 2) Remove x-template metadata
+  // Remove x-template metadata
   if (pkg['x-template']) {
     delete pkg['x-template'];
     writeJson(pkgPath, pkg);
@@ -92,7 +115,7 @@ let summary = { appName: null, slug: null, appId: null };
   }
   console.log(`✅ package.json updated: name="${pkg.name}"`);
 
-  // 3) app.json tokens
+  // app.json tokens
   const appJsonPath = path.join(CWD, 'app.json');
   const owner = 'luvenapps';
   const bundleIdBase = `com.${owner}`;
@@ -175,7 +198,7 @@ let summary = { appName: null, slug: null, appId: null };
     }
   }
 
-  // 4) Maestro flows (update in .maestro or _maestro if present)
+  // Maestro flows (update in .maestro or _maestro if present)
   const flowRoots = [
     path.join(CWD, '.maestro', 'flows'),
     path.join(CWD, '_maestro', 'flows'),
@@ -213,7 +236,22 @@ let summary = { appName: null, slug: null, appId: null };
     }
   }
 
-  // 6) Restore .gitignore (delete existing .gitignore and rename _gitignore → .gitignore)
+  // Domain Config tokens
+  summary.singular = singularize(idSegmentBase);
+  const domainConfigPath = path.join(CWD, 'src/config/domain.config.ts');
+  if (exists(domainConfigPath)) {
+    const before = fs.readFileSync(domainConfigPath, 'utf8');
+    const after = before
+      .replace(/__APP_NAME__SINGULAR__/g, summary.singular)
+      .replace(/__APP_NAME__/g, summary.appName)
+      .replace(/__APP_ID__/g, summary.appId);
+    if (after !== before) {
+      fs.writeFileSync(domainConfigPath, after, 'utf8');
+      console.log('✅ Domain config tokens replaced.');
+    }
+  }
+
+  // Restore .gitignore (delete existing .gitignore and rename _gitignore → .gitignore)
   const giSrc = path.join(CWD, '_gitignore');
   const giDst = path.join(CWD, '.gitignore');
 
@@ -234,7 +272,7 @@ let summary = { appName: null, slug: null, appId: null };
     console.log('⚠️  No gitignore found in template directory — skipping');
   }
 
-  // 7) Rename _prettierrc.json → .prettierrc.json if present
+  // Rename _prettierrc.json → .prettierrc.json if present
   const prettierrcSrc = path.join(CWD, '_prettierrc.json');
   const prettierrcDst = path.join(CWD, '.prettierrc.json');
   if (exists(prettierrcSrc)) {
@@ -252,7 +290,7 @@ let summary = { appName: null, slug: null, appId: null };
     console.log('⚠️  No _prettierrc.json found in template directory — skipping');
   }
 
-  // 8) Rename _prettierignore → .prettierignore if present
+  // Rename _prettierignore → .prettierignore if present
   const prettierignoreSrc = path.join(CWD, '_prettierignore');
   const prettierignoreDst = path.join(CWD, '.prettierignore');
   if (exists(prettierignoreSrc)) {
@@ -270,7 +308,7 @@ let summary = { appName: null, slug: null, appId: null };
     console.log('⚠️  No _prettierignore found in template directory — skipping');
   }
 
-  // 9) Rename _nvmrc → .nvmrc if present
+  // Rename _nvmrc → .nvmrc if present
   const nvmrcSrc = path.join(CWD, '_nvmrc');
   const nvmrcDst = path.join(CWD, '.nvmrc');
   if (exists(nvmrcSrc)) {
@@ -288,7 +326,7 @@ let summary = { appName: null, slug: null, appId: null };
     console.log('⚠️  No _nvmrc found in template directory — skipping');
   }
 
-  // 10) Husky v9+ (no `husky install`): set hooksPath + chmod, and materialize from _husky if needed
+  // Husky v9+ (no `husky install`): set hooksPath + chmod, and materialize from _husky if needed
   const isGit = runSilent('git', ['rev-parse', '--is-inside-work-tree']);
   if (!isGit) runSilent('git', ['init']);
   const huskyDst = path.join(CWD, '.husky');
@@ -324,7 +362,7 @@ let summary = { appName: null, slug: null, appId: null };
     console.log('⚠️  No .husky/_husky found in template directory — skipping');
   }
 
-  // 11) Materialize Maestro folder (.maestro) from _maestro if needed
+  // Materialize Maestro folder (.maestro) from _maestro if needed
   const maestroDst = path.join(CWD, '.maestro');
   const maestroSrcCandidates = [
     path.join(CWD, '.maestro'),
@@ -351,7 +389,7 @@ let summary = { appName: null, slug: null, appId: null };
     console.log('⚠️  No .maestro/_maestro found in template directory — skipping');
   }
 
-  // 12) Restore .github (delete existing .github and rename _github → .github)
+  // Restore .github (delete existing .github and rename _github → .github)
   const githubDst = path.join(CWD, '.github');
   const githubSrcCandidates = [
     path.join(CWD, '.github'),
@@ -378,7 +416,7 @@ let summary = { appName: null, slug: null, appId: null };
     console.log('⚠️  No .github/_maestro found in template directory — skipping');
   }
 
-  // 13) Ensure all shell scripts in .github are executable
+  // Ensure all shell scripts in .github are executable
   const githubDir = path.join(CWD, '.github');
   if (exists(githubDir)) {
     try {
@@ -404,7 +442,7 @@ let summary = { appName: null, slug: null, appId: null };
     }
   }
 
-  // 14) Run Prettier to format updated files (single-line status)
+  // Run Prettier to format updated files (single-line status)
   try {
     process.stdout.write('🧩 Formatting with Prettier...');
     cp.execSync('npx prettier --write .', { stdio: 'ignore' });
@@ -413,7 +451,7 @@ let summary = { appName: null, slug: null, appId: null };
     console.log(`\n⚠️  Prettier formatting skipped or failed: ${err.message}`);
   }
   
-  // 15) Remove postinstall from package.json
+  // Remove postinstall from package.json
   try {
     if (
       pkg.scripts &&
@@ -429,7 +467,7 @@ let summary = { appName: null, slug: null, appId: null };
     console.log(`⚠️  Failed to remove postinstall script from package.json (${e.message})`);
   }
 
-  // 16) Self-delete
+  // Self-delete
   const self = path.join(CWD, 'scripts', 'postinstall.js');
   try {
     process.on('exit', () => {
@@ -440,7 +478,7 @@ let summary = { appName: null, slug: null, appId: null };
     });
   } catch {}
 
-  // 17) Summary
+  // Summary
   const bar = '============================================================';
   console.log(`
 ${bar}

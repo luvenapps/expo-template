@@ -1,11 +1,16 @@
 import { sqliteTable, text, integer, uniqueIndex, index } from 'drizzle-orm/sqlite-core';
+import { DOMAIN } from '@/config/domain.config';
 
 const versionColumn = () => integer('version').default(1).notNull();
 const timestampColumn = (name: string) => text(name).notNull();
 const optionalTimestamp = (name: string) => text(name);
 
-export const habits = sqliteTable(
-  'habits',
+/**
+ * Primary domain entity table
+ * Configured via DOMAIN.entities.primary in domain.config.ts
+ */
+export const primaryEntity = sqliteTable(
+  DOMAIN.entities.primary.tableName,
   {
     id: text('id').primaryKey(),
     userId: text('user_id').notNull(),
@@ -19,11 +24,20 @@ export const habits = sqliteTable(
     version: versionColumn(),
     deletedAt: optionalTimestamp('deleted_at'),
   },
-  (table) => [index('habits_user_updated_idx').on(table.userId, table.updatedAt)],
+  (table) => [
+    index(`${DOMAIN.entities.primary.tableName}_user_updated_idx`).on(
+      table.userId,
+      table.updatedAt,
+    ),
+  ],
 );
 
-export const habitEntries = sqliteTable(
-  'habit_entries',
+/**
+ * Entry/activity records for the primary entity
+ * Configured via DOMAIN.entities.entries in domain.config.ts
+ */
+export const entryEntity = sqliteTable(
+  DOMAIN.entities.entries.tableName,
   {
     id: text('id').primaryKey(),
     userId: text('user_id').notNull(),
@@ -37,13 +51,25 @@ export const habitEntries = sqliteTable(
     deletedAt: optionalTimestamp('deleted_at'),
   },
   (table) => [
-    uniqueIndex('habit_entries_unique').on(table.habitId, table.date, table.deletedAt),
-    index('habit_entries_user_habit_idx').on(table.userId, table.habitId, table.date),
+    uniqueIndex(`${DOMAIN.entities.entries.tableName}_unique`).on(
+      table.habitId,
+      table.date,
+      table.deletedAt,
+    ),
+    index(`${DOMAIN.entities.entries.tableName}_user_habit_idx`).on(
+      table.userId,
+      table.habitId,
+      table.date,
+    ),
   ],
 );
 
-export const reminders = sqliteTable(
-  'reminders',
+/**
+ * Reminders/notifications for the primary entity
+ * Configured via DOMAIN.entities.reminders in domain.config.ts
+ */
+export const reminderEntity = sqliteTable(
+  DOMAIN.entities.reminders.tableName,
   {
     id: text('id').primaryKey(),
     userId: text('user_id').notNull(),
@@ -58,11 +84,19 @@ export const reminders = sqliteTable(
     deletedAt: optionalTimestamp('deleted_at'),
   },
   (table) => [
-    index('reminders_user_habit_enabled_idx').on(table.userId, table.habitId, table.isEnabled),
+    index(`${DOMAIN.entities.reminders.tableName}_user_habit_enabled_idx`).on(
+      table.userId,
+      table.habitId,
+      table.isEnabled,
+    ),
   ],
 );
 
-export const devices = sqliteTable('devices', {
+/**
+ * User devices for push notifications
+ * Configured via DOMAIN.entities.devices in domain.config.ts
+ */
+export const deviceEntity = sqliteTable(DOMAIN.entities.devices.tableName, {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull(),
   platform: text('platform').notNull(),

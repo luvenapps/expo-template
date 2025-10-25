@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { DOMAIN } from '@/config/domain.config';
 
 type StorageAdapter = {
   getString(key: string): string | undefined;
@@ -32,7 +33,7 @@ function createMmkvAdapter(): StorageAdapter | undefined {
       return undefined;
     }
 
-    const instance = new MMKV({ id: 'betterhabits-sync-cursors' });
+    const instance = new MMKV({ id: DOMAIN.app.cursorStorageId });
 
     return {
       getString: (key) => instance.getString(key) ?? undefined,
