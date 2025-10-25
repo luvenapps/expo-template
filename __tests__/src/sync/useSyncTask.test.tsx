@@ -1,5 +1,5 @@
 import { renderHook, act, waitFor } from '@testing-library/react-native';
-import { AppState, AppStateStatus } from 'react-native';
+import { AppState, AppStateStatus, Platform } from 'react-native';
 import * as BackgroundTask from 'expo-background-task';
 import { registerTaskAsync, unregisterTaskAsync, isTaskDefined } from 'expo-task-manager';
 import { useSyncTask } from '@/sync/useSyncTask';
@@ -156,7 +156,7 @@ describe('useSyncTask', () => {
         },
       );
 
-      // Mock legacy API (no return value)
+      // Mock legacy API - set addEventListener to a non-function to trigger else branch
       Object.defineProperty(AppState, 'addEventListener', {
         value: undefined,
         configurable: true,
@@ -227,6 +227,38 @@ describe('useSyncTask', () => {
       });
 
       expect(listeners.length).toBe(0);
+    });
+
+    it('should clean up both interval and listener when disabling', async () => {
+      const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
+
+      const { rerender } = renderHook(
+        (props: { enabled: boolean }) =>
+          useSyncTask({
+            engine: mockEngine as any,
+            enabled: props.enabled,
+            intervalMs: 1000,
+          }),
+        { initialProps: { enabled: true } },
+      );
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(listeners.length).toBe(1);
+
+      // Disable - should trigger cleanup of both interval and listener
+      rerender({ enabled: false });
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(clearIntervalSpy).toHaveBeenCalled();
+      expect(listeners.length).toBe(0);
+
+      clearIntervalSpy.mockRestore();
     });
   });
 
@@ -395,6 +427,85 @@ describe('useSyncTask', () => {
       unmount();
 
       expect(listeners.length).toBe(0);
+    });
+  });
+
+  describe('web platform handling', () => {
+    it('should warn and return early on web platform', async () => {
+      const originalPlatform = Platform.OS;
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      try {
+        // Mock Platform.OS as web
+        Object.defineProperty(Platform, 'OS', {
+          get: () => 'web',
+          configurable: true,
+        });
+
+        const { result } = renderHook(() =>
+          useSyncTask({ engine: mockEngine as any, enabled: true }),
+        );
+
+        await act(async () => {
+          await result.current.triggerSync();
+        });
+
+        expect(consoleWarnSpy).toHaveBeenCalledWith(
+          'Sync is not supported on web platform. Database operations require native SQLite.',
+        );
+        expect(mockEngine.runSync).not.toHaveBeenCalled();
+      } finally {
+        // Restore original platform
+        Object.defineProperty(Platform, 'OS', {
+          get: () => originalPlatform,
+          configurable: true,
+        });
+        consoleWarnSpy.mockRestore();
+      }
+    });
+  });
+
+  describe('registerTask callback', () => {
+    it('should return Success when task executes successfully', async () => {
+      const taskCallback = jest.fn();
+      (registerTaskAsync as jest.Mock).mockImplementation((_name, callback) => {
+        taskCallback.mockImplementation(callback);
+        return Promise.resolve();
+      });
+      (isTaskDefined as jest.Mock).mockReturnValue(false);
+
+      renderHook(() => useSyncTask({ engine: mockEngine as any, enabled: true }));
+
+      await waitFor(() => {
+        expect(registerTaskAsync).toHaveBeenCalled();
+      });
+
+      mockEngine.runSync.mockResolvedValueOnce(undefined);
+
+      const result = await taskCallback();
+
+      expect(result).toBe(BackgroundTask.BackgroundTaskResult.Success);
+    });
+
+    it('should return Failed when task execution throws error', async () => {
+      const taskCallback = jest.fn();
+      (registerTaskAsync as jest.Mock).mockImplementation((_name, callback) => {
+        taskCallback.mockImplementation(callback);
+        return Promise.resolve();
+      });
+      (isTaskDefined as jest.Mock).mockReturnValue(false);
+
+      renderHook(() => useSyncTask({ engine: mockEngine as any, enabled: true }));
+
+      await waitFor(() => {
+        expect(registerTaskAsync).toHaveBeenCalled();
+      });
+
+      mockEngine.runSync.mockRejectedValueOnce(new Error('Task failed'));
+
+      const result = await taskCallback();
+
+      expect(result).toBe(BackgroundTask.BackgroundTaskResult.Failed);
     });
   });
 });

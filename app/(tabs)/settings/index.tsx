@@ -1,4 +1,5 @@
 import { Stack, useRouter } from 'expo-router';
+import { Platform } from 'react-native';
 import { Button, Paragraph, YStack } from 'tamagui';
 import { ScreenContainer } from '@/ui';
 import { useSessionStore } from '@/auth/session';
@@ -50,29 +51,33 @@ export default function SettingsScreen() {
           </Button>
         </YStack>
 
-        <YStack height="$1" backgroundColor="$borderColor" marginVertical="$4" />
+        {Platform.OS !== 'web' && (
+          <>
+            <YStack height="$1" backgroundColor="$borderColor" marginVertical="$4" />
 
-        <YStack gap="$3">
-          <Paragraph textAlign="center" fontWeight="600">
-            Sync Status: {syncStatus.toUpperCase()}
-          </Paragraph>
-          <Paragraph textAlign="center" color="$colorMuted">
-            Queue size: {queueSize}
-          </Paragraph>
-          <Paragraph textAlign="center" color="$colorMuted">
-            Last synced: {lastSyncedAt ? new Date(lastSyncedAt).toLocaleString() : 'Never'}
-          </Paragraph>
-          {lastError ? (
-            <Paragraph textAlign="center" color="$colorMuted">
-              Last error: {lastError}
-            </Paragraph>
-          ) : null}
-          <Button size="$3" onPress={triggerSync}>
-            Sync now
-          </Button>
-        </YStack>
+            <YStack gap="$3">
+              <Paragraph textAlign="center" fontWeight="600">
+                Sync Status: {syncStatus.toUpperCase()}
+              </Paragraph>
+              <Paragraph textAlign="center" color="$colorMuted">
+                Queue size: {queueSize}
+              </Paragraph>
+              <Paragraph textAlign="center" color="$colorMuted">
+                Last synced: {lastSyncedAt ? new Date(lastSyncedAt).toLocaleString() : 'Never'}
+              </Paragraph>
+              {lastError ? (
+                <Paragraph textAlign="center" color="$colorMuted">
+                  Last error: {lastError}
+                </Paragraph>
+              ) : null}
+              <Button size="$3" onPress={triggerSync}>
+                Sync now
+              </Button>
+            </YStack>
 
-        <YStack height="$1" backgroundColor="$borderColor" marginVertical="$4" />
+            <YStack height="$1" backgroundColor="$borderColor" marginVertical="$4" />
+          </>
+        )}
 
         <Paragraph textAlign="center" color="$colorMuted">
           Additional settings will arrive alongside theme controls and data export.

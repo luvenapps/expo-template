@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { AppState, AppStateStatus } from 'react-native';
+import { AppState, AppStateStatus, Platform } from 'react-native';
 import { registerTaskAsync, unregisterTaskAsync, isTaskDefined } from 'expo-task-manager';
 import * as BackgroundTask from 'expo-background-task';
 import type { createSyncEngine } from './engine';
@@ -30,6 +30,13 @@ export function useSyncTask({
   const appStateListenerRef = useRef<{ remove?: () => void } | null>(null);
 
   const runSync = useCallback(async () => {
+    // SQLite sync is not supported on web - use server-side storage instead
+    if (Platform.OS === 'web') {
+      console.warn(
+        'Sync is not supported on web platform. Database operations require native SQLite.',
+      );
+      return;
+    }
     if (!mountedRef.current) return;
     await engine.runSync();
   }, [engine]);
