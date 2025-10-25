@@ -53,6 +53,7 @@ jest.mock('@/sync/localPersistence', () => {
 import { Platform } from 'react-native';
 import { pushOutbox, pullUpdates } from '@/sync/driver';
 import type { OutboxRecord } from '@/sync/outbox';
+import { DOMAIN } from '@/config/domain.config';
 
 describe('sync driver', () => {
   beforeEach(() => {
@@ -79,7 +80,7 @@ describe('sync driver', () => {
         pushOutbox([
           {
             id: '1',
-            tableName: 'habits',
+            tableName: DOMAIN.entities.primary.tableName,
             rowId: 'habit-1',
             operation: 'insert',
             payload: JSON.stringify({ name: 'Habit' }),
@@ -99,7 +100,7 @@ describe('sync driver', () => {
 
       const record: OutboxRecord = {
         id: '1',
-        tableName: 'habits',
+        tableName: DOMAIN.entities.primary.tableName,
         rowId: 'habit-1',
         operation: 'insert',
         payload: JSON.stringify({ name: 'Habit', color: '#fff' }),
@@ -115,7 +116,7 @@ describe('sync driver', () => {
           mutations: [
             {
               id: 'habit-1',
-              table: 'habits',
+              table: DOMAIN.entities.primary.tableName,
               operation: 'insert',
               version: 2,
               payload: { name: 'Habit', color: '#fff' },
@@ -135,7 +136,7 @@ describe('sync driver', () => {
         pushOutbox([
           {
             id: '1',
-            tableName: 'habits',
+            tableName: DOMAIN.entities.primary.tableName,
             rowId: 'habit-1',
             operation: 'insert',
             payload: JSON.stringify({ name: 'Habit' }),
@@ -157,7 +158,7 @@ describe('sync driver', () => {
         pushOutbox([
           {
             id: '1',
-            tableName: 'habits',
+            tableName: DOMAIN.entities.primary.tableName,
             rowId: 'habit-1',
             operation: 'insert',
             payload: JSON.stringify({ name: 'Habit' }),
@@ -177,7 +178,7 @@ describe('sync driver', () => {
 
       const record: OutboxRecord = {
         id: '1',
-        tableName: 'habits',
+        tableName: DOMAIN.entities.primary.tableName,
         rowId: 'habit-1',
         operation: 'insert',
         payload: '{invalid json}',
@@ -193,7 +194,7 @@ describe('sync driver', () => {
           mutations: [
             {
               id: 'habit-1',
-              table: 'habits',
+              table: DOMAIN.entities.primary.tableName,
               operation: 'insert',
               version: 1,
               payload: {},
@@ -213,7 +214,7 @@ describe('sync driver', () => {
         pushOutbox([
           {
             id: '1',
-            tableName: 'habits',
+            tableName: DOMAIN.entities.primary.tableName,
             rowId: 'habit-1',
             operation: 'insert',
             payload: JSON.stringify({ name: 'Habit' }),
@@ -303,7 +304,7 @@ describe('sync driver', () => {
       await pullUpdates();
 
       expect(mockUpsertRecords).toHaveBeenCalledWith(
-        'habits',
+        DOMAIN.entities.primary.tableName,
         expect.arrayContaining([
           expect.objectContaining({
             id: 'habit-1',
@@ -314,7 +315,7 @@ describe('sync driver', () => {
       );
 
       expect(mockUpsertRecords).toHaveBeenCalledWith(
-        'habit_entries',
+        DOMAIN.entities.entries.tableName,
         expect.arrayContaining([
           expect.objectContaining({
             id: 'entry-1',
@@ -324,10 +325,19 @@ describe('sync driver', () => {
         ]),
       );
 
-      expect(mockSetCursor).toHaveBeenCalledWith('sync:habits', 'cursor-habits');
-      expect(mockSetCursor).toHaveBeenCalledWith('sync:habit_entries', 'cursor-entries');
-      expect(mockSetCursor).toHaveBeenCalledWith('sync:devices', 'cursor-devices');
-      expect(mockClearCursor).toHaveBeenCalledWith('sync:reminders');
+      expect(mockSetCursor).toHaveBeenCalledWith(
+        `sync:${DOMAIN.entities.primary.tableName}`,
+        'cursor-habits',
+      );
+      expect(mockSetCursor).toHaveBeenCalledWith(
+        `sync:${DOMAIN.entities.entries.tableName}`,
+        'cursor-entries',
+      );
+      expect(mockSetCursor).toHaveBeenCalledWith(
+        `sync:${DOMAIN.entities.devices.tableName}`,
+        'cursor-devices',
+      );
+      expect(mockClearCursor).toHaveBeenCalledWith(`sync:${DOMAIN.entities.reminders.tableName}`);
     });
 
     it('throws when Supabase returns error', async () => {
@@ -417,7 +427,7 @@ describe('sync driver', () => {
 
       // Should only have one valid record
       const remindersCall = (mockUpsertRecords as jest.Mock).mock.calls.find(
-        (call) => call[0] === 'reminders',
+        (call) => call[0] === DOMAIN.entities.reminders.tableName,
       );
       expect(remindersCall[1]).toHaveLength(1);
     });
@@ -443,7 +453,7 @@ describe('sync driver', () => {
       await pullUpdates();
 
       const habitsCall = (mockUpsertRecords as jest.Mock).mock.calls.find(
-        (call) => call[0] === 'habits',
+        (call) => call[0] === DOMAIN.entities.primary.tableName,
       );
       expect(habitsCall[1][0]).toMatchObject({
         id: 'habit-minimal',
@@ -483,7 +493,7 @@ describe('sync driver', () => {
       await pullUpdates();
 
       const entriesCall = (mockUpsertRecords as jest.Mock).mock.calls.find(
-        (call) => call[0] === 'habit_entries',
+        (call) => call[0] === DOMAIN.entities.entries.tableName,
       );
       expect(entriesCall[1][0]).toMatchObject({
         id: 'entry-minimal',
@@ -521,7 +531,7 @@ describe('sync driver', () => {
       await pullUpdates();
 
       const remindersCall = (mockUpsertRecords as jest.Mock).mock.calls.find(
-        (call) => call[0] === 'reminders',
+        (call) => call[0] === DOMAIN.entities.reminders.tableName,
       );
       expect(remindersCall[1][0]).toMatchObject({
         id: 'reminder-minimal',
@@ -559,7 +569,7 @@ describe('sync driver', () => {
       await pullUpdates();
 
       const devicesCall = (mockUpsertRecords as jest.Mock).mock.calls.find(
-        (call) => call[0] === 'devices',
+        (call) => call[0] === DOMAIN.entities.devices.tableName,
       );
       expect(devicesCall[1][0]).toMatchObject({
         id: 'device-minimal',
@@ -585,18 +595,18 @@ describe('sync driver', () => {
       await pullUpdates();
 
       // Should call upsertRecords with empty arrays
-      expect(mockUpsertRecords).toHaveBeenCalledWith('habits', []);
-      expect(mockUpsertRecords).toHaveBeenCalledWith('habit_entries', []);
-      expect(mockUpsertRecords).toHaveBeenCalledWith('reminders', []);
-      expect(mockUpsertRecords).toHaveBeenCalledWith('devices', []);
+      expect(mockUpsertRecords).toHaveBeenCalledWith(DOMAIN.entities.primary.tableName, []);
+      expect(mockUpsertRecords).toHaveBeenCalledWith(DOMAIN.entities.entries.tableName, []);
+      expect(mockUpsertRecords).toHaveBeenCalledWith(DOMAIN.entities.reminders.tableName, []);
+      expect(mockUpsertRecords).toHaveBeenCalledWith(DOMAIN.entities.devices.tableName, []);
 
       // When no cursors provided, clears all cursors
       expect(mockSetCursor).not.toHaveBeenCalled();
       expect(mockClearCursor).toHaveBeenCalledTimes(4);
-      expect(mockClearCursor).toHaveBeenCalledWith('sync:habits');
-      expect(mockClearCursor).toHaveBeenCalledWith('sync:habit_entries');
-      expect(mockClearCursor).toHaveBeenCalledWith('sync:reminders');
-      expect(mockClearCursor).toHaveBeenCalledWith('sync:devices');
+      expect(mockClearCursor).toHaveBeenCalledWith(`sync:${DOMAIN.entities.primary.tableName}`);
+      expect(mockClearCursor).toHaveBeenCalledWith(`sync:${DOMAIN.entities.entries.tableName}`);
+      expect(mockClearCursor).toHaveBeenCalledWith(`sync:${DOMAIN.entities.reminders.tableName}`);
+      expect(mockClearCursor).toHaveBeenCalledWith(`sync:${DOMAIN.entities.devices.tableName}`);
     });
 
     it('handles empty records with no changes', async () => {
@@ -612,16 +622,16 @@ describe('sync driver', () => {
       await pullUpdates();
 
       // Should call upsertRecords with empty arrays for all tables
-      expect(mockUpsertRecords).toHaveBeenCalledWith('habits', []);
-      expect(mockUpsertRecords).toHaveBeenCalledWith('habit_entries', []);
-      expect(mockUpsertRecords).toHaveBeenCalledWith('reminders', []);
-      expect(mockUpsertRecords).toHaveBeenCalledWith('devices', []);
+      expect(mockUpsertRecords).toHaveBeenCalledWith(DOMAIN.entities.primary.tableName, []);
+      expect(mockUpsertRecords).toHaveBeenCalledWith(DOMAIN.entities.entries.tableName, []);
+      expect(mockUpsertRecords).toHaveBeenCalledWith(DOMAIN.entities.reminders.tableName, []);
+      expect(mockUpsertRecords).toHaveBeenCalledWith(DOMAIN.entities.devices.tableName, []);
 
       // When empty cursors object provided, clears all cursors
-      expect(mockClearCursor).toHaveBeenCalledWith('sync:habits');
-      expect(mockClearCursor).toHaveBeenCalledWith('sync:habit_entries');
-      expect(mockClearCursor).toHaveBeenCalledWith('sync:reminders');
-      expect(mockClearCursor).toHaveBeenCalledWith('sync:devices');
+      expect(mockClearCursor).toHaveBeenCalledWith(`sync:${DOMAIN.entities.primary.tableName}`);
+      expect(mockClearCursor).toHaveBeenCalledWith(`sync:${DOMAIN.entities.entries.tableName}`);
+      expect(mockClearCursor).toHaveBeenCalledWith(`sync:${DOMAIN.entities.reminders.tableName}`);
+      expect(mockClearCursor).toHaveBeenCalledWith(`sync:${DOMAIN.entities.devices.tableName}`);
     });
   });
 });

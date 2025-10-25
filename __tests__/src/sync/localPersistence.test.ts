@@ -34,17 +34,19 @@ const { upsertRecords, registerPersistenceTable, resetPersistenceRegistry } =
   require('@/sync/localPersistence') as LocalPersistenceModule;
 const { primaryEntity, entryEntity } = require('@/db/sqlite');
 
+import { DOMAIN } from '@/config/domain.config';
+
 describe('localPersistence', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     insertCalls.length = 0;
     conflictCalls.length = 0;
     resetPersistenceRegistry();
-    registerPersistenceTable('habits', {
+    registerPersistenceTable(DOMAIN.entities.primary.tableName, {
       table: primaryEntity,
       primaryKey: primaryEntity.id,
     });
-    registerPersistenceTable('habit_entries', {
+    registerPersistenceTable(DOMAIN.entities.entries.tableName, {
       table: entryEntity,
       primaryKey: entryEntity.id,
     });
@@ -52,7 +54,7 @@ describe('localPersistence', () => {
 
   describe('upsertRecords', () => {
     it('skips database work when no rows provided', async () => {
-      await upsertRecords('habits', []);
+      await upsertRecords(DOMAIN.entities.primary.tableName, []);
 
       expect(mockGetDb).not.toHaveBeenCalled();
       expect(dbMock.insert).not.toHaveBeenCalled();
@@ -88,25 +90,25 @@ describe('localPersistence', () => {
         },
       ];
 
-      await upsertRecords('habits', rows);
+      await upsertRecords(DOMAIN.entities.primary.tableName, rows);
 
       expect(mockGetDb).toHaveBeenCalledTimes(1);
       expect(dbMock.insert).toHaveBeenCalledTimes(rows.length);
 
       expect(insertCalls).toHaveLength(rows.length);
       insertCalls.forEach((call, index) => {
-        expect(call.table.name).toBe('habits');
+        expect(call.table.name).toBe(DOMAIN.entities.primary.tableName);
         expect(call.row).toEqual(rows[index]);
       });
 
       expect(conflictCalls).toHaveLength(rows.length);
       conflictCalls.forEach((call, index) => {
-        expect(call.target).toBe('habits-id');
+        expect(call.target).toBe(`${DOMAIN.entities.primary.tableName}-id`);
         expect(call.set).toEqual(rows[index]);
       });
     });
 
-    it('supports other tables such as habit entries', async () => {
+    it('supports other tables such as entries', async () => {
       const entryRows = [
         {
           id: 'entry-1',
@@ -122,13 +124,13 @@ describe('localPersistence', () => {
         },
       ];
 
-      await upsertRecords('habit_entries', entryRows);
+      await upsertRecords(DOMAIN.entities.entries.tableName, entryRows);
 
       expect(mockGetDb).toHaveBeenCalledTimes(1);
       expect(dbMock.insert).toHaveBeenCalledTimes(entryRows.length);
-      expect(insertCalls[0]?.table.name).toBe('habit_entries');
+      expect(insertCalls[0]?.table.name).toBe(DOMAIN.entities.entries.tableName);
       expect(insertCalls[0]?.row).toEqual(entryRows[0]);
-      expect(conflictCalls[0]?.target).toBe('habit_entries-id');
+      expect(conflictCalls[0]?.target).toBe(`${DOMAIN.entities.entries.tableName}-id`);
       expect(conflictCalls[0]?.set).toEqual(entryRows[0]);
     });
 

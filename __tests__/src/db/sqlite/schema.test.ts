@@ -6,13 +6,14 @@ import {
   deviceEntity,
   outbox,
 } from '../../../../src/db/sqlite/schema';
+import { DOMAIN } from '../../../../src/config/domain.config';
 
 describe('Database Schema', () => {
   describe('primary entity table', () => {
     it('should have correct table name', () => {
       expect(primaryEntity).toBeDefined();
       const config = getTableConfig(primaryEntity);
-      expect(config.name).toBe('habits');
+      expect(config.name).toBe(DOMAIN.entities.primary.tableName);
     });
 
     it('should have all required columns', () => {
@@ -40,7 +41,7 @@ describe('Database Schema', () => {
       const hasUserUpdatedIdx = config.indexes.some((idx) => {
         // Index config might be nested or directly accessible
         const indexName = (idx as any).config?.name || (idx as any).name;
-        return indexName === 'habits_user_updated_idx';
+        return indexName === `${DOMAIN.entities.primary.tableName}_user_updated_idx`;
       });
       expect(hasUserUpdatedIdx).toBe(true);
     });
@@ -105,7 +106,7 @@ describe('Database Schema', () => {
     it('should have correct table name', () => {
       expect(entryEntity).toBeDefined();
       const config = getTableConfig(entryEntity);
-      expect(config.name).toBe('habit_entries');
+      expect(config.name).toBe(DOMAIN.entities.entries.tableName);
     });
 
     it('should have all required columns', () => {
@@ -130,7 +131,7 @@ describe('Database Schema', () => {
 
       const uniqueIdx = config.indexes.find((idx) => {
         const indexName = (idx as any).config?.name || (idx as any).name;
-        return indexName === 'habit_entries_unique';
+        return indexName === `${DOMAIN.entities.entries.tableName}_unique`;
       });
       expect(uniqueIdx).toBeDefined();
       const isUnique = (uniqueIdx as any)?.config?.unique || (uniqueIdx as any)?.unique;
@@ -141,7 +142,7 @@ describe('Database Schema', () => {
       const config = getTableConfig(entryEntity);
       const hasUserHabitIdx = config.indexes.some((idx) => {
         const indexName = (idx as any).config?.name || (idx as any).name;
-        return indexName === 'habit_entries_user_habit_idx';
+        return indexName === `${DOMAIN.entities.entries.tableName}_user_habit_idx`;
       });
       expect(hasUserHabitIdx).toBe(true);
     });
@@ -197,7 +198,7 @@ describe('Database Schema', () => {
     it('should have correct table name', () => {
       expect(reminderEntity).toBeDefined();
       const config = getTableConfig(reminderEntity);
-      expect(config.name).toBe('reminders');
+      expect(config.name).toBe(DOMAIN.entities.reminders.tableName);
     });
 
     it('should have all required columns', () => {
@@ -223,7 +224,7 @@ describe('Database Schema', () => {
 
       const hasEnabledIdx = config.indexes.some((idx) => {
         const indexName = (idx as any).config?.name || (idx as any).name;
-        return indexName === 'reminders_user_habit_enabled_idx';
+        return indexName === `${DOMAIN.entities.reminders.tableName}_user_habit_enabled_idx`;
       });
       expect(hasEnabledIdx).toBe(true);
     });
@@ -283,7 +284,7 @@ describe('Database Schema', () => {
     it('should have correct table name', () => {
       expect(deviceEntity).toBeDefined();
       const config = getTableConfig(deviceEntity);
-      expect(config.name).toBe('devices');
+      expect(config.name).toBe(DOMAIN.entities.devices.tableName);
     });
 
     it('should have all required columns', () => {
