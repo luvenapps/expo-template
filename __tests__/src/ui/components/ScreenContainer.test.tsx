@@ -12,7 +12,7 @@ import { render } from '@testing-library/react-native';
 import React from 'react';
 import { Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ScreenContainer } from '../../../../src/ui/components/ScreenContainer';
+import { ScreenContainer } from '@/ui/components/ScreenContainer';
 
 describe('ScreenContainer', () => {
   beforeEach(() => {

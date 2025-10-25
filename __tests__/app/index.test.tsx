@@ -4,6 +4,7 @@ jest.mock('expo-router', () => ({
   },
 }));
 
+import { DOMAIN } from '@/config/domain.config';
 import { render, screen } from '@testing-library/react-native';
 import React from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -26,7 +27,7 @@ describe('HomeScreen', () => {
       </SafeAreaProvider>,
     );
 
-    expect(await screen.findByText('Welcome')).toBeTruthy();
+    expect(await screen.findByText(`Welcome to ${DOMAIN.app.displayName}`)).toBeTruthy();
     expect(await screen.findByText('Get Started')).toBeTruthy();
   });
 });

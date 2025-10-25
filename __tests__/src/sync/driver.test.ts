@@ -50,10 +50,10 @@ jest.mock('@/sync/localPersistence', () => {
   };
 });
 
-import { Platform } from 'react-native';
-import { pushOutbox, pullUpdates } from '@/sync/driver';
-import type { OutboxRecord } from '@/sync/outbox';
 import { DOMAIN } from '@/config/domain.config';
+import { pullUpdates, pushOutbox } from '@/sync/driver';
+import type { OutboxRecord } from '@/sync/outbox';
+import { Platform } from 'react-native';
 
 describe('sync driver', () => {
   beforeEach(() => {
@@ -81,9 +81,9 @@ describe('sync driver', () => {
           {
             id: '1',
             tableName: DOMAIN.entities.primary.tableName,
-            rowId: 'habit-1',
+            rowId: `${DOMAIN.entities.primary.tableName}-1`,
             operation: 'insert',
-            payload: JSON.stringify({ name: 'Habit' }),
+            payload: JSON.stringify({ name: `${DOMAIN.entities.primary.displayName}` }),
             version: 1,
             attempts: 0,
             createdAt: new Date().toISOString(),
@@ -101,9 +101,9 @@ describe('sync driver', () => {
       const record: OutboxRecord = {
         id: '1',
         tableName: DOMAIN.entities.primary.tableName,
-        rowId: 'habit-1',
+        rowId: `${DOMAIN.entities.primary.tableName}-1`,
         operation: 'insert',
-        payload: JSON.stringify({ name: 'Habit', color: '#fff' }),
+        payload: JSON.stringify({ name: `${DOMAIN.entities.primary.displayName}`, color: '#fff' }),
         version: 2,
         attempts: 0,
         createdAt: new Date().toISOString(),
@@ -115,11 +115,11 @@ describe('sync driver', () => {
         body: {
           mutations: [
             {
-              id: 'habit-1',
+              id: `${DOMAIN.entities.primary.tableName}-1`,
               table: DOMAIN.entities.primary.tableName,
               operation: 'insert',
               version: 2,
-              payload: { name: 'Habit', color: '#fff' },
+              payload: { name: `${DOMAIN.entities.primary.displayName}`, color: '#fff' },
             },
           ],
         },
@@ -137,9 +137,9 @@ describe('sync driver', () => {
           {
             id: '1',
             tableName: DOMAIN.entities.primary.tableName,
-            rowId: 'habit-1',
+            rowId: `${DOMAIN.entities.primary.tableName}-1`,
             operation: 'insert',
-            payload: JSON.stringify({ name: 'Habit' }),
+            payload: JSON.stringify({ name: `${DOMAIN.entities.primary.displayName}` }),
             version: 1,
             attempts: 0,
             createdAt: new Date().toISOString(),
@@ -159,9 +159,9 @@ describe('sync driver', () => {
           {
             id: '1',
             tableName: DOMAIN.entities.primary.tableName,
-            rowId: 'habit-1',
+            rowId: `${DOMAIN.entities.primary.tableName}-1`,
             operation: 'insert',
-            payload: JSON.stringify({ name: 'Habit' }),
+            payload: JSON.stringify({ name: `${DOMAIN.entities.primary.displayName}` }),
             version: 1,
             attempts: 0,
             createdAt: new Date().toISOString(),
@@ -179,7 +179,7 @@ describe('sync driver', () => {
       const record: OutboxRecord = {
         id: '1',
         tableName: DOMAIN.entities.primary.tableName,
-        rowId: 'habit-1',
+        rowId: `${DOMAIN.entities.primary.tableName}-1`,
         operation: 'insert',
         payload: '{invalid json}',
         version: 1,
@@ -193,7 +193,7 @@ describe('sync driver', () => {
         body: {
           mutations: [
             {
-              id: 'habit-1',
+              id: `${DOMAIN.entities.primary.tableName}-1`,
               table: DOMAIN.entities.primary.tableName,
               operation: 'insert',
               version: 1,
@@ -215,9 +215,9 @@ describe('sync driver', () => {
           {
             id: '1',
             tableName: DOMAIN.entities.primary.tableName,
-            rowId: 'habit-1',
+            rowId: `${DOMAIN.entities.primary.tableName}-1`,
             operation: 'insert',
-            payload: JSON.stringify({ name: 'Habit' }),
+            payload: JSON.stringify({ name: `${DOMAIN.entities.primary.displayName}` }),
             version: 1,
             attempts: 0,
             createdAt: new Date().toISOString(),
@@ -238,17 +238,17 @@ describe('sync driver', () => {
         data: {
           success: true,
           cursors: {
-            habits: 'cursor-habits',
-            habit_entries: 'cursor-entries',
+            [DOMAIN.entities.primary.tableName]: `${DOMAIN.entities.primary.plural}`,
+            [DOMAIN.entities.entries.tableName]: 'cursor-entries',
             reminders: null,
             devices: 'cursor-devices',
           },
           records: {
-            habits: [
+            [DOMAIN.entities.primary.tableName]: [
               {
-                id: 'habit-1',
+                id: `${DOMAIN.entities.primary.tableName}-1`,
                 user_id: 'user-1',
-                name: 'Habit',
+                name: `${DOMAIN.entities.primary.displayName}`,
                 cadence: 'daily',
                 color: '#fff',
                 sort_order: 1,
@@ -259,11 +259,11 @@ describe('sync driver', () => {
                 deleted_at: null,
               },
             ],
-            habit_entries: [
+            [DOMAIN.entities.entries.tableName]: [
               {
                 id: 'entry-1',
                 user_id: 'user-1',
-                habit_id: 'habit-1',
+                [DOMAIN.entities.entries.row_id]: `${DOMAIN.entities.primary.tableName}-1`,
                 date: '2025-01-01',
                 amount: 2,
                 source: 'remote',
@@ -307,9 +307,9 @@ describe('sync driver', () => {
         DOMAIN.entities.primary.tableName,
         expect.arrayContaining([
           expect.objectContaining({
-            id: 'habit-1',
+            id: `${DOMAIN.entities.primary.tableName}-1`,
             userId: 'user-1',
-            name: 'Habit',
+            name: `${DOMAIN.entities.primary.displayName}`,
           }),
         ]),
       );
@@ -319,7 +319,7 @@ describe('sync driver', () => {
         expect.arrayContaining([
           expect.objectContaining({
             id: 'entry-1',
-            habitId: 'habit-1',
+            [DOMAIN.entities.entries.foreignKey]: `${DOMAIN.entities.primary.tableName}-1`,
             amount: 2,
           }),
         ]),
@@ -327,7 +327,7 @@ describe('sync driver', () => {
 
       expect(mockSetCursor).toHaveBeenCalledWith(
         `sync:${DOMAIN.entities.primary.tableName}`,
-        'cursor-habits',
+        `${DOMAIN.entities.primary.plural}`,
       );
       expect(mockSetCursor).toHaveBeenCalledWith(
         `sync:${DOMAIN.entities.entries.tableName}`,
@@ -383,7 +383,7 @@ describe('sync driver', () => {
               {
                 id: 'reminder-1',
                 user_id: 'user-1',
-                habit_id: 'habit-1',
+                [DOMAIN.entities.entries.row_id]: `${DOMAIN.entities.primary.tableName}-1`,
                 time_local: '09:00',
                 days_of_week: '1,2,3',
                 timezone: 'UTC',
@@ -396,14 +396,14 @@ describe('sync driver', () => {
               // Missing id - should be filtered
               {
                 user_id: 'user-1',
-                habit_id: 'habit-1',
+                [DOMAIN.entities.entries.row_id]: `${DOMAIN.entities.primary.tableName}-1`,
               },
               // Missing user_id - should be filtered
               {
                 id: 'reminder-2',
-                habit_id: 'habit-1',
+                [DOMAIN.entities.entries.row_id]: `${DOMAIN.entities.primary.tableName}-1`,
               },
-              // Missing habit_id - should be filtered
+              // Missing row_id - should be filtered
               {
                 id: 'reminder-3',
                 user_id: 'user-1',
@@ -432,15 +432,15 @@ describe('sync driver', () => {
       expect(remindersCall[1]).toHaveLength(1);
     });
 
-    it('applies default values for missing habit fields', async () => {
+    it(`applies default values for missing ${DOMAIN.entities.primary.name} fields`, async () => {
       mockInvoke.mockResolvedValue({
         data: {
           success: true,
           cursors: {},
           records: {
-            habits: [
+            [DOMAIN.entities.primary.tableName]: [
               {
-                id: 'habit-minimal',
+                id: `${DOMAIN.entities.primary.name}-minimal`,
                 user_id: 'user-1',
                 // All optional fields missing - should use defaults
               },
@@ -452,11 +452,11 @@ describe('sync driver', () => {
 
       await pullUpdates();
 
-      const habitsCall = (mockUpsertRecords as jest.Mock).mock.calls.find(
+      const entityCall = (mockUpsertRecords as jest.Mock).mock.calls.find(
         (call) => call[0] === DOMAIN.entities.primary.tableName,
       );
-      expect(habitsCall[1][0]).toMatchObject({
-        id: 'habit-minimal',
+      expect(entityCall[1][0]).toMatchObject({
+        id: `${DOMAIN.entities.primary.name}-minimal`,
         userId: 'user-1',
         name: '',
         cadence: 'daily',
@@ -466,21 +466,21 @@ describe('sync driver', () => {
         version: 1,
         deletedAt: null,
       });
-      expect(habitsCall[1][0].createdAt).toBeDefined();
-      expect(habitsCall[1][0].updatedAt).toBeDefined();
+      expect(entityCall[1][0].createdAt).toBeDefined();
+      expect(entityCall[1][0].updatedAt).toBeDefined();
     });
 
-    it('applies default values for missing habit entry fields', async () => {
+    it(`applies default values for missing ${DOMAIN.entities.primary.name}-minimal entry fields`, async () => {
       mockInvoke.mockResolvedValue({
         data: {
           success: true,
           cursors: {},
           records: {
-            habit_entries: [
+            [DOMAIN.entities.entries.tableName]: [
               {
                 id: 'entry-minimal',
                 user_id: 'user-1',
-                habit_id: 'habit-1',
+                [DOMAIN.entities.entries.row_id]: `${DOMAIN.entities.primary.tableName}-1`,
                 date: '2025-01-01',
                 // All optional fields missing
               },
@@ -498,7 +498,7 @@ describe('sync driver', () => {
       expect(entriesCall[1][0]).toMatchObject({
         id: 'entry-minimal',
         userId: 'user-1',
-        habitId: 'habit-1',
+        [DOMAIN.entities.entries.foreignKey]: `${DOMAIN.entities.primary.tableName}-1`,
         date: '2025-01-01',
         amount: 0,
         source: 'remote',
@@ -519,7 +519,7 @@ describe('sync driver', () => {
               {
                 id: 'reminder-minimal',
                 user_id: 'user-1',
-                habit_id: 'habit-1',
+                [DOMAIN.entities.entries.row_id]: `${DOMAIN.entities.primary.tableName}-1`,
                 // All optional fields missing
               },
             ],
@@ -536,7 +536,7 @@ describe('sync driver', () => {
       expect(remindersCall[1][0]).toMatchObject({
         id: 'reminder-minimal',
         userId: 'user-1',
-        habitId: 'habit-1',
+        [DOMAIN.entities.entries.foreignKey]: `${DOMAIN.entities.primary.tableName}-1`,
         timeLocal: '09:00',
         daysOfWeek: '',
         timezone: 'UTC',

@@ -5,6 +5,7 @@ jest.mock('uuid', () => {
   };
 });
 
+import { DOMAIN } from '@/config/domain.config';
 import { outbox } from '@/db/sqlite';
 import {
   clearAll,
@@ -151,7 +152,7 @@ describe('outbox helpers', () => {
       update: jest.fn(),
     } as any);
 
-    await clearTable('habits');
+    await clearTable(`${DOMAIN.entities.primary.plural}`);
 
     expect(deleteFn).toHaveBeenCalledWith(outbox);
     expect(where).toHaveBeenCalled();

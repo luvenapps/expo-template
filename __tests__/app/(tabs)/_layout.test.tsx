@@ -19,8 +19,8 @@ jest.mock('expo-router', () => {
   return { Tabs };
 });
 
+import { DOMAIN } from '@/config/domain.config';
 import { render } from '@testing-library/react-native';
-import React from 'react';
 import * as RN from 'react-native';
 import TabsLayout from '../../../app/(tabs)/_layout';
 
@@ -88,7 +88,7 @@ describe('TabsLayout', () => {
       const indexScreen = screens.find((s: any) => s.props.name === 'index');
 
       expect(indexScreen).toBeDefined();
-      expect(indexScreen.props.options.title).toBe('Today');
+      expect(indexScreen.props.options.title).toBe(DOMAIN.app.displayName);
       expect(indexScreen.props.options.tabBarIcon).toBeDefined();
     });
 

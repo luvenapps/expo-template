@@ -52,6 +52,7 @@ export const DOMAIN = {
       remoteTableName: '__APP_NAME__SINGULAR___entries', // Supabase table name
       displayName: 'Entry', // Display name for UI
       foreignKey: '__APP_NAME__SINGULAR__Id', // Foreign key column name referencing primary entity
+      row_id: '__APP_NAME__SINGULAR___id', // Row Id
     },
 
     /**
@@ -63,7 +64,7 @@ export const DOMAIN = {
       tableName: 'reminders',
       remoteTableName: 'reminders',
       displayName: 'Reminder',
-      foreignKey: 'habitId', // Foreign key column name referencing primary entity
+      foreignKey: '__APP_NAME__SINGULAR__Id', // Foreign key column name referencing primary entity
     },
 
     /**

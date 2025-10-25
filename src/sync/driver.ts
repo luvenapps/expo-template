@@ -1,11 +1,11 @@
-import { Platform } from 'react-native';
 import { supabase } from '@/auth/client';
 import { useSessionStore } from '@/auth/session';
-import { getCursor, setCursor, clearCursor } from './cursors';
-import type { OutboxRecord } from './outbox';
-import { upsertRecords, registerPersistenceTable } from './localPersistence';
-import { primaryEntity, entryEntity, reminderEntity, deviceEntity } from '@/db/sqlite';
 import { DOMAIN } from '@/config/domain.config';
+import { deviceEntity, entryEntity, primaryEntity, reminderEntity } from '@/db/sqlite';
+import { Platform } from 'react-native';
+import { clearCursor, getCursor, setCursor } from './cursors';
+import { registerPersistenceTable, upsertRecords } from './localPersistence';
+import type { OutboxRecord } from './outbox';
 
 /**
  * Generic type aliases for entity records
@@ -192,11 +192,11 @@ function mapPrimaryEntities(rows: RemoteRow[] | undefined): PrimaryEntityRecord[
 function mapEntries(rows: RemoteRow[] | undefined): EntryRecord[] {
   if (!rows?.length) return [];
   return rows
-    .filter((row) => row?.id && row?.user_id && row?.habit_id && row?.date)
+    .filter((row) => row?.id && row?.user_id && row[DOMAIN.entities.entries.row_id] && row?.date)
     .map((row) => ({
       id: String(row.id),
       userId: String(row.user_id),
-      habitId: String(row.habit_id),
+      [DOMAIN.entities.entries.foreignKey]: String(row[DOMAIN.entities.entries.row_id]),
       date: String(row.date),
       amount: Number(row.amount ?? 0),
       source: String(row.source ?? 'remote'),
@@ -213,11 +213,11 @@ function mapEntries(rows: RemoteRow[] | undefined): EntryRecord[] {
 function mapReminders(rows: RemoteRow[] | undefined): ReminderRecord[] {
   if (!rows?.length) return [];
   return rows
-    .filter((row) => row?.id && row?.user_id && row?.habit_id)
+    .filter((row) => row?.id && row?.user_id && row[DOMAIN.entities.entries.row_id])
     .map((row) => ({
       id: String(row.id),
       userId: String(row.user_id),
-      habitId: String(row.habit_id),
+      [DOMAIN.entities.entries.foreignKey]: String(row[DOMAIN.entities.entries.row_id]),
       timeLocal: String(row.time_local ?? '09:00'),
       daysOfWeek: String(row.days_of_week ?? ''),
       timezone: String(row.timezone ?? 'UTC'),

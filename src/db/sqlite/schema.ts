@@ -1,5 +1,5 @@
-import { sqliteTable, text, integer, uniqueIndex, index } from 'drizzle-orm/sqlite-core';
 import { DOMAIN } from '@/config/domain.config';
+import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 const versionColumn = () => integer('version').default(1).notNull();
 const timestampColumn = (name: string) => text(name).notNull();
@@ -41,7 +41,7 @@ export const entryEntity = sqliteTable(
   {
     id: text('id').primaryKey(),
     userId: text('user_id').notNull(),
-    habitId: text('habit_id').notNull(),
+    [DOMAIN.entities.entries.foreignKey]: text(`${DOMAIN.entities.primary.name}_id`).notNull(),
     date: text('date').notNull(),
     amount: integer('amount').default(0).notNull(),
     source: text('source').default('local').notNull(),
@@ -52,13 +52,13 @@ export const entryEntity = sqliteTable(
   },
   (table) => [
     uniqueIndex(`${DOMAIN.entities.entries.tableName}_unique`).on(
-      table.habitId,
+      table[DOMAIN.entities.entries.foreignKey],
       table.date,
       table.deletedAt,
     ),
-    index(`${DOMAIN.entities.entries.tableName}_user_habit_idx`).on(
+    index(`${DOMAIN.entities.entries.tableName}_user_${DOMAIN.entities.primary.name}_idx`).on(
       table.userId,
-      table.habitId,
+      table[DOMAIN.entities.entries.foreignKey],
       table.date,
     ),
   ],
@@ -73,7 +73,7 @@ export const reminderEntity = sqliteTable(
   {
     id: text('id').primaryKey(),
     userId: text('user_id').notNull(),
-    habitId: text('habit_id').notNull(),
+    [DOMAIN.entities.entries.foreignKey]: text(`${DOMAIN.entities.entries.name}_id`).notNull(),
     timeLocal: text('time_local').notNull(),
     daysOfWeek: text('days_of_week').notNull(),
     timezone: text('timezone').notNull(),
@@ -84,11 +84,9 @@ export const reminderEntity = sqliteTable(
     deletedAt: optionalTimestamp('deleted_at'),
   },
   (table) => [
-    index(`${DOMAIN.entities.reminders.tableName}_user_habit_enabled_idx`).on(
-      table.userId,
-      table.habitId,
-      table.isEnabled,
-    ),
+    index(
+      `${DOMAIN.entities.reminders.tableName}_user_${DOMAIN.entities.primary.name}_enabled_idx`,
+    ).on(table.userId, table[DOMAIN.entities.entries.foreignKey], table.isEnabled),
   ],
 );
 

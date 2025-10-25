@@ -1,12 +1,12 @@
-import { getTableConfig } from 'drizzle-orm/sqlite-core';
+import { DOMAIN } from '@/config/domain.config';
 import {
-  primaryEntity,
-  entryEntity,
-  reminderEntity,
   deviceEntity,
+  entryEntity,
   outbox,
-} from '../../../../src/db/sqlite/schema';
-import { DOMAIN } from '../../../../src/config/domain.config';
+  primaryEntity,
+  reminderEntity,
+} from '@/db/sqlite/schema';
+import { getTableConfig } from 'drizzle-orm/sqlite-core';
 
 describe('Database Schema', () => {
   describe('primary entity table', () => {
@@ -114,7 +114,7 @@ describe('Database Schema', () => {
 
       expect(columns).toContain('id');
       expect(columns).toContain('userId');
-      expect(columns).toContain('habitId');
+      expect(columns).toContain(`${DOMAIN.entities.primary.name}Id`);
       expect(columns).toContain('date');
       expect(columns).toContain('amount');
       expect(columns).toContain('source');
@@ -124,7 +124,7 @@ describe('Database Schema', () => {
       expect(columns).toContain('deletedAt');
     });
 
-    it('should have unique index on habitId, date, deletedAt', () => {
+    it(`should have unique index on ${DOMAIN.entities.primary.name}Id, date, deletedAt`, () => {
       const config = getTableConfig(entryEntity);
       expect(config.indexes).toBeDefined();
       expect(config.indexes.length).toBeGreaterThan(0);
@@ -138,13 +138,16 @@ describe('Database Schema', () => {
       expect(isUnique).toBe(true);
     });
 
-    it('should have user habit index', () => {
+    it(`should have user ${DOMAIN.entities.primary.name} index`, () => {
       const config = getTableConfig(entryEntity);
-      const hasUserHabitIdx = config.indexes.some((idx) => {
+      const hasUserEntityIdx = config.indexes.some((idx) => {
         const indexName = (idx as any).config?.name || (idx as any).name;
-        return indexName === `${DOMAIN.entities.entries.tableName}_user_habit_idx`;
+        return (
+          indexName ===
+          `${DOMAIN.entities.entries.tableName}_user_${DOMAIN.entities.primary.name}_idx`
+        );
       });
-      expect(hasUserHabitIdx).toBe(true);
+      expect(hasUserEntityIdx).toBe(true);
     });
 
     it('should have id as primary key', () => {
@@ -155,8 +158,8 @@ describe('Database Schema', () => {
     it('should have required foreign key columns', () => {
       expect(entryEntity.userId).toBeDefined();
       expect(entryEntity.userId.notNull).toBe(true);
-      expect(entryEntity.habitId).toBeDefined();
-      expect(entryEntity.habitId.notNull).toBe(true);
+      expect(entryEntity[DOMAIN.entities.entries.foreignKey]).toBeDefined();
+      expect(entryEntity[DOMAIN.entities.entries.foreignKey].notNull).toBe(true);
     });
 
     it('should have date as not null', () => {
@@ -206,7 +209,7 @@ describe('Database Schema', () => {
 
       expect(columns).toContain('id');
       expect(columns).toContain('userId');
-      expect(columns).toContain('habitId');
+      expect(columns).toContain(`${DOMAIN.entities.primary.name}Id`);
       expect(columns).toContain('timeLocal');
       expect(columns).toContain('daysOfWeek');
       expect(columns).toContain('timezone');
@@ -224,7 +227,10 @@ describe('Database Schema', () => {
 
       const hasEnabledIdx = config.indexes.some((idx) => {
         const indexName = (idx as any).config?.name || (idx as any).name;
-        return indexName === `${DOMAIN.entities.reminders.tableName}_user_habit_enabled_idx`;
+        return (
+          indexName ===
+          `${DOMAIN.entities.reminders.tableName}_user_${DOMAIN.entities.primary.name}_enabled_idx`
+        );
       });
       expect(hasEnabledIdx).toBe(true);
     });
@@ -237,8 +243,8 @@ describe('Database Schema', () => {
     it('should have required foreign key columns', () => {
       expect(reminderEntity.userId).toBeDefined();
       expect(reminderEntity.userId.notNull).toBe(true);
-      expect(reminderEntity.habitId).toBeDefined();
-      expect(reminderEntity.habitId.notNull).toBe(true);
+      expect(reminderEntity[DOMAIN.entities.entries.foreignKey]).toBeDefined();
+      expect(reminderEntity[DOMAIN.entities.entries.foreignKey].notNull).toBe(true);
     });
 
     it('should have timeLocal as not null', () => {

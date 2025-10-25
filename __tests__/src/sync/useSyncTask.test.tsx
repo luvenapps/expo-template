@@ -1,9 +1,3 @@
-import { renderHook, act, waitFor } from '@testing-library/react-native';
-import { AppState, AppStateStatus, Platform } from 'react-native';
-import * as BackgroundTask from 'expo-background-task';
-import { registerTaskAsync, unregisterTaskAsync, isTaskDefined } from 'expo-task-manager';
-import { useSyncTask } from '@/sync/useSyncTask';
-
 jest.useFakeTimers();
 
 // Mock expo modules
@@ -26,6 +20,13 @@ jest.mock('expo-task-manager', () => ({
   unregisterTaskAsync: jest.fn().mockResolvedValue(undefined),
   isTaskDefined: jest.fn().mockReturnValue(false),
 }));
+
+import { DOMAIN } from '@/config/domain.config';
+import { useSyncTask } from '@/sync/useSyncTask';
+import { act, renderHook, waitFor } from '@testing-library/react-native';
+import * as BackgroundTask from 'expo-background-task';
+import { isTaskDefined, registerTaskAsync, unregisterTaskAsync } from 'expo-task-manager';
+import { AppState, AppStateStatus, Platform } from 'react-native';
 
 const mockEngine = {
   runSync: jest.fn().mockResolvedValue(undefined),
@@ -269,7 +270,7 @@ describe('useSyncTask', () => {
       );
 
       await waitFor(() => {
-        expect(BackgroundTask.registerTaskAsync).toHaveBeenCalledWith('betterhabits-sync-task', {
+        expect(BackgroundTask.registerTaskAsync).toHaveBeenCalledWith(DOMAIN.app.syncTask, {
           minimumInterval: 900,
         });
       });

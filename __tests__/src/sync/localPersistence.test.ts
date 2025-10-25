@@ -1,3 +1,5 @@
+import { DOMAIN as mockDomain } from '@/config/domain.config';
+
 const insertCalls: { table: { name: string }; row: unknown }[] = [];
 const conflictCalls: { target: unknown; set: unknown }[] = [];
 
@@ -20,8 +22,8 @@ jest.mock('@/db/sqlite', () => {
   const createTable = (name: string) => ({ name, id: `${name}-id` });
   return {
     __esModule: true,
-    primaryEntity: createTable('habits'),
-    entryEntity: createTable('habit_entries'),
+    primaryEntity: createTable(`${mockDomain.entities.primary.plural}`),
+    entryEntity: createTable(`${mockDomain.entities.primary.name}_entries`),
     reminderEntity: createTable('reminders'),
     deviceEntity: createTable('devices'),
     getDb: mockGetDb,
@@ -34,19 +36,17 @@ const { upsertRecords, registerPersistenceTable, resetPersistenceRegistry } =
   require('@/sync/localPersistence') as LocalPersistenceModule;
 const { primaryEntity, entryEntity } = require('@/db/sqlite');
 
-import { DOMAIN } from '@/config/domain.config';
-
 describe('localPersistence', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     insertCalls.length = 0;
     conflictCalls.length = 0;
     resetPersistenceRegistry();
-    registerPersistenceTable(DOMAIN.entities.primary.tableName, {
+    registerPersistenceTable(mockDomain.entities.primary.tableName, {
       table: primaryEntity,
       primaryKey: primaryEntity.id,
     });
-    registerPersistenceTable(DOMAIN.entities.entries.tableName, {
+    registerPersistenceTable(mockDomain.entities.entries.tableName, {
       table: entryEntity,
       primaryKey: entryEntity.id,
     });
@@ -54,16 +54,16 @@ describe('localPersistence', () => {
 
   describe('upsertRecords', () => {
     it('skips database work when no rows provided', async () => {
-      await upsertRecords(DOMAIN.entities.primary.tableName, []);
+      await upsertRecords(mockDomain.entities.primary.tableName, []);
 
       expect(mockGetDb).not.toHaveBeenCalled();
       expect(dbMock.insert).not.toHaveBeenCalled();
     });
 
-    it('upserts each habit row using the table primary key as conflict target', async () => {
+    it(`upserts each ${mockDomain.entities.primary.name} row using the table primary key as conflict target`, async () => {
       const rows = [
         {
-          id: 'habit-1',
+          id: `${mockDomain.entities.primary.name}-1`,
           userId: 'user-1',
           name: 'Drink water',
           cadence: 'daily',
@@ -76,7 +76,7 @@ describe('localPersistence', () => {
           deletedAt: null,
         },
         {
-          id: 'habit-2',
+          id: `${mockDomain.entities.primary.name}-2`,
           userId: 'user-1',
           name: 'Stretch',
           cadence: 'daily',
@@ -90,20 +90,20 @@ describe('localPersistence', () => {
         },
       ];
 
-      await upsertRecords(DOMAIN.entities.primary.tableName, rows);
+      await upsertRecords(mockDomain.entities.primary.tableName, rows);
 
       expect(mockGetDb).toHaveBeenCalledTimes(1);
       expect(dbMock.insert).toHaveBeenCalledTimes(rows.length);
 
       expect(insertCalls).toHaveLength(rows.length);
       insertCalls.forEach((call, index) => {
-        expect(call.table.name).toBe(DOMAIN.entities.primary.tableName);
+        expect(call.table.name).toBe(mockDomain.entities.primary.tableName);
         expect(call.row).toEqual(rows[index]);
       });
 
       expect(conflictCalls).toHaveLength(rows.length);
       conflictCalls.forEach((call, index) => {
-        expect(call.target).toBe(`${DOMAIN.entities.primary.tableName}-id`);
+        expect(call.target).toBe(`${mockDomain.entities.primary.tableName}-id`);
         expect(call.set).toEqual(rows[index]);
       });
     });
@@ -113,7 +113,7 @@ describe('localPersistence', () => {
         {
           id: 'entry-1',
           userId: 'user-1',
-          habitId: 'habit-1',
+          [mockDomain.entities.entries.foreignKey]: `${mockDomain.entities.primary.name}-1`,
           date: '2025-01-01',
           amount: 1,
           source: 'local',
@@ -124,13 +124,13 @@ describe('localPersistence', () => {
         },
       ];
 
-      await upsertRecords(DOMAIN.entities.entries.tableName, entryRows);
+      await upsertRecords(mockDomain.entities.entries.tableName, entryRows);
 
       expect(mockGetDb).toHaveBeenCalledTimes(1);
       expect(dbMock.insert).toHaveBeenCalledTimes(entryRows.length);
-      expect(insertCalls[0]?.table.name).toBe(DOMAIN.entities.entries.tableName);
+      expect(insertCalls[0]?.table.name).toBe(mockDomain.entities.entries.tableName);
       expect(insertCalls[0]?.row).toEqual(entryRows[0]);
-      expect(conflictCalls[0]?.target).toBe(`${DOMAIN.entities.entries.tableName}-id`);
+      expect(conflictCalls[0]?.target).toBe(`${mockDomain.entities.entries.tableName}-id`);
       expect(conflictCalls[0]?.set).toEqual(entryRows[0]);
     });
 
