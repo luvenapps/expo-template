@@ -128,39 +128,74 @@ if [ $SPRINGBOARD_WAIT -ge $SPRINGBOARD_MAX ]; then
   echo "   Proceeding anyway, but install may fail..."
 fi
 
-echo "🧹 Uninstalling $BID if already installed..."
-# Use timeout wrapper for get_app_container check
-if run_with_timeout 10 xcrun simctl get_app_container "$UDID" "$BID" app >/dev/null 2>&1; then
-  echo "   App is installed, uninstalling..."
-  if run_with_timeout 60 xcrun simctl uninstall "$UDID" "$BID"; then
-    echo "   Uninstalled successfully"
+# Install with retries
+ATTEMPTS="${RETRIES:-3}"
+DELAY="${RETRY_DELAY:-5}"
+INSTALL_SUCCESS=false
+
+i=1
+while [ "$i" -le "$ATTEMPTS" ]; do
+  echo "🔄 Install attempt $i/$ATTEMPTS..."
+
+  echo "🧹 Uninstalling $BID if already installed..."
+  # Use timeout wrapper for get_app_container check
+  if run_with_timeout 10 xcrun simctl get_app_container "$UDID" "$BID" app >/dev/null 2>&1; then
+    echo "   App is installed, uninstalling..."
+    if run_with_timeout 60 xcrun simctl uninstall "$UDID" "$BID"; then
+      echo "   Uninstalled successfully"
+    else
+      rc=$?
+      if [ "$rc" -eq 124 ]; then
+        echo "⚠️  Timed out uninstalling $BID on attempt $i"
+      else
+        echo "⚠️  Uninstall failed with exit code $rc on attempt $i"
+      fi
+
+      if [ "$i" -lt "$ATTEMPTS" ]; then
+        echo "🧹 Cooling down ${DELAY}s before retry..."
+        sleep "$DELAY"
+        i=$((i + 1))
+        continue
+      else
+        echo "❌ Uninstall failed after $ATTEMPTS attempts"
+        exit "$rc"
+      fi
+    fi
+  else
+    echo "   (not previously installed)"
+  fi
+
+  echo "📦 Installing $APP..."
+  if run_with_timeout 240 xcrun simctl install "$UDID" "$APP"; then
+    echo "   Installed successfully"
+    INSTALL_SUCCESS=true
+    break
   else
     rc=$?
     if [ "$rc" -eq 124 ]; then
-      echo "❌ Timed out uninstalling $BID"
+      echo "⚠️  Install timed out after 240s on attempt $i"
     else
-      echo "❌ Uninstall failed with exit code $rc"
+      echo "⚠️  Install failed with exit code $rc on attempt $i"
     fi
-    exit "$rc"
-  fi
-else
-  echo "   (not previously installed)"
-fi
 
-echo "📦 Installing $APP..."
-if run_with_timeout 240 xcrun simctl install "$UDID" "$APP"; then
-  echo "   Installed successfully"
-else
-  rc=$?
-  if [ "$rc" -eq 124 ]; then
-    echo "❌ Install timed out after 240s"
     # Show simulator state for diagnostics
     echo "📊 Simulator state:"
     xcrun simctl list devices | grep "$UDID" || echo "   Could not retrieve state"
-  else
-    echo "❌ Install failed with exit code $rc"
+
+    if [ "$i" -lt "$ATTEMPTS" ]; then
+      echo "🧹 Cooling down ${DELAY}s before retry..."
+      sleep "$DELAY"
+      i=$((i + 1))
+    else
+      echo "❌ Install failed after $ATTEMPTS attempts"
+      exit "$rc"
+    fi
   fi
-  exit "$rc"
+done
+
+if [ "$INSTALL_SUCCESS" = false ]; then
+  echo "❌ Install failed after $ATTEMPTS attempts"
+  exit 1
 fi
 
 echo "🚀 Launching $BID..."
