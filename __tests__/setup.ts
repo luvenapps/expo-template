@@ -39,3 +39,21 @@ jest.mock('expo-sqlite', () => ({
   openDatabaseSync: jest.fn(() => mockDatabase),
   openDatabaseAsync: jest.fn(() => Promise.resolve(mockDatabase)),
 }));
+jest.mock('expo-background-fetch', () => ({
+  registerTaskAsync: jest.fn().mockResolvedValue(undefined),
+  unregisterTaskAsync: jest.fn().mockResolvedValue(undefined),
+  getStatusAsync: jest.fn().mockResolvedValue(1),
+  BackgroundFetchStatus: {
+    Denied: 0,
+  },
+  BackgroundFetchResult: {
+    NewData: 'NEW_DATA',
+    Failed: 'FAILED',
+  },
+}));
+
+jest.mock('expo-task-manager', () => ({
+  registerTaskAsync: jest.fn().mockResolvedValue(undefined),
+  unregisterTaskAsync: jest.fn().mockResolvedValue(undefined),
+  isTaskDefined: jest.fn(() => false),
+}));

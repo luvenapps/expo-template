@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { createSyncEngine } from './engine';
 import { useSyncStore } from '@/state';
-import { useSyncManager } from './useSyncManager';
+import { useSyncTask } from './useSyncTask';
 
 export function useSync({
   push,
@@ -10,6 +10,7 @@ export function useSync({
   enabled = true,
   intervalMs,
   autoStart = true,
+  backgroundInterval,
 }: {
   push: Parameters<typeof createSyncEngine>[0]['push'];
   pull?: Parameters<typeof createSyncEngine>[0]['pull'];
@@ -17,13 +18,20 @@ export function useSync({
   enabled?: boolean;
   intervalMs?: number;
   autoStart?: boolean;
+  backgroundInterval?: number;
 }) {
   const engine = useMemo(
     () => createSyncEngine({ push, pull, batchSize }),
     [push, pull, batchSize],
   );
 
-  const { triggerSync } = useSyncManager({ engine, enabled, intervalMs, autoStart });
+  const { triggerSync } = useSyncTask({
+    engine,
+    enabled,
+    intervalMs,
+    autoStart,
+    backgroundInterval,
+  });
 
   const { status, queueSize, lastSyncedAt, lastError } = useSyncStore();
 

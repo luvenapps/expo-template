@@ -41,7 +41,7 @@ jest.mock('@/sync', () => ({
     lastError: null,
     triggerSync: jest.fn(),
   }),
-  useSyncManager: jest.fn(),
+  useSyncTask: jest.fn(),
   createSyncEngine: jest.fn(),
   pushOutbox: jest.fn(),
   pullUpdates: jest.fn(),
