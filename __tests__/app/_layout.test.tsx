@@ -13,6 +13,26 @@ jest.mock('expo-status-bar', () => ({
   StatusBar: () => null,
 }));
 
+jest.mock('@/auth/session', () => ({
+  initSessionListener: jest.fn().mockResolvedValue(undefined),
+  useSessionStore: jest.fn(() => ({
+    status: 'unauthenticated',
+    session: null,
+  })),
+}));
+
+jest.mock('@/sync', () => ({
+  useSync: jest.fn().mockReturnValue({
+    status: 'idle',
+    queueSize: 0,
+    lastSyncedAt: null,
+    lastError: null,
+    triggerSync: jest.fn(),
+  }),
+  pushOutbox: jest.fn(),
+  pullUpdates: jest.fn(),
+}));
+
 jest.mock('expo-router', () => {
   const MockStack: any = ({
     children,

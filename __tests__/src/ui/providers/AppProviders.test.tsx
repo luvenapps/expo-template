@@ -28,8 +28,16 @@ jest.mock('expo-status-bar', () => ({
 }));
 
 // Mock auth session
+const mockSessionState = {
+  status: 'unauthenticated',
+  session: null,
+};
+
 jest.mock('@/auth/session', () => ({
-  initSessionListener: jest.fn(),
+  initSessionListener: jest.fn().mockResolvedValue(undefined),
+  useSessionStore: jest.fn((selector: (state: typeof mockSessionState) => any) =>
+    selector(mockSessionState),
+  ),
 }));
 
 // Mock sync hook - must use factory function
@@ -55,6 +63,7 @@ import { AppProviders } from '../../../../src/ui/providers/AppProviders';
 describe('AppProviders', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockSessionState.status = 'unauthenticated';
   });
 
   describe('Rendering', () => {
@@ -240,7 +249,24 @@ describe('AppProviders', () => {
         pull: pullUpdates,
         enabled: false,
         autoStart: false,
+        backgroundInterval: 900,
       });
+    });
+
+    it('should enable sync when user is authenticated on native platforms', () => {
+      mockSessionState.status = 'authenticated';
+      const { useSync } = require('@/sync');
+      render(
+        <AppProviders>
+          <Text>Test</Text>
+        </AppProviders>,
+      );
+      expect(useSync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          enabled: true,
+          autoStart: true,
+        }),
+      );
     });
   });
 

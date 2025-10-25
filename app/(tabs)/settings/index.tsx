@@ -23,6 +23,14 @@ export default function SettingsScreen() {
     enabled: false,
     autoStart: false,
   });
+  const isNative = Platform.OS !== 'web';
+  const canSync = isNative && status === 'authenticated';
+  const syncDisabledMessage = !isNative
+    ? 'Background sync requires the iOS or Android app to access the local database.'
+    : status !== 'authenticated'
+      ? 'Sign in to enable syncing with your Supabase account.'
+      : null;
+  const isSyncing = syncStatus === 'syncing';
 
   const handleAuthAction = async () => {
     if (status === 'authenticated') {
@@ -30,6 +38,11 @@ export default function SettingsScreen() {
     } else {
       router.push('/(auth)/login');
     }
+  };
+
+  const handleManualSync = async () => {
+    if (!canSync) return;
+    await triggerSync();
   };
 
   return (
@@ -51,7 +64,7 @@ export default function SettingsScreen() {
           </Button>
         </YStack>
 
-        {Platform.OS !== 'web' && (
+        {isNative && (
           <>
             <YStack height="$1" backgroundColor="$borderColor" marginVertical="$4" />
 
@@ -70,8 +83,13 @@ export default function SettingsScreen() {
                   Last error: {lastError}
                 </Paragraph>
               ) : null}
-              <Button size="$3" onPress={triggerSync}>
-                Sync now
+              {syncDisabledMessage ? (
+                <Paragraph textAlign="center" color="$colorMuted">
+                  {syncDisabledMessage}
+                </Paragraph>
+              ) : null}
+              <Button size="$3" disabled={!canSync || isSyncing} onPress={handleManualSync}>
+                {isSyncing ? 'Syncing…' : 'Sync now'}
               </Button>
             </YStack>
 

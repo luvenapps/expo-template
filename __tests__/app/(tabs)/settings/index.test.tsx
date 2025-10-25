@@ -26,8 +26,10 @@ jest.mock('@/auth/session', () => ({
   useSessionStore: jest.fn(),
 }));
 
-jest.mock('@/sync/hooks', () => ({
+jest.mock('@/sync', () => ({
   useSync: jest.fn(),
+  pushOutbox: jest.fn(),
+  pullUpdates: jest.fn(),
 }));
 
 // Mock react-native-safe-area-context
@@ -58,8 +60,9 @@ jest.mock('react-native-gesture-handler', () => {
 
 import { fireEvent, render } from '@testing-library/react-native';
 import React from 'react';
+import { Platform } from 'react-native';
 import { useSessionStore } from '@/auth/session';
-import { useSync } from '@/sync/hooks';
+import { useSync } from '@/sync';
 import SettingsScreen from '../../../../app/(tabs)/settings/index';
 
 const mockedUseSessionStore = useSessionStore as unknown as jest.Mock;
@@ -104,6 +107,11 @@ describe('SettingsScreen', () => {
       const { getByText } = render(<SettingsScreen />);
       fireEvent.press(getByText('Sign In'));
       expect(mockPush).toHaveBeenCalledWith('/(auth)/login');
+    });
+
+    it('should show sync disabled message when unauthenticated', () => {
+      const { getByText } = render(<SettingsScreen />);
+      expect(getByText('Sign in to enable syncing with your Supabase account.')).toBeDefined();
     });
   });
 
@@ -207,6 +215,22 @@ describe('SettingsScreen', () => {
       expect(getByText(/Last error: Network error/)).toBeDefined();
     });
 
+    it('hides sync status section on web', () => {
+      const originalPlatform = Platform.OS;
+      Object.defineProperty(Platform, 'OS', {
+        value: 'web',
+        configurable: true,
+      });
+
+      const { queryByText } = render(<SettingsScreen />);
+      expect(queryByText(/Sync Status:/)).toBeNull();
+
+      Object.defineProperty(Platform, 'OS', {
+        value: originalPlatform,
+        configurable: true,
+      });
+    });
+
     it('calls triggerSync when pressing Sync now', () => {
       const triggerSync = jest.fn();
       mockedUseSync.mockReturnValue({
@@ -216,6 +240,14 @@ describe('SettingsScreen', () => {
         lastError: null,
         triggerSync,
       });
+      mockedUseSessionStore.mockImplementation((selector: any) =>
+        selector({
+          status: 'authenticated',
+          session: { user: { email: 'user@example.com' } },
+          signOut: jest.fn(),
+          isLoading: false,
+        }),
+      );
 
       const { getByText } = render(<SettingsScreen />);
       fireEvent.press(getByText('Sync now'));
