@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { registerTaskAsync, unregisterTaskAsync, isTaskDefined } from 'expo-task-manager';
-import * as BackgroundFetch from 'expo-background-fetch';
+import * as BackgroundTask from 'expo-background-task';
 import type { createSyncEngine } from './engine';
 
 type SyncEngine = ReturnType<typeof createSyncEngine>;
@@ -100,10 +100,8 @@ export function useSyncTask({
         registerTask(BACKGROUND_TASK_NAME, runSync);
       }
 
-      await BackgroundFetch.registerTaskAsync(BACKGROUND_TASK_NAME, {
+      await BackgroundTask.registerTaskAsync(BACKGROUND_TASK_NAME, {
         minimumInterval: backgroundInterval,
-        stopOnTerminate: false,
-        startOnBoot: true,
       });
     };
 
@@ -125,21 +123,21 @@ function registerTask(name: string, runSync: () => Promise<void>) {
   registerTaskAsync(name, async () => {
     try {
       await runSync();
-      return BackgroundFetch.BackgroundFetchResult.NewData;
+      return BackgroundTask.BackgroundTaskResult.Success;
     } catch {
-      return BackgroundFetch.BackgroundFetchResult.Failed;
+      return BackgroundTask.BackgroundTaskResult.Failed;
     }
   }).catch(() => undefined);
 }
 
 async function unregisterBackgroundTask() {
-  const registered = await BackgroundFetch.getStatusAsync();
-  if (registered === BackgroundFetch.BackgroundFetchStatus.Denied) {
+  const status = await BackgroundTask.getStatusAsync();
+  if (status === BackgroundTask.BackgroundTaskStatus.Restricted) {
     return;
   }
 
   try {
-    await BackgroundFetch.unregisterTaskAsync(BACKGROUND_TASK_NAME);
+    await BackgroundTask.unregisterTaskAsync(BACKGROUND_TASK_NAME);
     await unregisterTaskAsync(BACKGROUND_TASK_NAME);
   } catch {
     // ignore

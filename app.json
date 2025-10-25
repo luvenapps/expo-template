@@ -41,7 +41,7 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": ["expo-router", "expo-system-ui", "expo-sqlite"],
+    "plugins": ["expo-router", "expo-system-ui", "expo-sqlite", "expo-background-task"],
     "experiments": {
       "typedRoutes": true
     }

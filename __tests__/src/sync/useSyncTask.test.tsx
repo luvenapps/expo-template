@@ -1,22 +1,20 @@
 import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { AppState, AppStateStatus } from 'react-native';
-import * as BackgroundFetch from 'expo-background-fetch';
+import * as BackgroundTask from 'expo-background-task';
 import { registerTaskAsync, unregisterTaskAsync, isTaskDefined } from 'expo-task-manager';
 import { useSyncTask } from '@/sync/useSyncTask';
 
 jest.useFakeTimers();
 
 // Mock expo modules
-jest.mock('expo-background-fetch', () => ({
-  BackgroundFetchResult: {
-    NewData: 1,
-    NoData: 2,
-    Failed: 3,
+jest.mock('expo-background-task', () => ({
+  BackgroundTaskResult: {
+    Success: 1,
+    Failed: 2,
   },
-  BackgroundFetchStatus: {
+  BackgroundTaskStatus: {
     Available: 1,
-    Denied: 2,
-    Restricted: 3,
+    Restricted: 2,
   },
   registerTaskAsync: jest.fn().mockResolvedValue(undefined),
   unregisterTaskAsync: jest.fn().mockResolvedValue(undefined),
@@ -239,10 +237,8 @@ describe('useSyncTask', () => {
       );
 
       await waitFor(() => {
-        expect(BackgroundFetch.registerTaskAsync).toHaveBeenCalledWith('betterhabits-sync-task', {
+        expect(BackgroundTask.registerTaskAsync).toHaveBeenCalledWith('betterhabits-sync-task', {
           minimumInterval: 900,
-          stopOnTerminate: false,
-          startOnBoot: true,
         });
       });
     });
@@ -263,7 +259,7 @@ describe('useSyncTask', () => {
       renderHook(() => useSyncTask({ engine: mockEngine as any, enabled: true }));
 
       await waitFor(() => {
-        expect(BackgroundFetch.registerTaskAsync).toHaveBeenCalled();
+        expect(BackgroundTask.registerTaskAsync).toHaveBeenCalled();
       });
 
       expect(registerTaskAsync).not.toHaveBeenCalled();
@@ -277,22 +273,22 @@ describe('useSyncTask', () => {
       );
 
       await waitFor(() => {
-        expect(BackgroundFetch.registerTaskAsync).toHaveBeenCalled();
+        expect(BackgroundTask.registerTaskAsync).toHaveBeenCalled();
       });
 
-      (BackgroundFetch.getStatusAsync as jest.Mock).mockResolvedValue(1); // Available
+      (BackgroundTask.getStatusAsync as jest.Mock).mockResolvedValue(1); // Available
 
       // Disable
       rerender({ enabled: false });
 
       await waitFor(() => {
-        expect(BackgroundFetch.unregisterTaskAsync).toHaveBeenCalled();
+        expect(BackgroundTask.unregisterTaskAsync).toHaveBeenCalled();
         expect(unregisterTaskAsync).toHaveBeenCalled();
       });
     });
 
-    it('should skip unregister when background fetch is denied', async () => {
-      (BackgroundFetch.getStatusAsync as jest.Mock).mockResolvedValue(2); // Denied
+    it('should skip unregister when background task is restricted', async () => {
+      (BackgroundTask.getStatusAsync as jest.Mock).mockResolvedValue(2); // Restricted
 
       const { rerender } = renderHook(
         (props: { enabled: boolean }) =>
@@ -301,7 +297,7 @@ describe('useSyncTask', () => {
       );
 
       await waitFor(() => {
-        expect(BackgroundFetch.registerTaskAsync).toHaveBeenCalled();
+        expect(BackgroundTask.registerTaskAsync).toHaveBeenCalled();
       });
 
       jest.clearAllMocks();
@@ -313,8 +309,8 @@ describe('useSyncTask', () => {
         await Promise.resolve();
       });
 
-      // Should not try to unregister when denied
-      expect(BackgroundFetch.unregisterTaskAsync).not.toHaveBeenCalled();
+      // Should not try to unregister when restricted
+      expect(BackgroundTask.unregisterTaskAsync).not.toHaveBeenCalled();
       expect(unregisterTaskAsync).not.toHaveBeenCalled();
     });
   });
@@ -346,8 +342,8 @@ describe('useSyncTask', () => {
       // Should not throw - error is caught
     });
 
-    it('should handle background fetch registration errors gracefully', async () => {
-      (BackgroundFetch.registerTaskAsync as jest.Mock).mockRejectedValueOnce(
+    it('should handle background task registration errors gracefully', async () => {
+      (BackgroundTask.registerTaskAsync as jest.Mock).mockRejectedValueOnce(
         new Error('Register failed'),
       );
 
@@ -358,7 +354,7 @@ describe('useSyncTask', () => {
       });
 
       // Should not throw
-      expect(BackgroundFetch.registerTaskAsync).toHaveBeenCalled();
+      expect(BackgroundTask.registerTaskAsync).toHaveBeenCalled();
     });
 
     it('should handle unregister errors gracefully', async () => {
@@ -369,19 +365,19 @@ describe('useSyncTask', () => {
       );
 
       await waitFor(() => {
-        expect(BackgroundFetch.registerTaskAsync).toHaveBeenCalled();
+        expect(BackgroundTask.registerTaskAsync).toHaveBeenCalled();
       });
 
-      (BackgroundFetch.unregisterTaskAsync as jest.Mock).mockRejectedValueOnce(
+      (BackgroundTask.unregisterTaskAsync as jest.Mock).mockRejectedValueOnce(
         new Error('Unregister failed'),
       );
-      (BackgroundFetch.getStatusAsync as jest.Mock).mockResolvedValue(1); // Available
+      (BackgroundTask.getStatusAsync as jest.Mock).mockResolvedValue(1); // Available
 
       // Disable to trigger unregister
       rerender({ enabled: false });
 
       await waitFor(() => {
-        expect(BackgroundFetch.unregisterTaskAsync).toHaveBeenCalled();
+        expect(BackgroundTask.unregisterTaskAsync).toHaveBeenCalled();
       });
 
       // Should not throw - error is caught

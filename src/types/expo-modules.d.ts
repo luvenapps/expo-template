@@ -1,2 +1,2 @@
-declare module 'expo-background-fetch';
+declare module 'expo-background-task';
 declare module 'expo-task-manager';

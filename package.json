@@ -38,7 +38,7 @@
     "drizzle-orm": "^0.44.6",
     "expo": "54.0.20",
     "expo-application": "~7.0.7",
-    "expo-background-fetch": "^14.0.7",
+    "expo-background-task": "~1.0.8",
     "expo-constants": "~18.0.10",
     "expo-linking": "~8.0.8",
     "expo-notifications": "~0.32.12",
