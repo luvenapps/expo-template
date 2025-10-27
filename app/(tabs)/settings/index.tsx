@@ -1,7 +1,7 @@
 import { Stack, useRouter } from 'expo-router';
 import { Platform } from 'react-native';
-import { Button, Paragraph, YStack } from 'tamagui';
-import { ScreenContainer } from '@/ui';
+import { Paragraph, YStack } from 'tamagui';
+import { PrimaryButton, ScreenContainer } from '@/ui';
 import { useSessionStore } from '@/auth/session';
 import { useSync, pushOutbox, pullUpdates } from '@/sync';
 
@@ -59,9 +59,9 @@ export default function SettingsScreen() {
               Sign in to sync your data across devices
             </Paragraph>
           )}
-          <Button size="$4" disabled={isLoading} onPress={handleAuthAction}>
+          <PrimaryButton disabled={isLoading} onPress={handleAuthAction}>
             {isLoading ? 'Loading…' : status === 'authenticated' ? 'Sign Out' : 'Sign In'}
-          </Button>
+          </PrimaryButton>
         </YStack>
 
         {isNative && (
@@ -88,9 +88,14 @@ export default function SettingsScreen() {
                   {syncDisabledMessage}
                 </Paragraph>
               ) : null}
-              <Button size="$3" disabled={!canSync || isSyncing} onPress={handleManualSync}>
+              <PrimaryButton
+                size="$5"
+                disabled={!canSync || isSyncing}
+                onPress={handleManualSync}
+                marginBottom="$4"
+              >
                 {isSyncing ? 'Syncing…' : 'Sync now'}
-              </Button>
+              </PrimaryButton>
             </YStack>
 
             <YStack height="$1" backgroundColor="$borderColor" marginVertical="$4" />

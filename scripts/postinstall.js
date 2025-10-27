@@ -243,7 +243,7 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
     const before = fs.readFileSync(domainConfigPath, 'utf8');
     const after = before
       .replace(/__APP_NAME__SINGULAR__/g, summary.singular)
-      .replace(/__APP_NAME__/g, summary.appName)
+      .replace(/__APP_NAME__/g, idSegmentBase)
       .replace(/__APP_ID__/g, summary.appId);
     if (after !== before) {
       fs.writeFileSync(domainConfigPath, after, 'utf8');

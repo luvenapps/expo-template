@@ -12,21 +12,25 @@ type ScreenContainerProps = PropsWithChildren<{
 
 export function ScreenContainer({
   children,
-  justifyContent = 'center',
-  alignItems = 'center',
+  justifyContent = 'flex-start',
+  alignItems = 'stretch',
   paddingHorizontal = '$6',
   gap,
   backgroundColor = '$background',
 }: ScreenContainerProps) {
   const insets = useSafeAreaInsets();
+  const topPadding = Math.max(insets.top, 12) + 12;
+  const bottomPadding = Math.max(insets.bottom, 12) + 12;
 
   return (
     <YStack
+      testID="screen-container"
       flex={1}
+      width="100%"
       justifyContent={justifyContent}
       alignItems={alignItems}
-      paddingTop={insets.top + 24}
-      paddingBottom={insets.bottom + 24}
+      paddingTop={topPadding}
+      paddingBottom={bottomPadding}
       paddingHorizontal={paddingHorizontal}
       backgroundColor={backgroundColor}
       gap={gap}

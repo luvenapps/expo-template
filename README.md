@@ -218,28 +218,28 @@ Example:
 ```typescript
 export const DOMAIN = {
   app: {
-    name: 'betterhabits',
-    displayName: 'Better Habits',
-    database: 'betterhabits.db',
-    syncTask: 'betterhabits-sync-task',
-    storageKey: 'betterhabits-supabase-session',
-    cursorStorageId: 'betterhabits-sync-cursors',
+    name: 'examples',
+    displayName: 'Examples',
+    database: 'examples.db',
+    syncTask: 'examples-sync-task',
+    storageKey: 'examples-supabase-session',
+    cursorStorageId: 'examples-sync-cursors',
   },
   entities: {
     primary: {
-      name: 'habit',
-      plural: 'habits',
-      tableName: 'habits',
-      remoteTableName: 'habits',
-      displayName: 'Habit',
+      name: 'example',
+      plural: 'examples',
+      tableName: 'examples',
+      remoteTableName: 'examples',
+      displayName: 'Example',
     },
     entries: {
       name: 'entry',
       plural: 'entries',
-      tableName: 'habit_entries',
-      remoteTableName: 'habit_entries',
+      tableName: 'example_entries',
+      remoteTableName: 'example_entries',
       displayName: 'Entry',
-      foreignKey: 'habitId',
+      foreignKey: 'exampleId',
     },
     // ... reminders, devices
   },

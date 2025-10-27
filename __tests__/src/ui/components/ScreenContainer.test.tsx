@@ -27,7 +27,7 @@ describe('ScreenContainer', () => {
         </ScreenContainer>,
       );
 
-      expect(getByTestId('ystack')).toBeDefined();
+      expect(getByTestId('screen-container')).toBeDefined();
     });
 
     it('should render children correctly', () => {
@@ -63,8 +63,8 @@ describe('ScreenContainer', () => {
         </ScreenContainer>,
       );
 
-      const container = getByTestId('ystack');
-      expect(container.props.justifyContent).toBe('center');
+      const container = getByTestId('screen-container');
+      expect(container.props.justifyContent).toBe('flex-start');
     });
 
     it('should apply default alignItems', () => {
@@ -74,8 +74,8 @@ describe('ScreenContainer', () => {
         </ScreenContainer>,
       );
 
-      const container = getByTestId('ystack');
-      expect(container.props.alignItems).toBe('center');
+      const container = getByTestId('screen-container');
+      expect(container.props.alignItems).toBe('stretch');
     });
 
     it('should apply default paddingHorizontal', () => {
@@ -85,7 +85,7 @@ describe('ScreenContainer', () => {
         </ScreenContainer>,
       );
 
-      const container = getByTestId('ystack');
+      const container = getByTestId('screen-container');
       expect(container.props.paddingHorizontal).toBe('$6');
     });
 
@@ -96,7 +96,7 @@ describe('ScreenContainer', () => {
         </ScreenContainer>,
       );
 
-      const container = getByTestId('ystack');
+      const container = getByTestId('screen-container');
       expect(container.props.backgroundColor).toBe('$background');
     });
 
@@ -107,7 +107,7 @@ describe('ScreenContainer', () => {
         </ScreenContainer>,
       );
 
-      const container = getByTestId('ystack');
+      const container = getByTestId('screen-container');
       expect(container.props.flex).toBe(1);
     });
   });
@@ -120,7 +120,7 @@ describe('ScreenContainer', () => {
         </ScreenContainer>,
       );
 
-      const container = getByTestId('ystack');
+      const container = getByTestId('screen-container');
       expect(container.props.justifyContent).toBe('flex-start');
     });
 
@@ -131,7 +131,7 @@ describe('ScreenContainer', () => {
         </ScreenContainer>,
       );
 
-      const container = getByTestId('ystack');
+      const container = getByTestId('screen-container');
       expect(container.props.alignItems).toBe('flex-end');
     });
 
@@ -142,7 +142,7 @@ describe('ScreenContainer', () => {
         </ScreenContainer>,
       );
 
-      const container = getByTestId('ystack');
+      const container = getByTestId('screen-container');
       expect(container.props.paddingHorizontal).toBe('$4');
     });
 
@@ -153,7 +153,7 @@ describe('ScreenContainer', () => {
         </ScreenContainer>,
       );
 
-      const container = getByTestId('ystack');
+      const container = getByTestId('screen-container');
       expect(container.props.paddingHorizontal).toBe(20);
     });
 
@@ -164,7 +164,7 @@ describe('ScreenContainer', () => {
         </ScreenContainer>,
       );
 
-      const container = getByTestId('ystack');
+      const container = getByTestId('screen-container');
       expect(container.props.gap).toBe('$3');
     });
 
@@ -175,7 +175,7 @@ describe('ScreenContainer', () => {
         </ScreenContainer>,
       );
 
-      const container = getByTestId('ystack');
+      const container = getByTestId('screen-container');
       expect(container.props.gap).toBe(16);
     });
 
@@ -186,7 +186,7 @@ describe('ScreenContainer', () => {
         </ScreenContainer>,
       );
 
-      const container = getByTestId('ystack');
+      const container = getByTestId('screen-container');
       expect(container.props.backgroundColor).toBe('$backgroundStrong');
     });
   });
@@ -206,8 +206,8 @@ describe('ScreenContainer', () => {
         </ScreenContainer>,
       );
 
-      const container = getByTestId('ystack');
-      expect(container.props.paddingTop).toBe(68); // 44 + 24
+      const container = getByTestId('screen-container');
+      expect(container.props.paddingTop).toBe(56);
     });
 
     it('should apply safe area insets to bottom padding', () => {
@@ -224,8 +224,8 @@ describe('ScreenContainer', () => {
         </ScreenContainer>,
       );
 
-      const container = getByTestId('ystack');
-      expect(container.props.paddingBottom).toBe(58); // 34 + 24
+      const container = getByTestId('screen-container');
+      expect(container.props.paddingBottom).toBe(46);
     });
 
     it('should apply safe area insets to both top and bottom', () => {
@@ -242,9 +242,9 @@ describe('ScreenContainer', () => {
         </ScreenContainer>,
       );
 
-      const container = getByTestId('ystack');
-      expect(container.props.paddingTop).toBe(74); // 50 + 24
-      expect(container.props.paddingBottom).toBe(54); // 30 + 24
+      const container = getByTestId('screen-container');
+      expect(container.props.paddingTop).toBe(62);
+      expect(container.props.paddingBottom).toBe(42);
     });
 
     it('should add 24px base padding when insets are zero', () => {
@@ -261,9 +261,9 @@ describe('ScreenContainer', () => {
         </ScreenContainer>,
       );
 
-      const container = getByTestId('ystack');
-      expect(container.props.paddingTop).toBe(24); // 0 + 24
-      expect(container.props.paddingBottom).toBe(24); // 0 + 24
+      const container = getByTestId('screen-container');
+      expect(container.props.paddingTop).toBe(24);
+      expect(container.props.paddingBottom).toBe(24);
     });
   });
 
@@ -288,14 +288,14 @@ describe('ScreenContainer', () => {
         </ScreenContainer>,
       );
 
-      const container = getByTestId('ystack');
+      const container = getByTestId('screen-container');
       expect(container.props.justifyContent).toBe('space-between');
       expect(container.props.alignItems).toBe('stretch');
       expect(container.props.paddingHorizontal).toBe('$8');
       expect(container.props.gap).toBe('$5');
       expect(container.props.backgroundColor).toBe('$backgroundHover');
-      expect(container.props.paddingTop).toBe(44); // 20 + 24
-      expect(container.props.paddingBottom).toBe(34); // 10 + 24
+      expect(container.props.paddingTop).toBe(32);
+      expect(container.props.paddingBottom).toBe(24);
     });
   });
 
@@ -307,14 +307,14 @@ describe('ScreenContainer', () => {
         </ScreenContainer>,
       );
 
-      const container = getByTestId('ystack');
+      const container = getByTestId('screen-container');
       expect(container.props.gap).toBeUndefined();
     });
 
     it('should render with empty children', () => {
       const { getByTestId } = render(<ScreenContainer />);
 
-      expect(getByTestId('ystack')).toBeDefined();
+      expect(getByTestId('screen-container')).toBeDefined();
     });
 
     it('should handle all justifyContent values', () => {
@@ -333,7 +333,7 @@ describe('ScreenContainer', () => {
           </ScreenContainer>,
         );
 
-        const container = getByTestId('ystack');
+        const container = getByTestId('screen-container');
         expect(container.props.justifyContent).toBe(value);
       });
     });
@@ -354,7 +354,7 @@ describe('ScreenContainer', () => {
           </ScreenContainer>,
         );
 
-        const container = getByTestId('ystack');
+        const container = getByTestId('screen-container');
         expect(container.props.alignItems).toBe(value);
       });
     });

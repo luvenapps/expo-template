@@ -51,9 +51,6 @@ and codebase conventions so agents can run reliably without human context.
 | E2E (Maestro) iOS  | `npm run e2e:ios`                 | Flows in `.maestro/flows`.                                   |
 | E2E (Maestro) Andr | `npm run e2e:android`             | Saves artifacts under `e2e-artifacts/`.                      |
 
-`build-run-checks.sh` runs format → lint → `npm test -- --coverage` and mirrors
-the baseline CI expectations.
-
 ## Authentication & Session Management
 
 - **Auth is optional** – Users can access the app without logging in (local-first approach).
@@ -86,16 +83,18 @@ the baseline CI expectations.
   2. Route group layout (e.g., `app/(auth)/_layout.tsx`): Can set group-level `screenOptions`
   3. Individual screens: Override with `<Stack.Screen options={{ ... }} />`
 
-- **Common pattern for headers**:
-  - Parent layout sets `headerShown: false` for route group
-  - Child screen overrides with `<Stack.Screen options={{ headerShown: true, ... }} />`
-  - This pattern is required due to nested Stack navigators in Expo Router
+- **Header configuration patterns**:
+  - **Pattern 1 - Root layout configuration** (used for auth screens):
+    - Root layout defines header options for the entire route group: `<Stack.Screen name="(auth)" options={{ title: 'Sign in' }} />`
+    - Route group layout can set `headerShown: false` in `screenOptions`
+    - Individual screens inherit the root layout configuration
 
-- **Platform differences**:
-  - **iOS**: Back buttons require explicit `headerShown: true` on child screens;
-    `headerBackTitle` customizes back button text
-  - **Android**: More permissive with header inheritance
-  - **Web**: Follows browser navigation patterns; back button = browser back
+  - **Pattern 2 - Individual screen overrides** (used for tab screens):
+    - Parent layout sets `headerShown: false` for route group
+    - Individual screens use `<Stack.Screen options={{ headerShown: true, title: '...' }} />` inside the component
+    - Required when using nested navigators (e.g., Tabs) with Stack screens
+
+  - **Header customization**: Use `headerBackTitleVisible`, `headerBackTitle`, and other React Navigation options in screen options
 
 - **Typed routes**: Enabled via `experiments.typedRoutes` in `app.json`. Types auto-generated
   in `.expo/types/router.d.ts`.
@@ -301,6 +300,8 @@ Jest config; prefer them over relative imports.
   - Native (iOS/Android): MMKV (fast, synchronous)
   - Web: Memory storage (fallback, no persistence)
   - Supabase auth sessions: Memory-only (needs SecureStore for persistence)
+
+- **Design primitives** — common components live under `src/ui/components` (e.g., `PrimaryButton` for call-to-action styling).
 
 ## Tooling & Hooks
 

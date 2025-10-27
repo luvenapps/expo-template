@@ -31,7 +31,7 @@ export const DOMAIN = {
   entities: {
     /**
      * Primary domain entity (the main thing your app manages)
-     * Examples: habit, task, project, workout, note, etc.
+     * Examples: task, project, workout, note, etc.
      */
     primary: {
       name: '__APP_NAME__SINGULAR__', // Singular form
@@ -43,7 +43,7 @@ export const DOMAIN = {
 
     /**
      * Entry/activity records for the primary entity
-     * Examples: habit_entries, task_completions, workout_sessions, etc.
+     * Examples: example_entries, task_completions, workout_sessions, etc.
      */
     entries: {
       name: 'entry', // Singular form
