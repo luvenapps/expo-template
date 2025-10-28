@@ -1,9 +1,12 @@
+import type { ComponentType } from 'react';
 import { Stack, useRouter } from 'expo-router';
 import { Platform } from 'react-native';
-import { Paragraph, YStack } from 'tamagui';
+import { Button, Paragraph, XStack, YStack } from 'tamagui';
+import { Monitor, Moon, Sun } from '@tamagui/lucide-icons';
 import { PrimaryButton, ScreenContainer } from '@/ui';
 import { useSessionStore } from '@/auth/session';
 import { useSync, pushOutbox, pullUpdates } from '@/sync';
+import { useThemeContext, type ThemeName } from '@/ui/theme/ThemeProvider';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -31,6 +34,7 @@ export default function SettingsScreen() {
       ? 'Sign in to enable syncing with your Supabase account.'
       : null;
   const isSyncing = syncStatus === 'syncing';
+  const { theme: themePreference, setTheme } = useThemeContext();
 
   const handleAuthAction = async () => {
     if (status === 'authenticated') {
@@ -44,6 +48,20 @@ export default function SettingsScreen() {
     if (!canSync) return;
     await triggerSync();
   };
+
+  const handleThemeSelection = (value: ThemeName) => {
+    setTheme(value);
+  };
+
+  const THEME_OPTIONS: {
+    value: ThemeName;
+    label: string;
+    Icon: ComponentType<{ size?: number; color?: string }>;
+  }[] = [
+    { value: 'system', label: 'Follow System', Icon: Monitor },
+    { value: 'light', label: 'Light', Icon: Sun },
+    { value: 'dark', label: 'Dark', Icon: Moon },
+  ];
 
   return (
     <>
@@ -62,6 +80,42 @@ export default function SettingsScreen() {
           <PrimaryButton disabled={isLoading} onPress={handleAuthAction}>
             {isLoading ? 'Loading…' : status === 'authenticated' ? 'Sign Out' : 'Sign In'}
           </PrimaryButton>
+        </YStack>
+
+        <YStack gap="$3" paddingVertical="$2">
+          <Paragraph textAlign="center" fontWeight="600">
+            Theme
+          </Paragraph>
+          <Paragraph textAlign="center" color="$colorMuted">
+            Choose how the app looks on this device.
+          </Paragraph>
+          <XStack gap="$2">
+            {THEME_OPTIONS.map(({ value, label, Icon }) => {
+              const isActive = themePreference === value;
+              return (
+                <Button
+                  key={value}
+                  flex={1}
+                  size="$5"
+                  height={48}
+                  borderRadius="$3"
+                  backgroundColor={isActive ? '$accentColor' : '$backgroundStrong'}
+                  color={isActive ? 'white' : '$color'}
+                  pressStyle={{
+                    backgroundColor: isActive ? '$accentColor' : '$backgroundPress',
+                  }}
+                  hoverStyle={{
+                    backgroundColor: isActive ? '$accentColor' : '$backgroundHover',
+                  }}
+                  disabled={isActive}
+                  accessibilityLabel={label}
+                  onPress={() => handleThemeSelection(value)}
+                >
+                  <Icon size={20} color={isActive ? 'white' : undefined} />
+                </Button>
+              );
+            })}
+          </XStack>
         </YStack>
 
         {isNative && (

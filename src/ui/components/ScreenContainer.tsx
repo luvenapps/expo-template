@@ -1,6 +1,7 @@
 import { PropsWithChildren } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { YStack } from 'tamagui';
+import { useThemeContext } from '@/ui/theme/ThemeProvider';
 
 type ScreenContainerProps = PropsWithChildren<{
   justifyContent?: 'flex-start' | 'flex-end' | 'center' | 'space-between' | 'space-around';
@@ -16,11 +17,14 @@ export function ScreenContainer({
   alignItems = 'stretch',
   paddingHorizontal = '$6',
   gap,
-  backgroundColor = '$background',
+  backgroundColor,
 }: ScreenContainerProps) {
   const insets = useSafeAreaInsets();
   const topPadding = Math.max(insets.top, 12) + 12;
   const bottomPadding = Math.max(insets.bottom, 12) + 12;
+  const { palette } = useThemeContext();
+  const resolvedBackground = backgroundColor ?? palette.background;
+  const resolvedColor = palette.text;
 
   return (
     <YStack
@@ -32,7 +36,8 @@ export function ScreenContainer({
       paddingTop={topPadding}
       paddingBottom={bottomPadding}
       paddingHorizontal={paddingHorizontal}
-      backgroundColor={backgroundColor}
+      backgroundColor={resolvedBackground}
+      style={{ color: resolvedColor }}
       gap={gap}
     >
       {children}
