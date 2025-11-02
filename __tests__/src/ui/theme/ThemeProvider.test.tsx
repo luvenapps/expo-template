@@ -1,16 +1,63 @@
+import { DOMAIN } from '@/config/domain.config';
 import { getThemePalette, ThemeProvider, useThemeContext } from '@/ui/theme/ThemeProvider';
 import { act, renderHook } from '@testing-library/react-native';
 import React, { PropsWithChildren } from 'react';
-import { Appearance } from 'react-native';
+import { Appearance, Platform } from 'react-native';
+
+jest.mock('react-native-mmkv', () => {
+  const store = new Map<string, string>();
+  const MMKV = jest.fn(() => ({
+    getString: jest.fn((key: string) => (store.has(key) ? store.get(key)! : null)),
+    set: jest.fn((key: string, value: string) => {
+      store.set(key, value);
+    }),
+    delete: jest.fn((key: string) => {
+      store.delete(key);
+    }),
+  }));
+
+  return {
+    MMKV,
+    __store: store,
+  };
+});
 
 describe('ThemeProvider', () => {
   let mockColorScheme: 'light' | 'dark' | null;
   let mockListeners: ((preferences: { colorScheme: 'light' | 'dark' | null }) => void)[];
+  let storage: Record<string, string>;
+  const originalPlatform = Platform.OS;
+  const originalLocalStorage = globalThis.localStorage;
 
   beforeEach(() => {
     jest.clearAllMocks();
     mockColorScheme = 'dark';
     mockListeners = [];
+    storage = {};
+
+    Object.defineProperty(Platform, 'OS', {
+      configurable: true,
+      value: 'web',
+    });
+
+    const localStorageMock: Storage = {
+      getItem: (key: string) => (key in storage ? storage[key] : null),
+      setItem: (key: string, value: string) => {
+        storage[key] = value;
+      },
+      removeItem: (key: string) => {
+        delete storage[key];
+      },
+      clear: () => {
+        storage = {};
+      },
+      key: (index: number) => Object.keys(storage)[index] ?? null,
+      get length() {
+        return Object.keys(storage).length;
+      },
+    };
+
+    globalThis.localStorage = localStorageMock;
 
     // Mock Appearance API
     jest.spyOn(Appearance, 'getColorScheme').mockImplementation(() => mockColorScheme);
@@ -29,6 +76,11 @@ describe('ThemeProvider', () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
+    Object.defineProperty(Platform, 'OS', {
+      configurable: true,
+      value: originalPlatform,
+    });
+    globalThis.localStorage = originalLocalStorage;
   });
 
   const wrapper = ({ children }: PropsWithChildren) => <ThemeProvider>{children}</ThemeProvider>;
@@ -38,16 +90,16 @@ describe('ThemeProvider', () => {
       const { result } = renderHook(() => useThemeContext(), { wrapper });
 
       expect(result.current).toBeDefined();
-      expect(result.current.theme).toBe('dark');
-      expect(result.current.setTheme).toBeDefined();
+      expect(result.current.preference).toBe('system');
+      expect(result.current.setPreference).toBeDefined();
       expect(result.current.palette).toBeDefined();
       expect(result.current.resolvedTheme).toBe('dark');
     });
 
-    it('should initialize with dark theme by default', () => {
+    it('should initialize with system preference by default', () => {
       const { result } = renderHook(() => useThemeContext(), { wrapper });
 
-      expect(result.current.theme).toBe('dark');
+      expect(result.current.preference).toBe('system');
       expect(result.current.resolvedTheme).toBe('dark');
     });
 
@@ -57,7 +109,7 @@ describe('ThemeProvider', () => {
 
       // Default theme is 'dark', but if we set it to 'system', it should use light
       act(() => {
-        result.current.setTheme('system');
+        result.current.setPreference('system');
       });
 
       expect(result.current.resolvedTheme).toBe('light');
@@ -80,8 +132,8 @@ describe('ThemeProvider', () => {
       const { result } = renderHook(() => useThemeContext(), { wrapper });
 
       expect(result.current).toMatchObject({
-        theme: expect.any(String),
-        setTheme: expect.any(Function),
+        preference: expect.any(String),
+        setPreference: expect.any(Function),
         palette: expect.any(Object),
         resolvedTheme: expect.any(String),
       });
@@ -93,10 +145,10 @@ describe('ThemeProvider', () => {
       const { result } = renderHook(() => useThemeContext(), { wrapper });
 
       act(() => {
-        result.current.setTheme('light');
+        result.current.setPreference('light');
       });
 
-      expect(result.current.theme).toBe('light');
+      expect(result.current.preference).toBe('light');
       expect(result.current.resolvedTheme).toBe('light');
     });
 
@@ -104,13 +156,13 @@ describe('ThemeProvider', () => {
       const { result } = renderHook(() => useThemeContext(), { wrapper });
 
       act(() => {
-        result.current.setTheme('light');
+        result.current.setPreference('light');
       });
       act(() => {
-        result.current.setTheme('dark');
+        result.current.setPreference('dark');
       });
 
-      expect(result.current.theme).toBe('dark');
+      expect(result.current.preference).toBe('dark');
       expect(result.current.resolvedTheme).toBe('dark');
     });
 
@@ -119,10 +171,10 @@ describe('ThemeProvider', () => {
       const { result } = renderHook(() => useThemeContext(), { wrapper });
 
       act(() => {
-        result.current.setTheme('system');
+        result.current.setPreference('system');
       });
 
-      expect(result.current.theme).toBe('system');
+      expect(result.current.preference).toBe('system');
       expect(result.current.resolvedTheme).toBe('light');
     });
   });
@@ -132,7 +184,7 @@ describe('ThemeProvider', () => {
       const { result } = renderHook(() => useThemeContext(), { wrapper });
 
       act(() => {
-        result.current.setTheme('light');
+        result.current.setPreference('light');
       });
 
       expect(result.current.palette).toEqual({
@@ -146,7 +198,7 @@ describe('ThemeProvider', () => {
       const { result } = renderHook(() => useThemeContext(), { wrapper });
 
       act(() => {
-        result.current.setTheme('dark');
+        result.current.setPreference('dark');
       });
 
       expect(result.current.palette).toEqual({
@@ -161,7 +213,7 @@ describe('ThemeProvider', () => {
       const { result } = renderHook(() => useThemeContext(), { wrapper });
 
       act(() => {
-        result.current.setTheme('system');
+        result.current.setPreference('system');
       });
 
       expect(result.current.resolvedTheme).toBe('light');
@@ -177,7 +229,7 @@ describe('ThemeProvider', () => {
       const { result } = renderHook(() => useThemeContext(), { wrapper });
 
       act(() => {
-        result.current.setTheme('system');
+        result.current.setPreference('system');
       });
 
       expect(result.current.resolvedTheme).toBe('dark');
@@ -195,7 +247,7 @@ describe('ThemeProvider', () => {
       const { result } = renderHook(() => useThemeContext(), { wrapper });
 
       act(() => {
-        result.current.setTheme('system');
+        result.current.setPreference('system');
       });
 
       expect(result.current.resolvedTheme).toBe('light');
@@ -214,7 +266,7 @@ describe('ThemeProvider', () => {
       const { result } = renderHook(() => useThemeContext(), { wrapper });
 
       act(() => {
-        result.current.setTheme('system');
+        result.current.setPreference('system');
       });
 
       expect(result.current.resolvedTheme).toBe('dark');
@@ -233,7 +285,7 @@ describe('ThemeProvider', () => {
       const { result } = renderHook(() => useThemeContext(), { wrapper });
 
       act(() => {
-        result.current.setTheme('system');
+        result.current.setPreference('system');
       });
 
       const initialTheme = result.current.resolvedTheme;
@@ -251,7 +303,7 @@ describe('ThemeProvider', () => {
       const { result } = renderHook(() => useThemeContext(), { wrapper });
 
       act(() => {
-        result.current.setTheme('light');
+        result.current.setPreference('light');
       });
 
       expect(result.current.resolvedTheme).toBe('light');
@@ -338,7 +390,7 @@ describe('ThemeProvider', () => {
       const { result } = renderHook(() => useThemeContext(), { wrapper });
 
       act(() => {
-        result.current.setTheme('light');
+        result.current.setPreference('light');
       });
 
       expect(result.current.palette.background).toBe('#FFFFFF');
@@ -350,12 +402,60 @@ describe('ThemeProvider', () => {
       const { result } = renderHook(() => useThemeContext(), { wrapper });
 
       act(() => {
-        result.current.setTheme('dark');
+        result.current.setPreference('dark');
       });
 
       expect(result.current.palette.background).toBe('#1a1a1a');
       expect(result.current.palette.text).toBe('#FFFFFF');
       expect(result.current.palette.mutedText).toBe('#E2E8F0');
+    });
+  });
+
+  describe('native persistence (MMKV)', () => {
+    const STORAGE_KEY = `${DOMAIN.app.storageKey}-theme-preference`;
+    const platformWebDescriptor = Object.getOwnPropertyDescriptor(Platform, 'OS');
+
+    beforeEach(() => {
+      Object.defineProperty(Platform, 'OS', {
+        configurable: true,
+        value: 'ios',
+      });
+
+      const mmkvModule = require('react-native-mmkv');
+      mmkvModule.__store.clear();
+      mmkvModule.MMKV.mockClear();
+    });
+
+    afterEach(() => {
+      if (platformWebDescriptor) {
+        Object.defineProperty(Platform, 'OS', platformWebDescriptor);
+      }
+    });
+
+    it('hydrates preference from MMKV storage', () => {
+      const mmkvModule = require('react-native-mmkv');
+      mmkvModule.__store.set(STORAGE_KEY, 'dark');
+
+      const { result } = renderHook(() => useThemeContext(), { wrapper });
+
+      expect(mmkvModule.MMKV).toHaveBeenCalled();
+      expect(result.current.preference).toBe('dark');
+      expect(result.current.resolvedTheme).toBe('dark');
+    });
+
+    it('persists preference via MMKV storage', () => {
+      const mmkvModule = require('react-native-mmkv');
+
+      const { result } = renderHook(() => useThemeContext(), { wrapper });
+
+      act(() => {
+        result.current.setPreference('light');
+      });
+
+      const persistCall =
+        mmkvModule.MMKV.mock.results[mmkvModule.MMKV.mock.results.length - 1].value;
+      expect(persistCall.set).toHaveBeenCalledWith(STORAGE_KEY, 'light');
+      expect(mmkvModule.__store.get(STORAGE_KEY)).toBe('light');
     });
   });
 
@@ -376,7 +476,7 @@ describe('ThemeProvider', () => {
       const firstValue = result.current;
 
       act(() => {
-        result.current.setTheme('light');
+        result.current.setPreference('light');
       });
 
       const secondValue = result.current;
@@ -389,7 +489,7 @@ describe('ThemeProvider', () => {
       const { result } = renderHook(() => useThemeContext(), { wrapper });
 
       act(() => {
-        result.current.setTheme('system');
+        result.current.setPreference('system');
       });
 
       const firstValue = result.current;

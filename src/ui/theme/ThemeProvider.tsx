@@ -1,8 +1,10 @@
+import { Appearance, Platform } from 'react-native';
 import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from 'react';
-import { Appearance } from 'react-native';
-import type { ColorSchemeName } from 'react-native';
+import { DOMAIN } from '@/config/domain.config';
 
-export type ThemeName = 'light' | 'dark' | 'system';
+export type ThemePreference = 'light' | 'dark' | 'system';
+export type ThemeName = ThemePreference;
+export type ResolvedTheme = 'light' | 'dark';
 
 type ThemePalette = {
   background: string;
@@ -10,7 +12,7 @@ type ThemePalette = {
   mutedText: string;
 };
 
-const PALETTES: Record<'light' | 'dark', ThemePalette> = {
+const PALETTES: Record<ResolvedTheme, ThemePalette> = {
   light: {
     background: '#FFFFFF',
     text: '#0F172A',
@@ -24,24 +26,72 @@ const PALETTES: Record<'light' | 'dark', ThemePalette> = {
 };
 
 type ThemeContextValue = {
-  theme: ThemeName;
-  setTheme: (theme: ThemeName) => void;
+  preference: ThemePreference;
+  resolvedTheme: ResolvedTheme;
+  setPreference: (theme: ThemePreference) => void;
+  /** @deprecated use setPreference */
+  setTheme: (theme: ThemePreference) => void;
   palette: ThemePalette;
-  resolvedTheme: 'light' | 'dark';
+  /** @deprecated use preference */
+  theme: ThemePreference;
 };
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
+const STORAGE_KEY = `${DOMAIN.app.storageKey}-theme-preference`;
+const STORAGE_NAMESPACE = `${DOMAIN.app.cursorStorageId}-theme`;
+
+function resolveSystemTheme(colorScheme: 'light' | 'dark' | null | undefined): ResolvedTheme {
+  return colorScheme === 'dark' ? 'dark' : 'light';
+}
+
+function loadStoredPreference(): ThemePreference {
+  try {
+    if (Platform.OS !== 'web') {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { MMKV } = require('react-native-mmkv');
+      const store = new MMKV({ id: STORAGE_NAMESPACE });
+      const stored = store.getString(STORAGE_KEY);
+      if (stored === 'light' || stored === 'dark' || stored === 'system') {
+        return stored;
+      }
+    } else if (typeof globalThis !== 'undefined' && 'localStorage' in globalThis) {
+      const stored = globalThis.localStorage.getItem(STORAGE_KEY);
+      if (stored === 'light' || stored === 'dark' || stored === 'system') {
+        return stored;
+      }
+    }
+  } catch {
+    // ignore persistence errors and fall back to system default
+  }
+  return 'system';
+}
+
+function persistPreference(preference: ThemePreference) {
+  try {
+    if (Platform.OS !== 'web') {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { MMKV } = require('react-native-mmkv');
+      const store = new MMKV({ id: STORAGE_NAMESPACE });
+      store.set(STORAGE_KEY, preference);
+    } else if (typeof globalThis !== 'undefined' && 'localStorage' in globalThis) {
+      globalThis.localStorage.setItem(STORAGE_KEY, preference);
+    }
+  } catch {
+    // ignore persistence errors
+  }
+}
+
 export function ThemeProvider({ children }: PropsWithChildren) {
-  const [theme, setTheme] = useState<ThemeName>('dark');
-  const [systemTheme, setSystemTheme] = useState<'light' | 'dark'>(
-    Appearance.getColorScheme() === 'dark' ? 'dark' : 'light',
+  const [preference, setPreferenceState] = useState<ThemePreference>(loadStoredPreference);
+  const [systemTheme, setSystemTheme] = useState<ResolvedTheme>(
+    resolveSystemTheme(Appearance.getColorScheme()),
   );
 
   useEffect(() => {
     const subscription = Appearance.addChangeListener(({ colorScheme }) => {
       if (!colorScheme) return;
-      setSystemTheme(colorScheme === 'dark' ? 'dark' : 'light');
+      setSystemTheme(resolveSystemTheme(colorScheme));
     });
     return () => {
       subscription.remove();
@@ -49,14 +99,21 @@ export function ThemeProvider({ children }: PropsWithChildren) {
   }, []);
 
   const value = useMemo<ThemeContextValue>(() => {
-    const resolvedTheme = theme === 'system' ? systemTheme : theme;
-    return {
-      theme,
-      setTheme,
-      palette: PALETTES[resolvedTheme],
-      resolvedTheme,
+    const resolvedTheme = preference === 'system' ? systemTheme : preference;
+    const setPreference = (next: ThemePreference) => {
+      setPreferenceState(next);
+      persistPreference(next);
     };
-  }, [theme, systemTheme]);
+
+    return {
+      preference,
+      resolvedTheme,
+      setPreference,
+      setTheme: setPreference,
+      palette: PALETTES[resolvedTheme],
+      theme: preference,
+    };
+  }, [preference, systemTheme]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
@@ -70,7 +127,7 @@ export function useThemeContext() {
 }
 
 export function getThemePalette(theme: ThemeName) {
-  const colorScheme = Appearance.getColorScheme() as ColorSchemeName;
-  const resolvedTheme = theme === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : theme;
+  const resolvedTheme =
+    theme === 'system' ? resolveSystemTheme(Appearance.getColorScheme()) : (theme as ResolvedTheme);
   return PALETTES[resolvedTheme];
 }
