@@ -1,13 +1,12 @@
 import { DOMAIN } from '@/config/domain.config';
 import { PrimaryButton, ScreenContainer } from '@/ui';
-import { Stack, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { H2, Paragraph } from 'tamagui';
 
 export default function HomeScreen() {
   const router = useRouter();
   return (
     <>
-      <Stack.Screen options={{ title: `${DOMAIN.app.displayName}`, headerShown: true }} />
       <ScreenContainer gap="$4" alignItems="center">
         <H2 fontWeight="700" testID="welcome-title">
           Welcome to {DOMAIN.app.displayName}

@@ -1,12 +1,12 @@
+import { useSessionStore } from '@/auth/session';
+import { pullUpdates, pushOutbox, useSync } from '@/sync';
+import { PrimaryButton, ScreenContainer } from '@/ui';
+import { useThemeContext, type ThemeName } from '@/ui/theme/ThemeProvider';
+import { Monitor, Moon, Sun } from '@tamagui/lucide-icons';
+import { useRouter } from 'expo-router';
 import type { ComponentType } from 'react';
-import { Stack, useRouter } from 'expo-router';
 import { Platform } from 'react-native';
 import { Button, Paragraph, XStack, YStack } from 'tamagui';
-import { Monitor, Moon, Sun } from '@tamagui/lucide-icons';
-import { PrimaryButton, ScreenContainer } from '@/ui';
-import { useSessionStore } from '@/auth/session';
-import { useSync, pushOutbox, pullUpdates } from '@/sync';
-import { useThemeContext, type ThemeName } from '@/ui/theme/ThemeProvider';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -65,7 +65,6 @@ export default function SettingsScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'Settings', headerShown: true }} />
       <ScreenContainer gap="$4">
         <YStack gap="$3" paddingVertical="$4">
           {status === 'authenticated' && session?.user?.email ? (
