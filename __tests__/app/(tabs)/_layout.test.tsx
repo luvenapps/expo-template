@@ -19,26 +19,26 @@ jest.mock('expo-router', () => {
   return { Tabs };
 });
 
+// Mock ThemeProvider
+jest.mock('@/ui/theme/ThemeProvider', () => ({
+  useThemeContext: jest.fn(),
+}));
+
 import { DOMAIN } from '@/config/domain.config';
+import { useThemeContext } from '@/ui/theme/ThemeProvider';
 import { render } from '@testing-library/react-native';
-import * as RN from 'react-native';
 import TabsLayout from '../../../app/(tabs)/_layout';
 
-describe('TabsLayout', () => {
-  let useColorSchemeSpy: jest.SpyInstance;
+const mockUseThemeContext = useThemeContext as jest.Mock;
 
+describe('TabsLayout', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    useColorSchemeSpy = jest.spyOn(RN, 'useColorScheme');
-  });
-
-  afterEach(() => {
-    useColorSchemeSpy.mockRestore();
   });
 
   describe('Theme Colors', () => {
-    it('should use dark theme colors when colorScheme is dark', () => {
-      useColorSchemeSpy.mockReturnValue('dark');
+    it('should use dark theme colors when theme is dark', () => {
+      mockUseThemeContext.mockReturnValue({ resolvedTheme: 'dark' });
 
       const { UNSAFE_root } = render(<TabsLayout />);
       const tabs = UNSAFE_root.findByType('Tabs' as any);
@@ -47,18 +47,8 @@ describe('TabsLayout', () => {
       expect(tabs.props.screenOptions.tabBarInactiveTintColor).toBe('#94A3B8');
     });
 
-    it('should use light theme colors when colorScheme is light', () => {
-      useColorSchemeSpy.mockReturnValue('light');
-
-      const { UNSAFE_root } = render(<TabsLayout />);
-      const tabs = UNSAFE_root.findByType('Tabs' as any);
-
-      expect(tabs.props.screenOptions.tabBarActiveTintColor).toBe('#2563EB');
-      expect(tabs.props.screenOptions.tabBarInactiveTintColor).toBe('#94A3B8');
-    });
-
-    it('should use light theme colors when colorScheme is null', () => {
-      useColorSchemeSpy.mockReturnValue(null);
+    it('should use light theme colors when theme is light', () => {
+      mockUseThemeContext.mockReturnValue({ resolvedTheme: 'light' });
 
       const { UNSAFE_root } = render(<TabsLayout />);
       const tabs = UNSAFE_root.findByType('Tabs' as any);
@@ -69,19 +59,20 @@ describe('TabsLayout', () => {
   });
 
   describe('Screen Options', () => {
-    it('should hide header by default', () => {
-      useColorSchemeSpy.mockReturnValue('light');
+    it('should not set headerShown in screenOptions', () => {
+      mockUseThemeContext.mockReturnValue({ resolvedTheme: 'light' });
 
       const { UNSAFE_root } = render(<TabsLayout />);
       const tabs = UNSAFE_root.findByType('Tabs' as any);
 
-      expect(tabs.props.screenOptions.headerShown).toBe(false);
+      // headerShown is not set in screenOptions anymore
+      expect(tabs.props.screenOptions.headerShown).toBeUndefined();
     });
   });
 
   describe('Tab Screens', () => {
     it('should render index screen with correct configuration', () => {
-      useColorSchemeSpy.mockReturnValue('light');
+      mockUseThemeContext.mockReturnValue({ resolvedTheme: 'light' });
 
       const { UNSAFE_root } = render(<TabsLayout />);
       const screens = UNSAFE_root.findAllByType('TabsScreen' as any);
@@ -93,7 +84,7 @@ describe('TabsLayout', () => {
     });
 
     it('should render settings screen with correct configuration', () => {
-      useColorSchemeSpy.mockReturnValue('light');
+      mockUseThemeContext.mockReturnValue({ resolvedTheme: 'light' });
 
       const { UNSAFE_root } = render(<TabsLayout />);
       const screens = UNSAFE_root.findAllByType('TabsScreen' as any);
@@ -105,7 +96,7 @@ describe('TabsLayout', () => {
     });
 
     it('should render exactly 2 tab screens', () => {
-      useColorSchemeSpy.mockReturnValue('light');
+      mockUseThemeContext.mockReturnValue({ resolvedTheme: 'light' });
 
       const { UNSAFE_root } = render(<TabsLayout />);
       const screens = UNSAFE_root.findAllByType('TabsScreen' as any);
@@ -116,7 +107,7 @@ describe('TabsLayout', () => {
 
   describe('Tab Icons', () => {
     it('should render Home icon for index screen with correct props', () => {
-      useColorSchemeSpy.mockReturnValue('light');
+      mockUseThemeContext.mockReturnValue({ resolvedTheme: 'light' });
 
       const { UNSAFE_root } = render(<TabsLayout />);
       const screens = UNSAFE_root.findAllByType('TabsScreen' as any);
@@ -131,7 +122,7 @@ describe('TabsLayout', () => {
     });
 
     it('should render Settings icon for settings screen with correct props', () => {
-      useColorSchemeSpy.mockReturnValue('light');
+      mockUseThemeContext.mockReturnValue({ resolvedTheme: 'light' });
 
       const { UNSAFE_root } = render(<TabsLayout />);
       const screens = UNSAFE_root.findAllByType('TabsScreen' as any);
@@ -146,7 +137,7 @@ describe('TabsLayout', () => {
     });
 
     it('should pass different colors to tab icons correctly', () => {
-      useColorSchemeSpy.mockReturnValue('dark');
+      mockUseThemeContext.mockReturnValue({ resolvedTheme: 'dark' });
 
       const { UNSAFE_root } = render(<TabsLayout />);
       const screens = UNSAFE_root.findAllByType('TabsScreen' as any);
@@ -165,7 +156,7 @@ describe('TabsLayout', () => {
 
   describe('Integration', () => {
     it('should render complete component structure', () => {
-      useColorSchemeSpy.mockReturnValue('light');
+      mockUseThemeContext.mockReturnValue({ resolvedTheme: 'light' });
 
       const { UNSAFE_root } = render(<TabsLayout />);
 

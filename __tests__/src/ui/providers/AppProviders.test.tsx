@@ -55,6 +55,18 @@ jest.mock('@/sync', () => ({
   pullUpdates: jest.fn(),
 }));
 
+// Mock ThemeProvider
+jest.mock('@/ui/theme/ThemeProvider', () => ({
+  useThemeContext: jest.fn(() => ({
+    resolvedTheme: 'light',
+    palette: {
+      background: '#FFFFFF',
+      text: '#0F172A',
+      mutedText: '#475569',
+    },
+  })),
+}));
+
 import { AppProviders } from '@/ui/providers/AppProviders';
 import { render } from '@testing-library/react-native';
 import React from 'react';
@@ -114,7 +126,7 @@ describe('AppProviders', () => {
       expect(gestureHandler).toBeDefined();
     });
 
-    it('should apply flex: 1 style to GestureHandlerRootView', () => {
+    it('should apply flex: 1 and backgroundColor style to GestureHandlerRootView', () => {
       const { UNSAFE_root } = render(
         <AppProviders>
           <Text>Content</Text>
@@ -122,7 +134,7 @@ describe('AppProviders', () => {
       );
 
       const gestureHandler = UNSAFE_root.findByType('GestureHandlerRootView' as any);
-      expect(gestureHandler.props.style).toEqual({ flex: 1 });
+      expect(gestureHandler.props.style).toEqual({ flex: 1, backgroundColor: '#FFFFFF' });
     });
 
     it('should render SafeAreaProvider inside GestureHandlerRootView', () => {
@@ -161,7 +173,7 @@ describe('AppProviders', () => {
       expect(statusBar).toBeDefined();
     });
 
-    it('should pass style="auto" to StatusBar', () => {
+    it('should pass style="dark" to StatusBar when theme is light', () => {
       const { UNSAFE_root } = render(
         <AppProviders>
           <Text>Content</Text>
@@ -169,7 +181,28 @@ describe('AppProviders', () => {
       );
 
       const statusBar = UNSAFE_root.findByType('StatusBar' as any);
-      expect(statusBar.props.style).toBe('auto');
+      expect(statusBar.props.style).toBe('dark');
+    });
+
+    it('should pass style="light" to StatusBar when theme is dark', () => {
+      const { useThemeContext } = require('@/ui/theme/ThemeProvider');
+      useThemeContext.mockReturnValue({
+        resolvedTheme: 'dark',
+        palette: {
+          background: '#1a1a1a',
+          text: '#FFFFFF',
+          mutedText: '#E2E8F0',
+        },
+      });
+
+      const { UNSAFE_root } = render(
+        <AppProviders>
+          <Text>Content</Text>
+        </AppProviders>,
+      );
+
+      const statusBar = UNSAFE_root.findByType('StatusBar' as any);
+      expect(statusBar.props.style).toBe('light');
     });
   });
 
@@ -183,17 +216,20 @@ describe('AppProviders', () => {
         </AppProviders>,
       );
 
-      // Verify the nesting: GestureHandler > SafeArea > Tamagui > Children + StatusBar
+      // Verify the nesting: GestureHandler > SafeArea > QueryClient > YStack > Children + StatusBar
       const gestureHandler = UNSAFE_root.findByType('GestureHandlerRootView' as any);
       const safeAreaProvider = gestureHandler.findByType('SafeAreaProvider' as any);
-      const tamaguiProvider = safeAreaProvider.findByType(View);
 
-      // Children should be inside TamaguiProvider
-      const childContent = tamaguiProvider.findByProps({ testID: 'child-content' });
+      // Find the YStack (which should be inside QueryClientProvider)
+      const ystack = safeAreaProvider.findByProps({ testID: 'app-root-container' });
+      expect(ystack).toBeDefined();
+
+      // Children should be inside YStack
+      const childContent = ystack.findByProps({ testID: 'child-content' });
       expect(childContent).toBeDefined();
 
-      // StatusBar should also be inside TamaguiProvider
-      const statusBar = tamaguiProvider.findByType('StatusBar' as any);
+      // StatusBar should be a sibling of YStack (both inside QueryClientProvider)
+      const statusBar = safeAreaProvider.findByType('StatusBar' as any);
       expect(statusBar).toBeDefined();
     });
 

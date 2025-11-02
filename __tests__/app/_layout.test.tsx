@@ -33,6 +33,41 @@ jest.mock('@/sync', () => ({
   pullUpdates: jest.fn(),
 }));
 
+// Mock ThemeProvider
+jest.mock('@/ui/theme/ThemeProvider', () => ({
+  useThemeContext: jest.fn(() => ({
+    resolvedTheme: 'light',
+    palette: {
+      background: '#FFFFFF',
+      text: '#0F172A',
+      mutedText: '#475569',
+    },
+  })),
+  ThemeProvider: ({ children }: any) => children,
+}));
+
+// Mock Tamagui
+jest.mock('tamagui', () => ({
+  TamaguiProvider: ({ children }: any) => children,
+  Theme: ({ children }: any) => children,
+  YStack: ({ children }: any) => <>{children}</>,
+  createTamagui: jest.fn(() => ({})),
+  createTokens: jest.fn((tokens) => tokens),
+  createFont: jest.fn((font) => font),
+}));
+
+// Mock Tamagui fonts
+jest.mock('@tamagui/font-inter', () => ({
+  createInterFont: jest.fn(() => ({ family: 'Inter' })),
+}));
+
+// Mock React Navigation
+jest.mock('@react-navigation/native', () => ({
+  ThemeProvider: ({ children }: any) => children,
+  DefaultTheme: {},
+  DarkTheme: {},
+}));
+
 jest.mock('expo-router', () => {
   const MockStack: any = ({
     children,
@@ -65,10 +100,11 @@ describe('RootLayout', () => {
     render(<RootLayout />);
 
     expect(recordedProps?.screenOptions).toMatchObject({
-      headerStyle: { backgroundColor: 'transparent' },
-      headerTitleStyle: { fontWeight: '600' },
+      headerBackButtonDisplayMode: 'minimal',
     });
 
-    expect(recordedScreens).toEqual(expect.arrayContaining(['(auth)', '(tabs)', 'details']));
+    expect(recordedScreens).toEqual(
+      expect.arrayContaining(['index', '(auth)', '(tabs)', 'details']),
+    );
   });
 });

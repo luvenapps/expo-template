@@ -21,6 +21,20 @@ jest.mock('expo-router', () => {
   };
 });
 
+// Mock ThemeProvider
+jest.mock('@/ui/theme/ThemeProvider', () => ({
+  useThemeContext: jest.fn(() => ({
+    theme: 'dark',
+    setTheme: jest.fn(),
+    resolvedTheme: 'dark',
+    palette: {
+      background: '#1a1a1a',
+      text: '#FFFFFF',
+      mutedText: '#E2E8F0',
+    },
+  })),
+}));
+
 // Mock auth session
 jest.mock('@/auth/session', () => ({
   useSessionStore: jest.fn(),
@@ -57,6 +71,40 @@ jest.mock('react-native-gesture-handler', () => {
       mockReact.createElement('GestureHandlerRootView', { style }, children),
   };
 });
+
+// Mock Tamagui
+jest.mock('tamagui', () => {
+  const mockReact = jest.requireActual('react');
+  return {
+    YStack: ({ children, testID, ...props }: any) =>
+      mockReact.createElement('View', { testID, ...props }, children),
+    XStack: ({ children, ...props }: any) => mockReact.createElement('View', props, children),
+    Paragraph: ({ children, ...props }: any) => mockReact.createElement('Text', props, children),
+    Button: ({ children, onPress, disabled, ...props }: any) =>
+      mockReact.createElement(
+        'TouchableOpacity',
+        { onPress, disabled, ...props },
+        mockReact.createElement('Text', {}, children),
+      ),
+    H3: ({ children, ...props }: any) => mockReact.createElement('Text', props, children),
+  };
+});
+
+// Mock Tamagui Lucide Icons
+jest.mock('@tamagui/lucide-icons', () => ({
+  Monitor: ({ size, color }: any) => {
+    const mockReact = jest.requireActual('react');
+    return mockReact.createElement('View', { testID: 'monitor-icon', size, color });
+  },
+  Sun: ({ size, color }: any) => {
+    const mockReact = jest.requireActual('react');
+    return mockReact.createElement('View', { testID: 'sun-icon', size, color });
+  },
+  Moon: ({ size, color }: any) => {
+    const mockReact = jest.requireActual('react');
+    return mockReact.createElement('View', { testID: 'moon-icon', size, color });
+  },
+}));
 
 import { fireEvent, render } from '@testing-library/react-native';
 import React from 'react';
@@ -182,15 +230,6 @@ describe('SettingsScreen', () => {
     it('should render without crashing', () => {
       const { UNSAFE_root } = render(<SettingsScreen />);
       expect(UNSAFE_root).toBeDefined();
-    });
-
-    it('should render Stack.Screen with correct options', () => {
-      const { UNSAFE_root } = render(<SettingsScreen />);
-      const stackScreen = UNSAFE_root.findByType('StackScreen' as any);
-
-      expect(stackScreen).toBeDefined();
-      expect(stackScreen.props.options.title).toBe('Settings');
-      expect(stackScreen.props.options.headerShown).toBe(true);
     });
 
     it('should display message about upcoming features', () => {

@@ -8,6 +8,18 @@ jest.mock('react-native-safe-area-context', () => ({
   })),
 }));
 
+// Mock ThemeProvider
+jest.mock('@/ui/theme/ThemeProvider', () => ({
+  useThemeContext: jest.fn(() => ({
+    resolvedTheme: 'light',
+    palette: {
+      background: '#FFFFFF',
+      text: '#0F172A',
+      mutedText: '#475569',
+    },
+  })),
+}));
+
 import { render } from '@testing-library/react-native';
 import React from 'react';
 import { Text } from 'react-native';
@@ -89,7 +101,7 @@ describe('ScreenContainer', () => {
       expect(container.props.paddingHorizontal).toBe('$6');
     });
 
-    it('should apply default backgroundColor', () => {
+    it('should apply default backgroundColor from palette', () => {
       const { getByTestId } = render(
         <ScreenContainer>
           <Text>Content</Text>
@@ -97,7 +109,7 @@ describe('ScreenContainer', () => {
       );
 
       const container = getByTestId('screen-container');
-      expect(container.props.backgroundColor).toBe('$background');
+      expect(container.props.backgroundColor).toBe('#FFFFFF');
     });
 
     it('should apply flex: 1', () => {
