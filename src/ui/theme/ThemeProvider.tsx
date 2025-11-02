@@ -17,9 +17,9 @@ const PALETTES: Record<'light' | 'dark', ThemePalette> = {
     mutedText: '#475569',
   },
   dark: {
-    background: '#0F172A',
-    text: '#E2E8F0',
-    mutedText: '#94A3B8',
+    background: '#1a1a1a',
+    text: '#FFFFFF',
+    mutedText: '#E2E8F0',
   },
 };
 
