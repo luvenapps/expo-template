@@ -1,16 +1,16 @@
 import { Home, Settings } from '@tamagui/lucide-icons';
 import { Tabs } from 'expo-router';
-import { useColorScheme } from 'react-native';
 
 import { DOMAIN } from '@/config/domain.config';
+import { useThemeContext } from '@/ui/theme/ThemeProvider';
 
 function TabIcon({ color, Icon }: { color: string; Icon: typeof Home }) {
   return <Icon size={22} color={color} />;
 }
 
 export default function TabsLayout() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const { resolvedTheme } = useThemeContext();
+  const isDark = resolvedTheme === 'dark';
 
   return (
     <Tabs

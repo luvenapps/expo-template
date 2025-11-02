@@ -27,6 +27,7 @@ type ThemeContextValue = {
   theme: ThemeName;
   setTheme: (theme: ThemeName) => void;
   palette: ThemePalette;
+  resolvedTheme: 'light' | 'dark';
 };
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
@@ -53,6 +54,7 @@ export function ThemeProvider({ children }: PropsWithChildren) {
       theme,
       setTheme,
       palette: PALETTES[resolvedTheme],
+      resolvedTheme,
     };
   }, [theme, systemTheme]);
 
