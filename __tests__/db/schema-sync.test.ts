@@ -7,6 +7,7 @@
  */
 
 import { DOMAIN } from '@/config/domain.config';
+import { toSnakeCase } from '@/utils/string';
 
 describe('Database Schema Synchronization', () => {
   // Helper to get user-defined columns (filter out Drizzle internals)
@@ -62,20 +63,14 @@ describe('Database Schema Synchronization', () => {
     const sqliteSchema = require('@/db/sqlite/schema');
     const postgresSchema = require('@/db/postgres/schema');
 
-    ENTITY_TABLES.forEach(({ name, displayName }) => {
+    ENTITY_TABLES.forEach(({ name }) => {
       const sqliteColumns = getUserColumns(sqliteSchema[name]);
       const postgresColumns = getUserColumns(postgresSchema[name]);
 
-      // Allow Postgres to have up to 1 extra column (e.g., enableRLS)
+      // Allow Postgres to have exactly 1 extra column (enableRLS internal column)
       const columnCountDiff = Math.abs(sqliteColumns.length - postgresColumns.length);
 
       expect(columnCountDiff).toBeLessThanOrEqual(1);
-
-      if (columnCountDiff > 0) {
-        console.warn(
-          `⚠️  ${displayName} entity has different column counts: SQLite=${sqliteColumns.length}, Postgres=${postgresColumns.length}`,
-        );
-      }
     });
   });
 
@@ -103,11 +98,14 @@ describe('Database Schema Synchronization', () => {
       });
 
       // Known column name differences (these are expected):
-      // - SQLite uses 'habitId' (JS property), Postgres uses 'habit_id' (same column, different property name)
+      // - SQLite uses camelCase for foreign keys (JS property)
+      // - Postgres uses snake_case for foreign keys (same column, different property name)
       // - Postgres may have 'enableRLS' (Drizzle internal)
       const knownDifferences = new Set([
-        DOMAIN.entities.entries.foreignKey, // habitId in SQLite
-        DOMAIN.entities.entries.row_id, // habit_id in Postgres
+        DOMAIN.entities.entries.foreignKey, // camelCase in SQLite
+        DOMAIN.entities.entries.row_id, // snake_case in Postgres
+        DOMAIN.entities.reminders.foreignKey, // camelCase in SQLite
+        toSnakeCase(DOMAIN.entities.reminders.foreignKey), // snake_case in Postgres
         'enableRLS', // Postgres Drizzle internal
       ]);
 
@@ -141,20 +139,28 @@ describe('Database Schema Synchronization', () => {
 
     // Entities with foreign keys to primary
     const foreignKeyEntities = [
-      { name: 'entryEntity', displayName: 'Entry' },
-      { name: 'reminderEntity', displayName: 'Reminder' },
+      {
+        name: 'entryEntity',
+        displayName: 'Entry',
+        sqliteFKColumn: DOMAIN.entities.entries.foreignKey,
+        postgresFKColumn: DOMAIN.entities.entries.row_id,
+      },
+      {
+        name: 'reminderEntity',
+        displayName: 'Reminder',
+        sqliteFKColumn: DOMAIN.entities.reminders.foreignKey,
+        postgresFKColumn: toSnakeCase(DOMAIN.entities.reminders.foreignKey),
+      },
     ];
 
-    foreignKeyEntities.forEach(({ name, displayName }) => {
+    foreignKeyEntities.forEach(({ name, displayName, sqliteFKColumn, postgresFKColumn }) => {
       const sqliteColumns = getUserColumns(sqliteSchema[name]);
       const postgresColumns = getUserColumns(postgresSchema[name]);
 
       // Check SQLite has foreign key column
-      const sqliteFKColumn = DOMAIN.entities.entries.foreignKey;
       expect(sqliteColumns).toContain(sqliteFKColumn);
 
       // Check Postgres has foreign key column
-      const postgresFKColumn = DOMAIN.entities.entries.row_id;
       expect(postgresColumns).toContain(postgresFKColumn);
     });
   });

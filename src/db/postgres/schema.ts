@@ -1,4 +1,5 @@
 import { DOMAIN } from '@/config/domain.config';
+import { toSnakeCase } from '@/utils/string';
 import {
   boolean,
   index,
@@ -22,7 +23,7 @@ const timestampColumn = (name: string) =>
 const optionalTimestamp = (name: string) => timestamp(name, { withTimezone: true });
 
 /**
- * Primary domain entity table (e.g., habits, tasks, projects)
+ * Primary domain entity table (e.g., tasks, projects, workouts, notes)
  * Configured via DOMAIN.entities.primary in domain.config.ts
  */
 export const primaryEntity = pgTable(
@@ -70,12 +71,12 @@ export const entryEntity = pgTable(
     deletedAt: optionalTimestamp('deleted_at'),
   },
   (table) => ({
-    // Unique constraint on habit_id + date where not deleted
+    // Unique constraint on foreign_key + date where not deleted
     // Note: Drizzle doesn't support partial indexes, so the WHERE clause is added via post-processing
     uniqueIdx: uniqueIndex(
       `${DOMAIN.entities.entries.remoteTableName}_${DOMAIN.entities.entries.row_id}_date_unique`,
     ).on(table[DOMAIN.entities.entries.row_id], table.date),
-    userHabitDateIdx: index(
+    userForeignKeyDateIdx: index(
       `${DOMAIN.entities.entries.remoteTableName}_user_${DOMAIN.entities.entries.row_id}_date_idx`,
     ).on(table.userId, table[DOMAIN.entities.entries.row_id], table.date),
   }),
@@ -90,8 +91,10 @@ export const reminderEntity = pgTable(
   {
     id: uuid('id').primaryKey(),
     userId: uuid('user_id').notNull(),
-    // Foreign key to primary entity
-    [DOMAIN.entities.entries.row_id]: uuid(DOMAIN.entities.entries.row_id)
+    // Foreign key to primary entity (convert camelCase to snake_case)
+    [toSnakeCase(DOMAIN.entities.reminders.foreignKey)]: uuid(
+      toSnakeCase(DOMAIN.entities.reminders.foreignKey),
+    )
       .notNull()
       .references(() => primaryEntity.id, { onDelete: 'cascade' }),
     timeLocal: text('time_local').notNull(),
@@ -104,9 +107,9 @@ export const reminderEntity = pgTable(
     deletedAt: optionalTimestamp('deleted_at'),
   },
   (table) => ({
-    userHabitEnabledIdx: index(
-      `${DOMAIN.entities.reminders.remoteTableName}_user_${DOMAIN.entities.entries.row_id}_enabled_idx`,
-    ).on(table.userId, table[DOMAIN.entities.entries.row_id], table.isEnabled),
+    userForeignKeyEnabledIdx: index(
+      `${DOMAIN.entities.reminders.remoteTableName}_user_${toSnakeCase(DOMAIN.entities.reminders.foreignKey)}_enabled_idx`,
+    ).on(table.userId, table[toSnakeCase(DOMAIN.entities.reminders.foreignKey)], table.isEnabled),
   }),
 );
 

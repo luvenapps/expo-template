@@ -14,6 +14,26 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '..');
 
+// Load DOMAIN config from compiled output
+const domainConfigPath = path.join(rootDir, 'src/config/domain.config.ts');
+let DOMAIN;
+try {
+  // Read the TypeScript file content
+  const configContent = fs.readFileSync(domainConfigPath, 'utf8');
+  // Extract DOMAIN object using regex (simple parser for config)
+  const domainMatch = configContent.match(/export const DOMAIN = ({[\s\S]*?}) as const;/);
+  if (domainMatch) {
+    // Use eval to parse the object (safe in this controlled context)
+    DOMAIN = eval(`(${domainMatch[1]})`);
+  } else {
+    throw new Error('Could not parse DOMAIN config');
+  }
+} catch (error) {
+  console.error('❌ Failed to load DOMAIN config:', error.message);
+  console.error('   Make sure src/config/domain.config.ts exists and is properly formatted');
+  process.exit(1);
+}
+
 function run(command, args, options = {}) {
   return new Promise((resolve, reject) => {
     console.log(`\n🚀 Running: ${command} ${args.join(' ')}\n`);
@@ -78,11 +98,21 @@ async function main() {
 
       // Add WHERE clause to partial unique index (Drizzle doesn't support this)
       console.log('\n📝 Post-processing migration...');
-      if (migrationContent.includes('habit_entries_habit_id_date_unique')) {
-        migrationContent = migrationContent.replace(
-          /CREATE UNIQUE INDEX "habit_entries_habit_id_date_unique" ON "habit_entries" USING btree \("habit_id","date"\);/,
-          'CREATE UNIQUE INDEX "habit_entries_habit_id_date_unique" ON "habit_entries" USING btree ("habit_id","date") WHERE deleted_at IS NULL;',
+
+      // Build the index name and pattern from DOMAIN config
+      const entriesTable = DOMAIN.entities.entries.remoteTableName;
+      const entriesForeignKey = DOMAIN.entities.entries.row_id;
+      const indexName = `${entriesTable}_${entriesForeignKey}_date_unique`;
+
+      if (migrationContent.includes(indexName)) {
+        // Create regex pattern dynamically from DOMAIN config
+        const indexPattern = new RegExp(
+          `CREATE UNIQUE INDEX "${indexName}" ON "${entriesTable}" USING btree \\("${entriesForeignKey}","date"\\);`,
+          'g',
         );
+        const replacement = `CREATE UNIQUE INDEX "${indexName}" ON "${entriesTable}" USING btree ("${entriesForeignKey}","date") WHERE deleted_at IS NULL;`;
+
+        migrationContent = migrationContent.replace(indexPattern, replacement);
         console.log('✅ Added WHERE clause to partial unique index');
       }
 

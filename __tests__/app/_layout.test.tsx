@@ -107,4 +107,24 @@ describe('RootLayout', () => {
       expect.arrayContaining(['index', '(auth)', '(tabs)', 'details']),
     );
   });
+
+  test('renders with dark theme when resolvedTheme is dark', () => {
+    // Mock dark theme
+    const { useThemeContext } = require('@/ui/theme/ThemeProvider');
+    useThemeContext.mockReturnValueOnce({
+      resolvedTheme: 'dark',
+      palette: {
+        background: '#0F172A',
+        text: '#FFFFFF',
+        mutedText: '#94A3B8',
+      },
+    });
+
+    render(<RootLayout />);
+
+    // Verify it renders without errors
+    expect(recordedScreens).toEqual(
+      expect.arrayContaining(['index', '(auth)', '(tabs)', 'details']),
+    );
+  });
 });

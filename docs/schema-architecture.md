@@ -83,12 +83,9 @@ Both schemas use the same `DOMAIN` config for all table and column names:
 // Both files use:
 import { DOMAIN } from '@/config/domain.config';
 
-export const primaryEntity = sqliteTable(
-  DOMAIN.entities.primary.tableName, // 'habits'
-  {
-    /* columns */
-  },
-);
+export const primaryEntity = sqliteTable(DOMAIN.entities.primary.tableName, {
+  /* columns */
+});
 ```
 
 This ensures table names always match.

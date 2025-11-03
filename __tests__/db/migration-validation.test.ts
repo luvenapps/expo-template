@@ -16,6 +16,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { DOMAIN } from '@/config/domain.config';
+import { toSnakeCase } from '@/utils/string';
 
 describe('Migration File Validation', () => {
   const migrationsDir = path.join(process.cwd(), 'supabase/migrations');
@@ -38,10 +39,10 @@ describe('Migration File Validation', () => {
   describe('Table Creation', () => {
     it('should create all entity tables from DOMAIN config', () => {
       const expectedTables = [
-        DOMAIN.entities.primary.remoteTableName, // habits
-        DOMAIN.entities.entries.remoteTableName, // habit_entries
-        DOMAIN.entities.reminders.remoteTableName, // reminders
-        DOMAIN.entities.devices.remoteTableName, // devices
+        DOMAIN.entities.primary.remoteTableName,
+        DOMAIN.entities.entries.remoteTableName,
+        DOMAIN.entities.reminders.remoteTableName,
+        DOMAIN.entities.devices.remoteTableName,
       ];
 
       for (const tableName of expectedTables) {
@@ -73,7 +74,7 @@ describe('Migration File Validation', () => {
     it('should define foreign key from entries to primary entity', () => {
       const entriesTable = DOMAIN.entities.entries.remoteTableName;
       const primaryTable = DOMAIN.entities.primary.remoteTableName;
-      const foreignKey = DOMAIN.entities.entries.row_id; // habit_id
+      const foreignKey = DOMAIN.entities.entries.row_id;
 
       expect(migrationContent).toMatch(
         new RegExp(
@@ -86,8 +87,8 @@ describe('Migration File Validation', () => {
     it('should define foreign key from reminders to primary entity', () => {
       const remindersTable = DOMAIN.entities.reminders.remoteTableName;
       const primaryTable = DOMAIN.entities.primary.remoteTableName;
-      // reminders uses habit_id column (derived from foreignKey in camelCase to snake_case)
-      const foreignKey = 'habit_id';
+      // reminders uses foreign key column (derived from foreignKey in camelCase to snake_case)
+      const foreignKey = toSnakeCase(DOMAIN.entities.reminders.foreignKey);
 
       expect(migrationContent).toMatch(
         new RegExp(
@@ -107,17 +108,29 @@ describe('Migration File Validation', () => {
   describe('Indexes', () => {
     it('should create partial unique index with WHERE clause for entries', () => {
       // This validates the post-processing step in generate-postgres-migration.mjs
-      const partialIndexRegex =
-        /CREATE UNIQUE INDEX "habit_entries_habit_id_date_unique".*WHERE deleted_at IS NULL/i;
+      const entriesTable = DOMAIN.entities.entries.remoteTableName;
+      const foreignKeyColumn = DOMAIN.entities.entries.row_id;
+      const indexName = `${entriesTable}_${foreignKeyColumn}_date_unique`;
+      const partialIndexRegex = new RegExp(
+        `CREATE UNIQUE INDEX "${indexName}".*WHERE deleted_at IS NULL`,
+        'i',
+      );
       expect(migrationContent).toMatch(partialIndexRegex);
     });
 
     it('should create user_id indexes for query performance', () => {
+      const primaryTable = DOMAIN.entities.primary.remoteTableName;
+      const entriesTable = DOMAIN.entities.entries.remoteTableName;
+      const remindersTable = DOMAIN.entities.reminders.remoteTableName;
+      const devicesTable = DOMAIN.entities.devices.remoteTableName;
+      const entriesForeignKey = DOMAIN.entities.entries.row_id;
+      const remindersForeignKey = toSnakeCase(DOMAIN.entities.reminders.foreignKey);
+
       const expectedIndexes = [
-        'devices_user_id_platform_idx',
-        'habit_entries_user_habit_id_date_idx',
-        'habits_user_id_updated_at_idx',
-        'reminders_user_habit_id_enabled_idx',
+        `${devicesTable}_user_id_platform_idx`,
+        `${entriesTable}_user_${entriesForeignKey}_date_idx`,
+        `${primaryTable}_user_id_updated_at_idx`,
+        `${remindersTable}_user_${remindersForeignKey}_enabled_idx`,
       ];
 
       for (const indexName of expectedIndexes) {
@@ -226,8 +239,8 @@ describe('Migration File Validation', () => {
     });
 
     it('should match foreign key column names from DOMAIN', () => {
-      const habitIdColumn = DOMAIN.entities.entries.row_id; // "habit_id"
-      expect(migrationContent).toMatch(new RegExp(`"${habitIdColumn}".*REFERENCES`, 'i'));
+      const entriesForeignKey = DOMAIN.entities.entries.row_id;
+      expect(migrationContent).toMatch(new RegExp(`"${entriesForeignKey}".*REFERENCES`, 'i'));
     });
   });
 });

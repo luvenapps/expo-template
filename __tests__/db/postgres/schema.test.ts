@@ -1,5 +1,6 @@
 import { DOMAIN } from '@/config/domain.config';
 import { deviceEntity, entryEntity, primaryEntity, reminderEntity } from '@/db/postgres/schema';
+import { toSnakeCase } from '@/utils/string';
 import { getTableConfig } from 'drizzle-orm/pg-core';
 
 describe('Postgres Schema', () => {
@@ -106,7 +107,7 @@ describe('Postgres Schema', () => {
 
       expect(columns).toContain('id');
       expect(columns).toContain('userId');
-      expect(columns).toContain(DOMAIN.entities.entries.row_id); // habit_id
+      expect(columns).toContain(DOMAIN.entities.entries.row_id);
       expect(columns).toContain('date');
       expect(columns).toContain('amount');
       expect(columns).toContain('source');
@@ -116,27 +117,33 @@ describe('Postgres Schema', () => {
       expect(columns).toContain('deletedAt');
     });
 
-    it('should have unique index on habit_id and date', () => {
+    it('should have unique index on foreign key and date', () => {
       const config = getTableConfig(entryEntity);
       expect(config.indexes).toBeDefined();
       expect(config.indexes.length).toBeGreaterThan(0);
 
+      const foreignKeyColumn = DOMAIN.entities.entries.row_id;
+      const expectedIndexPattern = `_${foreignKeyColumn}_date_unique`;
+
       const uniqueIdx = config.indexes.find((idx) => {
         const indexName = (idx as any).config?.name || (idx as any).name;
-        return indexName.includes('_habit_id_date_unique');
+        return indexName.includes(expectedIndexPattern);
       });
       expect(uniqueIdx).toBeDefined();
       const isUnique = (uniqueIdx as any)?.config?.unique || (uniqueIdx as any)?.unique;
       expect(isUnique).toBe(true);
     });
 
-    it('should have user habit date index', () => {
+    it('should have user foreign key date index', () => {
       const config = getTableConfig(entryEntity);
-      const hasUserHabitDateIdx = config.indexes.some((idx) => {
+      const foreignKeyColumn = DOMAIN.entities.entries.row_id;
+      const expectedIndexPattern = `_user_${foreignKeyColumn}_date_idx`;
+
+      const hasUserForeignKeyDateIdx = config.indexes.some((idx) => {
         const indexName = (idx as any).config?.name || (idx as any).name;
-        return indexName.includes('_user_habit_id_date_idx');
+        return indexName.includes(expectedIndexPattern);
       });
-      expect(hasUserHabitDateIdx).toBe(true);
+      expect(hasUserForeignKeyDateIdx).toBe(true);
     });
 
     it('should have id as primary key', () => {
@@ -210,10 +217,11 @@ describe('Postgres Schema', () => {
 
     it('should have all required columns', () => {
       const columns = Object.keys(reminderEntity);
+      const reminderForeignKey = toSnakeCase(DOMAIN.entities.reminders.foreignKey);
 
       expect(columns).toContain('id');
       expect(columns).toContain('userId');
-      expect(columns).toContain(DOMAIN.entities.entries.row_id); // habit_id
+      expect(columns).toContain(reminderForeignKey);
       expect(columns).toContain('timeLocal');
       expect(columns).toContain('daysOfWeek');
       expect(columns).toContain('timezone');
@@ -224,14 +232,17 @@ describe('Postgres Schema', () => {
       expect(columns).toContain('deletedAt');
     });
 
-    it('should have user habit enabled index', () => {
+    it('should have user foreign key enabled index', () => {
       const config = getTableConfig(reminderEntity);
       expect(config.indexes).toBeDefined();
       expect(config.indexes.length).toBeGreaterThan(0);
 
+      const reminderForeignKey = toSnakeCase(DOMAIN.entities.reminders.foreignKey);
+      const expectedIndexPattern = `_user_${reminderForeignKey}_enabled_idx`;
+
       const hasEnabledIdx = config.indexes.some((idx) => {
         const indexName = (idx as any).config?.name || (idx as any).name;
-        return indexName.includes('_user_habit_id_enabled_idx');
+        return indexName.includes(expectedIndexPattern);
       });
       expect(hasEnabledIdx).toBe(true);
     });
@@ -245,7 +256,8 @@ describe('Postgres Schema', () => {
       expect(reminderEntity.userId).toBeDefined();
       expect(reminderEntity.userId.notNull).toBe(true);
 
-      const foreignKeyColumn = reminderEntity[DOMAIN.entities.entries.row_id];
+      const reminderForeignKey = toSnakeCase(DOMAIN.entities.reminders.foreignKey);
+      const foreignKeyColumn = (reminderEntity as any)[reminderForeignKey];
       expect(foreignKeyColumn).toBeDefined();
       expect(foreignKeyColumn.notNull).toBe(true);
     });

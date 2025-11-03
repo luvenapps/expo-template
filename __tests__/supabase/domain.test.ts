@@ -19,7 +19,8 @@ describe('supabase domain helpers', () => {
 
   it('converts local columns to snake_case remote columns', () => {
     const mapping = COLUMN_MAPPINGS[DOMAIN.entities.entries.tableName];
-    expect(mapping[DOMAIN.entities.entries.foreignKey]).toBe('habit_id');
+    const expectedForeignKey = DOMAIN.entities.entries.row_id;
+    expect(mapping[DOMAIN.entities.entries.foreignKey]).toBe(expectedForeignKey);
     expect(mapping.updatedAt).toBe('updated_at');
   });
 
@@ -30,14 +31,16 @@ describe('supabase domain helpers', () => {
 
   it('exposes merge constraint metadata for entries', () => {
     const merge = MERGE_UNIQUE_CONSTRAINTS[DOMAIN.entities.entries.tableName];
-    expect(merge?.columns).toEqual(['habit_id', 'date']);
+    const expectedForeignKey = DOMAIN.entities.entries.row_id;
+    expect(merge?.columns).toEqual([expectedForeignKey, 'date']);
     expect(merge?.condition).toContain('deleted_at');
   });
 
   it('maps payload keys and applies overrides when constructing remote rows', () => {
+    const foreignKeyColumn = DOMAIN.entities.entries.row_id;
     const payload = {
       userId: 'user-1',
-      [DOMAIN.entities.entries.foreignKey]: 'habit-1',
+      [DOMAIN.entities.entries.foreignKey]: 'primary-entity-1',
       date: '2025-01-01',
       amount: 2,
       updatedAt: '2025-01-02T00:00:00.000Z',
@@ -49,7 +52,7 @@ describe('supabase domain helpers', () => {
 
     expect(mapped).toMatchObject({
       user_id: 'user-1',
-      habit_id: 'habit-1',
+      [foreignKeyColumn]: 'primary-entity-1',
       date: '2025-01-01',
       amount: 2,
       updated_at: '2025-01-02T00:00:00.000Z',

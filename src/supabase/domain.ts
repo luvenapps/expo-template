@@ -1,4 +1,5 @@
 import { DOMAIN } from '@/config/domain.config';
+import { toSnakeCase } from '@/utils/string';
 
 export const LOCAL_TO_REMOTE_TABLE = {
   [DOMAIN.entities.primary.tableName]: DOMAIN.entities.primary.remoteTableName,
@@ -27,7 +28,7 @@ export const COLUMN_MAPPINGS: Record<LocalTableName, Record<string, string>> = {
   },
   [DOMAIN.entities.entries.tableName]: {
     userId: 'user_id',
-    [DOMAIN.entities.entries.foreignKey]: 'habit_id',
+    [DOMAIN.entities.entries.foreignKey]: DOMAIN.entities.entries.row_id,
     date: 'date',
     amount: 'amount',
     source: 'source',
@@ -38,7 +39,7 @@ export const COLUMN_MAPPINGS: Record<LocalTableName, Record<string, string>> = {
   },
   [DOMAIN.entities.reminders.tableName]: {
     userId: 'user_id',
-    [DOMAIN.entities.entries.foreignKey]: 'habit_id',
+    [DOMAIN.entities.reminders.foreignKey]: toSnakeCase(DOMAIN.entities.reminders.foreignKey),
     timeLocal: 'time_local',
     daysOfWeek: 'days_of_week',
     timezone: 'timezone',
@@ -63,7 +64,7 @@ export const MERGE_UNIQUE_CONSTRAINTS: Partial<
   Record<LocalTableName, { columns: string[]; condition?: string }>
 > = {
   [DOMAIN.entities.entries.tableName]: {
-    columns: ['habit_id', 'date'],
+    columns: [DOMAIN.entities.entries.row_id, 'date'],
     condition: 'deleted_at IS NULL',
   },
 };
