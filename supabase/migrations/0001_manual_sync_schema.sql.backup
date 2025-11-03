@@ -1,0 +1,98 @@
+-- Better Habits sync schema
+-- This migration creates the core tables used by the offline-first sync pipeline.
+
+set check_function_bodies = off;
+
+create table if not exists public.habits (
+  id uuid primary key,
+  user_id uuid not null,
+  name text not null,
+  cadence text not null,
+  color text not null default '#0ea5e9',
+  sort_order integer not null default 0,
+  is_archived boolean not null default false,
+  created_at timestamptz not null default timezone('utc'::text, now()),
+  updated_at timestamptz not null default timezone('utc'::text, now()),
+  version bigint not null default 1,
+  deleted_at timestamptz null
+);
+
+create index if not exists habits_user_id_updated_at_idx
+  on public.habits (user_id, updated_at desc);
+
+create table if not exists public.habit_entries (
+  id uuid primary key,
+  user_id uuid not null,
+  habit_id uuid not null references public.habits (id) on delete cascade,
+  date text not null,
+  amount integer not null default 0,
+  source text not null default 'local',
+  created_at timestamptz not null default timezone('utc'::text, now()),
+  updated_at timestamptz not null default timezone('utc'::text, now()),
+  version bigint not null default 1,
+  deleted_at timestamptz null
+);
+
+create unique index if not exists habit_entries_habit_id_date_unique
+  on public.habit_entries (habit_id, date)
+  where deleted_at is null;
+
+create index if not exists habit_entries_user_habit_date_idx
+  on public.habit_entries (user_id, habit_id, date);
+
+create table if not exists public.reminders (
+  id uuid primary key,
+  user_id uuid not null,
+  habit_id uuid not null references public.habits (id) on delete cascade,
+  time_local text not null,
+  days_of_week text not null,
+  timezone text not null,
+  is_enabled boolean not null default true,
+  created_at timestamptz not null default timezone('utc'::text, now()),
+  updated_at timestamptz not null default timezone('utc'::text, now()),
+  version bigint not null default 1,
+  deleted_at timestamptz null
+);
+
+create index if not exists reminders_user_habit_enabled_idx
+  on public.reminders (user_id, habit_id, is_enabled);
+
+create table if not exists public.devices (
+  id uuid primary key,
+  user_id uuid not null,
+  platform text not null,
+  last_sync_at timestamptz null,
+  created_at timestamptz not null default timezone('utc'::text, now()),
+  updated_at timestamptz not null default timezone('utc'::text, now()),
+  version bigint not null default 1,
+  deleted_at timestamptz null
+);
+
+create index if not exists devices_user_platform_idx
+  on public.devices (user_id, platform);
+
+alter table public.habits enable row level security;
+alter table public.habit_entries enable row level security;
+alter table public.reminders enable row level security;
+alter table public.devices enable row level security;
+
+create policy if not exists "Users can manage their own habits"
+  on public.habits
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create policy if not exists "Users can manage their own habit entries"
+  on public.habit_entries
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create policy if not exists "Users can manage their own reminders"
+  on public.reminders
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create policy if not exists "Users can manage their own devices"
+  on public.devices
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+

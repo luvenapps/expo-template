@@ -47,6 +47,17 @@ const SYNC_TABLES = [
 
 type SyncTable = (typeof SYNC_TABLES)[number];
 
+// Used only for type extraction - not as a runtime value
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const REMOTE_TABLES = [
+  DOMAIN.entities.primary.remoteTableName,
+  DOMAIN.entities.entries.remoteTableName,
+  DOMAIN.entities.reminders.remoteTableName,
+  DOMAIN.entities.devices.remoteTableName,
+] as const;
+
+type RemoteTable = (typeof REMOTE_TABLES)[number];
+
 type SyncPushMutation = {
   id: string;
   table: SyncTable;
@@ -57,13 +68,13 @@ type SyncPushMutation = {
 
 type SyncPushResponse = {
   success: true;
-  updated?: Partial<Record<SyncTable, unknown[]>>;
+  updated?: Partial<Record<RemoteTable, RemoteRow[]>>;
 };
 
 type SyncPullResponse = {
   success: true;
   cursors: Partial<Record<SyncTable, string | null>>;
-  records: Partial<Record<SyncTable, RemoteRow[]>>;
+  records: Partial<Record<RemoteTable, RemoteRow[]>>;
 };
 
 type RemoteRow = Record<string, unknown>;
@@ -100,6 +111,10 @@ export async function pushOutbox(records: OutboxRecord[]) {
 
   if (!data?.success) {
     throw new Error('Unexpected response from sync push function.');
+  }
+
+  if (data.updated) {
+    await applyRemoteRecords(data.updated);
   }
 }
 
@@ -144,16 +159,16 @@ export async function pullUpdates() {
   });
 }
 
-async function applyRemoteRecords(records: Partial<Record<SyncTable, RemoteRow[]>>) {
+async function applyRemoteRecords(records: Partial<Record<RemoteTable, RemoteRow[]>>) {
   // Map remote records using remote table names from config
   const primaryRows = mapPrimaryEntities(
-    records[DOMAIN.entities.primary.remoteTableName as SyncTable],
+    records[DOMAIN.entities.primary.remoteTableName as RemoteTable],
   );
-  const entryRows = mapEntries(records[DOMAIN.entities.entries.remoteTableName as SyncTable]);
+  const entryRows = mapEntries(records[DOMAIN.entities.entries.remoteTableName as RemoteTable]);
   const reminderRows = mapReminders(
-    records[DOMAIN.entities.reminders.remoteTableName as SyncTable],
+    records[DOMAIN.entities.reminders.remoteTableName as RemoteTable],
   );
-  const deviceRows = mapDevices(records[DOMAIN.entities.devices.remoteTableName as SyncTable]);
+  const deviceRows = mapDevices(records[DOMAIN.entities.devices.remoteTableName as RemoteTable]);
 
   // Upsert to local tables using local table names from config
   await Promise.all([

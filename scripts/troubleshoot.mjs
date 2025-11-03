@@ -16,9 +16,13 @@
  *  - Expo peer dependency alignment (react, react-native, react-dom)
  *  - Expo doctor
  */
-const { execSync } = require('child_process');
-const fs = require('fs');
-const path = require('path');
+import { execSync, spawnSync } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+import process from 'node:process';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
 
 function header(title) {
   console.log('\n' + '─'.repeat(70));
@@ -233,8 +237,6 @@ function compareVersions(actual, expected) {
       }
     }
   }
-
-  const { spawnSync } = require('child_process');
 
   header('Expo Doctor');
   try {

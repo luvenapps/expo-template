@@ -14,6 +14,9 @@ module.exports = defineConfig([
   // Use .gitignore patterns for ESLint ignore
   { ignores: gitignorePatterns },
 
+  // Ignore Supabase Deno edge functions (they use Deno-specific imports)
+  { ignores: ['supabase/functions/**'] },
+
   // Existing Expo base config
   expoConfig,
 

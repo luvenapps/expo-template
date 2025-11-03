@@ -126,6 +126,55 @@ describe('sync driver', () => {
       });
     });
 
+    it('applies updated records returned from backend', async () => {
+      mockInvoke.mockResolvedValue({
+        data: {
+          success: true,
+          updated: {
+            [DOMAIN.entities.primary.remoteTableName]: [
+              {
+                id: `${DOMAIN.entities.primary.tableName}-1`,
+                user_id: 'user-1',
+                name: `${DOMAIN.entities.primary.displayName}`,
+                cadence: 'daily',
+                color: '#0ea5e9',
+                sort_order: 0,
+                is_archived: false,
+                created_at: '2025-01-01T00:00:00.000Z',
+                updated_at: '2025-01-02T00:00:00.000Z',
+                version: 2,
+                deleted_at: null,
+              },
+            ],
+          },
+        },
+        error: null,
+      });
+
+      const record: OutboxRecord = {
+        id: '1',
+        tableName: DOMAIN.entities.primary.tableName,
+        rowId: `${DOMAIN.entities.primary.tableName}-1`,
+        operation: 'update',
+        payload: JSON.stringify({ name: `${DOMAIN.entities.primary.displayName}` }),
+        version: 2,
+        attempts: 0,
+        createdAt: new Date().toISOString(),
+      };
+
+      await pushOutbox([record]);
+
+      expect(mockUpsertRecords).toHaveBeenCalledWith(
+        DOMAIN.entities.primary.tableName,
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: `${DOMAIN.entities.primary.tableName}-1`,
+            userId: 'user-1',
+          }),
+        ]),
+      );
+    });
+
     it('throws when Supabase function returns error', async () => {
       mockInvoke.mockResolvedValue({
         data: null,
@@ -244,7 +293,7 @@ describe('sync driver', () => {
             devices: 'cursor-devices',
           },
           records: {
-            [DOMAIN.entities.primary.tableName]: [
+            [DOMAIN.entities.primary.remoteTableName]: [
               {
                 id: `${DOMAIN.entities.primary.tableName}-1`,
                 user_id: 'user-1',
@@ -259,7 +308,7 @@ describe('sync driver', () => {
                 deleted_at: null,
               },
             ],
-            [DOMAIN.entities.entries.tableName]: [
+            [DOMAIN.entities.entries.remoteTableName]: [
               {
                 id: 'entry-1',
                 user_id: 'user-1',

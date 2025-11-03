@@ -1,7 +1,5 @@
 # Project Updates
 
-## 2025-10-10
-
 - **Design system on** — Tamagui is configured (`tamagui.config.ts`) and available through the new `AppProviders` wrapper so every screen shares fonts, spacing, and theme tokens.
 - **Unified providers** — `src/ui/providers/AppProviders.tsx` centralises `GestureHandlerRootView`, `SafeAreaProvider`, Tamagui, and the status bar; `app/_layout.tsx` simply imports the wrapper via the `@/` alias.
 - **Project scaffolding** — Added a lightweight `src/` folder structure (auth, data, notifications, state, sync, utils, ui) plus TypeScript/Jest path aliases (`@/*`) to keep upcoming modules organised.
@@ -21,3 +19,21 @@
 - **Sync manager** — Added useSync hook with auto scheduling and interval handling plus generic settings integration.
 - **Notifications baseline** — Added reusable notification helpers with permission handling, scheduling, and Jest coverage across native/web fallbacks.
 - **Domain config system** — Extracted all entity and app names to `src/config/domain.config.ts`, making the codebase template-ready. Schema exports renamed to generic `primaryEntity`, `entryEntity`, `reminderEntity`, `deviceEntity` while maintaining runtime table names and full type safety.
+
+- **Theme provider rebuilt** — Centralised Tamagui theming inside `ThemeProvider` with Expo Router integration so the entire app responds to light/dark/system choices.
+- **Theme persistence** — Preference storage now pulls namespace keys from `DOMAIN`, saving to MMKV/native storage with web localStorage fallback and consistent hydration logs.
+- **Settings toggle polish** — Replaced text labels with icon buttons, enforced consistent sizing, and aligned ordering (system → light → dark) for parity with the rest of the UI.
+- **Theme tests** — Expanded `ThemeProvider` test suite to cover hydration, persistence, system updates, and error handling for full coverage.
+- **Supabase schema landed** — Added `supabase/migrations/0001_sync_schema.sql` with habits, entries, reminders, and devices tables plus indices and RLS policies mirroring the local SQLite model.
+- **Edge functions online** — Implemented `sync-push`, `sync-pull`, and `export` Deno functions that import DOMAIN config, enforce auth, merge conflicts, and stream CSV exports.
+- **Driver alignment** — Updated `src/sync/driver.ts` to consume remote table names, process push responses, and share mapping logic across pull/push flows with extended Jest coverage.
+- **Tooling tweaks** — Excluded Deno sources from `tsconfig.json` to keep Expo type-checking clean.
+- **Docs refreshed** — README, AGENTS.md, and docs/roadmap.md now outline Supabase deploy commands and the Stage 2 status.
+- **Supabase CLI helpers** — Vendored the CLI via devDependencies and documented `npm exec supabase` / `npm run supabase:push` for local + CI usage.
+- **Supabase shared tests** — Moved shared mapping logic into `src/supabase` for reuse and added Jest coverage to guard domain/mapper helpers.
+- **Local Supabase flow** — Docs now describe `npx supabase start`, container runtime setup, and using the vendored CLI (`npm run supabase:push`) for both local and hosted deployments.
+- **Environment split** — `.env.local` now targets the Docker stack, `.env.prod` captures hosted credentials, and `.env.example` explains both workflows.
+- **Supabase scripts** — Added `npm run supabase:dev` for local bootstrap (start/stop, migrations, function serve) and `npm run supabase:deploy` for CI-friendly cloud pushes.
+- **Developer experience** — Migration workflow consolidated under `npm run db:migrate`, new helpers (`generate-migrations.mjs`, `generate-postgres-migration.mjs`, `generate-rls-policies.mjs`, `troubleshoot.mjs`) automate schema + diagnostics tasks.
+- **Docs & safeguards** — Added `docs/database-migrations.md`, `docs/schema-architecture.md`, and README guidance covering migration validation, schema sync tests, and the four-step schema change workflow.
+- **Breaking change** — Manual SQL migrations removed; use the Drizzle-driven pipeline (`npm run db:migrate`) and updated config filenames (`drizzle.config.sqlite.ts`, `drizzle.config.postgres.ts`).

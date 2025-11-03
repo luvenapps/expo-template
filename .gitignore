@@ -36,6 +36,7 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env.prod
 
 # typescript
 *.tsbuildinfo
@@ -54,3 +55,10 @@ e2e-artifacts
 debug.keystore
 coverage
 junit.xml
+supabase/.temp/
+
+# Drizzle ORM snapshots (auto-generated state tracking)
+**/migrations/meta/
+
+# Auto-generated RLS policies (regenerate with: npm run db:generate-rls)
+src/db/postgres/rls-policies.sql

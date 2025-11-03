@@ -22,10 +22,16 @@
     "e2e:ios": "maestro test .maestro/flows/smoke.ios.yaml",
     "e2e:android": "maestro test .maestro/flows/smoke.android.yaml",
     "commit": "cz",
-    "troubleshoot": "node scripts/troubleshoot.js",
+    "troubleshoot": "node scripts/troubleshoot.mjs",
     "postinstall": "node scripts/postinstall.js",
-    "db:generate": "drizzle-kit generate:sqlite",
-    "db:push": "drizzle-kit push:sqlite"
+    "db:migrate": "node scripts/generate-migrations.mjs",
+    "db:generate": "drizzle-kit generate --config=drizzle.config.sqlite.ts",
+    "db:generate:postgres": "node scripts/generate-postgres-migration.mjs",
+    "db:generate-rls": "node scripts/generate-rls-policies.mjs",
+    "db:push": "drizzle-kit push --config=drizzle.config.sqlite.ts",
+    "supabase:push": "npx supabase db push",
+    "supabase:dev": "node scripts/supabase-dev.mjs",
+    "supabase:deploy": "node scripts/supabase-deploy.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.76.0",
@@ -83,6 +89,7 @@
     "lint-staged": "^16.2.3",
     "prettier": "^3.6.2",
     "react-test-renderer": "19.1.0",
+    "supabase": "^2.54.11",
     "typescript": "~5.9.2"
   },
   "private": true,

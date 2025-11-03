@@ -12,6 +12,9 @@ and codebase conventions so agents can run reliably without human context.
   version) before running any scripts.
 - The project assumes the stock **npm** CLI. Keep `package-lock.json` in sync and
   avoid `yarn`/`pnpm` installs.
+- Supabase CLI is bundled as a dev dependency; use `npm run supabase:push` or `npx supabase …` commands—no global install required.
+- Supabase local development requires a container runtime (Rancher Desktop recommended; Docker Desktop/Colima also work). Ensure it’s running before starting Supabase.
+- `npm run supabase:dev` boots the local Supabase stack, applies migrations, serves edge functions, and cleans up on exit—run it in a dedicated terminal before `npm start`.
 - Install dependencies with:
   - `npm ci` for clean, repeatable installs (preferred for CI/agents).
   - `npm install` if you need to mutate dependencies locally.
@@ -22,12 +25,9 @@ and codebase conventions so agents can run reliably without human context.
 
 ## Runtime Credentials
 
-- Supabase credentials are **required at runtime**. Copy `.env.example` to
-  `.env.local` and set:
-  ```
-  EXPO_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
-  EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-  ```
+- Supabase credentials are **required at runtime**.
+- `.env.local` powers local Docker development. Run `npx supabase start` then `npx supabase status --env` and paste the printed `SUPABASE_URL`/`anon key`.
+- `.env.prod` stores hosted Supabase values (staging/production). Copy them from the Supabase dashboard (`Project Settings → API`).
 - `src/auth/client.ts` throws on startup when those values are missing. Jest
   tests mock the client via `__tests__/setup.ts`, so no extra setup is needed for
   unit tests.
@@ -36,20 +36,22 @@ and codebase conventions so agents can run reliably without human context.
 
 ## Core Commands
 
-| Purpose            | Command                           | Notes                                                        |
-| ------------------ | --------------------------------- | ------------------------------------------------------------ |
-| Expo dev server    | `npm start`                       | Runs Metro/Expo; `prestart` triggers `npm run troubleshoot`. |
-| iOS build (local)  | `npm run ios`                     | Requires Xcode + simulator.                                  |
-| Android build      | `npm run android`                 | Requires Android SDK + emulator.                             |
-| Web preview        | `npm run web`                     | Expo web.                                                    |
-| Type check         | `npm run type-check`              | `tsc --noEmit`.                                              |
-| Unit tests         | `npm test`                        | Uses `jest-expo`; coverage threshold is 80% overall.         |
-| Lint               | `npm run lint`                    | ESLint config lives in `eslint.config.js`.                   |
-| Format             | `npm run format` / `format:check` | Prettier 3.6 w/ repo-level ignore file.                      |
-| Expo doctor        | `npm run doctor`                  | Deep peer dependency check.                                  |
-| SQLite migrations  | `npm run db:generate` / `db:push` | Uses `drizzle-kit` (SQLite).                                 |
-| E2E (Maestro) iOS  | `npm run e2e:ios`                 | Flows in `.maestro/flows`.                                   |
-| E2E (Maestro) Andr | `npm run e2e:android`             | Saves artifacts under `e2e-artifacts/`.                      |
+| Purpose            | Command                           | Notes                                                              |
+| ------------------ | --------------------------------- | ------------------------------------------------------------------ |
+| Expo dev server    | `npm start`                       | Runs Metro/Expo; `prestart` triggers `npm run troubleshoot`.       |
+| iOS build (local)  | `npm run ios`                     | Requires Xcode + simulator.                                        |
+| Android build      | `npm run android`                 | Requires Android SDK + emulator.                                   |
+| Web preview        | `npm run web`                     | Expo web.                                                          |
+| Type check         | `npm run type-check`              | `tsc --noEmit`.                                                    |
+| Unit tests         | `npm test`                        | Uses `jest-expo`; coverage threshold is 80% overall.               |
+| Lint               | `npm run lint`                    | ESLint config lives in `eslint.config.js`.                         |
+| Format             | `npm run format` / `format:check` | Prettier 3.6 w/ repo-level ignore file.                            |
+| Expo doctor        | `npm run doctor`                  | Deep peer dependency check.                                        |
+| Supabase local     | `npm run supabase:dev`            | Starts Docker stack, runs migrations, serves functions.            |
+| Supabase deploy    | `npm run supabase:deploy`         | CI-friendly migrations + edge function publish (uses `.env.prod`). |
+| SQLite migrations  | `npm run db:generate` / `db:push` | Uses `drizzle-kit` (SQLite).                                       |
+| E2E (Maestro) iOS  | `npm run e2e:ios`                 | Flows in `.maestro/flows`.                                         |
+| E2E (Maestro) Andr | `npm run e2e:android`             | Saves artifacts under `e2e-artifacts/`.                            |
 
 ## Authentication & Session Management
 
@@ -203,6 +205,30 @@ Jest config; prefer them over relative imports.
 4. Update TypeScript types to match schema
 5. Update repositories in `src/data/` to use new schema
 6. Test queries in unit tests
+
+### Supabase Backend
+
+- **Dev workflow**:
+  1. `npm install`
+  2. `npm run supabase:dev` (keeps Supabase running; exits cleanly on Ctrl+C)
+  3. In another terminal `npm start` (Expo) and iterate
+  4. `npm test` for Jest coverage
+  5. Stop Expo, then stop Supabase terminal to tear everything down.
+- SQL migrations live in `supabase/migrations`. Apply them with the Supabase CLI:
+  ```bash
+  npm run supabase:push
+  ```
+  (or call `npx supabase db push` directly)
+- Edge functions reside in `supabase/functions`. Deploy individually:
+  ```bash
+  npx supabase functions deploy sync-push
+  npx supabase functions deploy sync-pull
+  npx supabase functions deploy export
+  ```
+- Functions assume `SUPABASE_URL` and `SUPABASE_ANON_KEY` env vars and run with RLS enabled. They import `DOMAIN` to stay in sync with local naming—update both if renaming tables.
+- Local TypeScript tooling excludes `supabase/` (Deno runtime). Use `npx supabase functions serve <name>` while iterating; the CLI hot-reloads Deno code.
+- Local development: run `npm run supabase:dev` (requires `.env.local`). The script starts Docker services, applies migrations, serves functions, and calls `supabase stop` on exit.
+- Hosted environments: configure `.env.prod`/CI secrets with your Supabase Cloud credentials and run `npm run supabase:deploy` (or manual `npx supabase … --env-file .env.prod`) during deployment.
 
 ### Adding Native Modules (Expo)
 

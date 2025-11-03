@@ -1,0 +1,26 @@
+-- Row Level Security (RLS) Policies - TEMPLATE
+--
+-- This is a TEMPLATE showing the RLS policy pattern used in this project.
+-- The actual rls-policies.sql file is auto-generated from DOMAIN config.
+--
+-- To generate actual policies: npm run db:generate-rls
+-- The generator reads from src/config/domain.config.ts
+--
+-- Pattern for each table:
+--
+-- 1. Enable RLS:
+--    alter table public.{TABLE_NAME} enable row level security;
+--
+-- 2. Drop existing policy (for re-running):
+--    drop policy if exists "Users can manage their own {TABLE_NAME}" on public.{TABLE_NAME};
+--
+-- 3. Create policy:
+--    create policy "Users can manage their own {TABLE_NAME}"
+--      on public.{TABLE_NAME}
+--      using (auth.uid() = user_id)
+--      with check (auth.uid() = user_id);
+--
+-- All tables require a user_id column for this policy to work.
+-- The policy allows users to only see/modify rows where user_id matches their auth.uid()
+--
+-- For custom policies, modify scripts/generate-rls-policies.mjs
