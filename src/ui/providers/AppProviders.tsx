@@ -5,12 +5,15 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { YStack } from 'tamagui';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { getQueryClient } from '@/state';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
+import { getQueryClient, getQueryClientPersistOptions } from '@/state';
 import { initSessionListener, useSessionStore } from '@/auth/session';
 import { useSync, pushOutbox, pullUpdates } from '@/sync';
 import { useThemeContext } from '@/ui/theme/ThemeProvider';
 
 const queryClient = getQueryClient();
+const persistOptions = getQueryClientPersistOptions();
+const isWeb = Platform.OS === 'web';
 
 export function AppProviders({ children }: PropsWithChildren) {
   const sessionStatus = useSessionStore((state) => state.status);
@@ -33,13 +36,27 @@ export function AppProviders({ children }: PropsWithChildren) {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: palette.background }}>
       <SafeAreaProvider>
-        <QueryClientProvider client={queryClient}>
-          <YStack flex={1} backgroundColor="$background" testID="app-root-container">
-            {children}
-          </YStack>
-          <StatusBar style={resolvedTheme === 'dark' ? 'light' : 'dark'} />
-        </QueryClientProvider>
+        {isWeb && persistOptions ? (
+          <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
+            <AppContent resolvedTheme={resolvedTheme}>{children}</AppContent>
+          </PersistQueryClientProvider>
+        ) : (
+          <QueryClientProvider client={queryClient}>
+            <AppContent resolvedTheme={resolvedTheme}>{children}</AppContent>
+          </QueryClientProvider>
+        )}
       </SafeAreaProvider>
     </GestureHandlerRootView>
+  );
+}
+
+function AppContent({ children, resolvedTheme }: PropsWithChildren<{ resolvedTheme: string }>) {
+  return (
+    <>
+      <YStack flex={1} backgroundColor="$background" testID="app-root-container">
+        {children}
+      </YStack>
+      <StatusBar style={resolvedTheme === 'dark' ? 'light' : 'dark'} />
+    </>
   );
 }

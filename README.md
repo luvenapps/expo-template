@@ -553,17 +553,16 @@ Follow these steps in order when setting up the project for the first time:
 
 **Platform-Specific Storage:**
 
-| Platform        | Application Data                         | Session/Settings      | Offline Support                 |
-| --------------- | ---------------------------------------- | --------------------- | ------------------------------- |
-| **iOS/Android** | SQLite database                          | MMKV (native storage) | ✅ Full offline support         |
-| **Web**         | Direct Supabase queries (no caching yet) | localStorage          | ❌ Requires internet connection |
+| Platform        | Application Data                         | Session/Settings      | Offline Support                   |
+| --------------- | ---------------------------------------- | --------------------- | --------------------------------- |
+| **iOS/Android** | SQLite database                          | MMKV (native storage) | ✅ Full offline support           |
+| **Web**         | Supabase + React Query (IndexedDB cache) | localStorage          | ⚠️ Cached reads; full offline TBD |
 
 **Current Limitations & Future Improvements:**
 
-- Web currently makes direct Supabase queries without caching
-- React Query is configured but not yet implemented for data fetching
-- **Future**: Implement React Query for in-memory caching and better UX
-- **Future**: Add React Query persisters + IndexedDB for offline web support
+- Web now caches Supabase data via React Query with IndexedDB persistence
+- Cached reads work offline temporarily, but background sync/service workers are still pending
+- **Next**: Implement service worker + background sync for full offline parity with native apps
 
 ### Testing on Physical Devices
 
