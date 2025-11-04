@@ -450,7 +450,16 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
   } catch (err) {
     console.log(`\n⚠️  Prettier formatting skipped or failed: ${err.message}`);
   }
-  
+
+  // Run database migrations
+  try {
+    process.stdout.write('🗄️  Running database migrations...');
+    cp.execSync('npm run db:migrate', { stdio: 'ignore' });
+    process.stdout.write(' ✅ Done!\n');
+  } catch (err) {
+    console.log(`\n⚠️  Database migrations skipped or failed: ${err.message}`);
+  }
+
   // Remove postinstall from package.json
   try {
     if (

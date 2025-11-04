@@ -565,6 +565,63 @@ Follow these steps in order when setting up the project for the first time:
 - **Future**: Implement React Query for in-memory caching and better UX
 - **Future**: Add React Query persisters + IndexedDB for offline web support
 
+### Testing on Physical Devices
+
+When testing on a **physical phone or tablet**, the device needs to connect to Supabase running on your Mac. By default, `.env.local` uses `127.0.0.1` (localhost), which only works for simulators running on the same machine.
+
+**Step-by-step setup:**
+
+1. **Find your Mac's local IP address**:
+
+   ```bash
+   ipconfig getifaddr en0
+   ```
+
+   This returns your local network IP (e.g., `192.168.1.100`)
+
+2. **Update `.env.local` with your local IP**:
+
+   ```bash
+   # Before (only works for simulators)
+   EXPO_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+
+   # After (works for physical devices on same network)
+   EXPO_PUBLIC_SUPABASE_URL=http://192.168.1.100:54321
+   ```
+
+   **Replace `192.168.1.100` with your actual IP from step 1**
+
+3. **Restart Expo to pick up the new URL**:
+
+   ```bash
+   # Stop Expo (Ctrl+C in Terminal 2)
+   npm start
+   ```
+
+   **Note**: You don't need to restart Supabase - it's already accessible on your network
+
+4. **Connect from your phone**:
+   - Ensure your phone is on the **same WiFi network** as your Mac
+   - Scan the QR code from Expo
+   - The app will now connect to Supabase running on your Mac
+
+**Important notes:**
+
+- ⚠️ **Don't commit your local IP to git** - it's machine-specific
+- 🔄 Switch back to `127.0.0.1` when using simulators or before committing
+- 🔥 If connection fails, check macOS firewall settings for port 54321
+- 📱 Both devices must be on the same local network
+
+**Troubleshooting connection issues:**
+
+```bash
+# Check if Supabase is listening on port 54321
+lsof -i :54321
+
+# Test connectivity from your phone's browser
+# Open: http://YOUR_IP:54321/health
+```
+
 ### Making Schema Changes
 
 This project uses **Drizzle ORM** for both SQLite (local) and Postgres (Supabase) schemas. All schemas are driven by the DOMAIN configuration.

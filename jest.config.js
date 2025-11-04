@@ -22,7 +22,7 @@ module.exports = {
   coveragePathIgnorePatterns: [
     '/node_modules/',
     // Exclude queries until UI is implemented (see roadmap Stage 7)
-    // TODO: Remove this exclusion when habit tracking UI is built
+    // TODO: Remove this exclusion when the UI is built
     '<rootDir>/src/queries/',
   ],
   coverageThreshold: {
