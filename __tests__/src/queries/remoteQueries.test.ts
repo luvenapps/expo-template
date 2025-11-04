@@ -23,7 +23,7 @@ describe('web queries', () => {
     it(`loads ${DOMAIN.entities.primary.plural} and maps them to camelCase`, async () => {
       const rows = [
         {
-          id: 'habit-1',
+          id: 'primary-1',
           user_id: 'user-1',
           name: 'Daily Walk',
           cadence: 'daily',
@@ -47,7 +47,7 @@ describe('web queries', () => {
       expect(chain.order).toHaveBeenCalledWith('sort_order', { ascending: true });
       expect(result).toEqual([
         {
-          id: 'habit-1',
+          id: 'primary-1',
           userId: 'user-1',
           name: 'Daily Walk',
           cadence: 'daily',
@@ -76,7 +76,7 @@ describe('web queries', () => {
         {
           id: 'entry-1',
           user_id: 'user-1',
-          [DOMAIN.entities.entries.row_id]: 'habit-1',
+          [DOMAIN.entities.entries.row_id]: 'primary-1',
           date: '2025-01-01',
           amount: 2,
           source: 'remote',
@@ -90,17 +90,17 @@ describe('web queries', () => {
       const chain = createDoubleFilterChain(rows);
       supabase.from.mockReturnValue({ select: chain.select });
 
-      const result = await fetchEntries('user-1', 'habit-1');
+      const result = await fetchEntries('user-1', 'primary-1');
 
       expect(chain.select).toHaveBeenCalledWith('*');
       expect(chain.eq).toHaveBeenNthCalledWith(1, 'user_id', 'user-1');
-      expect(chain.eq).toHaveBeenNthCalledWith(2, DOMAIN.entities.entries.row_id, 'habit-1');
+      expect(chain.eq).toHaveBeenNthCalledWith(2, DOMAIN.entities.entries.row_id, 'primary-1');
       expect(chain.order).toHaveBeenCalledWith('date', { ascending: false });
       expect(result).toEqual([
         {
           id: 'entry-1',
           userId: 'user-1',
-          [DOMAIN.entities.entries.foreignKey]: 'habit-1',
+          [DOMAIN.entities.entries.foreignKey]: 'primary-1',
           date: '2025-01-01',
           amount: 2,
           source: 'remote',
@@ -119,7 +119,7 @@ describe('web queries', () => {
         {
           id: 'reminder-1',
           user_id: 'user-1',
-          [toSnakeCase(DOMAIN.entities.reminders.foreignKey)]: 'habit-1',
+          [toSnakeCase(DOMAIN.entities.reminders.foreignKey)]: 'primary-1',
           time_local: '09:00',
           days_of_week: '1,2,3',
           timezone: 'UTC',
@@ -134,17 +134,17 @@ describe('web queries', () => {
       const chain = createDoubleFilterChain(rows);
       supabase.from.mockReturnValue({ select: chain.select });
 
-      const result = await fetchReminders('user-1', 'habit-1');
+      const result = await fetchReminders('user-1', 'primary-1');
 
       expect(chain.eq).toHaveBeenNthCalledWith(1, 'user_id', 'user-1');
       expect(chain.eq).toHaveBeenNthCalledWith(
         2,
         toSnakeCase(DOMAIN.entities.reminders.foreignKey),
-        'habit-1',
+        'primary-1',
       );
       expect(result[0]).toMatchObject({
         id: 'reminder-1',
-        [DOMAIN.entities.reminders.foreignKey]: 'habit-1',
+        [DOMAIN.entities.reminders.foreignKey]: 'primary-1',
         timeLocal: '09:00',
       });
     });

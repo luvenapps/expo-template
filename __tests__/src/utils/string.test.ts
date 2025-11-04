@@ -2,7 +2,7 @@ import { toSnakeCase } from '@/utils/string';
 
 describe('toSnakeCase', () => {
   it('converts camelCase to snake_case', () => {
-    expect(toSnakeCase('habitId')).toBe('habit_id');
+    expect(toSnakeCase('entityId')).toBe('entity_id');
     expect(toSnakeCase('userId')).toBe('user_id');
     expect(toSnakeCase('isEnabled')).toBe('is_enabled');
     expect(toSnakeCase('createdAt')).toBe('created_at');
@@ -10,12 +10,12 @@ describe('toSnakeCase', () => {
   });
 
   it('converts PascalCase to snake_case', () => {
-    expect(toSnakeCase('HabitId')).toBe('_habit_id');
+    expect(toSnakeCase('EntityId')).toBe('_entity_id');
     expect(toSnakeCase('UserId')).toBe('_user_id');
   });
 
   it('handles strings with multiple capitals', () => {
-    expect(toSnakeCase('habitIdColumn')).toBe('habit_id_column');
+    expect(toSnakeCase('entityIdColumn')).toBe('entity_id_column');
     expect(toSnakeCase('userIdAndName')).toBe('user_id_and_name');
   });
 
@@ -25,7 +25,7 @@ describe('toSnakeCase', () => {
   });
 
   it('handles strings that are already lowercase', () => {
-    expect(toSnakeCase('habit')).toBe('habit');
+    expect(toSnakeCase('entity')).toBe('entity');
     expect(toSnakeCase('user')).toBe('user');
     expect(toSnakeCase('lowercase')).toBe('lowercase');
   });
@@ -40,7 +40,7 @@ describe('toSnakeCase', () => {
   });
 
   it('handles numbers in the string', () => {
-    expect(toSnakeCase('habit123')).toBe('habit123');
-    expect(toSnakeCase('habit123Id')).toBe('habit123_id');
+    expect(toSnakeCase('entity123')).toBe('entity123');
+    expect(toSnakeCase('entity123Id')).toBe('entity123_id');
   });
 });

@@ -9,7 +9,7 @@
  * @returns The snake_case version of the string
  *
  * @example
- * toSnakeCase('habitId') // 'habit_id'
+ * toSnakeCase('entityId') // 'entity_id'
  * toSnakeCase('isEnabled') // 'is_enabled'
  * toSnakeCase('userId') // 'user_id'
  */
