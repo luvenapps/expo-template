@@ -1,11 +1,26 @@
-import { afterEach, describe, expect, test, jest } from '@jest/globals';
 import {
   getQueryClient,
   getQueryClientPersistOptions,
   resetQueryClient,
 } from '@/state/queryClient';
+import { afterEach, describe, expect, test } from '@jest/globals';
 import { Platform } from 'react-native';
 import * as idbKeyval from 'idb-keyval';
+
+jest.mock('idb-keyval');
+
+// Capture the storage object passed to createAsyncStoragePersister
+let capturedStorage: any = null;
+jest.mock('@tanstack/query-async-storage-persister', () => ({
+  createAsyncStoragePersister: jest.fn((options: any) => {
+    capturedStorage = options.storage;
+    return {
+      persistClient: jest.fn(),
+      restoreClient: jest.fn(),
+      removeClient: jest.fn(),
+    };
+  }),
+}));
 
 describe('queryClient singleton', () => {
   afterEach(() => {
@@ -120,6 +135,51 @@ describe('queryClient singleton', () => {
 
     expect(shouldDehydrate).toBeTruthy();
     expect(shouldDehydrate?.({} as any)).toBe(true);
+
+    resetQueryClient();
+    Object.defineProperty(Platform, 'OS', { value: original });
+    if (originalWindow === undefined) {
+      delete globalRef.window;
+    } else {
+      globalRef.window = originalWindow;
+    }
+  });
+
+  test('storage methods call idb-keyval functions', async () => {
+    const original = Platform.OS;
+    Object.defineProperty(Platform, 'OS', { value: 'web' });
+    const globalRef = global as { window?: unknown };
+    const originalWindow = globalRef.window;
+    globalRef.window = {};
+
+    const mockGet = jest.fn().mockResolvedValue('test-value');
+    const mockSet = jest.fn().mockResolvedValue(undefined);
+    const mockDel = jest.fn().mockResolvedValue(undefined);
+
+    (idbKeyval.get as jest.Mock).mockImplementation(mockGet);
+    (idbKeyval.set as jest.Mock).mockImplementation(mockSet);
+    (idbKeyval.del as jest.Mock).mockImplementation(mockDel);
+
+    // Clear any cached options to force recreation
+    resetQueryClient();
+    capturedStorage = null;
+
+    const options = getQueryClientPersistOptions();
+
+    expect(options).toBeTruthy();
+    expect(capturedStorage).toBeTruthy();
+
+    // Test getItem - this calls the arrow function on line 43
+    await capturedStorage.getItem('test-key');
+    expect(mockGet).toHaveBeenCalledWith('test-key');
+
+    // Test setItem - this calls the arrow function on line 44
+    await capturedStorage.setItem('test-key', 'test-value');
+    expect(mockSet).toHaveBeenCalledWith('test-key', 'test-value');
+
+    // Test removeItem - this calls the arrow function on line 45
+    await capturedStorage.removeItem('test-key');
+    expect(mockDel).toHaveBeenCalledWith('test-key');
 
     resetQueryClient();
     Object.defineProperty(Platform, 'OS', { value: original });

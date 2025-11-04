@@ -17,6 +17,8 @@ const serializePayload = (payload: Record<string, unknown>) => JSON.stringify(pa
 
 let customDatabase: Awaited<ReturnType<typeof getDb>> | null = null;
 
+type Database = Awaited<ReturnType<typeof getDb>>;
+
 async function getDatabase() {
   return customDatabase ?? (await getDb());
 }
@@ -29,9 +31,11 @@ export function resetOutboxDatabase() {
   customDatabase = null;
 }
 
-export async function enqueue({ tableName, rowId, operation, payload, version }: EnqueueParams) {
+async function insertOutboxRecord(
+  database: Database,
+  { tableName, rowId, operation, payload, version }: EnqueueParams,
+) {
   const id = uuidv4();
-  const database = await getDatabase();
 
   await database.insert(outbox).values({
     id,
@@ -45,6 +49,15 @@ export async function enqueue({ tableName, rowId, operation, payload, version }:
   });
 
   return id;
+}
+
+export async function enqueue(params: EnqueueParams) {
+  const database = await getDatabase();
+  return insertOutboxRecord(database, params);
+}
+
+export async function enqueueWithDatabase(database: Database, params: EnqueueParams) {
+  return insertOutboxRecord(database, params);
 }
 
 export async function getPending(limit = 100) {

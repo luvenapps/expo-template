@@ -1,2 +1,5 @@
 /* istanbul ignore file */
-export {};
+export * from './localDevices';
+export * from './localEntries';
+export * from './localPrimaryEntities';
+export * from './localReminders';
