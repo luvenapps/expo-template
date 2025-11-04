@@ -37,3 +37,4 @@
 - **Developer experience** — Migration workflow consolidated under `npm run db:migrate`, new helpers (`generate-migrations.mjs`, `generate-postgres-migration.mjs`, `generate-rls-policies.mjs`, `troubleshoot.mjs`) automate schema + diagnostics tasks.
 - **Docs & safeguards** — Added `docs/database-migrations.md`, `docs/schema-architecture.md`, and README guidance covering migration validation, schema sync tests, and the four-step schema change workflow.
 - **Breaking change** — Manual SQL migrations removed; use the Drizzle-driven pipeline (`npm run db:migrate`) and updated config filenames (`drizzle.config.sqlite.ts`, `drizzle.config.postgres.ts`).
+- **Web data layer** — Added `src/queries/*` React Query hooks (reads + mutations) for primary entities, entries, reminders, and devices; accompanying Jest tests mock Supabase to ensure mapping stays domain-driven.

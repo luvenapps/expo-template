@@ -46,17 +46,23 @@ Implement a progressive caching strategy for web that provides:
 
 ```typescript
 // Before (direct query - no caching):
-async function loadHabits(userId: string) {
-  const { data } = await supabase.from('habits').select('*').eq('user_id', userId);
+async function loadPrimaryEntities(userId: string) {
+  const { data } = await supabase
+    .from(DOMAIN.entities.primary.remoteTableName)
+    .select('*')
+    .eq('user_id', userId);
   return data;
 }
 
 // After (React Query - automatic caching):
-function useHabits(userId: string) {
+function usePrimaryEntities(userId: string) {
   return useQuery({
-    queryKey: ['habits', userId],
+    queryKey: ['primary', userId],
     queryFn: async () => {
-      const { data, error } = await supabase.from('habits').select('*').eq('user_id', userId);
+      const { data, error } = await supabase
+        .from(DOMAIN.entities.primary.remoteTableName)
+        .select('*')
+        .eq('user_id', userId);
       if (error) throw error;
       return data;
     },
@@ -68,23 +74,23 @@ function useHabits(userId: string) {
 
 **Tasks**:
 
-- [ ] Create React Query hooks for all Supabase queries
-  - [ ] `useHabits()` - fetch user's habits
-  - [ ] `useHabitEntries()` - fetch entries for a habit
-  - [ ] `useReminders()` - fetch reminders
-  - [ ] `useDevices()` - fetch user's devices
-- [ ] Create mutation hooks for all write operations
-  - [ ] `useCreateHabit()`
-  - [ ] `useUpdateHabit()`
-  - [ ] `useDeleteHabit()`
-  - [ ] Similar for entries, reminders, devices
-- [ ] Configure query invalidation on mutations
+- [x] Create React Query hooks for all Supabase queries
+  - [x] `usePrimaryEntities()` - fetch the main domain records
+  - [x] `useHabitEntries()` - fetch entries for a habit
+  - [x] `useReminders()` - fetch reminders
+  - [x] `useDevices()` - fetch user's devices
+- [x] Create mutation hooks for all write operations
+  - [x] `useCreatePrimaryEntity()`
+  - [x] `useUpdatePrimaryEntity()`
+  - [x] `useDeletePrimaryEntity()`
+  - [x] Similar for entries, reminders, devices
+- [x] Configure query invalidation on mutations
 - [ ] Add optimistic updates for better UX
 - [ ] Test on web platform
 
 **Files to create/modify**:
 
-- `src/queries/habits.ts` - Habit queries and mutations
+- `src/queries/primaryEntities.ts` - Primary entity queries and mutations
 - `src/queries/entries.ts` - Entry queries and mutations
 - `src/queries/reminders.ts` - Reminder queries and mutations
 - `src/queries/devices.ts` - Device queries and mutations
@@ -188,7 +194,7 @@ self.addEventListener('fetch', (event) => {
 
 // Background sync for pending mutations
 self.addEventListener('sync', (event) => {
-  if (event.tag === 'sync-habits') {
+  if (event.tag === 'sync-primary-entities') {
     event.waitUntil(syncPendingMutations());
   }
 });

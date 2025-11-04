@@ -142,6 +142,7 @@ and codebase conventions so agents can run reliably without human context.
     - `service.ts` – Auth actions (signIn, signOut, OAuth)
   - `config/` – Domain config (`DOMAIN`) used across UI/data
   - `data/`, `db/` – Drizzle repositories + SQLite schema
+  - `queries/` – React Query hooks for Supabase reads/mutations (web data layer)
   - `sync/` – Outbox, cursor storage (MMKV fallback), sync engine/hooks
     - `cursors.ts` – MMKV-based cursor persistence
     - `useSync.ts` – Sync hook with background scheduling

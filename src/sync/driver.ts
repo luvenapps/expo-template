@@ -2,19 +2,16 @@ import { supabase } from '@/auth/client';
 import { useSessionStore } from '@/auth/session';
 import { DOMAIN } from '@/config/domain.config';
 import { deviceEntity, entryEntity, primaryEntity, reminderEntity } from '@/db/sqlite';
+import {
+  mapRemoteDeviceEntities,
+  mapRemoteEntryEntities,
+  mapRemotePrimaryEntities,
+  mapRemoteReminderEntities,
+} from '@/supabase/remoteMappers';
 import { Platform } from 'react-native';
 import { clearCursor, getCursor, setCursor } from './cursors';
 import { registerPersistenceTable, upsertRecords } from './localPersistence';
 import type { OutboxRecord } from './outbox';
-
-/**
- * Generic type aliases for entity records
- * Inferred from Drizzle schema definitions
- */
-export type PrimaryEntityRecord = typeof primaryEntity.$inferInsert;
-export type EntryRecord = typeof entryEntity.$inferInsert;
-export type ReminderRecord = typeof reminderEntity.$inferInsert;
-export type DeviceRecord = typeof deviceEntity.$inferInsert;
 
 // Register all syncable tables with the persistence layer
 registerPersistenceTable(DOMAIN.entities.primary.tableName, {
@@ -160,107 +157,25 @@ export async function pullUpdates() {
 }
 
 async function applyRemoteRecords(records: Partial<Record<RemoteTable, RemoteRow[]>>) {
-  // Map remote records using remote table names from config
-  const primaryRows = mapPrimaryEntities(
+  const primaryRows = mapRemotePrimaryEntities(
     records[DOMAIN.entities.primary.remoteTableName as RemoteTable],
   );
-  const entryRows = mapEntries(records[DOMAIN.entities.entries.remoteTableName as RemoteTable]);
-  const reminderRows = mapReminders(
+  const entryRows = mapRemoteEntryEntities(
+    records[DOMAIN.entities.entries.remoteTableName as RemoteTable],
+  );
+  const reminderRows = mapRemoteReminderEntities(
     records[DOMAIN.entities.reminders.remoteTableName as RemoteTable],
   );
-  const deviceRows = mapDevices(records[DOMAIN.entities.devices.remoteTableName as RemoteTable]);
+  const deviceRows = mapRemoteDeviceEntities(
+    records[DOMAIN.entities.devices.remoteTableName as RemoteTable],
+  );
 
-  // Upsert to local tables using local table names from config
   await Promise.all([
     upsertRecords(DOMAIN.entities.primary.tableName, primaryRows),
     upsertRecords(DOMAIN.entities.entries.tableName, entryRows),
     upsertRecords(DOMAIN.entities.reminders.tableName, reminderRows),
     upsertRecords(DOMAIN.entities.devices.tableName, deviceRows),
   ]);
-}
-
-/**
- * Maps remote primary entity records to local schema
- */
-function mapPrimaryEntities(rows: RemoteRow[] | undefined): PrimaryEntityRecord[] {
-  if (!rows?.length) return [];
-  return rows
-    .filter((row) => row?.id && row?.user_id)
-    .map((row) => ({
-      id: String(row.id),
-      userId: String(row.user_id),
-      name: String(row.name ?? ''),
-      cadence: String(row.cadence ?? 'daily'),
-      color: String(row.color ?? '#ffffff'),
-      sortOrder: Number(row.sort_order ?? 0),
-      isArchived: Boolean(row.is_archived ?? false),
-      createdAt: String(row.created_at ?? new Date().toISOString()),
-      updatedAt: String(row.updated_at ?? new Date().toISOString()),
-      version: Number(row.version ?? 1),
-      deletedAt: row.deleted_at ? String(row.deleted_at) : null,
-    }));
-}
-
-/**
- * Maps remote entry records to local schema
- */
-function mapEntries(rows: RemoteRow[] | undefined): EntryRecord[] {
-  if (!rows?.length) return [];
-  return rows
-    .filter((row) => row?.id && row?.user_id && row[DOMAIN.entities.entries.row_id] && row?.date)
-    .map((row) => ({
-      id: String(row.id),
-      userId: String(row.user_id),
-      [DOMAIN.entities.entries.foreignKey]: String(row[DOMAIN.entities.entries.row_id]),
-      date: String(row.date),
-      amount: Number(row.amount ?? 0),
-      source: String(row.source ?? 'remote'),
-      createdAt: String(row.created_at ?? new Date().toISOString()),
-      updatedAt: String(row.updated_at ?? new Date().toISOString()),
-      version: Number(row.version ?? 1),
-      deletedAt: row.deleted_at ? String(row.deleted_at) : null,
-    }));
-}
-
-/**
- * Maps remote reminder records to local schema
- */
-function mapReminders(rows: RemoteRow[] | undefined): ReminderRecord[] {
-  if (!rows?.length) return [];
-  return rows
-    .filter((row) => row?.id && row?.user_id && row[DOMAIN.entities.entries.row_id])
-    .map((row) => ({
-      id: String(row.id),
-      userId: String(row.user_id),
-      [DOMAIN.entities.entries.foreignKey]: String(row[DOMAIN.entities.entries.row_id]),
-      timeLocal: String(row.time_local ?? '09:00'),
-      daysOfWeek: String(row.days_of_week ?? ''),
-      timezone: String(row.timezone ?? 'UTC'),
-      isEnabled: Boolean(row.is_enabled ?? true),
-      createdAt: String(row.created_at ?? new Date().toISOString()),
-      updatedAt: String(row.updated_at ?? new Date().toISOString()),
-      version: Number(row.version ?? 1),
-      deletedAt: row.deleted_at ? String(row.deleted_at) : null,
-    }));
-}
-
-/**
- * Maps remote device records to local schema
- */
-function mapDevices(rows: RemoteRow[] | undefined): DeviceRecord[] {
-  if (!rows?.length) return [];
-  return rows
-    .filter((row) => row?.id && row?.user_id)
-    .map((row) => ({
-      id: String(row.id),
-      userId: String(row.user_id),
-      platform: String(row.platform ?? 'unknown'),
-      lastSyncAt: row.last_sync_at ? String(row.last_sync_at) : null,
-      createdAt: String(row.created_at ?? new Date().toISOString()),
-      updatedAt: String(row.updated_at ?? new Date().toISOString()),
-      version: Number(row.version ?? 1),
-      deletedAt: row.deleted_at ? String(row.deleted_at) : null,
-    }));
 }
 
 function parsePayload(json: string) {
