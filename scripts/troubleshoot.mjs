@@ -238,6 +238,85 @@ function compareVersions(actual, expected) {
     }
   }
 
+  // Database schema and migrations check
+  header('Database Schema & Migrations');
+  try {
+    const sqliteSchemaPath = path.join(process.cwd(), 'src/db/sqlite/schema.ts');
+    const postgresSchemaPath = path.join(process.cwd(), 'src/db/postgres/schema.ts');
+    const sqliteMigrationsDir = path.join(process.cwd(), 'src/db/sqlite/migrations');
+    const postgresMigrationsDir = path.join(process.cwd(), 'supabase/migrations');
+
+    // Check if schema files exist
+    const hasSqliteSchema = fs.existsSync(sqliteSchemaPath);
+    const hasPostgresSchema = fs.existsSync(postgresSchemaPath);
+
+    if (!hasSqliteSchema || !hasPostgresSchema) {
+      warn('Schema files not found. This is unexpected.');
+    } else {
+      ok('Schema files found');
+
+      // Get schema file modification times
+      const sqliteSchemaMtime = fs.statSync(sqliteSchemaPath).mtime;
+      const postgresSchemaMtime = fs.statSync(postgresSchemaPath).mtime;
+
+      // Check SQLite migrations
+      const sqliteMigrations = fs.existsSync(sqliteMigrationsDir)
+        ? fs
+            .readdirSync(sqliteMigrationsDir)
+            .filter((f) => f.endsWith('.sql'))
+            .map((f) => path.join(sqliteMigrationsDir, f))
+        : [];
+
+      // Check Postgres migrations
+      const postgresMigrations = fs.existsSync(postgresMigrationsDir)
+        ? fs
+            .readdirSync(postgresMigrationsDir)
+            .filter((f) => f.endsWith('.sql') && !f.includes('example'))
+            .map((f) => path.join(postgresMigrationsDir, f))
+        : [];
+
+      if (sqliteMigrations.length === 0) {
+        err('No SQLite migrations found! Run: npm run db:migrate');
+      } else {
+        ok(`Found ${sqliteMigrations.length} SQLite migration(s)`);
+
+        // Check if schema is newer than latest migration
+        const latestSqliteMigration = sqliteMigrations
+          .map((f) => ({ path: f, mtime: fs.statSync(f).mtime }))
+          .sort((a, b) => b.mtime - a.mtime)[0];
+
+        if (sqliteSchemaMtime > latestSqliteMigration.mtime) {
+          warn('⚠️  SQLite schema.ts is newer than migrations! Run: npm run db:migrate');
+          console.log(`   Schema modified: ${sqliteSchemaMtime.toLocaleString()}`);
+          console.log(`   Latest migration: ${latestSqliteMigration.mtime.toLocaleString()}`);
+        } else {
+          ok('SQLite migrations appear up-to-date');
+        }
+      }
+
+      if (postgresMigrations.length === 0) {
+        err('No Postgres migrations found! Run: npm run db:migrate');
+      } else {
+        ok(`Found ${postgresMigrations.length} Postgres migration(s)`);
+
+        // Check if schema is newer than latest migration
+        const latestPostgresMigration = postgresMigrations
+          .map((f) => ({ path: f, mtime: fs.statSync(f).mtime }))
+          .sort((a, b) => b.mtime - a.mtime)[0];
+
+        if (postgresSchemaMtime > latestPostgresMigration.mtime) {
+          warn('⚠️  Postgres schema.ts is newer than migrations! Run: npm run db:migrate');
+          console.log(`   Schema modified: ${postgresSchemaMtime.toLocaleString()}`);
+          console.log(`   Latest migration: ${latestPostgresMigration.mtime.toLocaleString()}`);
+        } else {
+          ok('Postgres migrations appear up-to-date');
+        }
+      }
+    }
+  } catch (e) {
+    warn(`Database check failed: ${e.message}`);
+  }
+
   header('Expo Doctor');
   try {
     const result = spawnSync('npx', ['expo-doctor', '--verbose'], { stdio: 'inherit' });

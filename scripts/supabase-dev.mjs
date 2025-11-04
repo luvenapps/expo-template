@@ -65,10 +65,10 @@ async function main() {
   supabaseStarted = true;
 
   console.log('🟢 [supabase-dev] Fetching environment details…');
-  await run('npx', ['supabase', 'status', '--env']);
+  await run('npx', ['supabase', 'status', '-o', 'env']);
 
   console.log('🟢 [supabase-dev] Applying migrations to local stack…');
-  await run('npx', ['supabase', 'db', 'push', '--env-file', envFile]);
+  await run('npx', ['supabase', 'db', 'push', '--local']);
 
   console.log('🟢 [supabase-dev] Serving edge functions with auto-reload…');
   functionsProcess = spawn('npx', ['supabase', 'functions', 'serve', '--env-file', envFile], {

@@ -470,72 +470,337 @@ For full detailed instructions on configuring the GitHub Actions workflows and s
 
 ## 🛠️ Development Workflow
 
-### Initial Setup
+### Initial Setup (First Time)
 
-1. **Install prerequisites** (Node 24.x, Expo toolchain, container runtime such as Rancher Desktop, Java 17, etc.).
+Follow these steps in order when setting up the project for the first time:
+
+1. **Install prerequisites**
+   - Node 24.x
+   - Expo toolchain
+   - Container runtime (Rancher Desktop or Docker Desktop)
+   - Java 17 (for Android/Maestro)
+   - Xcode (macOS only, for iOS)
+
 2. **Install dependencies**:
+
    ```bash
    npm install
    ```
-3. **Start the local Supabase stack** (new terminal):
+
+3. **Create `.env.local` file**:
 
    ```bash
-   npm run supabase:dev
+   cp .env.example .env.local
    ```
 
-   - Boots Docker services, prints credentials, applies migrations via `.env.local`, and serves edge functions. Leave this terminal running; press `Ctrl+C` to stop and clean up.
-
-4. **Launch Expo** (separate terminal):
-
-   ```bash
-   npm start
-   ```
-
-   - Use the Expo CLI prompts to run on iOS (`i`), Android (`a`), or web (`w`).
-
-5. **Iterate**:
-   - Save code → Metro hot reloads the UI.
-   - Edge functions auto-reload via the Supabase CLI.
-   - If Supabase isn't needed, skip step 3—the app still works against local SQLite (native) or in-memory state (web).
-6. **Run tests**:
-   ```bash
-   npm test
-   ```
-7. **Shut down**:
-   - Stop Expo (`Ctrl+C`).
-   - Stop the Supabase terminal (`Ctrl+C`); the helper script calls `supabase stop` for you.
-
-### Making Schema Changes
-
-This project uses **Drizzle ORM** for both SQLite (local) and Postgres (Supabase) schemas. All schemas are driven by the DOMAIN configuration.
-
-**Quick workflow:**
-
-1. **Update schemas** (keep both in sync):
-   - `src/db/sqlite/schema.ts` (local)
-   - `src/db/postgres/schema.ts` (remote)
-
-2. **Generate migrations**:
+4. **Generate database migrations** (IMPORTANT - Do this before starting!):
 
    ```bash
    npm run db:migrate
    ```
 
-   This generates migrations for both SQLite and Postgres, including RLS policies.
+   This creates migration files for both SQLite (mobile) and Postgres (Supabase).
 
-3. **Review generated files**:
-   - SQLite: `src/db/sqlite/migrations/`
-   - Postgres: `supabase/migrations/`
-   - Automated validation runs in test suite (validates RLS policies, indexes, foreign keys, etc.)
+5. **Start local Supabase** (Terminal 1):
 
-4. **Test & deploy**:
    ```bash
-   npm start              # SQLite migrations auto-apply
-   npm run supabase:dev   # Test Postgres locally
-   npm run supabase:deploy # Deploy to production
+   npm run supabase:dev
    ```
 
-**That's it!** For detailed workflows, troubleshooting, and advanced usage, see [docs/database-migrations.md](docs/database-migrations.md).
+   - Starts Docker containers
+   - Applies Postgres migrations
+   - Serves Edge Functions
+   - Prints connection credentials
+   - **Keep this terminal running**
+
+6. **Start Expo development server** (Terminal 2):
+
+   ```bash
+   npm start
+   ```
+
+   - Automatically runs system checks (including migration validation)
+   - Starts Metro bundler
+   - Press `i` for iOS, `a` for Android, `w` for web
+
+7. **Run the app** and verify:
+   - ✅ App launches without errors
+   - ✅ You can create an account
+   - ✅ Data syncs between local (SQLite) and Supabase (Postgres)
+
+### Daily Development
+
+1. **Start Supabase** (Terminal 1):
+
+   ```bash
+   npm run supabase:dev
+   ```
+
+2. **Start Expo** (Terminal 2):
+
+   ```bash
+   npm start
+   ```
+
+3. **Code and iterate**:
+   - Save code → Metro hot reloads the UI automatically
+   - Edit Edge Functions → Supabase CLI auto-reloads them
+   - Run tests: `npm test -- --coverage`
+
+4. **Shut down**:
+   - Stop Expo: `Ctrl+C` (Terminal 2)
+   - Stop Supabase: `Ctrl+C` (Terminal 1)
+
+**Platform-Specific Storage:**
+
+| Platform        | Application Data                         | Session/Settings      | Offline Support                 |
+| --------------- | ---------------------------------------- | --------------------- | ------------------------------- |
+| **iOS/Android** | SQLite database                          | MMKV (native storage) | ✅ Full offline support         |
+| **Web**         | Direct Supabase queries (no caching yet) | localStorage          | ❌ Requires internet connection |
+
+**Current Limitations & Future Improvements:**
+
+- Web currently makes direct Supabase queries without caching
+- React Query is configured but not yet implemented for data fetching
+- **Future**: Implement React Query for in-memory caching and better UX
+- **Future**: Add React Query persisters + IndexedDB for offline web support
+
+### Making Schema Changes
+
+This project uses **Drizzle ORM** for both SQLite (local) and Postgres (Supabase) schemas. All schemas are driven by the DOMAIN configuration.
+
+**Step-by-step workflow:**
+
+1. **Edit BOTH schema files** (keep them in sync):
+   - `src/db/sqlite/schema.ts` (local mobile database)
+   - `src/db/postgres/schema.ts` (remote Supabase database)
+
+2. **Generate migrations IMMEDIATELY**:
+
+   ```bash
+   npm run db:migrate
+   ```
+
+   - ✅ Generates SQLite migration files → `src/db/sqlite/migrations/`
+   - ✅ Generates Postgres migration files → `supabase/migrations/`
+   - ✅ Auto-generates RLS policies for Postgres
+   - ⚠️ **Don't skip this step!** The app checks for missing migrations on startup.
+
+3. **Review the generated files**:
+   - Check migration SQL for correctness
+   - Verify RLS policies match your security requirements
+   - Run automated validation: `npm test -- --coverage`
+
+4. **Test locally**:
+
+   ```bash
+   # Restart Supabase to apply Postgres migrations
+   npm run supabase:dev   # Applies new Postgres migrations
+
+   # Restart the app to apply SQLite migrations
+   npm start              # Press 'r' to reload app on device
+   ```
+
+5. **Commit everything together**:
+
+   ```bash
+   git add src/db/*/schema.ts src/db/sqlite/migrations/ supabase/migrations/
+   git commit -m "feat: update database schema"
+   ```
+
+6. **Deploy to production** (when ready):
+   ```bash
+   npm run supabase:deploy
+   ```
+
+**Important Notes:**
+
+- ⚠️ Always run `npm run db:migrate` immediately after editing schemas
+- ✅ The `npm start` command automatically checks if migrations are missing
+- 📝 Both schema files must stay in sync - edit them together
+- 🔒 RLS policies are auto-generated from DOMAIN config
+
+**Having trouble?** See [docs/database-migrations.md](docs/database-migrations.md) for detailed workflows and troubleshooting.
+
+---
+
+## 📚 Documentation
+
+### Architecture & Design
+
+- **[Architecture Overview](docs/architecture.md)** - System design, data flow, platform differences
+- **[Database Migrations](docs/database-migrations.md)** - Schema changes and migration workflows
+- **[Schema Architecture](docs/schema-architecture.md)** - Why two schemas and how they stay in sync
+- **[Web Caching Strategy](docs/web-caching-strategy.md)** - Planned React Query implementation
+- **[Roadmap](docs/roadmap.md)** - Current status and upcoming milestones
+
+---
+
+## 🛠️ Development Workflow
+
+### Initial Setup (First Time)
+
+Follow these steps in order when setting up the project for the first time:
+
+1. **Install prerequisites**
+   - Node 24.x
+   - Expo toolchain
+   - Container runtime (Rancher Desktop or Docker Desktop)
+   - Java 17 (for Android/Maestro)
+   - Xcode (macOS only, for iOS)
+
+2. **Install dependencies**:
+
+   ```bash
+   npm install
+   ```
+
+3. **Create `.env.local` file**:
+
+   ```bash
+   cp .env.example .env.local
+   ```
+
+4. **Generate database migrations** (IMPORTANT - Do this before starting!):
+
+   ```bash
+   npm run db:migrate
+   ```
+
+   This creates migration files for both SQLite (mobile) and Postgres (Supabase).
+
+5. **Start local Supabase** (Terminal 1):
+
+   ```bash
+   npm run supabase:dev
+   ```
+
+   - Starts Docker containers
+   - Applies Postgres migrations
+   - Serves Edge Functions
+   - Prints connection credentials
+   - **Keep this terminal running**
+
+6. **Start Expo development server** (Terminal 2):
+
+   ```bash
+   npm start
+   ```
+
+   - Automatically runs system checks (including migration validation)
+   - Starts Metro bundler
+   - Press `i` for iOS, `a` for Android, `w` for web
+
+7. **Run the app** and verify:
+   - ✅ App launches without errors
+   - ✅ You can create an account
+   - ✅ Data syncs between local (SQLite) and Supabase (Postgres)
+
+### Daily Development
+
+1. **Start Supabase** (Terminal 1):
+
+   ```bash
+   npm run supabase:dev
+   ```
+
+2. **Start Expo** (Terminal 2):
+
+   ```bash
+   npm start
+   ```
+
+3. **Code and iterate**:
+   - Save code → Metro hot reloads the UI automatically
+   - Edit Edge Functions → Supabase CLI auto-reloads them
+   - Run tests: `npm test -- --coverage`
+
+4. **Shut down**:
+   - Stop Expo: `Ctrl+C` (Terminal 2)
+   - Stop Supabase: `Ctrl+C` (Terminal 1)
+
+**Platform-Specific Storage:**
+
+| Platform        | Application Data                         | Session/Settings      | Offline Support                 |
+| --------------- | ---------------------------------------- | --------------------- | ------------------------------- |
+| **iOS/Android** | SQLite database                          | MMKV (native storage) | ✅ Full offline support         |
+| **Web**         | Direct Supabase queries (no caching yet) | localStorage          | ❌ Requires internet connection |
+
+**Current Limitations & Future Improvements:**
+
+- Web currently makes direct Supabase queries without caching
+- React Query is configured but not yet implemented for data fetching
+- **Future**: Implement React Query for in-memory caching and better UX
+- **Future**: Add React Query persisters + IndexedDB for offline web support
+
+### Making Schema Changes
+
+This project uses **Drizzle ORM** for both SQLite (local) and Postgres (Supabase) schemas. All schemas are driven by the DOMAIN configuration.
+
+**Step-by-step workflow:**
+
+1. **Edit BOTH schema files** (keep them in sync):
+   - `src/db/sqlite/schema.ts` (local mobile database)
+   - `src/db/postgres/schema.ts` (remote Supabase database)
+
+2. **Generate migrations IMMEDIATELY**:
+
+   ```bash
+   npm run db:migrate
+   ```
+
+   - ✅ Generates SQLite migration files → `src/db/sqlite/migrations/`
+   - ✅ Generates Postgres migration files → `supabase/migrations/`
+   - ✅ Auto-generates RLS policies for Postgres
+   - ⚠️ **Don't skip this step!** The app checks for missing migrations on startup.
+
+3. **Review the generated files**:
+   - Check migration SQL for correctness
+   - Verify RLS policies match your security requirements
+   - Run automated validation: `npm test -- --coverage`
+
+4. **Test locally**:
+
+   ```bash
+   # Restart Supabase to apply Postgres migrations
+   npm run supabase:dev   # Applies new Postgres migrations
+
+   # Restart the app to apply SQLite migrations
+   npm start              # Press 'r' to reload app on device
+   ```
+
+5. **Commit everything together**:
+
+   ```bash
+   git add src/db/*/schema.ts src/db/sqlite/migrations/ supabase/migrations/
+   git commit -m "feat: update database schema"
+   ```
+
+6. **Deploy to production** (when ready):
+   ```bash
+   npm run supabase:deploy
+   ```
+
+**Important Notes:**
+
+- ⚠️ Always run `npm run db:migrate` immediately after editing schemas
+- ✅ The `npm start` command automatically checks if migrations are missing
+- 📝 Both schema files must stay in sync - edit them together
+- 🔒 RLS policies are auto-generated from DOMAIN config
+
+**Having trouble?** See [docs/database-migrations.md](docs/database-migrations.md) for detailed workflows and troubleshooting.
+
+---
+
+## 📚 Documentation
+
+### Architecture & Design
+
+- **[Architecture Overview](docs/architecture.md)** - System design, data flow, platform differences
+- **[Database Migrations](docs/database-migrations.md)** - Schema changes and migration workflows
+- **[Schema Architecture](docs/schema-architecture.md)** - Why two schemas and how they stay in sync
+- **[Web Caching Strategy](docs/web-caching-strategy.md)** - Planned React Query implementation
+- **[Roadmap](docs/roadmap.md)** - Current status and upcoming milestones
 
 ---
 
@@ -632,7 +897,29 @@ Add to your selfhosted workflow and ci-quality.yml after the unit test run with 
     fail_ci_if_error: false
 ```
 
-## 🧭 References
+### 🧩 Misc
+
+Connect code coverage to a tool lile CodeCov. Generate a token in CodeCov and add it to the repo's Github secrets
+
+Add to your selfhosted workflow and ci-quality.yml after the unit test run with coverage.
+
+```
+- name: Install GPG
+  run: |
+    sudo apt-get update
+    sudo apt-get install -y gnupg
+
+- name: Upload coverage to Codecov
+  uses: codecov/codecov-action@v5
+  with:
+    token: ${{ secrets.CODECOV_TOKEN }}
+    files: ./coverage/lcov.info
+    slug: luvenapps/__APP_NAME__
+    flag: quality                         # Optional
+    fail_ci_if_error: false
+```
+
+## 🧭 External References
 
 - [Expo Docs](https://docs.expo.dev)
 - [React Native CLI Setup](https://reactnative.dev/docs/environment-setup)
