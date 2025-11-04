@@ -29,6 +29,7 @@
     "db:generate:postgres": "node scripts/generate-postgres-migration.mjs",
     "db:generate-rls": "node scripts/generate-rls-policies.mjs",
     "db:push": "drizzle-kit push --config=drizzle.config.sqlite.ts",
+    "db:clean": "node scripts/clean-migrations.mjs",
     "supabase:push": "npx supabase db push",
     "supabase:dev": "node scripts/supabase-dev.mjs",
     "supabase:deploy": "node scripts/supabase-deploy.mjs"
