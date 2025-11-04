@@ -59,7 +59,7 @@ jobs:
   ios-hosted:
     name: Build • E2E (iOS) - Hosted MacOS
     if: vars.USE_SELF_HOSTED != 'true'
-    runs-on: macos-latest
+    runs-on: macos-latest-xlarge
     timeout-minutes: 45
 
     steps:
