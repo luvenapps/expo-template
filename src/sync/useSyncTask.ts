@@ -10,6 +10,8 @@ type SyncEngine = ReturnType<typeof createSyncEngine>;
 const BACKGROUND_TASK_NAME = DOMAIN.app.syncTask;
 const DEFAULT_INTERVAL = 60000;
 const DEFAULT_FETCH_INTERVAL = 15 * 60; // 15 minutes
+const BASE_BACKOFF_MS = 2000;
+const MAX_BACKOFF_MS = 5 * 60 * 1000;
 
 type UseSyncTaskOptions = {
   engine: SyncEngine;
@@ -29,18 +31,90 @@ export function useSyncTask({
   const mountedRef = useRef(true);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const appStateListenerRef = useRef<{ remove?: () => void } | null>(null);
+  const isRunningRef = useRef(false);
+  const queuedRef = useRef(false);
+  const queuedForceRef = useRef(false);
+  const queuedResolverRef = useRef<{
+    resolve: () => void;
+    reject: (error: unknown) => void;
+  } | null>(null);
+  const queuedPromiseRef = useRef<Promise<void> | null>(null);
+  const failureCountRef = useRef(0);
+  const cooldownUntilRef = useRef<number | null>(null);
+  const hasWarnedWebRef = useRef(false);
 
-  const runSync = useCallback(async () => {
-    // SQLite sync is not supported on web - use server-side storage instead
-    if (Platform.OS === 'web') {
-      console.warn(
-        'Sync is not supported on web platform. Database operations require native SQLite.',
-      );
-      return;
-    }
-    if (!mountedRef.current) return;
-    await engine.runSync();
-  }, [engine]);
+  const runSync = useCallback(
+    async function runSyncInternal(force = false): Promise<void> {
+      if (!mountedRef.current) {
+        return;
+      }
+
+      if (Platform.OS === 'web') {
+        if (!hasWarnedWebRef.current) {
+          console.warn(
+            'Sync is not supported on web platform. Database operations require native SQLite.',
+          );
+          hasWarnedWebRef.current = true;
+        }
+        return;
+      }
+
+      const now = Date.now();
+      if (!force && cooldownUntilRef.current !== null && now < cooldownUntilRef.current) {
+        const remaining = cooldownUntilRef.current - now;
+        console.warn(
+          `[Sync] Skipping scheduled run - retrying in ${Math.ceil(remaining / 1000)}s.`,
+        );
+        return;
+      }
+
+      if (isRunningRef.current) {
+        if (queuedRef.current) {
+          queuedForceRef.current = queuedForceRef.current || force;
+          return queuedPromiseRef.current ?? Promise.resolve();
+        }
+
+        queuedRef.current = true;
+        queuedForceRef.current = force;
+        queuedPromiseRef.current = new Promise<void>((resolve, reject) => {
+          queuedResolverRef.current = { resolve, reject };
+        });
+        return queuedPromiseRef.current;
+      }
+
+      isRunningRef.current = true;
+      try {
+        await engine.runSync();
+        failureCountRef.current = 0;
+        cooldownUntilRef.current = null;
+      } catch (error) {
+        failureCountRef.current += 1;
+        const backoff = Math.min(
+          MAX_BACKOFF_MS,
+          BASE_BACKOFF_MS * 2 ** (failureCountRef.current - 1),
+        );
+        cooldownUntilRef.current = Date.now() + backoff;
+        throw error;
+      } finally {
+        isRunningRef.current = false;
+        if (queuedRef.current) {
+          const shouldForce = queuedForceRef.current;
+          const queuedResolver = queuedResolverRef.current;
+          queuedRef.current = false;
+          queuedForceRef.current = false;
+          queuedPromiseRef.current = null;
+          queuedResolverRef.current = null;
+
+          queueMicrotask(() => {
+            runSyncInternal(shouldForce)
+              .then(() => queuedResolver?.resolve())
+              .catch((error) => queuedResolver?.reject(error));
+          });
+        }
+      }
+    },
+    [engine],
+  );
 
   useEffect(() => {
     mountedRef.current = true;
@@ -97,20 +171,34 @@ export function useSyncTask({
   }, [enabled, intervalMs, runSync, autoStart]);
 
   useEffect(() => {
-    if (!enabled) {
-      unregisterBackgroundTask().catch(() => undefined);
+    if (!enabled || Platform.OS === 'web') {
+      if (!enabled) {
+        unregisterBackgroundTask().catch(() => undefined);
+      }
       return undefined;
     }
 
     const register = async () => {
-      const defined = isTaskDefined(BACKGROUND_TASK_NAME);
-      if (!defined) {
-        registerTask(BACKGROUND_TASK_NAME, runSync);
-      }
+      try {
+        const status = await BackgroundTask.getStatusAsync();
+        if (status !== BackgroundTask.BackgroundTaskStatus.Available) {
+          console.warn(
+            '[Sync] Background tasks are disabled or restricted. Skipping registration.',
+          );
+          return;
+        }
 
-      await BackgroundTask.registerTaskAsync(BACKGROUND_TASK_NAME, {
-        minimumInterval: backgroundInterval,
-      });
+        const defined = isTaskDefined(BACKGROUND_TASK_NAME);
+        if (!defined) {
+          registerTask(BACKGROUND_TASK_NAME, () => runSync());
+        }
+
+        await BackgroundTask.registerTaskAsync(BACKGROUND_TASK_NAME, {
+          minimumInterval: backgroundInterval,
+        });
+      } catch (error) {
+        console.warn('[Sync] Failed to register background task:', error);
+      }
     };
 
     register().catch(() => undefined);
@@ -121,7 +209,7 @@ export function useSyncTask({
   }, [enabled, backgroundInterval, runSync]);
 
   const triggerSync = useCallback(async () => {
-    await runSync();
+    await runSync(true);
   }, [runSync]);
 
   return { triggerSync };
@@ -139,6 +227,10 @@ function registerTask(name: string, runSync: () => Promise<void>) {
 }
 
 async function unregisterBackgroundTask() {
+  if (Platform.OS === 'web') {
+    return;
+  }
+
   const status = await BackgroundTask.getStatusAsync();
   if (status === BackgroundTask.BackgroundTaskStatus.Restricted) {
     return;

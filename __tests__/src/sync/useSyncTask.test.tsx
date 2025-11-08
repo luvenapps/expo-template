@@ -7,12 +7,12 @@ jest.mock('expo-background-task', () => ({
     Failed: 2,
   },
   BackgroundTaskStatus: {
-    Available: 1,
-    Restricted: 2,
+    Restricted: 1,
+    Available: 2,
   },
   registerTaskAsync: jest.fn().mockResolvedValue(undefined),
   unregisterTaskAsync: jest.fn().mockResolvedValue(undefined),
-  getStatusAsync: jest.fn().mockResolvedValue(1), // Available
+  getStatusAsync: jest.fn().mockResolvedValue(2), // Available
 }));
 
 jest.mock('expo-task-manager', () => ({
@@ -35,11 +35,23 @@ const mockEngine = {
 const listeners: ((state: AppStateStatus) => void)[] = [];
 let addEventListenerSpy: jest.SpyInstance;
 
+const createDeferred = <T = void,>() => {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+};
+
 describe('useSyncTask', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.clearAllTimers();
     listeners.length = 0;
+    mockEngine.runSync.mockReset();
+    mockEngine.runSync.mockResolvedValue(undefined);
 
     addEventListenerSpy = jest.spyOn(AppState, 'addEventListener');
     addEventListenerSpy.mockImplementation(
@@ -263,6 +275,93 @@ describe('useSyncTask', () => {
     });
   });
 
+  describe('run coordination & backoff', () => {
+    it('queues interval-based sync while another run is active', async () => {
+      const firstRun = createDeferred<void>();
+      mockEngine.runSync
+        .mockImplementationOnce(() => firstRun.promise)
+        .mockResolvedValueOnce(undefined);
+
+      renderHook(() => useSyncTask({ engine: mockEngine as any, enabled: true, intervalMs: 1000 }));
+
+      expect(mockEngine.runSync).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        jest.advanceTimersByTime(1000);
+        await Promise.resolve();
+      });
+
+      expect(mockEngine.runSync).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        firstRun.resolve();
+        await Promise.resolve();
+      });
+
+      await act(async () => {
+        jest.advanceTimersByTime(0);
+        await Promise.resolve();
+      });
+
+      expect(mockEngine.runSync).toHaveBeenCalledTimes(2);
+    });
+
+    it('applies cooldown after failures', async () => {
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      mockEngine.runSync.mockRejectedValueOnce(new Error('fail'));
+      mockEngine.runSync.mockResolvedValueOnce(undefined);
+
+      renderHook(() => useSyncTask({ engine: mockEngine as any, enabled: true, intervalMs: 1000 }));
+
+      await act(async () => {
+        jest.advanceTimersByTime(0);
+        await Promise.resolve();
+      });
+
+      expect(mockEngine.runSync).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        jest.advanceTimersByTime(1000);
+        await Promise.resolve();
+      });
+
+      expect(mockEngine.runSync).toHaveBeenCalledTimes(1);
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[Sync] Skipping scheduled run'),
+      );
+
+      await act(async () => {
+        jest.advanceTimersByTime(2000);
+        await Promise.resolve();
+      });
+
+      expect(mockEngine.runSync).toHaveBeenCalledTimes(2);
+
+      consoleWarnSpy.mockRestore();
+    });
+
+    it('allows triggerSync to bypass cooldown', async () => {
+      mockEngine.runSync.mockRejectedValueOnce(new Error('fail'));
+      mockEngine.runSync.mockResolvedValueOnce(undefined);
+
+      const { result } = renderHook(() =>
+        useSyncTask({ engine: mockEngine as any, enabled: true, autoStart: false }),
+      );
+
+      await act(async () => {
+        await result.current.triggerSync().catch(() => undefined);
+      });
+
+      expect(mockEngine.runSync).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        await result.current.triggerSync();
+      });
+
+      expect(mockEngine.runSync).toHaveBeenCalledTimes(2);
+    });
+  });
+
   describe('background fetch', () => {
     it('should register background task when enabled', async () => {
       renderHook(() =>
@@ -274,6 +373,27 @@ describe('useSyncTask', () => {
           minimumInterval: 900,
         });
       });
+    });
+
+    it('should skip registration when background tasks are restricted', async () => {
+      (BackgroundTask.getStatusAsync as jest.Mock).mockResolvedValue(1); // Restricted
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+      renderHook(() =>
+        useSyncTask({ engine: mockEngine as any, enabled: true, backgroundInterval: 900 }),
+      );
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(BackgroundTask.registerTaskAsync).not.toHaveBeenCalled();
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[Sync] Background tasks are disabled or restricted. Skipping registration.',
+      );
+
+      warnSpy.mockRestore();
+      (BackgroundTask.getStatusAsync as jest.Mock).mockResolvedValue(2);
     });
 
     it('should register task with expo-task-manager when not defined', async () => {
@@ -309,7 +429,7 @@ describe('useSyncTask', () => {
         expect(BackgroundTask.registerTaskAsync).toHaveBeenCalled();
       });
 
-      (BackgroundTask.getStatusAsync as jest.Mock).mockResolvedValue(1); // Available
+      (BackgroundTask.getStatusAsync as jest.Mock).mockResolvedValue(2); // Available
 
       // Disable
       rerender({ enabled: false });
@@ -321,7 +441,9 @@ describe('useSyncTask', () => {
     });
 
     it('should skip unregister when background task is restricted', async () => {
-      (BackgroundTask.getStatusAsync as jest.Mock).mockResolvedValue(2); // Restricted
+      const statusMock = BackgroundTask.getStatusAsync as jest.Mock;
+      statusMock.mockResolvedValueOnce(2); // Available for registration
+      statusMock.mockResolvedValue(1); // Restricted for subsequent checks
 
       const { rerender } = renderHook(
         (props: { enabled: boolean }) =>
@@ -345,6 +467,8 @@ describe('useSyncTask', () => {
       // Should not try to unregister when restricted
       expect(BackgroundTask.unregisterTaskAsync).not.toHaveBeenCalled();
       expect(unregisterTaskAsync).not.toHaveBeenCalled();
+
+      statusMock.mockResolvedValue(2);
     });
   });
 
@@ -372,10 +496,11 @@ describe('useSyncTask', () => {
         expect(registerTaskAsync).toHaveBeenCalled();
       });
 
-      // Should not throw - error is caught
+      // Should not throw - error is caught silently with .catch(() => undefined)
     });
 
     it('should handle background task registration errors gracefully', async () => {
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
       (BackgroundTask.registerTaskAsync as jest.Mock).mockRejectedValueOnce(
         new Error('Register failed'),
       );
@@ -386,8 +511,13 @@ describe('useSyncTask', () => {
         await Promise.resolve();
       });
 
-      // Should not throw
       expect(BackgroundTask.registerTaskAsync).toHaveBeenCalled();
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        '[Sync] Failed to register background task:',
+        expect.any(Error),
+      );
+
+      consoleWarnSpy.mockRestore();
     });
 
     it('should handle unregister errors gracefully', async () => {
@@ -404,7 +534,7 @@ describe('useSyncTask', () => {
       (BackgroundTask.unregisterTaskAsync as jest.Mock).mockRejectedValueOnce(
         new Error('Unregister failed'),
       );
-      (BackgroundTask.getStatusAsync as jest.Mock).mockResolvedValue(1); // Available
+      (BackgroundTask.getStatusAsync as jest.Mock).mockResolvedValue(2); // Available
 
       // Disable to trigger unregister
       rerender({ enabled: false });
@@ -455,6 +585,7 @@ describe('useSyncTask', () => {
           'Sync is not supported on web platform. Database operations require native SQLite.',
         );
         expect(mockEngine.runSync).not.toHaveBeenCalled();
+        expect(BackgroundTask.registerTaskAsync).not.toHaveBeenCalled();
       } finally {
         // Restore original platform
         Object.defineProperty(Platform, 'OS', {
