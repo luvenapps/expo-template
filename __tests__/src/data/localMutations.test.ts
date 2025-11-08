@@ -325,6 +325,56 @@ describe('error handling and edge cases', () => {
     require('react-native').Platform.OS = originalPlatform;
   });
 
+  it('validates primary entity name before touching the database', async () => {
+    await expect(
+      createPrimaryEntityLocal({
+        userId: 'user-1',
+        name: '   ',
+        cadence: 'daily',
+        color: '#000000',
+      }),
+    ).rejects.toThrow('Name is required');
+
+    expect(getDbMock).not.toHaveBeenCalled();
+  });
+
+  it('validates entry date format', async () => {
+    await expect(
+      createEntryLocal({
+        userId: 'user-1',
+        [DOMAIN.entities.entries.foreignKey]: 'primary-1',
+        date: '2025/01/01',
+      } as any),
+    ).rejects.toThrow('Date must be in YYYY-MM-DD format');
+
+    expect(getDbMock).not.toHaveBeenCalled();
+  });
+
+  it('validates reminder time of day', async () => {
+    await expect(
+      createReminderLocal({
+        userId: 'user-1',
+        [DOMAIN.entities.reminders.foreignKey]: 'primary-1',
+        timeLocal: '25:00',
+        daysOfWeek: '1,2,3',
+      } as any),
+    ).rejects.toThrow('Reminder time must use HH:MM (24-hour) format');
+
+    expect(getDbMock).not.toHaveBeenCalled();
+  });
+
+  it('validates device last_sync timestamp', async () => {
+    await expect(
+      createDeviceLocal({
+        userId: 'user-1',
+        platform: 'ios',
+        lastSyncAt: 'not-a-date',
+      }),
+    ).rejects.toThrow('Last sync time must be a valid ISO 8601 timestamp');
+
+    expect(getDbMock).not.toHaveBeenCalled();
+  });
+
   it('throws error when primary entity not found after insert', async () => {
     const repository = {
       insert: jest.fn().mockResolvedValue(undefined),

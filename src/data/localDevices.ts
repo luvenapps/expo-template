@@ -9,6 +9,7 @@ import { mapPayloadToRemote, normalizePayload } from '@/supabase/mappers';
 import type { DeviceRecord } from '@/supabase/types';
 import { enqueueWithDatabase } from '@/sync/outbox';
 import type { LocalTableName } from '@/supabase/domain';
+import { assertIsoDateTime, assertNonEmptyString } from '@/data/validation';
 
 const LOCAL_TABLE = DOMAIN.entities.devices.tableName as LocalTableName;
 
@@ -32,6 +33,7 @@ type MutationOptions = {
 
 export async function createDeviceLocal(input: CreateDeviceInput, options?: MutationOptions) {
   guardNative();
+  validateDeviceCreateInput(input);
   const runInsert = async (database: Awaited<ReturnType<typeof getDb>>) => {
     const repo = getDeviceRepository(database);
     const id = input.id ?? uuid();
@@ -77,6 +79,7 @@ export async function createDeviceLocal(input: CreateDeviceInput, options?: Muta
 
 export async function updateDeviceLocal(input: UpdateDeviceInput) {
   guardNative();
+  validateDeviceUpdateInput(input);
   return withDatabaseRetry(async () => {
     const database = await getDb();
     const repo = getDeviceRepository(database);
@@ -150,5 +153,25 @@ function buildRemotePayload(record: DeviceRecord) {
 function guardNative() {
   if (Platform.OS === 'web') {
     throw new Error('Local SQLite mutations are not supported on web.');
+  }
+}
+
+function validateDeviceCreateInput(input: CreateDeviceInput) {
+  assertNonEmptyString(input.userId, 'User ID');
+  assertNonEmptyString(input.platform, 'Platform');
+  if (input.lastSyncAt) {
+    assertIsoDateTime(input.lastSyncAt, 'Last sync time');
+  }
+}
+
+function validateDeviceUpdateInput(input: UpdateDeviceInput) {
+  if (input.platform !== undefined) {
+    assertNonEmptyString(input.platform, 'Platform');
+  }
+  if (input.lastSyncAt) {
+    assertIsoDateTime(input.lastSyncAt, 'Last sync time');
+  }
+  if (input.deletedAt && typeof input.deletedAt === 'string') {
+    assertIsoDateTime(input.deletedAt, 'Deleted at');
   }
 }

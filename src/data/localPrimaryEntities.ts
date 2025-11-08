@@ -5,6 +5,15 @@ import { DOMAIN } from '@/config/domain.config';
 import { getDb } from '@/db/sqlite';
 import { withDatabaseRetry } from '@/db/sqlite/retry';
 import { getPrimaryEntityRepository } from '@/data/repositories';
+import {
+  VALID_CADENCES,
+  assertHexColor,
+  assertIntegerInRange,
+  assertIsoDateTime,
+  assertMaxLength,
+  assertNonEmptyString,
+  assertOneOf,
+} from '@/data/validation';
 import { mapPayloadToRemote, normalizePayload } from '@/supabase/mappers';
 import type { PrimaryEntityRecord } from '@/supabase/types';
 import { enqueueWithDatabase } from '@/sync/outbox';
@@ -41,6 +50,7 @@ export async function createPrimaryEntityLocal(
   options?: MutationOptions,
 ) {
   guardNative();
+  validatePrimaryCreateInput(input);
   const runInsert = async (database: Awaited<ReturnType<typeof getDb>>) => {
     const repo = getPrimaryEntityRepository(database);
     const id = input.id ?? uuid();
@@ -89,6 +99,7 @@ export async function createPrimaryEntityLocal(
 
 export async function updatePrimaryEntityLocal(input: UpdatePrimaryEntityInput) {
   guardNative();
+  validatePrimaryUpdateInput(input);
   return withDatabaseRetry(async () => {
     const database = await getDb();
     const repo = getPrimaryEntityRepository(database);
@@ -166,5 +177,35 @@ function buildRemotePayload(record: PrimaryEntityRecord) {
 function guardNative() {
   if (Platform.OS === 'web') {
     throw new Error('Local SQLite mutations are not supported on web.');
+  }
+}
+
+function validatePrimaryCreateInput(input: CreatePrimaryEntityInput) {
+  assertNonEmptyString(input.userId, 'User ID');
+  assertNonEmptyString(input.name, 'Name');
+  assertMaxLength(input.name, 200, 'Name');
+  assertHexColor(input.color, 'Color');
+  assertOneOf(input.cadence, VALID_CADENCES, 'Cadence');
+  if (input.sortOrder !== undefined) {
+    assertIntegerInRange(input.sortOrder, 0, 10000, 'Sort order');
+  }
+}
+
+function validatePrimaryUpdateInput(input: UpdatePrimaryEntityInput) {
+  if (input.name !== undefined) {
+    assertNonEmptyString(input.name, 'Name');
+    assertMaxLength(input.name, 200, 'Name');
+  }
+  if (input.color !== undefined) {
+    assertHexColor(input.color, 'Color');
+  }
+  if (input.cadence !== undefined) {
+    assertOneOf(input.cadence, VALID_CADENCES, 'Cadence');
+  }
+  if (input.sortOrder !== undefined) {
+    assertIntegerInRange(input.sortOrder, 0, 10000, 'Sort order');
+  }
+  if (input.deletedAt && typeof input.deletedAt === 'string') {
+    assertIsoDateTime(input.deletedAt, 'Deleted at');
   }
 }

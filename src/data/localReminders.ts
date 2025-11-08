@@ -10,10 +10,17 @@ import type { ReminderRecord } from '@/supabase/types';
 import { enqueueWithDatabase } from '@/sync/outbox';
 import type { LocalTableName } from '@/supabase/domain';
 import { toSnakeCase } from '@/utils/string';
+import {
+  assertDaysOfWeek,
+  assertIsoDateTime,
+  assertNonEmptyString,
+  assertTimeOfDay,
+} from '@/data/validation';
 
 const LOCAL_TABLE = DOMAIN.entities.reminders.tableName as LocalTableName;
 const FOREIGN_KEY = DOMAIN.entities.reminders.foreignKey;
 const REMOTE_FOREIGN_KEY = toSnakeCase(FOREIGN_KEY);
+const REMINDER_FOREIGN_KEY_LABEL = `${DOMAIN.entities.primary.displayName} ID`;
 
 type CreateReminderInput = {
   id?: string;
@@ -41,6 +48,7 @@ type MutationOptions = {
 
 export async function createReminderLocal(input: CreateReminderInput, options?: MutationOptions) {
   guardNative();
+  validateReminderCreateInput(input);
   const runInsert = async (database: Awaited<ReturnType<typeof getDb>>) => {
     const repo = getReminderRepository(database);
     const id = input.id ?? uuid();
@@ -89,6 +97,7 @@ export async function createReminderLocal(input: CreateReminderInput, options?: 
 
 export async function updateReminderLocal(input: UpdateReminderInput) {
   guardNative();
+  validateReminderUpdateInput(input);
   return withDatabaseRetry(async () => {
     const database = await getDb();
     const repo = getReminderRepository(database);
@@ -169,5 +178,33 @@ function buildRemotePayload(record: ReminderRecord) {
 function guardNative() {
   if (Platform.OS === 'web') {
     throw new Error('Local SQLite mutations are not supported on web.');
+  }
+}
+
+function validateReminderCreateInput(input: CreateReminderInput) {
+  assertNonEmptyString(input.userId, 'User ID');
+  assertNonEmptyString(input[FOREIGN_KEY], REMINDER_FOREIGN_KEY_LABEL);
+  assertTimeOfDay(input.timeLocal, 'Reminder time');
+  assertDaysOfWeek(input.daysOfWeek, 'Reminder days');
+  if (input.timezone !== undefined) {
+    assertNonEmptyString(input.timezone, 'Timezone');
+  }
+}
+
+function validateReminderUpdateInput(input: UpdateReminderInput) {
+  if (input[FOREIGN_KEY] !== undefined) {
+    assertNonEmptyString(input[FOREIGN_KEY], REMINDER_FOREIGN_KEY_LABEL);
+  }
+  if (input.timeLocal !== undefined) {
+    assertTimeOfDay(input.timeLocal, 'Reminder time');
+  }
+  if (input.daysOfWeek !== undefined) {
+    assertDaysOfWeek(input.daysOfWeek, 'Reminder days');
+  }
+  if (input.timezone !== undefined) {
+    assertNonEmptyString(input.timezone, 'Timezone');
+  }
+  if (input.deletedAt && typeof input.deletedAt === 'string') {
+    assertIsoDateTime(input.deletedAt, 'Deleted at');
   }
 }

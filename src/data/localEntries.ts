@@ -5,6 +5,12 @@ import { DOMAIN } from '@/config/domain.config';
 import { getDb } from '@/db/sqlite';
 import { withDatabaseRetry } from '@/db/sqlite/retry';
 import { getEntryRepository } from '@/data/repositories';
+import {
+  assertIsoDate,
+  assertIsoDateTime,
+  assertIntegerInRange,
+  assertNonEmptyString,
+} from '@/data/validation';
 import { mapPayloadToRemote, normalizePayload } from '@/supabase/mappers';
 import type { EntryRecord } from '@/supabase/types';
 import { enqueueWithDatabase } from '@/sync/outbox';
@@ -13,6 +19,7 @@ import type { LocalTableName } from '@/supabase/domain';
 const LOCAL_TABLE = DOMAIN.entities.entries.tableName as LocalTableName;
 const FOREIGN_KEY = DOMAIN.entities.entries.foreignKey;
 const REMOTE_FOREIGN_KEY = DOMAIN.entities.entries.row_id;
+const FOREIGN_KEY_LABEL = `${DOMAIN.entities.primary.displayName} ID`;
 
 type CreateEntryInput = {
   id?: string;
@@ -38,6 +45,7 @@ type MutationOptions = {
 
 export async function createEntryLocal(input: CreateEntryInput, options?: MutationOptions) {
   guardNative();
+  validateEntryCreateInput(input);
   const runInsert = async (database: Awaited<ReturnType<typeof getDb>>) => {
     const repo = getEntryRepository(database);
     const id = input.id ?? uuid();
@@ -85,6 +93,7 @@ export async function createEntryLocal(input: CreateEntryInput, options?: Mutati
 
 export async function updateEntryLocal(input: UpdateEntryInput) {
   guardNative();
+  validateEntryUpdateInput(input);
   return withDatabaseRetry(async () => {
     const database = await getDb();
     const repo = getEntryRepository(database);
@@ -164,5 +173,29 @@ function buildRemotePayload(record: EntryRecord) {
 function guardNative() {
   if (Platform.OS === 'web') {
     throw new Error('Local SQLite mutations are not supported on web.');
+  }
+}
+
+function validateEntryCreateInput(input: CreateEntryInput) {
+  assertNonEmptyString(input.userId, 'User ID');
+  assertNonEmptyString(input[FOREIGN_KEY], FOREIGN_KEY_LABEL);
+  assertIsoDate(input.date, 'Date');
+  if (input.amount !== undefined) {
+    assertIntegerInRange(input.amount, 0, 999, 'Amount');
+  }
+}
+
+function validateEntryUpdateInput(input: UpdateEntryInput) {
+  if (input[FOREIGN_KEY] !== undefined) {
+    assertNonEmptyString(input[FOREIGN_KEY], FOREIGN_KEY_LABEL);
+  }
+  if (input.date !== undefined) {
+    assertIsoDate(input.date, 'Date');
+  }
+  if (input.amount !== undefined) {
+    assertIntegerInRange(input.amount, 0, 999, 'Amount');
+  }
+  if (input.deletedAt && typeof input.deletedAt === 'string') {
+    assertIsoDateTime(input.deletedAt, 'Deleted at');
   }
 }
