@@ -109,6 +109,11 @@ jest.mock('@tamagui/lucide-icons', () => ({
   },
 }));
 
+const mockTx = { id: 'tx' };
+const mockTransaction = jest.fn((cb: (tx: typeof mockTx) => Promise<any>) =>
+  Promise.resolve(cb(mockTx)),
+);
+
 // Mock data functions
 jest.mock('@/data', () => ({
   createPrimaryEntityLocal: jest.fn(),
@@ -127,6 +132,15 @@ jest.mock('@/sync/outbox', () => ({
 jest.mock('@/db/sqlite', () => ({
   hasData: jest.fn(() => Promise.resolve(false)),
   clearAllTables: jest.fn(() => Promise.resolve()),
+  getDb: jest.fn(() =>
+    Promise.resolve({
+      transaction: (cb: (tx: typeof mockTx) => Promise<any>) => mockTransaction(cb),
+    }),
+  ),
+}));
+
+jest.mock('@/db/sqlite/retry', () => ({
+  withDatabaseRetry: jest.fn((operation: () => Promise<any>) => operation()),
 }));
 
 // Mock SQLite events
@@ -147,7 +161,8 @@ import {
   createPrimaryEntityLocal,
   createReminderLocal,
 } from '@/data';
-import { clearAllTables, hasData } from '@/db/sqlite';
+import { clearAllTables, getDb, hasData } from '@/db/sqlite';
+import { withDatabaseRetry } from '@/db/sqlite/retry';
 import { useSync } from '@/sync';
 import { clearAll as clearOutbox } from '@/sync/outbox';
 import { useThemeContext } from '@/ui/theme/ThemeProvider';
@@ -166,12 +181,20 @@ const mockedCreateDeviceLocal = createDeviceLocal as unknown as jest.Mock;
 const mockedClearOutbox = clearOutbox as unknown as jest.Mock;
 const mockedHasData = hasData as unknown as jest.Mock;
 const mockedClearAllTables = clearAllTables as unknown as jest.Mock;
+const mockedGetDb = getDb as unknown as jest.Mock;
+const mockedWithDatabaseRetry = withDatabaseRetry as unknown as jest.Mock;
 
 describe('SettingsScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockPush.mockClear();
     mockDatabaseResetListeners = [];
+    mockTransaction.mockClear();
+    mockTransaction.mockImplementation((cb) => Promise.resolve(cb(mockTx)));
+    mockedGetDb.mockResolvedValue({
+      transaction: (cb: (tx: typeof mockTx) => Promise<any>) => mockTransaction(cb),
+    });
+    mockedWithDatabaseRetry.mockImplementation((operation: () => Promise<any>) => operation());
     mockedUseSync.mockImplementation(() => ({
       status: 'idle',
       queueSize: 0,
@@ -486,6 +509,7 @@ describe('SettingsScreen', () => {
             cadence: 'daily',
             color: '#60a5fa',
           }),
+          { database: mockTx },
         );
       });
 
@@ -494,6 +518,7 @@ describe('SettingsScreen', () => {
           userId: 'user-123',
           amount: 1,
         }),
+        { database: mockTx },
       );
 
       expect(mockedCreateReminderLocal).toHaveBeenCalledWith(
@@ -503,6 +528,7 @@ describe('SettingsScreen', () => {
           daysOfWeek: '1,2,3',
           isEnabled: true,
         }),
+        { database: mockTx },
       );
 
       expect(mockedCreateDeviceLocal).toHaveBeenCalledWith(
@@ -510,6 +536,7 @@ describe('SettingsScreen', () => {
           userId: 'user-123',
           platform: 'ios',
         }),
+        { database: mockTx },
       );
 
       await waitFor(() => {
@@ -724,6 +751,29 @@ describe('SettingsScreen', () => {
       );
 
       consoleLogSpy.mockRestore();
+    });
+
+    it('should run seed operations inside a single transaction', async () => {
+      const { getByText } = render(<SettingsScreen />);
+
+      fireEvent.press(getByText('Seed sample data'));
+
+      await waitFor(() => {
+        expect(mockTransaction).toHaveBeenCalledTimes(1);
+        expect(mockedCreatePrimaryEntityLocal).toHaveBeenCalledWith(
+          expect.objectContaining({ userId: 'user-123' }),
+          { database: mockTx },
+        );
+      });
+
+      expect(mockedCreateEntryLocal).toHaveBeenCalledWith(expect.anything(), { database: mockTx });
+      expect(mockedCreateReminderLocal).toHaveBeenCalledWith(expect.anything(), {
+        database: mockTx,
+      });
+      expect(mockedCreateDeviceLocal).toHaveBeenCalledWith(
+        expect.objectContaining({ platform: Platform.OS }),
+        { database: mockTx },
+      );
     });
   });
 

@@ -3,7 +3,7 @@ import { DOMAIN as mockDomain } from '@/config/domain.config';
 const insertCalls: { table: { name: string }; row: unknown }[] = [];
 const conflictCalls: { target: unknown; set: unknown }[] = [];
 
-const dbMock = {
+const dbMock: any = {
   insert: jest.fn((table: { name: string }) => ({
     values: (row: unknown) => {
       insertCalls.push({ table, row });
@@ -14,6 +14,10 @@ const dbMock = {
       };
     },
   })),
+  transaction: jest.fn(async (callback: (tx: any) => Promise<void>) => {
+    // Transaction just calls the callback with the same mock db
+    await callback(dbMock);
+  }),
 };
 
 const mockGetDb = jest.fn(() => Promise.resolve(dbMock));

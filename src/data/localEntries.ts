@@ -32,10 +32,13 @@ type UpdateEntryInput = {
   deletedAt?: string | null;
 };
 
-export async function createEntryLocal(input: CreateEntryInput) {
+type MutationOptions = {
+  database?: Awaited<ReturnType<typeof getDb>>;
+};
+
+export async function createEntryLocal(input: CreateEntryInput, options?: MutationOptions) {
   guardNative();
-  return withDatabaseRetry(async () => {
-    const database = await getDb();
+  const runInsert = async (database: Awaited<ReturnType<typeof getDb>>) => {
     const repo = getEntryRepository(database);
     const id = input.id ?? uuid();
 
@@ -68,6 +71,15 @@ export async function createEntryLocal(input: CreateEntryInput) {
     });
 
     return stored;
+  };
+
+  if (options?.database) {
+    return runInsert(options.database);
+  }
+
+  return withDatabaseRetry(async () => {
+    const database = await getDb();
+    return runInsert(database);
   });
 }
 

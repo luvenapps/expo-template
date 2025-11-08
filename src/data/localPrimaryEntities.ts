@@ -32,10 +32,16 @@ type UpdatePrimaryEntityInput = {
 
 const LOCAL_TABLE = DOMAIN.entities.primary.tableName as LocalTableName;
 
-export async function createPrimaryEntityLocal(input: CreatePrimaryEntityInput) {
+type MutationOptions = {
+  database?: Awaited<ReturnType<typeof getDb>>;
+};
+
+export async function createPrimaryEntityLocal(
+  input: CreatePrimaryEntityInput,
+  options?: MutationOptions,
+) {
   guardNative();
-  return withDatabaseRetry(async () => {
-    const database = await getDb();
+  const runInsert = async (database: Awaited<ReturnType<typeof getDb>>) => {
     const repo = getPrimaryEntityRepository(database);
     const id = input.id ?? uuid();
 
@@ -69,6 +75,15 @@ export async function createPrimaryEntityLocal(input: CreatePrimaryEntityInput) 
     });
 
     return stored;
+  };
+
+  if (options?.database) {
+    return runInsert(options.database);
+  }
+
+  return withDatabaseRetry(async () => {
+    const database = await getDb();
+    return runInsert(database);
   });
 }
 

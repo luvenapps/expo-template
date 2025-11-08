@@ -491,6 +491,45 @@ describe('error handling and edge cases', () => {
     expect(result.isArchived).toBe(true);
   });
 
+  it('creates primary entity using provided database without calling getDb', async () => {
+    const repository = mockPrimaryRepository({
+      id: 'primary-1',
+      userId: 'user-1',
+      name: 'Test',
+      cadence: 'daily',
+      color: '#000000',
+      sortOrder: 0,
+      isArchived: false,
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-01-01T00:00:00.000Z',
+      version: 1,
+      deletedAt: null,
+    });
+
+    (getPrimaryEntityRepository as jest.Mock).mockReturnValue(repository);
+
+    const customDb = { __db: 'custom' };
+
+    await createPrimaryEntityLocal(
+      {
+        userId: 'user-1',
+        name: 'Test',
+        cadence: 'daily',
+        color: '#000000',
+      },
+      { database: customDb as any },
+    );
+
+    expect(getDbMock).not.toHaveBeenCalled();
+    expect(enqueueMock).toHaveBeenCalledWith(
+      customDb,
+      expect.objectContaining({
+        operation: 'insert',
+        tableName: DOMAIN.entities.primary.tableName,
+      }),
+    );
+  });
+
   it('updates primary entity with only name', async () => {
     const existing = {
       id: 'primary-1',

@@ -34,11 +34,22 @@ export async function upsertRecords<TRow extends Record<string, unknown>>(
   const db = await getDb();
   const { table, primaryKey, prepareRow } = config;
 
-  for (const row of rows) {
+  const upsertRow = async (executor: typeof db, row: TRow) => {
     const preparedRow = (prepareRow ? prepareRow(row) : row) as Record<string, unknown>;
-    await db.insert(table).values(preparedRow).onConflictDoUpdate({
+    await executor.insert(table).values(preparedRow).onConflictDoUpdate({
       target: primaryKey,
       set: preparedRow,
     });
+  };
+
+  if (rows.length === 1) {
+    await upsertRow(db, rows[0]);
+    return;
   }
+
+  await db.transaction(async (tx: typeof db) => {
+    for (const row of rows) {
+      await upsertRow(tx, row);
+    }
+  });
 }

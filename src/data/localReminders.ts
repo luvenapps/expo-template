@@ -35,10 +35,13 @@ type UpdateReminderInput = {
   deletedAt?: string | null;
 };
 
-export async function createReminderLocal(input: CreateReminderInput) {
+type MutationOptions = {
+  database?: Awaited<ReturnType<typeof getDb>>;
+};
+
+export async function createReminderLocal(input: CreateReminderInput, options?: MutationOptions) {
   guardNative();
-  return withDatabaseRetry(async () => {
-    const database = await getDb();
+  const runInsert = async (database: Awaited<ReturnType<typeof getDb>>) => {
     const repo = getReminderRepository(database);
     const id = input.id ?? uuid();
 
@@ -72,6 +75,15 @@ export async function createReminderLocal(input: CreateReminderInput) {
     });
 
     return stored;
+  };
+
+  if (options?.database) {
+    return runInsert(options.database);
+  }
+
+  return withDatabaseRetry(async () => {
+    const database = await getDb();
+    return runInsert(database);
   });
 }
 

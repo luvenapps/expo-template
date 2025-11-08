@@ -17,7 +17,8 @@ import {
 import { clearAll as clearOutbox, getPending } from '@/sync/outbox';
 import { useSyncStore } from '@/state';
 import { DOMAIN } from '@/config/domain.config';
-import { clearAllTables, hasData } from '@/db/sqlite';
+import { clearAllTables, getDb, hasData } from '@/db/sqlite';
+import { withDatabaseRetry } from '@/db/sqlite/retry';
 import { onDatabaseReset } from '@/db/sqlite/events';
 
 export default function SettingsScreen() {
@@ -125,37 +126,50 @@ export default function SettingsScreen() {
       setDevStatus('Seeding data...');
       const userId = session!.user!.id;
 
-      const primary = await createPrimaryEntityLocal({
-        userId,
-        name: `Sample ${new Date().toLocaleTimeString()}`,
-        cadence: 'daily',
-        color: '#60a5fa',
-      });
+      const { primary } = await withDatabaseRetry(async () => {
+        const database = await getDb();
+        return database.transaction(async (tx: Awaited<ReturnType<typeof getDb>>) => {
+          const primaryEntity = await createPrimaryEntityLocal(
+            {
+              userId,
+              name: `Sample ${new Date().toLocaleTimeString()}`,
+              cadence: 'daily',
+              color: '#60a5fa',
+            },
+            { database: tx },
+          );
 
-      const entryInput: Record<string, unknown> = {
-        userId,
-        date: new Date().toISOString().slice(0, 10),
-        amount: 1,
-      };
-      entryInput[DOMAIN.entities.entries.foreignKey] = primary.id;
+          const entryInput: Record<string, unknown> = {
+            userId,
+            date: new Date().toISOString().slice(0, 10),
+            amount: 1,
+          };
+          entryInput[DOMAIN.entities.entries.foreignKey] = primaryEntity.id;
 
-      await createEntryLocal(entryInput as any);
+          await createEntryLocal(entryInput as any, { database: tx });
 
-      const reminderInput: Record<string, unknown> = {
-        userId,
-        timeLocal: '09:00',
-        daysOfWeek: '1,2,3',
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? 'UTC',
-        isEnabled: true,
-      };
-      reminderInput[DOMAIN.entities.reminders.foreignKey] = primary.id;
+          const reminderInput: Record<string, unknown> = {
+            userId,
+            timeLocal: '09:00',
+            daysOfWeek: '1,2,3',
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? 'UTC',
+            isEnabled: true,
+          };
+          reminderInput[DOMAIN.entities.reminders.foreignKey] = primaryEntity.id;
 
-      await createReminderLocal(reminderInput as any);
+          await createReminderLocal(reminderInput as any, { database: tx });
 
-      await createDeviceLocal({
-        userId,
-        platform: Platform.OS,
-        lastSyncAt: new Date().toISOString(),
+          await createDeviceLocal(
+            {
+              userId,
+              platform: Platform.OS,
+              lastSyncAt: new Date().toISOString(),
+            },
+            { database: tx },
+          );
+
+          return { primary: primaryEntity };
+        });
       });
 
       setDevStatus(

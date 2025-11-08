@@ -26,10 +26,13 @@ type UpdateDeviceInput = {
   deletedAt?: string | null;
 };
 
-export async function createDeviceLocal(input: CreateDeviceInput) {
+type MutationOptions = {
+  database?: Awaited<ReturnType<typeof getDb>>;
+};
+
+export async function createDeviceLocal(input: CreateDeviceInput, options?: MutationOptions) {
   guardNative();
-  return withDatabaseRetry(async () => {
-    const database = await getDb();
+  const runInsert = async (database: Awaited<ReturnType<typeof getDb>>) => {
     const repo = getDeviceRepository(database);
     const id = input.id ?? uuid();
 
@@ -60,6 +63,15 @@ export async function createDeviceLocal(input: CreateDeviceInput) {
     });
 
     return stored;
+  };
+
+  if (options?.database) {
+    return runInsert(options.database);
+  }
+
+  return withDatabaseRetry(async () => {
+    const database = await getDb();
+    return runInsert(database);
   });
 }
 
