@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { AppState, AppStateStatus, Platform } from 'react-native';
-import { registerTaskAsync, unregisterTaskAsync, isTaskDefined } from 'expo-task-manager';
+import * as TaskManager from 'expo-task-manager';
 import * as BackgroundTask from 'expo-background-task';
 import type { createSyncEngine } from './engine';
 import { DOMAIN } from '@/config/domain.config';
@@ -12,6 +12,7 @@ const DEFAULT_INTERVAL = 60000;
 const DEFAULT_FETCH_INTERVAL = 15 * 60; // 15 minutes
 const BASE_BACKOFF_MS = 2000;
 const MAX_BACKOFF_MS = 5 * 60 * 1000;
+const backgroundTaskHandlers = new Map<string, () => Promise<void>>();
 
 type UseSyncTaskOptions = {
   engine: SyncEngine;
@@ -188,10 +189,7 @@ export function useSyncTask({
           return;
         }
 
-        const defined = isTaskDefined(BACKGROUND_TASK_NAME);
-        if (!defined) {
-          registerTask(BACKGROUND_TASK_NAME, () => runSync());
-        }
+        upsertBackgroundTaskHandler(BACKGROUND_TASK_NAME, () => runSync());
 
         await BackgroundTask.registerTaskAsync(BACKGROUND_TASK_NAME, {
           minimumInterval: backgroundInterval,
@@ -204,6 +202,7 @@ export function useSyncTask({
     register().catch(() => undefined);
 
     return () => {
+      backgroundTaskHandlers.delete(BACKGROUND_TASK_NAME);
       unregisterBackgroundTask().catch(() => undefined);
     };
   }, [enabled, backgroundInterval, runSync]);
@@ -215,15 +214,23 @@ export function useSyncTask({
   return { triggerSync };
 }
 
-function registerTask(name: string, runSync: () => Promise<void>) {
-  registerTaskAsync(name, async () => {
-    try {
-      await runSync();
-      return BackgroundTask.BackgroundTaskResult.Success;
-    } catch {
-      return BackgroundTask.BackgroundTaskResult.Failed;
-    }
-  }).catch(() => undefined);
+function upsertBackgroundTaskHandler(name: string, handler: () => Promise<void>) {
+  backgroundTaskHandlers.set(name, handler);
+
+  if (!TaskManager.isTaskDefined(name)) {
+    TaskManager.defineTask(name, async () => {
+      const executor = backgroundTaskHandlers.get(name);
+      if (!executor) {
+        return BackgroundTask.BackgroundTaskResult.Success;
+      }
+      try {
+        await executor();
+        return BackgroundTask.BackgroundTaskResult.Success;
+      } catch {
+        return BackgroundTask.BackgroundTaskResult.Failed;
+      }
+    });
+  }
 }
 
 async function unregisterBackgroundTask() {
@@ -238,8 +245,9 @@ async function unregisterBackgroundTask() {
 
   try {
     await BackgroundTask.unregisterTaskAsync(BACKGROUND_TASK_NAME);
-    await unregisterTaskAsync(BACKGROUND_TASK_NAME);
   } catch {
     // ignore
+  } finally {
+    backgroundTaskHandlers.delete(BACKGROUND_TASK_NAME);
   }
 }

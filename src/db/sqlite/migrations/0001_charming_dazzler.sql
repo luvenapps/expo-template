@@ -1,0 +1,1 @@
+CREATE INDEX `outbox_table_attempts_idx` ON `outbox` (`table_name`,`attempts`,`created_at`);

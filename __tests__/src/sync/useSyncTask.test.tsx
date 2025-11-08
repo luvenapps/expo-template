@@ -1,5 +1,7 @@
 jest.useFakeTimers();
 
+const definedTasks: Record<string, jest.Mock> = {};
+
 // Mock expo modules
 jest.mock('expo-background-task', () => ({
   BackgroundTaskResult: {
@@ -16,16 +18,18 @@ jest.mock('expo-background-task', () => ({
 }));
 
 jest.mock('expo-task-manager', () => ({
-  registerTaskAsync: jest.fn().mockResolvedValue(undefined),
-  unregisterTaskAsync: jest.fn().mockResolvedValue(undefined),
-  isTaskDefined: jest.fn().mockReturnValue(false),
+  defineTask: jest.fn((name: string, executor: jest.Mock) => {
+    definedTasks[name] = executor;
+  }),
+  isTaskDefined: jest.fn((name: string) => Boolean(definedTasks[name])),
+  isTaskRegisteredAsync: jest.fn().mockResolvedValue(false),
 }));
 
 import { DOMAIN } from '@/config/domain.config';
 import { useSyncTask } from '@/sync/useSyncTask';
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import * as BackgroundTask from 'expo-background-task';
-import { isTaskDefined, registerTaskAsync, unregisterTaskAsync } from 'expo-task-manager';
+import * as TaskManager from 'expo-task-manager';
 import { AppState, AppStateStatus, Platform } from 'react-native';
 
 const mockEngine = {
@@ -52,6 +56,7 @@ describe('useSyncTask', () => {
     listeners.length = 0;
     mockEngine.runSync.mockReset();
     mockEngine.runSync.mockResolvedValue(undefined);
+    Object.keys(definedTasks).forEach((key) => delete definedTasks[key]);
 
     addEventListenerSpy = jest.spyOn(AppState, 'addEventListener');
     addEventListenerSpy.mockImplementation(
@@ -396,18 +401,19 @@ describe('useSyncTask', () => {
       (BackgroundTask.getStatusAsync as jest.Mock).mockResolvedValue(2);
     });
 
-    it('should register task with expo-task-manager when not defined', async () => {
-      (isTaskDefined as jest.Mock).mockReturnValue(false);
-
+    it('should register task when not previously defined', async () => {
       renderHook(() => useSyncTask({ engine: mockEngine as any, enabled: true }));
 
       await waitFor(() => {
-        expect(registerTaskAsync).toHaveBeenCalled();
+        expect(BackgroundTask.registerTaskAsync).toHaveBeenCalledWith(DOMAIN.app.syncTask, {
+          minimumInterval: expect.any(Number),
+        });
+        expect(definedTasks[DOMAIN.app.syncTask]).toBeDefined();
       });
     });
 
-    it('should not register task again if already defined', async () => {
-      (isTaskDefined as jest.Mock).mockReturnValue(true);
+    it('should avoid redefining task when already defined', async () => {
+      definedTasks[DOMAIN.app.syncTask] = jest.fn();
 
       renderHook(() => useSyncTask({ engine: mockEngine as any, enabled: true }));
 
@@ -415,7 +421,7 @@ describe('useSyncTask', () => {
         expect(BackgroundTask.registerTaskAsync).toHaveBeenCalled();
       });
 
-      expect(registerTaskAsync).not.toHaveBeenCalled();
+      expect(TaskManager.defineTask).not.toHaveBeenCalled();
     });
 
     it('should unregister background task when disabled', async () => {
@@ -436,7 +442,6 @@ describe('useSyncTask', () => {
 
       await waitFor(() => {
         expect(BackgroundTask.unregisterTaskAsync).toHaveBeenCalled();
-        expect(unregisterTaskAsync).toHaveBeenCalled();
       });
     });
 
@@ -466,7 +471,6 @@ describe('useSyncTask', () => {
 
       // Should not try to unregister when restricted
       expect(BackgroundTask.unregisterTaskAsync).not.toHaveBeenCalled();
-      expect(unregisterTaskAsync).not.toHaveBeenCalled();
 
       statusMock.mockResolvedValue(2);
     });
@@ -484,19 +488,6 @@ describe('useSyncTask', () => {
 
       // Should not throw
       expect(mockEngine.runSync).toHaveBeenCalled();
-    });
-
-    it('should handle registerTask errors gracefully', async () => {
-      (registerTaskAsync as jest.Mock).mockRejectedValueOnce(new Error('Register failed'));
-      (isTaskDefined as jest.Mock).mockReturnValue(false);
-
-      renderHook(() => useSyncTask({ engine: mockEngine as any, enabled: true }));
-
-      await waitFor(() => {
-        expect(registerTaskAsync).toHaveBeenCalled();
-      });
-
-      // Should not throw - error is caught silently with .catch(() => undefined)
     });
 
     it('should handle background task registration errors gracefully', async () => {
@@ -599,43 +590,29 @@ describe('useSyncTask', () => {
 
   describe('registerTask callback', () => {
     it('should return Success when task executes successfully', async () => {
-      const taskCallback = jest.fn();
-      (registerTaskAsync as jest.Mock).mockImplementation((_name, callback) => {
-        taskCallback.mockImplementation(callback);
-        return Promise.resolve();
-      });
-      (isTaskDefined as jest.Mock).mockReturnValue(false);
-
       renderHook(() => useSyncTask({ engine: mockEngine as any, enabled: true }));
 
       await waitFor(() => {
-        expect(registerTaskAsync).toHaveBeenCalled();
+        expect(definedTasks[DOMAIN.app.syncTask]).toBeDefined();
       });
 
       mockEngine.runSync.mockResolvedValueOnce(undefined);
 
-      const result = await taskCallback();
+      const result = await definedTasks[DOMAIN.app.syncTask]!();
 
       expect(result).toBe(BackgroundTask.BackgroundTaskResult.Success);
     });
 
     it('should return Failed when task execution throws error', async () => {
-      const taskCallback = jest.fn();
-      (registerTaskAsync as jest.Mock).mockImplementation((_name, callback) => {
-        taskCallback.mockImplementation(callback);
-        return Promise.resolve();
-      });
-      (isTaskDefined as jest.Mock).mockReturnValue(false);
-
       renderHook(() => useSyncTask({ engine: mockEngine as any, enabled: true }));
 
       await waitFor(() => {
-        expect(registerTaskAsync).toHaveBeenCalled();
+        expect(definedTasks[DOMAIN.app.syncTask]).toBeDefined();
       });
 
       mockEngine.runSync.mockRejectedValueOnce(new Error('Task failed'));
 
-      const result = await taskCallback();
+      const result = await definedTasks[DOMAIN.app.syncTask]!();
 
       expect(result).toBe(BackgroundTask.BackgroundTaskResult.Failed);
     });
