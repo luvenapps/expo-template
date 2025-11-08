@@ -8,6 +8,12 @@ jest.mock('@/sync/engine', () => ({
   })),
 }));
 
+jest.mock('@/sync/useSyncTask', () => ({
+  useSyncTask: jest.fn(() => ({
+    triggerSync: jest.fn(),
+  })),
+}));
+
 jest.mock('@/sync/useSyncManager', () => ({
   useSyncManager: jest.fn(() => ({
     triggerSync: jest.fn(),

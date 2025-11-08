@@ -1,9 +1,34 @@
+jest.useFakeTimers();
+
+const definedTasks: Record<string, jest.Mock> = {};
+
+// Mock expo modules
+jest.mock('expo-background-task', () => ({
+  BackgroundTaskResult: {
+    Success: 1,
+    Failed: 2,
+  },
+  BackgroundTaskStatus: {
+    Restricted: 1,
+    Available: 2,
+  },
+  registerTaskAsync: jest.fn().mockResolvedValue(undefined),
+  unregisterTaskAsync: jest.fn().mockResolvedValue(undefined),
+  getStatusAsync: jest.fn().mockResolvedValue(2), // Available
+}));
+
+jest.mock('expo-task-manager', () => ({
+  defineTask: jest.fn((name: string, executor: jest.Mock) => {
+    definedTasks[name] = executor;
+  }),
+  isTaskDefined: jest.fn((name: string) => Boolean(definedTasks[name])),
+  isTaskRegisteredAsync: jest.fn().mockResolvedValue(false),
+}));
+
 import { render } from '@testing-library/react-native';
 import React, { useEffect } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { useSyncManager } from '@/sync/useSyncManager';
-
-jest.useFakeTimers();
 
 const listeners: ((state: AppStateStatus) => void)[] = [];
 
@@ -26,10 +51,12 @@ const TestComponent = ({ enabled = true }: { enabled?: boolean }) => {
 
 describe('useSyncManager', () => {
   beforeEach(() => {
+    jest.clearAllMocks();
     jest.clearAllTimers();
     engine.runSync.mockClear();
     listeners.length = 0;
     triggerRef = null;
+    Object.keys(definedTasks).forEach((key) => delete definedTasks[key]);
 
     addEventListenerSpy = jest.spyOn(AppState, 'addEventListener');
     addEventListenerSpy.mockImplementation(

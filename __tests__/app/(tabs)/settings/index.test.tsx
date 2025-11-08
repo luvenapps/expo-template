@@ -218,7 +218,7 @@ describe('SettingsScreen', () => {
 
     it('should render sign in prompt when unauthenticated', () => {
       const { getByText } = render(<SettingsScreen />);
-      expect(getByText('Sign in to sync your data across devices')).toBeDefined();
+      expect(getByText('Sign in to sync your data across devices.')).toBeDefined();
     });
 
     it('should render sign in button when unauthenticated', () => {

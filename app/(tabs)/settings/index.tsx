@@ -1,6 +1,6 @@
 import { useSessionStore } from '@/auth/session';
 import { pullUpdates, pushOutbox, useSync } from '@/sync';
-import { PrimaryButton, ScreenContainer, SecondaryButton } from '@/ui';
+import { PrimaryButton, ScreenContainer, SecondaryButton, SettingsSection } from '@/ui';
 import { useThemeContext, type ThemeName } from '@/ui/theme/ThemeProvider';
 import { Monitor, Moon, Sun } from '@tamagui/lucide-icons';
 import { useRouter } from 'expo-router';
@@ -247,28 +247,23 @@ export default function SettingsScreen() {
         contentInsetAdjustmentBehavior="automatic"
       >
         <YStack gap="$4">
-          <YStack gap="$3" paddingVertical="$4">
-            {status === 'authenticated' && session?.user?.email ? (
-              <Paragraph textAlign="center" color="$colorMuted">
-                Signed in as {session.user.email}
-              </Paragraph>
-            ) : (
-              <Paragraph textAlign="center" color="$colorMuted">
-                Sign in to sync your data across devices
-              </Paragraph>
-            )}
+          <SettingsSection
+            title="Account"
+            description={
+              status === 'authenticated' && session?.user?.email
+                ? `Signed in as ${session.user.email}`
+                : 'Sign in to sync your data across devices.'
+            }
+          >
             <PrimaryButton disabled={isLoading} onPress={handleAuthAction}>
               {isLoading ? 'Loading…' : status === 'authenticated' ? 'Sign Out' : 'Sign In'}
             </PrimaryButton>
-          </YStack>
+          </SettingsSection>
 
-          <YStack gap="$3" paddingVertical="$2">
-            <Paragraph textAlign="center" fontWeight="600">
-              Theme
-            </Paragraph>
-            <Paragraph textAlign="center" color="$colorMuted">
-              Choose how the app looks on this device.
-            </Paragraph>
+          <SettingsSection
+            title="Theme"
+            description="Choose how Better Habits looks on this device."
+          >
             <XStack gap="$2">
               {THEME_OPTIONS.map(({ value, label, Icon }) => {
                 const isActive = themePreference === value;
@@ -296,7 +291,7 @@ export default function SettingsScreen() {
                 );
               })}
             </XStack>
-          </YStack>
+          </SettingsSection>
 
           {isNative && (
             <>
