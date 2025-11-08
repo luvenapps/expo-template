@@ -64,7 +64,7 @@ export function createRepository<
         await database.insert(table).values(data as Insert);
       } catch (error) {
         console.error('[Repository] Insert failed:', error);
-        throw error;
+        throw mapSQLiteError(error) ?? error;
       }
     },
     async upsert(values: Insert) {
@@ -79,7 +79,7 @@ export function createRepository<
           });
       } catch (error) {
         console.error('[Repository] Upsert failed:', error);
-        throw error;
+        throw mapSQLiteError(error) ?? error;
       }
     },
     async update(id: PrimaryKeyValue, values: Partial<Select>) {
@@ -91,7 +91,7 @@ export function createRepository<
           .where(eq(pkColumn, id as any));
       } catch (error) {
         console.error('[Repository] Update failed:', error);
-        throw error;
+        throw mapSQLiteError(error) ?? error;
       }
     },
     async findById(id: PrimaryKeyValue) {
@@ -103,7 +103,7 @@ export function createRepository<
         return record ?? null;
       } catch (error) {
         console.error('[Repository] FindById failed:', error);
-        throw error;
+        throw mapSQLiteError(error) ?? error;
       }
     },
     async all() {
@@ -111,7 +111,7 @@ export function createRepository<
         return database.select().from(table);
       } catch (error) {
         console.error('[Repository] All failed:', error);
-        throw error;
+        throw mapSQLiteError(error) ?? error;
       }
     },
     async remove(id: PrimaryKeyValue) {
@@ -127,8 +127,52 @@ export function createRepository<
         await database.delete(table).where(eq(pkColumn, id as any));
       } catch (error) {
         console.error('[Repository] Remove failed:', error);
-        throw error;
+        throw mapSQLiteError(error) ?? error;
       }
     },
   } as const;
+}
+
+const UNIQUE_CONSTRAINT = /UNIQUE constraint failed: ([\w., ]+)/i;
+const NOT_NULL_CONSTRAINT = /NOT NULL constraint failed: ([\w.]+)/i;
+
+function mapSQLiteError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return null;
+  }
+
+  const message = error.message ?? '';
+
+  if (UNIQUE_CONSTRAINT.test(message)) {
+    const match = message.match(UNIQUE_CONSTRAINT);
+    const columns = match?.[1];
+    return new Error(
+      columns
+        ? `A record with these values already exists (${columns.trim()}).`
+        : 'A record with these values already exists.',
+    );
+  }
+
+  if (NOT_NULL_CONSTRAINT.test(message)) {
+    const match = message.match(NOT_NULL_CONSTRAINT);
+    const columnPath = match?.[1];
+    const columnName = columnPath?.split('.').pop();
+    return new Error(
+      columnName ? `Required field "${columnName}" is missing.` : 'A required field is missing.',
+    );
+  }
+
+  if (message.includes('FOREIGN KEY constraint failed')) {
+    return new Error('Related data is missing. Make sure the associated record exists.');
+  }
+
+  if (message.includes('CHECK constraint failed')) {
+    return new Error('One or more values are invalid for this operation.');
+  }
+
+  if (message.toLowerCase().includes('constraint failed')) {
+    return new Error('Database constraint failed. Please verify your input values.');
+  }
+
+  return null;
 }

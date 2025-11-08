@@ -241,6 +241,90 @@ describe('createRepository', () => {
       expect(consoleErrorSpy).toHaveBeenCalledWith('[Repository] Insert failed:', error);
     });
 
+    test('insert surfaces friendly unique constraint message', async () => {
+      const errorDb = createDbMocks();
+      const error = new Error('UNIQUE constraint failed: habits.id');
+      errorDb.insert.mockImplementationOnce(() => ({
+        values: jest.fn(() => {
+          throw error;
+        }),
+      }));
+
+      const errorRepo = createRepository({
+        db: errorDb as any,
+        table: table as any,
+        primaryKey: 'id',
+      });
+
+      await expect(errorRepo.insert({ id: '1' } as any)).rejects.toThrow(
+        'A record with these values already exists (habits.id).',
+      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith('[Repository] Insert failed:', error);
+    });
+
+    test('insert surfaces friendly not-null message', async () => {
+      const errorDb = createDbMocks();
+      const error = new Error('NOT NULL constraint failed: habits.name');
+      errorDb.insert.mockImplementationOnce(() => ({
+        values: jest.fn(() => {
+          throw error;
+        }),
+      }));
+
+      const errorRepo = createRepository({
+        db: errorDb as any,
+        table: table as any,
+        primaryKey: 'id',
+      });
+
+      await expect(errorRepo.insert({ id: '1' } as any)).rejects.toThrow(
+        'Required field "name" is missing.',
+      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith('[Repository] Insert failed:', error);
+    });
+
+    test('insert surfaces friendly foreign key message', async () => {
+      const errorDb = createDbMocks();
+      const error = new Error('FOREIGN KEY constraint failed');
+      errorDb.insert.mockImplementationOnce(() => ({
+        values: jest.fn(() => {
+          throw error;
+        }),
+      }));
+
+      const errorRepo = createRepository({
+        db: errorDb as any,
+        table: table as any,
+        primaryKey: 'id',
+      });
+
+      await expect(errorRepo.insert({ id: '1' } as any)).rejects.toThrow(
+        'Related data is missing. Make sure the associated record exists.',
+      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith('[Repository] Insert failed:', error);
+    });
+
+    test('insert surfaces friendly generic constraint message', async () => {
+      const errorDb = createDbMocks();
+      const error = new Error('constraint failed');
+      errorDb.insert.mockImplementationOnce(() => ({
+        values: jest.fn(() => {
+          throw error;
+        }),
+      }));
+
+      const errorRepo = createRepository({
+        db: errorDb as any,
+        table: table as any,
+        primaryKey: 'id',
+      });
+
+      await expect(errorRepo.insert({ id: '1' } as any)).rejects.toThrow(
+        'Database constraint failed. Please verify your input values.',
+      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith('[Repository] Insert failed:', error);
+    });
+
     test('upsert handles errors', async () => {
       const errorDb = createDbMocks();
       const error = new Error('Database upsert failed');
