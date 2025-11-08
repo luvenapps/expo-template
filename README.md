@@ -286,8 +286,8 @@ const SYNC_TABLES = [
   // ...
 ] as const;
 
-// Database file
-const db = openDatabaseSync(DOMAIN.app.database);
+// Database file (async for better performance)
+const db = await openDatabaseAsync(DOMAIN.app.database);
 ```
 
 ## 🗄️ Supabase Backend
@@ -501,6 +501,8 @@ Follow these steps in order when setting up the project for the first time:
 
    This creates migration files for both SQLite (mobile) and Postgres (Supabase).
 
+   💡 If you get "No SQLite migrations found!" error later, see the [Troubleshooting Migration Issues](#making-schema-changes) section.
+
 5. **Start local Supabase** (Terminal 1):
 
    ```bash
@@ -521,7 +523,48 @@ Follow these steps in order when setting up the project for the first time:
 
    - Automatically runs system checks (including migration validation)
    - Starts Metro bundler
-   - Press `i` for iOS, `a` for Android, `w` for web
+   - Choose how to run the app:
+
+   **Option A: Web (Recommended for quick start)**
+
+   ```
+   Press 'w' - Opens in your browser
+   ✅ No build required
+   ⚠️  Note: Background sync disabled on web (SQLite requires native)
+   ```
+
+   **Option B: Expo Go (Quick mobile testing)**
+
+   ```
+   1. Install Expo Go app on your phone
+   2. Press 'i' (iOS) or 'a' (Android)
+   3. Scan QR code with Expo Go
+   ✅ No build required
+   ⚠️  Note: Some native features may not work
+   ```
+
+   **Option C: Development Build (Full native features)**
+
+   ```
+   # First time only - build the app
+   npx expo prebuild           # Generate native projects
+
+   # iOS Simulator (default)
+   npx expo run:ios            # Builds to iOS simulator
+
+   # iOS Physical Device (if connected)
+   npx expo run:ios --device   # Prompts to select your device
+
+   # Android (auto-detects connected device, then emulator)
+   npx expo run:android        # Prefers physical device if connected
+
+   # After first build, just press:
+   Press 'i' (iOS) or 'a' (Android) to launch
+
+   ⚠️  Note: 'i' defaults to simulator, not physical iOS device
+   💡 For physical iOS device: use Expo Go OR rebuild with --device flag
+   ✅ Full native features (SQLite, background sync, etc.)
+   ```
 
 7. **Run the app** and verify:
    - ✅ App launches without errors
@@ -546,6 +589,7 @@ Follow these steps in order when setting up the project for the first time:
    - Save code → Metro hot reloads the UI automatically
    - Edit Edge Functions → Supabase CLI auto-reloads them
    - Run tests: `npm test -- --coverage`
+   - On native dev builds, use **Settings → Developer Tools** to seed sample records, clear the outbox, and manually trigger sync checks before testing on device.
 
 4. **Shut down**:
    - Stop Expo: `Ctrl+C` (Terminal 2)
@@ -669,6 +713,27 @@ This project uses **Drizzle ORM** for both SQLite (local) and Postgres (Supabase
    npm run supabase:deploy
    ```
 
+**Troubleshooting Migration Issues:**
+
+If you see **"❌ No SQLite migrations found!"** when running `npm start`:
+
+```bash
+# Option 1: Force regenerate SQLite migrations only (for SQLite-specific issues)
+rm -rf src/db/sqlite/migrations/meta
+npm run db:generate  # Low-level: only generates SQLite migrations
+
+# Option 2: Clean and regenerate ALL migrations (recommended)
+npm run db:clean
+npm run db:migrate  # High-level: generates SQLite + Postgres + RLS
+```
+
+This happens when migration metadata exists but SQL files are missing (common after cloning or git operations).
+
+**Command Reference:**
+
+- ✅ **Use `npm run db:migrate`** - Normal workflow (generates both databases + RLS policies)
+- 🔧 **Use `npm run db:generate`** - Only for troubleshooting SQLite-specific issues
+
 **Important Notes:**
 
 - ⚠️ Always run `npm run db:migrate` immediately after editing schemas
@@ -677,6 +742,86 @@ This project uses **Drizzle ORM** for both SQLite (local) and Postgres (Supabase
 - 🔒 RLS policies are auto-generated from DOMAIN config
 
 **Having trouble?** See [docs/database-migrations.md](docs/database-migrations.md) for detailed workflows and troubleshooting.
+
+### Resetting Databases
+
+During development, you may need to clear your local databases to start with a clean slate. This project has two databases that can be reset independently.
+
+#### Clearing Local SQLite Database (Mobile App Data)
+
+**Option 1: Use Developer Tools UI** (Recommended)
+
+1. Open the app on a **native build** (iOS/Android)
+2. Go to **Settings → Developer Tools**
+3. Tap **"Clear local database"**
+4. This deletes all local records (habits, entries, reminders, devices, outbox)
+
+**Option 2: Delete the SQLite file** (Nuclear option)
+
+```bash
+# iOS Simulator
+rm ~/Library/Developer/CoreSimulator/Devices/*/data/Containers/Data/Application/*/Library/LocalDatabase/betterhabits.db
+
+# Android Emulator
+adb shell run-as com.luvenapps.betterhabits rm /data/data/com.luvenapps.betterhabits/databases/betterhabits.db
+
+# Or just uninstall/reinstall the app
+```
+
+#### Clearing Local Supabase Database (Postgres)
+
+**Reset the entire Supabase stack:**
+
+```bash
+# Ensure Supabase is running first
+npm run supabase:dev  # Or check if already running
+
+# In another terminal, reset database and reapply migrations
+npx supabase db reset
+
+# The reset command will:
+# - Drop and recreate the Postgres database
+# - Reapply all migrations from supabase/migrations/
+# - Reset auth users
+# ⚠️  Delete all data - use only for local development
+
+# Continue with Supabase still running, or restart if needed
+```
+
+**Important**: Supabase containers must be running when you execute `npx supabase db reset` - the command needs an active database connection to perform the reset.
+
+#### Clearing Production Supabase (Use with extreme caution)
+
+**⚠️ WARNING: This deletes production data permanently!**
+
+If you need to reset your **hosted Supabase** (not recommended):
+
+1. Log in to [supabase.com](https://supabase.com)
+2. Go to your project → **Database** → **SQL Editor**
+3. Manually drop tables or use the dashboard to delete records
+4. Or, in extreme cases, delete and recreate the project
+
+**Better approach for production:** Use database seeds and migrations rather than resets.
+
+#### When to Use Each Reset
+
+| Scenario                          | Solution                                       |
+| --------------------------------- | ---------------------------------------------- |
+| Testing fresh install flow        | Clear SQLite (Developer Tools button)          |
+| Sync conflicts during development | Clear SQLite + Clear outbox                    |
+| Schema migration gone wrong       | Reset local Supabase (`npx supabase db reset`) |
+| Starting a new feature branch     | Clear both databases                           |
+| Production issues                 | **Never reset** - debug and fix data instead   |
+
+#### Reset Checklist
+
+Before resetting databases:
+
+- ✅ Ensure you don't need any existing test data
+- ✅ Stop any running sync operations
+- ✅ Consider exporting data if needed (Settings → Export to CSV)
+- ✅ Restart the app after SQLite reset
+- ✅ Restart Supabase after Postgres reset
 
 ---
 

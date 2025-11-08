@@ -1,8 +1,9 @@
+import 'react-native-get-random-values';
 import { Platform } from 'react-native';
 import { v4 as uuid } from 'uuid';
 import { DOMAIN } from '@/config/domain.config';
-import type { Database } from '@/db/sqlite';
 import { getDb } from '@/db/sqlite';
+import { withDatabaseRetry } from '@/db/sqlite/retry';
 import { getPrimaryEntityRepository } from '@/data/repositories';
 import { mapPayloadToRemote, normalizePayload } from '@/supabase/mappers';
 import type { PrimaryEntityRecord } from '@/supabase/types';
@@ -33,10 +34,9 @@ const LOCAL_TABLE = DOMAIN.entities.primary.tableName as LocalTableName;
 
 export async function createPrimaryEntityLocal(input: CreatePrimaryEntityInput) {
   guardNative();
-  const database = await getDb();
-
-  return database.transaction(async (tx: Database) => {
-    const repo = getPrimaryEntityRepository(tx);
+  return withDatabaseRetry(async () => {
+    const database = await getDb();
+    const repo = getPrimaryEntityRepository(database);
     const id = input.id ?? uuid();
 
     const timestamp = new Date().toISOString();
@@ -60,7 +60,7 @@ export async function createPrimaryEntityLocal(input: CreatePrimaryEntityInput) 
       throw new Error('Failed to create primary entity.');
     }
 
-    await enqueueWithDatabase(tx, {
+    await enqueueWithDatabase(database, {
       tableName: DOMAIN.entities.primary.tableName,
       rowId: stored.id,
       operation: 'insert',
@@ -74,10 +74,9 @@ export async function createPrimaryEntityLocal(input: CreatePrimaryEntityInput) 
 
 export async function updatePrimaryEntityLocal(input: UpdatePrimaryEntityInput) {
   guardNative();
-  const database = await getDb();
-
-  return database.transaction(async (tx: Database) => {
-    const repo = getPrimaryEntityRepository(tx);
+  return withDatabaseRetry(async () => {
+    const database = await getDb();
+    const repo = getPrimaryEntityRepository(database);
     const existing = await repo.findById(input.id);
 
     if (!existing) {
@@ -102,7 +101,7 @@ export async function updatePrimaryEntityLocal(input: UpdatePrimaryEntityInput) 
       throw new Error(`Primary entity ${input.id} missing after update.`);
     }
 
-    await enqueueWithDatabase(tx, {
+    await enqueueWithDatabase(database, {
       tableName: DOMAIN.entities.primary.tableName,
       rowId: stored.id,
       operation: 'update',
@@ -116,10 +115,9 @@ export async function updatePrimaryEntityLocal(input: UpdatePrimaryEntityInput) 
 
 export async function deletePrimaryEntityLocal(id: string) {
   guardNative();
-  const database = await getDb();
-
-  return database.transaction(async (tx: Database) => {
-    const repo = getPrimaryEntityRepository(tx);
+  return withDatabaseRetry(async () => {
+    const database = await getDb();
+    const repo = getPrimaryEntityRepository(database);
     const existing = await repo.findById(id);
 
     if (!existing) {
@@ -134,7 +132,7 @@ export async function deletePrimaryEntityLocal(id: string) {
       return null;
     }
 
-    await enqueueWithDatabase(tx, {
+    await enqueueWithDatabase(database, {
       tableName: DOMAIN.entities.primary.tableName,
       rowId: stored.id,
       operation: 'delete',

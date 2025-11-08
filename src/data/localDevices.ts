@@ -1,8 +1,9 @@
+import 'react-native-get-random-values';
 import { Platform } from 'react-native';
 import { v4 as uuid } from 'uuid';
 import { DOMAIN } from '@/config/domain.config';
-import type { Database } from '@/db/sqlite';
 import { getDb } from '@/db/sqlite';
+import { withDatabaseRetry } from '@/db/sqlite/retry';
 import { getDeviceRepository } from '@/data/repositories';
 import { mapPayloadToRemote, normalizePayload } from '@/supabase/mappers';
 import type { DeviceRecord } from '@/supabase/types';
@@ -27,10 +28,9 @@ type UpdateDeviceInput = {
 
 export async function createDeviceLocal(input: CreateDeviceInput) {
   guardNative();
-  const database = await getDb();
-
-  return database.transaction(async (tx: Database) => {
-    const repo = getDeviceRepository(tx);
+  return withDatabaseRetry(async () => {
+    const database = await getDb();
+    const repo = getDeviceRepository(database);
     const id = input.id ?? uuid();
 
     const timestamp = new Date().toISOString();
@@ -51,7 +51,7 @@ export async function createDeviceLocal(input: CreateDeviceInput) {
       throw new Error('Failed to create device record.');
     }
 
-    await enqueueWithDatabase(tx, {
+    await enqueueWithDatabase(database, {
       tableName: DOMAIN.entities.devices.tableName,
       rowId: stored.id,
       operation: 'insert',
@@ -65,10 +65,9 @@ export async function createDeviceLocal(input: CreateDeviceInput) {
 
 export async function updateDeviceLocal(input: UpdateDeviceInput) {
   guardNative();
-  const database = await getDb();
-
-  return database.transaction(async (tx: Database) => {
-    const repo = getDeviceRepository(tx);
+  return withDatabaseRetry(async () => {
+    const database = await getDb();
+    const repo = getDeviceRepository(database);
     const existing = await repo.findById(input.id);
 
     if (!existing) {
@@ -89,7 +88,7 @@ export async function updateDeviceLocal(input: UpdateDeviceInput) {
       throw new Error(`Device ${input.id} missing after update.`);
     }
 
-    await enqueueWithDatabase(tx, {
+    await enqueueWithDatabase(database, {
       tableName: DOMAIN.entities.devices.tableName,
       rowId: stored.id,
       operation: input.deletedAt ? 'delete' : 'update',
@@ -103,10 +102,9 @@ export async function updateDeviceLocal(input: UpdateDeviceInput) {
 
 export async function deleteDeviceLocal(id: string) {
   guardNative();
-  const database = await getDb();
-
-  return database.transaction(async (tx: Database) => {
-    const repo = getDeviceRepository(tx);
+  return withDatabaseRetry(async () => {
+    const database = await getDb();
+    const repo = getDeviceRepository(database);
     const existing = await repo.findById(id);
 
     if (!existing) {
@@ -121,7 +119,7 @@ export async function deleteDeviceLocal(id: string) {
       return null;
     }
 
-    await enqueueWithDatabase(tx, {
+    await enqueueWithDatabase(database, {
       tableName: DOMAIN.entities.devices.tableName,
       rowId: stored.id,
       operation: 'delete',

@@ -1,3 +1,4 @@
+import 'react-native-get-random-values';
 import { asc, eq, inArray, sql } from 'drizzle-orm';
 import { getDb, outbox } from '@/db/sqlite';
 import { v4 as uuidv4 } from 'uuid';
@@ -88,3 +89,33 @@ export async function clearAll() {
   const database = await getDatabase();
   await database.delete(outbox);
 }
+
+export async function hasOutboxData(): Promise<boolean> {
+  try {
+    const database = await getDatabase();
+    const result = await database
+      .select({ count: sql<number>`count(*)` })
+      .from(outbox)
+      .limit(1);
+    return (result[0]?.count ?? 0) > 0;
+  } catch (error) {
+    console.error('[Outbox] Error checking for data:', error);
+    return false;
+  }
+}
+
+/**
+ * NOTE: This import is intentionally placed at the bottom of the file.
+ * We have a circular dependency between the database client and outbox:
+ * 1. Database client emits reset events
+ * 2. Outbox listens to those events to reset its cache
+ * 3. But outbox also imports database client
+ *
+ * By importing and setting up the listener here, after all outbox code is defined,
+ * we break the circular dependency chain during module initialization.
+ */
+// eslint-disable-next-line import/first
+import { onDatabaseReset } from '@/db/sqlite/events';
+onDatabaseReset(() => {
+  resetOutboxDatabase();
+});

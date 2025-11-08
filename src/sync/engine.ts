@@ -23,21 +23,28 @@ export function createSyncEngine({
   const processOutbox = async () => {
     store.getState().setStatus('syncing');
 
-    const pending = await getPending(batchSize);
-    store.getState().setQueueSize(pending.length);
-
-    if (!pending.length) {
-      store.getState().setStatus('idle');
-      return;
-    }
+    let pending: OutboxRecord[] = [];
 
     try {
+      pending = await getPending(batchSize);
+      store.getState().setQueueSize(pending.length);
+
+      if (!pending.length) {
+        store.getState().recordSuccess();
+        return;
+      }
+
       await push(pending);
       await markProcessed(pending.map((record: OutboxRecord) => record.id));
+      store.getState().setQueueSize(0);
       store.getState().recordSuccess();
     } catch (error) {
-      await Promise.all(pending.map((record: OutboxRecord) => incrementAttempt(record.id)));
+      if (pending.length) {
+        await Promise.all(pending.map((record: OutboxRecord) => incrementAttempt(record.id)));
+      }
+
       store.getState().recordError(error instanceof Error ? error.message : String(error));
+
       throw error;
     }
   };

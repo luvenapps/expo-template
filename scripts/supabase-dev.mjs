@@ -71,10 +71,22 @@ async function main() {
   await run('npx', ['supabase', 'db', 'push', '--local']);
 
   console.log('🟢 [supabase-dev] Serving edge functions with auto-reload…');
-  functionsProcess = spawn('npx', ['supabase', 'functions', 'serve', '--env-file', envFile], {
-    stdio: 'inherit',
-    shell: isWindows,
-  });
+  functionsProcess = spawn(
+    'npx',
+    [
+      'supabase',
+      'functions',
+      'serve',
+      '--env-file',
+      envFile,
+      '--import-map',
+      'supabase/functions/import_map.json',
+    ],
+    {
+      stdio: 'inherit',
+      shell: isWindows,
+    },
+  );
 
   functionsProcess.on('exit', (code) => {
     if (!shuttingDown) {

@@ -4,6 +4,7 @@ jest.mock('react-native', () => ({
 
 jest.mock('@/db/sqlite', () => ({
   getDb: jest.fn(),
+  resetDatabase: jest.fn(() => Promise.resolve()),
 }));
 
 jest.mock('@/data/repositories', () => ({
@@ -53,14 +54,13 @@ type Repository<T> = {
 
 const getDbMock = getDb as jest.Mock;
 const enqueueMock = enqueueWithDatabase as jest.Mock;
+let mockDb: Record<string, unknown>;
 
 describe('local mutations enqueue outbox records', () => {
   beforeEach(() => {
     enqueueMock.mockReset();
-
-    getDbMock.mockResolvedValue({
-      transaction: (callback: (tx: unknown) => Promise<unknown>) => callback({}),
-    });
+    mockDb = { __db: 'mock' };
+    getDbMock.mockResolvedValue(mockDb);
   });
 
   afterEach(() => {
@@ -94,19 +94,16 @@ describe('local mutations enqueue outbox records', () => {
     expect(repository.insert).toHaveBeenCalled();
     expect(record.id).toBe('primary-1');
 
-    expect(enqueueMock).toHaveBeenCalledWith(
-      {},
-      {
-        tableName: DOMAIN.entities.primary.tableName,
-        rowId: 'primary-1',
-        operation: 'insert',
-        payload: expect.objectContaining({
-          user_id: 'user-1',
-          name: 'Example',
-        }),
-        version: 1,
-      },
-    );
+    expect(enqueueMock).toHaveBeenCalledWith(mockDb, {
+      tableName: DOMAIN.entities.primary.tableName,
+      rowId: 'primary-1',
+      operation: 'insert',
+      payload: expect.objectContaining({
+        user_id: 'user-1',
+        name: 'Example',
+      }),
+      version: 1,
+    });
   });
 
   it('updates primary entity and enqueues update', async () => {
@@ -152,7 +149,7 @@ describe('local mutations enqueue outbox records', () => {
     );
     expect(updated.version).toBe(2);
     expect(enqueueMock).toHaveBeenCalledWith(
-      {},
+      mockDb,
       expect.objectContaining({
         operation: 'update',
         version: 2,
@@ -203,7 +200,7 @@ describe('local mutations enqueue outbox records', () => {
     );
     expect(deleted?.deletedAt).toBeDefined();
     expect(enqueueMock).toHaveBeenCalledWith(
-      {},
+      mockDb,
       expect.objectContaining({
         operation: 'delete',
         version: 2,
@@ -234,7 +231,7 @@ describe('local mutations enqueue outbox records', () => {
     } as any);
 
     expect(enqueueMock).toHaveBeenCalledWith(
-      {},
+      mockDb,
       expect.objectContaining({
         tableName: DOMAIN.entities.entries.tableName,
         operation: 'insert',
@@ -267,7 +264,7 @@ describe('local mutations enqueue outbox records', () => {
     } as any);
 
     expect(enqueueMock).toHaveBeenCalledWith(
-      {},
+      mockDb,
       expect.objectContaining({
         tableName: DOMAIN.entities.reminders.tableName,
         operation: 'insert',
@@ -292,7 +289,7 @@ describe('local mutations enqueue outbox records', () => {
     await createDeviceLocal({ userId: 'user-1', platform: 'ios' });
 
     expect(enqueueMock).toHaveBeenCalledWith(
-      {},
+      mockDb,
       expect.objectContaining({
         tableName: DOMAIN.entities.devices.tableName,
         operation: 'insert',
@@ -304,9 +301,8 @@ describe('local mutations enqueue outbox records', () => {
 describe('error handling and edge cases', () => {
   beforeEach(() => {
     enqueueMock.mockReset();
-    getDbMock.mockResolvedValue({
-      transaction: (callback: (tx: unknown) => Promise<unknown>) => callback({}),
-    });
+    mockDb = { __db: 'mock' };
+    getDbMock.mockResolvedValue(mockDb);
   });
 
   afterEach(() => {
@@ -554,7 +550,7 @@ describe('error handling and edge cases', () => {
     // Primary entities always use 'update' operation, even when setting deletedAt
     // Use deletePrimaryEntityLocal() for proper soft deletes
     expect(enqueueMock).toHaveBeenCalledWith(
-      {},
+      mockDb,
       expect.objectContaining({
         operation: 'update',
         payload: expect.objectContaining({
@@ -1166,7 +1162,7 @@ describe('error handling and edge cases', () => {
     });
 
     expect(enqueueMock).toHaveBeenCalledWith(
-      {},
+      mockDb,
       expect.objectContaining({
         operation: 'delete',
       }),
@@ -1315,6 +1311,235 @@ describe('error handling and edge cases', () => {
     });
 
     expect(result.id).toBe('custom-reminder-id');
+  });
+
+  it('throws error when creating entry fails', async () => {
+    const repository = {
+      insert: jest.fn().mockResolvedValue(undefined),
+      update: jest.fn().mockResolvedValue(undefined),
+      findById: jest.fn().mockResolvedValue(null),
+    };
+
+    (getEntryRepository as jest.Mock).mockReturnValue(repository);
+
+    await expect(
+      createEntryLocal({
+        userId: 'user-1',
+        [DOMAIN.entities.entries.foreignKey]: 'primary-1',
+        date: '2025-01-01',
+        amount: 1,
+        source: 'user',
+      }),
+    ).rejects.toThrow('Failed to create entry');
+  });
+
+  it('throws error when updating non-existent entry', async () => {
+    const repository = {
+      insert: jest.fn().mockResolvedValue(undefined),
+      update: jest.fn().mockResolvedValue(undefined),
+      findById: jest.fn().mockResolvedValue(null),
+    };
+
+    (getEntryRepository as jest.Mock).mockReturnValue(repository);
+
+    await expect(
+      updateEntryLocal({
+        id: 'non-existent',
+        amount: 2,
+      }),
+    ).rejects.toThrow('Entry non-existent not found');
+  });
+
+  it('updates entry with foreign key', async () => {
+    const existing = {
+      id: 'entry-1',
+      userId: 'user-1',
+      [DOMAIN.entities.entries.foreignKey]: 'primary-1',
+      date: '2025-01-01',
+      amount: 1,
+      source: 'local',
+      version: 1,
+    };
+
+    const updated = {
+      ...existing,
+      [DOMAIN.entities.entries.foreignKey]: 'primary-2',
+      version: 2,
+    };
+
+    const repository = {
+      insert: jest.fn().mockResolvedValue(undefined),
+      update: jest.fn().mockResolvedValue(undefined),
+      findById: jest.fn().mockResolvedValueOnce(existing).mockResolvedValue(updated),
+    };
+
+    (getEntryRepository as jest.Mock).mockReturnValue(repository);
+
+    const result = await updateEntryLocal({
+      id: 'entry-1',
+      [DOMAIN.entities.entries.foreignKey]: 'primary-2',
+    });
+
+    expect(result[DOMAIN.entities.entries.foreignKey]).toBe('primary-2');
+    expect(repository.update).toHaveBeenCalledWith(
+      'entry-1',
+      expect.objectContaining({
+        [DOMAIN.entities.entries.foreignKey]: 'primary-2',
+        version: 2,
+      }),
+    );
+  });
+
+  it('throws error when entry missing after update', async () => {
+    const existing = {
+      id: 'entry-1',
+      userId: 'user-1',
+      [DOMAIN.entities.entries.foreignKey]: 'primary-1',
+      date: '2025-01-01',
+      amount: 1,
+      source: 'local',
+      version: 1,
+    };
+
+    const repository = {
+      insert: jest.fn().mockResolvedValue(undefined),
+      update: jest.fn().mockResolvedValue(undefined),
+      findById: jest.fn().mockResolvedValueOnce(existing).mockResolvedValue(null),
+    };
+
+    (getEntryRepository as jest.Mock).mockReturnValue(repository);
+
+    await expect(
+      updateEntryLocal({
+        id: 'entry-1',
+        amount: 2,
+      }),
+    ).rejects.toThrow('Entry entry-1 missing after update');
+  });
+
+  it('returns null when deleting non-existent entry', async () => {
+    const repository = {
+      insert: jest.fn().mockResolvedValue(undefined),
+      update: jest.fn().mockResolvedValue(undefined),
+      findById: jest.fn().mockResolvedValue(null),
+    };
+
+    (getEntryRepository as jest.Mock).mockReturnValue(repository);
+
+    const result = await deleteEntryLocal('non-existent');
+    expect(result).toBeNull();
+  });
+
+  it('returns null when entry missing after delete', async () => {
+    const existing = {
+      id: 'entry-1',
+      userId: 'user-1',
+      [DOMAIN.entities.entries.foreignKey]: 'primary-1',
+      date: '2025-01-01',
+      amount: 1,
+      source: 'local',
+      version: 1,
+    };
+
+    const repository = {
+      insert: jest.fn().mockResolvedValue(undefined),
+      update: jest.fn().mockResolvedValue(undefined),
+      findById: jest.fn().mockResolvedValueOnce(existing).mockResolvedValue(null),
+    };
+
+    (getEntryRepository as jest.Mock).mockReturnValue(repository);
+
+    const result = await deleteEntryLocal('entry-1');
+    expect(result).toBeNull();
+  });
+
+  it('updates entry with date, amount, and source', async () => {
+    const existing = {
+      id: 'entry-1',
+      userId: 'user-1',
+      [DOMAIN.entities.entries.foreignKey]: 'primary-1',
+      date: '2025-01-01',
+      amount: 1,
+      source: 'local',
+      version: 1,
+    };
+
+    const updated = {
+      ...existing,
+      date: '2025-01-02',
+      amount: 3,
+      source: 'manual',
+      version: 2,
+    };
+
+    const repository = {
+      insert: jest.fn().mockResolvedValue(undefined),
+      update: jest.fn().mockResolvedValue(undefined),
+      findById: jest.fn().mockResolvedValueOnce(existing).mockResolvedValue(updated),
+    };
+
+    (getEntryRepository as jest.Mock).mockReturnValue(repository);
+
+    const result = await updateEntryLocal({
+      id: 'entry-1',
+      date: '2025-01-02',
+      amount: 3,
+      source: 'manual',
+    });
+
+    expect(result.date).toBe('2025-01-02');
+    expect(result.amount).toBe(3);
+    expect(result.source).toBe('manual');
+    expect(repository.update).toHaveBeenCalledWith(
+      'entry-1',
+      expect.objectContaining({
+        date: '2025-01-02',
+        amount: 3,
+        source: 'manual',
+        version: 2,
+      }),
+    );
+  });
+
+  it('updates entry with deletedAt', async () => {
+    const existing = {
+      id: 'entry-1',
+      userId: 'user-1',
+      [DOMAIN.entities.entries.foreignKey]: 'primary-1',
+      date: '2025-01-01',
+      amount: 1,
+      source: 'local',
+      version: 1,
+      deletedAt: null,
+    };
+
+    const updated = {
+      ...existing,
+      deletedAt: '2025-01-02T00:00:00.000Z',
+      version: 2,
+    };
+
+    const repository = {
+      insert: jest.fn().mockResolvedValue(undefined),
+      update: jest.fn().mockResolvedValue(undefined),
+      findById: jest.fn().mockResolvedValueOnce(existing).mockResolvedValue(updated),
+    };
+
+    (getEntryRepository as jest.Mock).mockReturnValue(repository);
+
+    const result = await updateEntryLocal({
+      id: 'entry-1',
+      deletedAt: '2025-01-02T00:00:00.000Z',
+    });
+
+    expect(result.deletedAt).toBe('2025-01-02T00:00:00.000Z');
+    expect(repository.update).toHaveBeenCalledWith(
+      'entry-1',
+      expect.objectContaining({
+        deletedAt: '2025-01-02T00:00:00.000Z',
+        version: 2,
+      }),
+    );
   });
 });
 

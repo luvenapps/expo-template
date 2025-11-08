@@ -33,6 +33,9 @@ const mockDatabase = {
   getAllSync: jest.fn(() => []),
   getFirstSync: jest.fn(),
   closeSync: jest.fn(),
+  withTransactionSync: jest.fn((callback?: () => void) => {
+    callback?.();
+  }),
 };
 
 jest.mock('expo-sqlite', () => ({

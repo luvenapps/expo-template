@@ -1,0 +1,9 @@
+{
+  "imports": {
+    "@/config/domain.config": "../../src/config/domain.config.ts",
+    "@/utils/string": "../../src/utils/string.ts",
+    "@/supabase/domain": "../../src/supabase/domain.ts",
+    "@/supabase/mappers": "../../src/supabase/mappers.ts",
+    "@/": "../../src/"
+  }
+}

@@ -1,8 +1,9 @@
+import 'react-native-get-random-values';
 import { Platform } from 'react-native';
 import { v4 as uuid } from 'uuid';
 import { DOMAIN } from '@/config/domain.config';
-import type { Database } from '@/db/sqlite';
 import { getDb } from '@/db/sqlite';
+import { withDatabaseRetry } from '@/db/sqlite/retry';
 import { getReminderRepository } from '@/data/repositories';
 import { mapPayloadToRemote, normalizePayload } from '@/supabase/mappers';
 import type { ReminderRecord } from '@/supabase/types';
@@ -36,10 +37,9 @@ type UpdateReminderInput = {
 
 export async function createReminderLocal(input: CreateReminderInput) {
   guardNative();
-  const database = await getDb();
-
-  return database.transaction(async (tx: Database) => {
-    const repo = getReminderRepository(tx);
+  return withDatabaseRetry(async () => {
+    const database = await getDb();
+    const repo = getReminderRepository(database);
     const id = input.id ?? uuid();
 
     const timestamp = new Date().toISOString();
@@ -63,7 +63,7 @@ export async function createReminderLocal(input: CreateReminderInput) {
       throw new Error('Failed to create reminder.');
     }
 
-    await enqueueWithDatabase(tx, {
+    await enqueueWithDatabase(database, {
       tableName: DOMAIN.entities.reminders.tableName,
       rowId: stored.id,
       operation: 'insert',
@@ -77,10 +77,9 @@ export async function createReminderLocal(input: CreateReminderInput) {
 
 export async function updateReminderLocal(input: UpdateReminderInput) {
   guardNative();
-  const database = await getDb();
-
-  return database.transaction(async (tx: Database) => {
-    const repo = getReminderRepository(tx);
+  return withDatabaseRetry(async () => {
+    const database = await getDb();
+    const repo = getReminderRepository(database);
     const existing = await repo.findById(input.id);
 
     if (!existing) {
@@ -106,7 +105,7 @@ export async function updateReminderLocal(input: UpdateReminderInput) {
       throw new Error(`Reminder ${input.id} missing after update.`);
     }
 
-    await enqueueWithDatabase(tx, {
+    await enqueueWithDatabase(database, {
       tableName: DOMAIN.entities.reminders.tableName,
       rowId: stored.id,
       operation: 'update',
@@ -120,10 +119,9 @@ export async function updateReminderLocal(input: UpdateReminderInput) {
 
 export async function deleteReminderLocal(id: string) {
   guardNative();
-  const database = await getDb();
-
-  return database.transaction(async (tx: Database) => {
-    const repo = getReminderRepository(tx);
+  return withDatabaseRetry(async () => {
+    const database = await getDb();
+    const repo = getReminderRepository(database);
     const existing = await repo.findById(id);
 
     if (!existing) {
@@ -138,7 +136,7 @@ export async function deleteReminderLocal(id: string) {
       return null;
     }
 
-    await enqueueWithDatabase(tx, {
+    await enqueueWithDatabase(database, {
       tableName: DOMAIN.entities.reminders.tableName,
       rowId: stored.id,
       operation: 'delete',

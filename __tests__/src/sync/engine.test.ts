@@ -42,7 +42,7 @@ describe('createSyncEngine', () => {
     expect(push).toHaveBeenCalledWith(records);
     expect(mockedMarkProcessed).toHaveBeenCalledWith(['1']);
     expect(useSyncStore.getState().status).toBe('idle');
-    expect(useSyncStore.getState().queueSize).toBe(1);
+    expect(useSyncStore.getState().queueSize).toBe(0);
   });
 
   test('processOutbox increments attempts on failure with Error', async () => {

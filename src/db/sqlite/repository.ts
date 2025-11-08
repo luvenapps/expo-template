@@ -59,46 +59,76 @@ export function createRepository<
 
   return {
     async insert(values: Insert) {
-      const data = applyTimestamps(values);
-      await database.insert(table).values(data as Insert);
+      try {
+        const data = applyTimestamps(values);
+        await database.insert(table).values(data as Insert);
+      } catch (error) {
+        console.error('[Repository] Insert failed:', error);
+        throw error;
+      }
     },
     async upsert(values: Insert) {
-      const data = applyTimestamps(values);
-      await database
-        .insert(table)
-        .values(data as Insert)
-        .onConflictDoUpdate({
-          target: pkColumn,
-          set: data as Partial<Select>,
-        });
+      try {
+        const data = applyTimestamps(values);
+        await database
+          .insert(table)
+          .values(data as Insert)
+          .onConflictDoUpdate({
+            target: pkColumn,
+            set: data as Partial<Select>,
+          });
+      } catch (error) {
+        console.error('[Repository] Upsert failed:', error);
+        throw error;
+      }
     },
     async update(id: PrimaryKeyValue, values: Partial<Select>) {
-      const data = applyTimestamps(values);
-      await database
-        .update(table)
-        .set(data as Partial<Select>)
-        .where(eq(pkColumn, id as any));
-    },
-    async findById(id: PrimaryKeyValue) {
-      const [record] = await database
-        .select()
-        .from(table)
-        .where(eq(pkColumn, id as any));
-      return record ?? null;
-    },
-    async all() {
-      return database.select().from(table);
-    },
-    async remove(id: PrimaryKeyValue) {
-      if (createSoftDeletePayload) {
+      try {
+        const data = applyTimestamps(values);
         await database
           .update(table)
-          .set(createSoftDeletePayload() as any)
+          .set(data as Partial<Select>)
           .where(eq(pkColumn, id as any));
-        return;
+      } catch (error) {
+        console.error('[Repository] Update failed:', error);
+        throw error;
       }
+    },
+    async findById(id: PrimaryKeyValue) {
+      try {
+        const [record] = await database
+          .select()
+          .from(table)
+          .where(eq(pkColumn, id as any));
+        return record ?? null;
+      } catch (error) {
+        console.error('[Repository] FindById failed:', error);
+        throw error;
+      }
+    },
+    async all() {
+      try {
+        return database.select().from(table);
+      } catch (error) {
+        console.error('[Repository] All failed:', error);
+        throw error;
+      }
+    },
+    async remove(id: PrimaryKeyValue) {
+      try {
+        if (createSoftDeletePayload) {
+          await database
+            .update(table)
+            .set(createSoftDeletePayload() as any)
+            .where(eq(pkColumn, id as any));
+          return;
+        }
 
-      await database.delete(table).where(eq(pkColumn, id as any));
+        await database.delete(table).where(eq(pkColumn, id as any));
+      } catch (error) {
+        console.error('[Repository] Remove failed:', error);
+        throw error;
+      }
     },
   } as const;
 }

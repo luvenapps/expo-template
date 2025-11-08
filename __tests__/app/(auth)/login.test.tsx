@@ -20,6 +20,18 @@ jest.mock('@/ui/theme/ThemeProvider', () => ({
   })),
 }));
 
+// Mock Tamagui Lucide Icons
+jest.mock('@tamagui/lucide-icons', () => ({
+  Eye: ({ size, color }: any) => {
+    const mockReact = jest.requireActual('react');
+    return mockReact.createElement('View', { testID: 'eye-icon', size, color });
+  },
+  EyeOff: ({ size, color }: any) => {
+    const mockReact = jest.requireActual('react');
+    return mockReact.createElement('View', { testID: 'eye-off-icon', size, color });
+  },
+}));
+
 import { fireEvent, render } from '@testing-library/react-native';
 import React from 'react';
 import LoginScreen from '../../../app/(auth)/login';
@@ -154,6 +166,28 @@ describe('LoginScreen', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(mockBack).not.toHaveBeenCalled();
+  });
+
+  test('toggles password visibility when eye icon is pressed', () => {
+    const { getByPlaceholderText, getByLabelText } = render(<LoginScreen />);
+    const passwordInput = getByPlaceholderText('Password');
+
+    // Initially password should be hidden
+    expect(passwordInput.props.secureTextEntry).toBe(true);
+
+    // Press show password button
+    const showPasswordButton = getByLabelText('Show password');
+    fireEvent.press(showPasswordButton);
+
+    // Password should now be visible
+    expect(passwordInput.props.secureTextEntry).toBe(false);
+
+    // Press hide password button
+    const hidePasswordButton = getByLabelText('Hide password');
+    fireEvent.press(hidePasswordButton);
+
+    // Password should be hidden again
+    expect(passwordInput.props.secureTextEntry).toBe(true);
   });
 
   test('replaces to tabs when no history exists', async () => {

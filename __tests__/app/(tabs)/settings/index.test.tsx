@@ -21,11 +21,14 @@ jest.mock('expo-router', () => {
   };
 });
 
+// Mock setTheme
+const mockSetTheme = jest.fn();
+
 // Mock ThemeProvider
 jest.mock('@/ui/theme/ThemeProvider', () => ({
   useThemeContext: jest.fn(() => ({
-    theme: 'dark',
-    setTheme: jest.fn(),
+    theme: 'system',
+    setTheme: mockSetTheme,
     resolvedTheme: 'dark',
     palette: {
       background: '#1a1a1a',
@@ -106,20 +109,69 @@ jest.mock('@tamagui/lucide-icons', () => ({
   },
 }));
 
-import { fireEvent, render } from '@testing-library/react-native';
+// Mock data functions
+jest.mock('@/data', () => ({
+  createPrimaryEntityLocal: jest.fn(),
+  createEntryLocal: jest.fn(),
+  createReminderLocal: jest.fn(),
+  createDeviceLocal: jest.fn(),
+}));
+
+// Mock sync outbox
+jest.mock('@/sync/outbox', () => ({
+  clearAll: jest.fn(),
+  getPending: jest.fn(() => Promise.resolve([])),
+}));
+
+// Mock SQLite database functions
+jest.mock('@/db/sqlite', () => ({
+  hasData: jest.fn(() => Promise.resolve(false)),
+  clearAllTables: jest.fn(() => Promise.resolve()),
+}));
+
+// Mock SQLite events
+let mockDatabaseResetListeners: (() => void)[] = [];
+jest.mock('@/db/sqlite/events', () => ({
+  onDatabaseReset: jest.fn((listener: () => void) => {
+    mockDatabaseResetListeners.push(listener);
+    return () => {
+      mockDatabaseResetListeners = mockDatabaseResetListeners.filter((l) => l !== listener);
+    };
+  }),
+}));
+
+import { useSessionStore } from '@/auth/session';
+import {
+  createDeviceLocal,
+  createEntryLocal,
+  createPrimaryEntityLocal,
+  createReminderLocal,
+} from '@/data';
+import { clearAllTables, hasData } from '@/db/sqlite';
+import { useSync } from '@/sync';
+import { clearAll as clearOutbox } from '@/sync/outbox';
+import { useThemeContext } from '@/ui/theme/ThemeProvider';
+import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import React from 'react';
 import { Platform } from 'react-native';
-import { useSessionStore } from '@/auth/session';
-import { useSync } from '@/sync';
 import SettingsScreen from '../../../../app/(tabs)/settings/index';
 
 const mockedUseSessionStore = useSessionStore as unknown as jest.Mock;
 const mockedUseSync = useSync as unknown as jest.Mock;
+const mockedUseThemeContext = useThemeContext as unknown as jest.Mock;
+const mockedCreatePrimaryEntityLocal = createPrimaryEntityLocal as unknown as jest.Mock;
+const mockedCreateEntryLocal = createEntryLocal as unknown as jest.Mock;
+const mockedCreateReminderLocal = createReminderLocal as unknown as jest.Mock;
+const mockedCreateDeviceLocal = createDeviceLocal as unknown as jest.Mock;
+const mockedClearOutbox = clearOutbox as unknown as jest.Mock;
+const mockedHasData = hasData as unknown as jest.Mock;
+const mockedClearAllTables = clearAllTables as unknown as jest.Mock;
 
 describe('SettingsScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockPush.mockClear();
+    mockDatabaseResetListeners = [];
     mockedUseSync.mockImplementation(() => ({
       status: 'idle',
       queueSize: 0,
@@ -291,6 +343,484 @@ describe('SettingsScreen', () => {
       const { getByText } = render(<SettingsScreen />);
       fireEvent.press(getByText('Sync now'));
       expect(triggerSync).toHaveBeenCalled();
+    });
+  });
+
+  describe('Theme Selection', () => {
+    beforeEach(() => {
+      mockedUseSessionStore.mockImplementation((selector: any) =>
+        selector({
+          status: 'unauthenticated',
+          session: null,
+          signOut: jest.fn(),
+          isLoading: false,
+        }),
+      );
+      mockSetTheme.mockClear();
+    });
+
+    it('should call setTheme when Follow System button is pressed', () => {
+      mockedUseThemeContext.mockReturnValue({
+        theme: 'light',
+        setTheme: mockSetTheme,
+        resolvedTheme: 'light',
+        palette: {
+          background: '#FFFFFF',
+          text: '#0F172A',
+          mutedText: '#475569',
+        },
+      });
+
+      const { getByLabelText } = render(<SettingsScreen />);
+
+      const systemButton = getByLabelText('Follow System');
+      fireEvent.press(systemButton);
+
+      expect(mockSetTheme).toHaveBeenCalledWith('system');
+    });
+
+    it('should call setTheme when Light button is pressed', () => {
+      const { getByLabelText } = render(<SettingsScreen />);
+
+      const lightButton = getByLabelText('Light');
+      fireEvent.press(lightButton);
+
+      expect(mockSetTheme).toHaveBeenCalledWith('light');
+    });
+
+    it('should call setTheme when Dark button is pressed', () => {
+      const { getByLabelText } = render(<SettingsScreen />);
+
+      const darkButton = getByLabelText('Dark');
+      fireEvent.press(darkButton);
+
+      expect(mockSetTheme).toHaveBeenCalledWith('dark');
+    });
+  });
+
+  describe('Developer Tools - Seed Sample Data', () => {
+    const originalDev = (global as any).__DEV__;
+
+    beforeEach(() => {
+      (global as any).__DEV__ = true;
+      mockedUseSessionStore.mockImplementation((selector: any) =>
+        selector({
+          status: 'unauthenticated',
+          session: null,
+          signOut: jest.fn(),
+          isLoading: false,
+        }),
+      );
+    });
+
+    afterEach(() => {
+      (global as any).__DEV__ = originalDev;
+    });
+
+    it('should not show developer tools on web platform', () => {
+      const originalPlatform = Platform.OS;
+      Object.defineProperty(Platform, 'OS', {
+        value: 'web',
+        configurable: true,
+      });
+
+      const { queryByText } = render(<SettingsScreen />);
+
+      expect(queryByText('Seed sample data')).toBeNull();
+      expect(queryByText('Clear outbox')).toBeNull();
+
+      Object.defineProperty(Platform, 'OS', {
+        value: originalPlatform,
+        configurable: true,
+      });
+    });
+
+    it('should show error when seeding without authentication', async () => {
+      const { getByText } = render(<SettingsScreen />);
+
+      const seedButton = getByText('Seed sample data');
+      fireEvent.press(seedButton);
+
+      await waitFor(() => {
+        expect(getByText('Sign in on a native build to seed local data.')).toBeDefined();
+      });
+    });
+
+    it('should seed sample data successfully when authenticated', async () => {
+      mockedUseSessionStore.mockImplementation((selector: any) =>
+        selector({
+          status: 'authenticated',
+          session: {
+            user: {
+              id: 'user-123',
+              email: 'test@example.com',
+            },
+          },
+          signOut: jest.fn(),
+          isLoading: false,
+        }),
+      );
+
+      const mockPrimaryEntity = {
+        id: 'primary-12345678-abcd',
+        userId: 'user-123',
+        name: 'Sample',
+        cadence: 'daily',
+        color: '#60a5fa',
+      };
+
+      mockedCreatePrimaryEntityLocal.mockResolvedValue(mockPrimaryEntity);
+      mockedCreateEntryLocal.mockResolvedValue({ id: 'entry-1' });
+      mockedCreateReminderLocal.mockResolvedValue({ id: 'reminder-1' });
+      mockedCreateDeviceLocal.mockResolvedValue({ id: 'device-1' });
+
+      const { getByText } = render(<SettingsScreen />);
+
+      const seedButton = getByText('Seed sample data');
+      fireEvent.press(seedButton);
+
+      await waitFor(() => {
+        expect(mockedCreatePrimaryEntityLocal).toHaveBeenCalledWith(
+          expect.objectContaining({
+            userId: 'user-123',
+            cadence: 'daily',
+            color: '#60a5fa',
+          }),
+        );
+      });
+
+      expect(mockedCreateEntryLocal).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user-123',
+          amount: 1,
+        }),
+      );
+
+      expect(mockedCreateReminderLocal).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user-123',
+          timeLocal: '09:00',
+          daysOfWeek: '1,2,3',
+          isEnabled: true,
+        }),
+      );
+
+      expect(mockedCreateDeviceLocal).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user-123',
+          platform: 'ios',
+        }),
+      );
+
+      await waitFor(() => {
+        const statusText = getByText(/Seeded sample data locally/);
+        expect(statusText).toBeDefined();
+      });
+    });
+
+    it('should handle errors when seeding data fails', async () => {
+      // Suppress expected console.error from error handling
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+      mockedUseSessionStore.mockImplementation((selector: any) =>
+        selector({
+          status: 'authenticated',
+          session: {
+            user: {
+              id: 'user-123',
+              email: 'test@example.com',
+            },
+          },
+          signOut: jest.fn(),
+          isLoading: false,
+        }),
+      );
+
+      mockedCreatePrimaryEntityLocal.mockRejectedValue(new Error('Database connection failed'));
+
+      const { getByText } = render(<SettingsScreen />);
+
+      const seedButton = getByText('Seed sample data');
+      fireEvent.press(seedButton);
+
+      await waitFor(() => {
+        expect(getByText('Error: Database connection failed')).toBeDefined();
+      });
+
+      consoleErrorSpy.mockRestore();
+    });
+  });
+
+  describe('Developer Tools - Clear Outbox', () => {
+    const originalDev = (global as any).__DEV__;
+
+    beforeEach(() => {
+      (global as any).__DEV__ = true;
+      mockedUseSessionStore.mockImplementation((selector: any) =>
+        selector({
+          status: 'unauthenticated',
+          session: null,
+          signOut: jest.fn(),
+          isLoading: false,
+        }),
+      );
+    });
+
+    afterEach(() => {
+      (global as any).__DEV__ = originalDev;
+    });
+
+    it('should clear outbox successfully', async () => {
+      mockedClearOutbox.mockResolvedValue(undefined);
+
+      const { getByText } = render(<SettingsScreen />);
+
+      const clearButton = getByText('Clear outbox');
+      fireEvent.press(clearButton);
+
+      await waitFor(() => {
+        expect(mockedClearOutbox).toHaveBeenCalled();
+      });
+
+      await waitFor(() => {
+        expect(getByText('Outbox cleared.')).toBeDefined();
+      });
+    });
+
+    it('should handle errors when clearing outbox fails', async () => {
+      // Suppress expected console.error from error handling (if any)
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+      mockedClearOutbox.mockRejectedValue(new Error('Failed to clear outbox'));
+
+      const { getByText } = render(<SettingsScreen />);
+
+      const clearButton = getByText('Clear outbox');
+      fireEvent.press(clearButton);
+
+      await waitFor(() => {
+        expect(getByText('Failed to clear outbox')).toBeDefined();
+      });
+
+      consoleErrorSpy.mockRestore();
+    });
+  });
+
+  describe('Database data check error handling', () => {
+    beforeEach(() => {
+      mockedUseSessionStore.mockImplementation((selector: any) =>
+        selector({
+          status: 'authenticated',
+          session: {
+            user: {
+              id: 'user-123',
+              email: 'test@example.com',
+            },
+          },
+          signOut: jest.fn(),
+          isLoading: false,
+        }),
+      );
+    });
+
+    it('should handle errors when checking database data fails', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+      mockedHasData.mockRejectedValueOnce(new Error('Database check failed'));
+
+      render(<SettingsScreen />);
+
+      await waitFor(() => {
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          '[Settings] Error checking database data:',
+          expect.any(Error),
+        );
+      });
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('should handle database reset event', async () => {
+      mockedHasData.mockResolvedValue(true);
+
+      render(<SettingsScreen />);
+
+      // Simulate database reset by calling the listener
+      await waitFor(() => {
+        expect(mockDatabaseResetListeners.length).toBeGreaterThan(0);
+      });
+
+      // Trigger the database reset event
+      mockDatabaseResetListeners.forEach((listener) => listener());
+
+      await waitFor(() => {
+        expect(mockedHasData).toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('Developer Tools - Seed Sample Data Double-Click Prevention', () => {
+    const originalDev = (global as any).__DEV__;
+
+    beforeEach(() => {
+      (global as any).__DEV__ = true;
+      mockedUseSessionStore.mockImplementation((selector: any) =>
+        selector({
+          status: 'authenticated',
+          session: {
+            user: {
+              id: 'user-123',
+              email: 'test@example.com',
+            },
+          },
+          signOut: jest.fn(),
+          isLoading: false,
+        }),
+      );
+
+      const mockPrimaryEntity = {
+        id: 'primary-12345678-abcd',
+        userId: 'user-123',
+        name: 'Sample',
+        cadence: 'daily',
+        color: '#60a5fa',
+      };
+
+      mockedCreatePrimaryEntityLocal.mockResolvedValue(mockPrimaryEntity);
+      mockedCreateEntryLocal.mockResolvedValue({ id: 'entry-1' });
+      mockedCreateReminderLocal.mockResolvedValue({ id: 'reminder-1' });
+      mockedCreateDeviceLocal.mockResolvedValue({ id: 'device-1' });
+    });
+
+    afterEach(() => {
+      (global as any).__DEV__ = originalDev;
+    });
+
+    it('should prevent double-click on seed operation', async () => {
+      const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+      const { getByText } = render(<SettingsScreen />);
+
+      const seedButton = getByText('Seed sample data');
+
+      // Click the button twice rapidly
+      fireEvent.press(seedButton);
+      fireEvent.press(seedButton);
+
+      // Wait for the first operation to complete
+      await waitFor(
+        () => {
+          expect(getByText(/Seeded sample data locally/)).toBeDefined();
+        },
+        { timeout: 3000 },
+      );
+
+      // Verify createPrimaryEntityLocal was only called once (not twice)
+      expect(mockedCreatePrimaryEntityLocal).toHaveBeenCalledTimes(1);
+
+      // Verify the console.log was called for the second click
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        '[Settings] Seed operation already in progress, ignoring click',
+      );
+
+      consoleLogSpy.mockRestore();
+    });
+  });
+
+  describe('Developer Tools - Clear Local Database', () => {
+    const originalDev = (global as any).__DEV__;
+
+    beforeEach(() => {
+      (global as any).__DEV__ = true;
+      mockedUseSessionStore.mockImplementation((selector: any) =>
+        selector({
+          status: 'authenticated',
+          session: {
+            user: {
+              id: 'user-123',
+              email: 'test@example.com',
+            },
+          },
+          signOut: jest.fn(),
+          isLoading: false,
+        }),
+      );
+      mockedHasData.mockResolvedValue(true);
+    });
+
+    afterEach(() => {
+      (global as any).__DEV__ = originalDev;
+    });
+
+    it('should clear local database successfully', async () => {
+      mockedClearAllTables.mockResolvedValue(undefined);
+
+      const { getByText } = render(<SettingsScreen />);
+
+      const clearButton = getByText('Clear local database');
+      fireEvent.press(clearButton);
+
+      await waitFor(() => {
+        expect(mockedClearAllTables).toHaveBeenCalled();
+      });
+
+      await waitFor(() => {
+        expect(getByText('Local database cleared successfully.')).toBeDefined();
+      });
+    });
+
+    it('should handle errors when clearing local database fails', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+      mockedClearAllTables.mockRejectedValue(new Error('Failed to clear database'));
+
+      const { getByText } = render(<SettingsScreen />);
+
+      const clearButton = getByText('Clear local database');
+      fireEvent.press(clearButton);
+
+      await waitFor(() => {
+        expect(getByText('Error: Failed to clear database')).toBeDefined();
+      });
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '[Settings] Clear local database failed:',
+        expect.any(Error),
+      );
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('should prevent double-click on clear database operation', async () => {
+      const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+      mockedClearAllTables.mockResolvedValue(undefined);
+
+      const { getByText } = render(<SettingsScreen />);
+
+      const clearButton = getByText('Clear local database');
+
+      // Click the button twice rapidly
+      fireEvent.press(clearButton);
+      fireEvent.press(clearButton);
+
+      // Wait for the operation to complete
+      await waitFor(
+        () => {
+          expect(getByText('Local database cleared successfully.')).toBeDefined();
+        },
+        { timeout: 3000 },
+      );
+
+      // Verify clearAllTables was only called once (not twice)
+      expect(mockedClearAllTables).toHaveBeenCalledTimes(1);
+
+      // Verify the console.log was called for the second click
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        '[Settings] Clear operation already in progress, ignoring click',
+      );
+
+      consoleLogSpy.mockRestore();
     });
   });
 });

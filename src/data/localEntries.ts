@@ -1,8 +1,9 @@
+import 'react-native-get-random-values';
 import { Platform } from 'react-native';
 import { v4 as uuid } from 'uuid';
 import { DOMAIN } from '@/config/domain.config';
-import type { Database } from '@/db/sqlite';
 import { getDb } from '@/db/sqlite';
+import { withDatabaseRetry } from '@/db/sqlite/retry';
 import { getEntryRepository } from '@/data/repositories';
 import { mapPayloadToRemote, normalizePayload } from '@/supabase/mappers';
 import type { EntryRecord } from '@/supabase/types';
@@ -33,10 +34,9 @@ type UpdateEntryInput = {
 
 export async function createEntryLocal(input: CreateEntryInput) {
   guardNative();
-  const database = await getDb();
-
-  return database.transaction(async (tx: Database) => {
-    const repo = getEntryRepository(tx);
+  return withDatabaseRetry(async () => {
+    const database = await getDb();
+    const repo = getEntryRepository(database);
     const id = input.id ?? uuid();
 
     const timestamp = new Date().toISOString();
@@ -59,7 +59,7 @@ export async function createEntryLocal(input: CreateEntryInput) {
       throw new Error('Failed to create entry.');
     }
 
-    await enqueueWithDatabase(tx, {
+    await enqueueWithDatabase(database, {
       tableName: DOMAIN.entities.entries.tableName,
       rowId: stored.id,
       operation: 'insert',
@@ -73,10 +73,9 @@ export async function createEntryLocal(input: CreateEntryInput) {
 
 export async function updateEntryLocal(input: UpdateEntryInput) {
   guardNative();
-  const database = await getDb();
-
-  return database.transaction(async (tx: Database) => {
-    const repo = getEntryRepository(tx);
+  return withDatabaseRetry(async () => {
+    const database = await getDb();
+    const repo = getEntryRepository(database);
     const existing = await repo.findById(input.id);
 
     if (!existing) {
@@ -101,7 +100,7 @@ export async function updateEntryLocal(input: UpdateEntryInput) {
       throw new Error(`Entry ${input.id} missing after update.`);
     }
 
-    await enqueueWithDatabase(tx, {
+    await enqueueWithDatabase(database, {
       tableName: DOMAIN.entities.entries.tableName,
       rowId: stored.id,
       operation: 'update',
@@ -115,10 +114,9 @@ export async function updateEntryLocal(input: UpdateEntryInput) {
 
 export async function deleteEntryLocal(id: string) {
   guardNative();
-  const database = await getDb();
-
-  return database.transaction(async (tx: Database) => {
-    const repo = getEntryRepository(tx);
+  return withDatabaseRetry(async () => {
+    const database = await getDb();
+    const repo = getEntryRepository(database);
     const existing = await repo.findById(id);
 
     if (!existing) {
@@ -133,7 +131,7 @@ export async function deleteEntryLocal(id: string) {
       return null;
     }
 
-    await enqueueWithDatabase(tx, {
+    await enqueueWithDatabase(database, {
       tableName: DOMAIN.entities.entries.tableName,
       rowId: stored.id,
       operation: 'delete',

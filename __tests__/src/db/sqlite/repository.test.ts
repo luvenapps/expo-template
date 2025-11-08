@@ -210,4 +210,152 @@ describe('createRepository', () => {
       }),
     );
   });
+
+  describe('error handling', () => {
+    let consoleErrorSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      consoleErrorSpy.mockRestore();
+    });
+
+    test('insert handles errors', async () => {
+      const errorDb = createDbMocks();
+      const error = new Error('Database insert failed');
+      errorDb.insert.mockImplementationOnce(() => ({
+        values: jest.fn(() => {
+          throw error;
+        }),
+      }));
+
+      const errorRepo = createRepository({
+        db: errorDb as any,
+        table: table as any,
+        primaryKey: 'id',
+      });
+
+      await expect(errorRepo.insert({ id: '1' } as any)).rejects.toThrow('Database insert failed');
+      expect(consoleErrorSpy).toHaveBeenCalledWith('[Repository] Insert failed:', error);
+    });
+
+    test('upsert handles errors', async () => {
+      const errorDb = createDbMocks();
+      const error = new Error('Database upsert failed');
+      errorDb.insert.mockImplementationOnce(() => ({
+        values: jest.fn(() => {
+          throw error;
+        }),
+      }));
+
+      const errorRepo = createRepository({
+        db: errorDb as any,
+        table: table as any,
+        primaryKey: 'id',
+      });
+
+      await expect(errorRepo.upsert({ id: '1' } as any)).rejects.toThrow('Database upsert failed');
+      expect(consoleErrorSpy).toHaveBeenCalledWith('[Repository] Upsert failed:', error);
+    });
+
+    test('update handles errors', async () => {
+      const errorDb = createDbMocks();
+      const error = new Error('Database update failed');
+      errorDb.update.mockImplementationOnce(() => ({
+        set: jest.fn(() => {
+          throw error;
+        }),
+      }));
+
+      const errorRepo = createRepository({
+        db: errorDb as any,
+        table: table as any,
+        primaryKey: 'id',
+      });
+
+      await expect(errorRepo.update('1', { value: 'test' } as any)).rejects.toThrow(
+        'Database update failed',
+      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith('[Repository] Update failed:', error);
+    });
+
+    test('findById handles errors', async () => {
+      const errorDb = createDbMocks();
+      const error = new Error('Database findById failed');
+      errorDb.select.mockImplementationOnce(() => ({
+        from: jest.fn(() => {
+          throw error;
+        }),
+      }));
+
+      const errorRepo = createRepository({
+        db: errorDb as any,
+        table: table as any,
+        primaryKey: 'id',
+      });
+
+      await expect(errorRepo.findById('1')).rejects.toThrow('Database findById failed');
+      expect(consoleErrorSpy).toHaveBeenCalledWith('[Repository] FindById failed:', error);
+    });
+
+    test('all handles errors', async () => {
+      const errorDb = createDbMocks();
+      const error = new Error('Database all failed');
+      errorDb.select.mockImplementationOnce(() => ({
+        from: jest.fn(() => {
+          throw error;
+        }),
+      }));
+
+      const errorRepo = createRepository({
+        db: errorDb as any,
+        table: table as any,
+        primaryKey: 'id',
+      });
+
+      await expect(errorRepo.all()).rejects.toThrow('Database all failed');
+      expect(consoleErrorSpy).toHaveBeenCalledWith('[Repository] All failed:', error);
+    });
+
+    test('remove handles errors with soft delete', async () => {
+      const errorDb = createDbMocks();
+      const error = new Error('Database remove failed');
+      errorDb.update.mockImplementationOnce(() => ({
+        set: jest.fn(() => {
+          throw error;
+        }),
+      }));
+
+      const errorRepo = createRepository({
+        db: errorDb as any,
+        table: table as any,
+        primaryKey: 'id',
+        deletedAtColumn: 'deletedAt',
+      });
+
+      await expect(errorRepo.remove('1')).rejects.toThrow('Database remove failed');
+      expect(consoleErrorSpy).toHaveBeenCalledWith('[Repository] Remove failed:', error);
+    });
+
+    test('remove handles errors with hard delete', async () => {
+      const errorDb = createDbMocks();
+      const error = new Error('Database delete failed');
+      errorDb.delete.mockImplementationOnce(() => ({
+        where: jest.fn(() => {
+          throw error;
+        }),
+      }));
+
+      const errorRepo = createRepository({
+        db: errorDb as any,
+        table: table as any,
+        primaryKey: 'id',
+      });
+
+      await expect(errorRepo.remove('1')).rejects.toThrow('Database delete failed');
+      expect(consoleErrorSpy).toHaveBeenCalledWith('[Repository] Remove failed:', error);
+    });
+  });
 });
