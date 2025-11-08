@@ -46,6 +46,7 @@ describe('ensureSqliteSchema', () => {
         expect.stringContaining(`CREATE TABLE IF NOT EXISTS "${PRIMARY_TABLE}"`),
         expect.stringContaining(`CREATE TABLE IF NOT EXISTS "${ENTRIES_TABLE}"`),
         expect.stringContaining('CREATE TABLE IF NOT EXISTS "outbox"'),
+        expect.stringContaining('CREATE INDEX IF NOT EXISTS "outbox_table_attempts_idx"'),
         'PRAGMA user_version = 1',
       ]),
     );

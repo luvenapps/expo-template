@@ -105,13 +105,19 @@ export const deviceEntity = sqliteTable(DOMAIN.entities.devices.tableName, {
   deletedAt: optionalTimestamp('deleted_at'),
 });
 
-export const outbox = sqliteTable('outbox', {
-  id: text('id').primaryKey(),
-  tableName: text('table_name').notNull(),
-  rowId: text('row_id').notNull(),
-  operation: text('operation').notNull(),
-  payload: text('payload_json').notNull(),
-  version: versionColumn(),
-  attempts: integer('attempts').default(0).notNull(),
-  createdAt: timestampColumn('created_at'),
-});
+export const outbox = sqliteTable(
+  'outbox',
+  {
+    id: text('id').primaryKey(),
+    tableName: text('table_name').notNull(),
+    rowId: text('row_id').notNull(),
+    operation: text('operation').notNull(),
+    payload: text('payload_json').notNull(),
+    version: versionColumn(),
+    attempts: integer('attempts').default(0).notNull(),
+    createdAt: timestampColumn('created_at'),
+  },
+  (table) => [
+    index('outbox_table_attempts_idx').on(table.tableName, table.attempts, table.createdAt),
+  ],
+);

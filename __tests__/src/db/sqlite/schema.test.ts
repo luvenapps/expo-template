@@ -404,6 +404,16 @@ describe('Database Schema', () => {
       expect(outbox.createdAt).toBeDefined();
       expect(outbox.createdAt.notNull).toBe(true);
     });
+
+    it('should define index for tableName + attempts + createdAt', () => {
+      const config = getTableConfig(outbox);
+      expect(config.indexes).toBeDefined();
+      const hasOutboxIndex = config.indexes.some((idx) => {
+        const indexName = (idx as any).config?.name || (idx as any).name;
+        return indexName === 'outbox_table_attempts_idx';
+      });
+      expect(hasOutboxIndex).toBe(true);
+    });
   });
 
   describe('Schema Consistency', () => {

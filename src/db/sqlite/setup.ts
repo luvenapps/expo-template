@@ -77,6 +77,8 @@ function buildStatements(): string[] {
       "attempts" INTEGER DEFAULT 0 NOT NULL,
       "created_at" TEXT NOT NULL
     );`,
+    `CREATE INDEX IF NOT EXISTS "outbox_table_attempts_idx"
+      ON "outbox" ("table_name","attempts","created_at");`,
   ].map((statement) => statement.replace(/\s+\n/g, '\n').trim());
 }
 
