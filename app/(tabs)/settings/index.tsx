@@ -281,7 +281,7 @@ export default function SettingsScreen() {
                     backgroundColor: isActive ? '$accentColor' : '$backgroundHover',
                   }}
                   disabled={isActive}
-                  accessibilityLabel={label}
+                  aria-label={label}
                   onPress={() => handleThemeSelection(value)}
                 >
                   <Icon size={20} color={isActive ? 'white' : undefined} />

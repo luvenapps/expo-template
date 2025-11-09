@@ -4,5 +4,6 @@ export * from './components/PrimaryButton';
 export * from './components/SecondaryButton';
 export * from './components/SettingsSection';
 export * from './components/Text';
+export * from './components/FormField';
 export * from './providers/AppProviders';
 

@@ -3,7 +3,7 @@ import { isValidEmail } from '@/data/validation';
 import {
   BodyText,
   CaptionText,
-  LabelText,
+  FormField,
   PrimaryButton,
   ScreenContainer,
   SubtitleText,
@@ -14,7 +14,7 @@ import { Eye, EyeOff } from '@tamagui/lucide-icons';
 import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { TextInput } from 'react-native';
-import { Button, Card, Form, Input, View, YStack } from 'tamagui';
+import { Button, Card, Form, View, YStack } from 'tamagui';
 
 export default function LoginScreen() {
   const navigation = useNavigation<NavigationProp<ParamListBase>>();
@@ -85,64 +85,36 @@ export default function LoginScreen() {
           </YStack>
 
           <Form onSubmit={handleSubmit} width="100%" gap="$4">
-            <YStack gap="$2">
-              <LabelText color="$color">Email</LabelText>
-              <Input
-                placeholder="you@example.com"
-                placeholderTextColor="$colorMuted"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                value={email}
-                onChangeText={setEmail}
-                onSubmitEditing={() => passwordInputRef.current?.focus()}
-                returnKeyType="next"
-                size="$2"
-                height={56}
-                width="100%"
-                borderColor="$borderColor"
-                backgroundColor="$background"
-                borderWidth={1}
-                borderRadius="$3"
-                focusStyle={{
-                  borderColor: '$borderColorFocus',
-                  borderWidth: 2,
-                }}
-              />
-            </YStack>
+            <FormField
+              label="Email"
+              placeholder="you@example.com"
+              placeholderTextColor="$colorMuted"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              value={email}
+              onChangeText={setEmail}
+              onSubmitEditing={() => passwordInputRef.current?.focus?.()}
+              returnKeyType="next"
+            />
 
-            <YStack gap="$2">
-              <LabelText color="$color">Password</LabelText>
-              <View position="relative" width="100%">
-                <Input
-                  ref={passwordInputRef}
-                  placeholder="Enter your password"
-                  placeholderTextColor="$colorMuted"
-                  secureTextEntry={!showPassword}
-                  value={password}
-                  onChangeText={setPassword}
-                  returnKeyType="done"
-                  onSubmitEditing={handleSubmit}
-                  size="$2"
-                  height={56}
-                  width="100%"
-                  borderColor="$borderColor"
-                  backgroundColor="$background"
-                  borderWidth={1}
-                  borderRadius="$3"
-                  paddingRight="$10"
-                  focusStyle={{
-                    borderColor: '$borderColorFocus',
-                    borderWidth: 2,
-                  }}
-                />
+            <FormField
+              ref={passwordInputRef}
+              label="Password"
+              placeholder="Enter your password"
+              placeholderTextColor="$colorMuted"
+              secureTextEntry={!showPassword}
+              value={password}
+              onChangeText={setPassword}
+              returnKeyType="done"
+              onSubmitEditing={handleSubmit}
+              paddingRight="$10"
+              rightElement={
                 <View
                   position="absolute"
-                  right="$3"
-                  top="50%"
-                  y={-12}
+                  right="$0"
                   padding="$1"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  onPress={() => setShowPassword(!showPassword)}
+                  onPress={() => setShowPassword((prev) => !prev)}
                   hoverStyle={{ opacity: 0.7, cursor: 'pointer' }}
                   pressStyle={{ opacity: 0.5 }}
                   role="button"
@@ -153,8 +125,8 @@ export default function LoginScreen() {
                     <Eye size={20} color="$colorMuted" />
                   )}
                 </View>
-              </View>
-            </YStack>
+              }
+            />
 
             <CaptionText
               textAlign="right"
