@@ -18,7 +18,7 @@ import { Monitor, Moon, Sun } from '@tamagui/lucide-icons';
 import { useRouter } from 'expo-router';
 import type { ComponentType } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Platform, ScrollView } from 'react-native';
+import { Platform } from 'react-native';
 import { Button, Paragraph, XStack, YStack } from 'tamagui';
 
 export default function SettingsScreen() {
@@ -240,138 +240,129 @@ export default function SettingsScreen() {
   ];
 
   return (
-    <ScreenContainer>
-      <ScrollView
-        contentContainerStyle={{ flexGrow: 1, paddingBottom: 96 }}
-        showsVerticalScrollIndicator={false}
-        contentInsetAdjustmentBehavior="automatic"
-      >
-        <YStack gap="$4">
-          <SettingsSection
-            title="Account"
-            description={
-              status === 'authenticated' && session?.user?.email
-                ? `Signed in as ${session.user.email}`
-                : 'Sign in to sync your data across devices.'
-            }
+    <ScreenContainer contentContainerStyle={{ flexGrow: 1, paddingBottom: 96 }}>
+      <YStack gap="$4">
+        <SettingsSection
+          title="Account"
+          description={
+            status === 'authenticated' && session?.user?.email
+              ? `Signed in as ${session.user.email}`
+              : 'Sign in to sync your data across devices.'
+          }
+        >
+          <PrimaryButton
+            marginBottom={isNative ? '$5' : ''}
+            disabled={isLoading}
+            onPress={handleAuthAction}
           >
-            <PrimaryButton
-              marginBottom={isNative ? '$5' : ''}
-              disabled={isLoading}
-              onPress={handleAuthAction}
+            {isLoading ? 'Loading…' : status === 'authenticated' ? 'Sign Out' : 'Sign In'}
+          </PrimaryButton>
+        </SettingsSection>
+
+        <SettingsSection title="Theme" description="Choose how Better Habits looks on this device.">
+          <XStack gap="$2">
+            {THEME_OPTIONS.map(({ value, label, Icon }) => {
+              const isActive = themePreference === value;
+              return (
+                <Button
+                  key={value}
+                  flex={1}
+                  size="$5"
+                  height={48}
+                  borderRadius="$3"
+                  borderStyle="solid"
+                  borderColor="$borderColor"
+                  backgroundColor={isActive ? '$accentColor' : '$backgroundStrong'}
+                  color={isActive ? 'white' : '$color'}
+                  pressStyle={{
+                    backgroundColor: isActive ? '$accentColor' : '$backgroundPress',
+                  }}
+                  hoverStyle={{
+                    backgroundColor: isActive ? '$accentColor' : '$backgroundHover',
+                  }}
+                  disabled={isActive}
+                  accessibilityLabel={label}
+                  onPress={() => handleThemeSelection(value)}
+                >
+                  <Icon size={20} color={isActive ? 'white' : undefined} />
+                </Button>
+              );
+            })}
+          </XStack>
+        </SettingsSection>
+
+        {isNative && (
+          <>
+            <SettingsSection
+              title="Sync & Storage"
+              description="Review local queue status and run a manual sync with Supabase."
+              footer={syncDisabledMessage}
             >
-              {isLoading ? 'Loading…' : status === 'authenticated' ? 'Sign Out' : 'Sign In'}
-            </PrimaryButton>
-          </SettingsSection>
+              <Paragraph color="$colorMuted" textAlign="center">
+                Status: {syncStatus.toUpperCase()}
+              </Paragraph>
+              <Paragraph color="$colorMuted" textAlign="center">
+                Queue size: {queueSize}
+              </Paragraph>
+              <Paragraph color="$colorMuted" textAlign="center">
+                Last synced: {lastSyncedAt ? new Date(lastSyncedAt).toLocaleString() : 'Never'}
+              </Paragraph>
+              {lastError ? (
+                <Paragraph color="$colorMuted" textAlign="center">
+                  Last error: {lastError}
+                </Paragraph>
+              ) : null}
+              <XStack>
+                <PrimaryButton
+                  size="$5"
+                  disabled={!canSync || isSyncing || !hasOutboxData}
+                  onPress={handleManualSync}
+                >
+                  {isSyncing ? 'Syncing…' : 'Sync now'}
+                </PrimaryButton>
+              </XStack>
+            </SettingsSection>
 
-          <SettingsSection
-            title="Theme"
-            description="Choose how Better Habits looks on this device."
-          >
-            <XStack gap="$2">
-              {THEME_OPTIONS.map(({ value, label, Icon }) => {
-                const isActive = themePreference === value;
-                return (
-                  <Button
-                    key={value}
-                    flex={1}
-                    size="$5"
-                    height={48}
-                    borderRadius="$3"
-                    borderStyle="solid"
-                    borderColor="$borderColor"
-                    backgroundColor={isActive ? '$accentColor' : '$backgroundStrong'}
-                    color={isActive ? 'white' : '$color'}
-                    pressStyle={{
-                      backgroundColor: isActive ? '$accentColor' : '$backgroundPress',
-                    }}
-                    hoverStyle={{
-                      backgroundColor: isActive ? '$accentColor' : '$backgroundHover',
-                    }}
-                    disabled={isActive}
-                    accessibilityLabel={label}
-                    onPress={() => handleThemeSelection(value)}
-                  >
-                    <Icon size={20} color={isActive ? 'white' : undefined} />
-                  </Button>
-                );
-              })}
-            </XStack>
-          </SettingsSection>
-
-          {isNative && (
-            <>
+            {showDevTools ? (
               <SettingsSection
-                title="Sync & Storage"
-                description="Review local queue status and run a manual sync with Supabase."
-                footer={syncDisabledMessage}
+                title="Developer Utilities"
+                description="Seed and clear local data for manual testing on native builds."
+                footer={devStatus ?? undefined}
               >
-                <Paragraph color="$colorMuted" textAlign="center">
-                  Status: {syncStatus.toUpperCase()}
-                </Paragraph>
-                <Paragraph color="$colorMuted" textAlign="center">
-                  Queue size: {queueSize}
-                </Paragraph>
-                <Paragraph color="$colorMuted" textAlign="center">
-                  Last synced: {lastSyncedAt ? new Date(lastSyncedAt).toLocaleString() : 'Never'}
-                </Paragraph>
-                {lastError ? (
-                  <Paragraph color="$colorMuted" textAlign="center">
-                    Last error: {lastError}
-                  </Paragraph>
-                ) : null}
                 <XStack>
                   <PrimaryButton
-                    size="$5"
-                    disabled={!canSync || isSyncing || !hasOutboxData}
-                    onPress={handleManualSync}
+                    disabled={!hasSession || isSeeding || isSyncing}
+                    onPress={handleSeedSampleData}
                   >
-                    {isSyncing ? 'Syncing…' : 'Sync now'}
+                    {isSeeding ? 'Seeding…' : 'Seed sample data'}
                   </PrimaryButton>
                 </XStack>
+
+                <XStack>
+                  <SecondaryButton
+                    disabled={!hasSession || !hasOutboxData}
+                    onPress={handleClearOutbox}
+                  >
+                    Clear outbox
+                  </SecondaryButton>
+                </XStack>
+                <XStack>
+                  <SecondaryButton
+                    disabled={!hasSession || isClearing || !hasDbData}
+                    onPress={handleClearLocalDatabase}
+                  >
+                    {isClearing ? 'Clearing…' : 'Clear local database'}
+                  </SecondaryButton>
+                </XStack>
               </SettingsSection>
+            ) : null}
+          </>
+        )}
 
-              {showDevTools ? (
-                <SettingsSection
-                  title="Developer Utilities"
-                  description="Seed and clear local data for manual testing on native builds."
-                  footer={devStatus ?? undefined}
-                >
-                  <XStack>
-                    <PrimaryButton
-                      disabled={!hasSession || isSeeding || isSyncing}
-                      onPress={handleSeedSampleData}
-                    >
-                      {isSeeding ? 'Seeding…' : 'Seed sample data'}
-                    </PrimaryButton>
-                  </XStack>
-
-                  <XStack>
-                    <SecondaryButton
-                      disabled={!hasSession || !hasOutboxData}
-                      onPress={handleClearOutbox}
-                    >
-                      Clear outbox
-                    </SecondaryButton>
-                  </XStack>
-                  <XStack>
-                    <SecondaryButton
-                      disabled={!hasSession || isClearing || !hasDbData}
-                      onPress={handleClearLocalDatabase}
-                    >
-                      {isClearing ? 'Clearing…' : 'Clear local database'}
-                    </SecondaryButton>
-                  </XStack>
-                </SettingsSection>
-              ) : null}
-            </>
-          )}
-
-          <Paragraph textAlign="center" color="$colorMuted" marginBottom="$4">
-            Additional settings will arrive alongside theme controls and data export.
-          </Paragraph>
-        </YStack>
-      </ScrollView>
+        <Paragraph textAlign="center" color="$colorMuted" marginBottom="$4">
+          Additional settings will arrive alongside theme controls and data export.
+        </Paragraph>
+      </YStack>
     </ScreenContainer>
   );
 }

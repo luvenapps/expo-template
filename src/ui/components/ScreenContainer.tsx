@@ -1,4 +1,5 @@
 import { PropsWithChildren } from 'react';
+import { KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { YStack } from 'tamagui';
 import { useThemeContext } from '@/ui/theme/ThemeProvider';
@@ -9,6 +10,9 @@ type ScreenContainerProps = PropsWithChildren<{
   paddingHorizontal?: string | number;
   gap?: string | number;
   backgroundColor?: string;
+  scrollable?: boolean;
+  keyboardAvoiding?: boolean;
+  contentContainerStyle?: ScrollView['props']['contentContainerStyle'];
 }>;
 
 export function ScreenContainer({
@@ -18,6 +22,9 @@ export function ScreenContainer({
   paddingHorizontal = '$6',
   gap,
   backgroundColor,
+  scrollable = true,
+  keyboardAvoiding = false,
+  contentContainerStyle,
 }: ScreenContainerProps) {
   const insets = useSafeAreaInsets();
   const topPadding = Math.max(insets.top, 12) + 12;
@@ -26,7 +33,7 @@ export function ScreenContainer({
   const resolvedBackground = backgroundColor ?? palette.background;
   const resolvedColor = palette.text;
 
-  return (
+  const content = (
     <YStack
       testID="screen-container"
       flex={1}
@@ -42,5 +49,30 @@ export function ScreenContainer({
     >
       {children}
     </YStack>
+  );
+
+  const maybeScrollable = scrollable ? (
+    <ScrollView
+      contentContainerStyle={contentContainerStyle}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+    >
+      {content}
+    </ScrollView>
+  ) : (
+    content
+  );
+
+  if (!keyboardAvoiding) {
+    return maybeScrollable;
+  }
+
+  return (
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      {maybeScrollable}
+    </KeyboardAvoidingView>
   );
 }
