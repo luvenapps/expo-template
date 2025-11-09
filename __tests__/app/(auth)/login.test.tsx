@@ -32,6 +32,54 @@ jest.mock('@tamagui/lucide-icons', () => ({
   },
 }));
 
+jest.mock('tamagui', () => {
+  const actual = jest.requireActual('tamagui');
+  const React = jest.requireActual('react');
+  const { View, Text, TextInput, TouchableOpacity } = jest.requireActual('react-native');
+
+  const createForwarded = (Component: any) => {
+    const ForwardedComponent = React.forwardRef((props: any, ref: any) =>
+      React.createElement(Component, { ...props, ref }, props.children),
+    );
+    ForwardedComponent.displayName = `Forwarded(${Component.displayName || Component.name || 'Component'})`;
+    return ForwardedComponent;
+  };
+
+  const Input = React.forwardRef((props: any, ref: any) =>
+    React.createElement(TextInput, { ...props, ref }),
+  );
+  Input.displayName = 'Input';
+
+  const Button = ({ children, onPress, ...rest }: any) =>
+    React.createElement(
+      TouchableOpacity,
+      { onPress, accessibilityRole: 'button', ...rest },
+      typeof children === 'string' ? React.createElement(Text, null, children) : children,
+    );
+
+  const Form = Object.assign(
+    ({ children, onSubmit, ...rest }: any) =>
+      React.createElement(View, { ...rest, onSubmit }, children),
+    {
+      Trigger: ({ children }: any) => children,
+    },
+  );
+
+  return {
+    ...actual,
+    Input,
+    Button,
+    YStack: createForwarded(View),
+    XStack: createForwarded(View),
+    Paragraph: createForwarded(Text),
+    H1: createForwarded(Text),
+    Text: createForwarded(Text),
+    View: createForwarded(View),
+    Card: createForwarded(View),
+    Form,
+  };
+});
+
 import { fireEvent, render } from '@testing-library/react-native';
 import React from 'react';
 import LoginScreen from '../../../app/(auth)/login';

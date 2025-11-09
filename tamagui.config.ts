@@ -97,6 +97,7 @@ const themes = {
     accentColorHover: tokens.color.accentHover,
     borderColor: tokens.color.borderColor,
     borderColorHover: tokens.color.borderColorPress,
+    borderColorFocus: tokens.color.accent,
   },
   dark: {
     background: '#1a1a1a',
@@ -109,6 +110,7 @@ const themes = {
     accentColorHover: '#3B82F6',
     borderColor: '#334155',
     borderColorHover: '#1E293B',
+    borderColorFocus: '#60A5FA',
   },
 };
 
