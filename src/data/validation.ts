@@ -2,6 +2,7 @@ const HEX_COLOR_REGEX = /^#[0-9A-Fa-f]{6}$/;
 const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_24H_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/;
 const DAYS_OF_WEEK_REGEX = /^(?:[0-6](?:,[0-6])*)$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const VALID_CADENCES = ['daily', 'weekly', 'monthly'] as const;
 
@@ -61,4 +62,13 @@ export function assertIntegerInRange(value: number, min: number, max: number, fi
 export function assertNumberInRange(value: number, min: number, max: number, field: string) {
   ensure(Number.isFinite(value), `${field} must be a number`);
   ensure(value >= min && value <= max, `${field} must be between ${min} and ${max}`);
+}
+
+export function isValidEmail(email: string): boolean {
+  return EMAIL_REGEX.test(email);
+}
+
+export function assertValidEmail(value: string, field: string) {
+  assertNonEmptyString(value, field);
+  ensure(EMAIL_REGEX.test(value), `${field} must be a valid email address`);
 }

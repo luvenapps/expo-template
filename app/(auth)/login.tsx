@@ -1,14 +1,25 @@
 import { useSessionStore } from '@/auth/session';
-import { PrimaryButton, ScreenContainer } from '@/ui';
+import { isValidEmail } from '@/data/validation';
+import {
+  BodyText,
+  CaptionText,
+  LabelText,
+  PrimaryButton,
+  ScreenContainer,
+  SubtitleText,
+  TitleText,
+} from '@/ui';
 import type { NavigationProp, ParamListBase } from '@react-navigation/native';
 import { Eye, EyeOff } from '@tamagui/lucide-icons';
 import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { Button, Card, Form, H1, Input, Paragraph, Text, View, YStack } from 'tamagui';
+import { useCallback, useRef, useState } from 'react';
+import { TextInput } from 'react-native';
+import { Button, Card, Form, Input, View, YStack } from 'tamagui';
 
 export default function LoginScreen() {
   const navigation = useNavigation<NavigationProp<ParamListBase>>();
   const router = useRouter();
+  const passwordInputRef = useRef<TextInput>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -16,6 +27,8 @@ export default function LoginScreen() {
   const setError = useSessionStore((state) => state.setError);
   const isLoading = useSessionStore((state) => state.isLoading);
   const error = useSessionStore((state) => state.error);
+
+  const isFormValid = email.trim() !== '' && isValidEmail(email) && password.trim() !== '';
 
   // Clear form fields and error when returning to the screen
   useFocusEffect(
@@ -29,6 +42,9 @@ export default function LoginScreen() {
   );
 
   const handleSubmit = async () => {
+    // Prevent submission if form is invalid
+    if (!isFormValid) return;
+
     const result = await signInWithEmail(email, password);
     if (result.success) {
       // Clear fields and error on successful login
@@ -64,25 +80,21 @@ export default function LoginScreen() {
       >
         <YStack gap="$5" width="100%">
           <YStack gap="$2" alignItems="center">
-            <H1 fontSize={32} fontWeight="700" color="$color" textAlign="center">
-              Welcome back
-            </H1>
-            <Paragraph color="$colorMuted" textAlign="center" fontSize="$3">
-              Sign in to your account to continue
-            </Paragraph>
+            <TitleText textAlign="center">Welcome back</TitleText>
+            <SubtitleText textAlign="center">Sign in to your account to continue</SubtitleText>
           </YStack>
 
           <Form onSubmit={handleSubmit} width="100%" gap="$4">
             <YStack gap="$2">
-              <Text fontWeight="600" color="$color" fontSize="$4">
-                Email
-              </Text>
+              <LabelText color="$color">Email</LabelText>
               <Input
                 placeholder="you@example.com"
+                placeholderTextColor="$colorMuted"
                 keyboardType="email-address"
                 autoCapitalize="none"
                 value={email}
                 onChangeText={setEmail}
+                onSubmitEditing={() => passwordInputRef.current?.focus()}
                 returnKeyType="next"
                 size="$2"
                 height={56}
@@ -99,12 +111,12 @@ export default function LoginScreen() {
             </YStack>
 
             <YStack gap="$2">
-              <Text fontWeight="600" color="$color" fontSize="$4">
-                Password
-              </Text>
+              <LabelText color="$color">Password</LabelText>
               <View position="relative" width="100%">
                 <Input
+                  ref={passwordInputRef}
                   placeholder="Enter your password"
+                  placeholderTextColor="$colorMuted"
                   secureTextEntry={!showPassword}
                   value={password}
                   onChangeText={setPassword}
@@ -144,15 +156,14 @@ export default function LoginScreen() {
               </View>
             </YStack>
 
-            <Text
+            <CaptionText
               textAlign="right"
               color="$accentColor"
               fontWeight="600"
-              fontSize="$4"
               hoverStyle={{ opacity: 0.8, cursor: 'pointer' }}
             >
               Forgot your password?
-            </Text>
+            </CaptionText>
 
             {error ? (
               <YStack
@@ -162,14 +173,14 @@ export default function LoginScreen() {
                 borderWidth={1}
                 borderColor="$borderColor"
               >
-                <Paragraph color="red" textAlign="center" fontSize="$3">
+                <BodyText color="red" textAlign="center" fontSize="$3">
                   {error}
-                </Paragraph>
+                </BodyText>
               </YStack>
             ) : null}
 
             <Form.Trigger asChild>
-              <PrimaryButton disabled={!email || !password || isLoading} onPress={handleSubmit}>
+              <PrimaryButton disabled={!isFormValid || isLoading} onPress={handleSubmit}>
                 {isLoading ? 'Signing in…' : 'Sign In'}
               </PrimaryButton>
             </Form.Trigger>
@@ -177,7 +188,7 @@ export default function LoginScreen() {
 
           <YStack gap="$3" width="100%" alignItems="center">
             <View marginTop={10}>
-              <Text color="$colorMuted">Or</Text>
+              <CaptionText color="$colorMuted">Or</CaptionText>
             </View>
             <Button flex={1} width="100%" height={48} variant="outlined" disabled>
               Continue with Apple
