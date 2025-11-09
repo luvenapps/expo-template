@@ -1,8 +1,8 @@
+import { useThemeContext } from '@/ui/theme/ThemeProvider';
 import { PropsWithChildren } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { YStack } from 'tamagui';
-import { useThemeContext } from '@/ui/theme/ThemeProvider';
 
 type ScreenContainerProps = PropsWithChildren<{
   justifyContent?: 'flex-start' | 'flex-end' | 'center' | 'space-between' | 'space-around';
@@ -23,7 +23,7 @@ export function ScreenContainer({
   gap,
   backgroundColor,
   scrollable = true,
-  keyboardAvoiding = false,
+  keyboardAvoiding = true,
   contentContainerStyle,
 }: ScreenContainerProps) {
   const insets = useSafeAreaInsets();
@@ -71,6 +71,7 @@ export function ScreenContainer({
     <KeyboardAvoidingView
       style={{ flex: 1 }}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={70}
     >
       {maybeScrollable}
     </KeyboardAvoidingView>

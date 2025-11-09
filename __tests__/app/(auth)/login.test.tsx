@@ -80,7 +80,7 @@ jest.mock('tamagui', () => {
   };
 });
 
-import { fireEvent, render } from '@testing-library/react-native';
+import { fireEvent, render, waitFor, act } from '@testing-library/react-native';
 import React from 'react';
 import LoginScreen from '../../../app/(auth)/login';
 import { useSessionStore } from '@/auth/session';
@@ -101,9 +101,29 @@ jest.mock('expo-router', () => ({
   useNavigation: () => ({
     canGoBack: mockCanGoBack,
   }),
+  // Mock useFocusEffect to do nothing in tests
+  useFocusEffect: jest.fn(),
 }));
 
 const mockedUseSessionStore = useSessionStore as unknown as jest.Mock;
+
+// Suppress act() warnings - these are expected for async updates in handleSubmit
+const originalError = console.error;
+beforeAll(() => {
+  console.error = (...args: any[]) => {
+    if (
+      typeof args[0] === 'string' &&
+      (args[0].includes('not wrapped in act') || args[0].includes('not configured to support act'))
+    ) {
+      return;
+    }
+    originalError.call(console, ...args);
+  };
+});
+
+afterAll(() => {
+  console.error = originalError;
+});
 
 describe('LoginScreen', () => {
   beforeEach(() => {
@@ -114,6 +134,7 @@ describe('LoginScreen', () => {
     mockedUseSessionStore.mockImplementation((selector: any) =>
       selector({
         signInWithEmail: jest.fn().mockResolvedValue({ success: true }),
+        setError: jest.fn(),
         isLoading: false,
         error: null,
       }),
@@ -129,6 +150,7 @@ describe('LoginScreen', () => {
     mockedUseSessionStore.mockImplementation((selector: any) =>
       selector({
         signInWithEmail: signInMock,
+        setError: jest.fn(),
         isLoading: false,
         error: null,
       }),
@@ -136,11 +158,15 @@ describe('LoginScreen', () => {
 
     const { getByPlaceholderText, getByText } = render(<LoginScreen />);
 
-    fireEvent.changeText(getByPlaceholderText('Email'), 'user@example.com');
-    fireEvent.changeText(getByPlaceholderText('Password'), 'password');
-    fireEvent.press(getByText('Sign In'));
+    fireEvent.changeText(getByPlaceholderText('you@example.com'), 'user@example.com');
+    fireEvent.changeText(getByPlaceholderText('Enter your password'), 'password');
 
-    expect(signInMock).toHaveBeenCalledWith('user@example.com', 'password');
+    await act(async () => {
+      fireEvent.press(getByText('Sign In'));
+      await waitFor(() => {
+        expect(signInMock).toHaveBeenCalledWith('user@example.com', 'password');
+      });
+    });
   });
 
   test('navigates back on successful login', async () => {
@@ -148,6 +174,7 @@ describe('LoginScreen', () => {
     mockedUseSessionStore.mockImplementation((selector: any) =>
       selector({
         signInWithEmail: signInMock,
+        setError: jest.fn(),
         isLoading: false,
         error: null,
       }),
@@ -155,14 +182,16 @@ describe('LoginScreen', () => {
 
     const { getByPlaceholderText, getByText } = render(<LoginScreen />);
 
-    fireEvent.changeText(getByPlaceholderText('Email'), 'user@example.com');
-    fireEvent.changeText(getByPlaceholderText('Password'), 'password');
-    fireEvent.press(getByText('Sign In'));
+    fireEvent.changeText(getByPlaceholderText('you@example.com'), 'user@example.com');
+    fireEvent.changeText(getByPlaceholderText('Enter your password'), 'password');
 
-    // Wait for async signIn to complete
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await act(async () => {
+      fireEvent.press(getByText('Sign In'));
+      await waitFor(() => {
+        expect(mockBack).toHaveBeenCalled();
+      });
+    });
 
-    expect(mockBack).toHaveBeenCalled();
     expect(mockReplace).not.toHaveBeenCalled();
   });
 
@@ -170,6 +199,7 @@ describe('LoginScreen', () => {
     mockedUseSessionStore.mockImplementation((selector: any) =>
       selector({
         signInWithEmail: jest.fn(),
+        setError: jest.fn(),
         isLoading: true,
         error: null,
       }),
@@ -183,6 +213,7 @@ describe('LoginScreen', () => {
     mockedUseSessionStore.mockImplementation((selector: any) =>
       selector({
         signInWithEmail: jest.fn(),
+        setError: jest.fn(),
         isLoading: false,
         error: 'Invalid email or password',
       }),
@@ -199,6 +230,7 @@ describe('LoginScreen', () => {
     mockedUseSessionStore.mockImplementation((selector: any) =>
       selector({
         signInWithEmail: signInMock,
+        setError: jest.fn(),
         isLoading: false,
         error: null,
       }),
@@ -206,19 +238,21 @@ describe('LoginScreen', () => {
 
     const { getByPlaceholderText, getByText } = render(<LoginScreen />);
 
-    fireEvent.changeText(getByPlaceholderText('Email'), 'user@example.com');
-    fireEvent.changeText(getByPlaceholderText('Password'), 'wrongpassword');
-    fireEvent.press(getByText('Sign In'));
+    fireEvent.changeText(getByPlaceholderText('you@example.com'), 'user@example.com');
+    fireEvent.changeText(getByPlaceholderText('Enter your password'), 'wrongpassword');
 
-    // Wait for async signIn to complete
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await act(async () => {
+      fireEvent.press(getByText('Sign In'));
+      // Wait for async signIn to complete
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
 
     expect(mockBack).not.toHaveBeenCalled();
   });
 
   test('toggles password visibility when eye icon is pressed', () => {
     const { getByPlaceholderText, getByLabelText } = render(<LoginScreen />);
-    const passwordInput = getByPlaceholderText('Password');
+    const passwordInput = getByPlaceholderText('Enter your password');
 
     // Initially password should be hidden
     expect(passwordInput.props.secureTextEntry).toBe(true);
@@ -242,13 +276,16 @@ describe('LoginScreen', () => {
     mockCanGoBack.mockReturnValue(false);
     const { getByPlaceholderText, getByText } = render(<LoginScreen />);
 
-    fireEvent.changeText(getByPlaceholderText('Email'), 'user@example.com');
-    fireEvent.changeText(getByPlaceholderText('Password'), 'password');
-    fireEvent.press(getByText('Sign In'));
+    fireEvent.changeText(getByPlaceholderText('you@example.com'), 'user@example.com');
+    fireEvent.changeText(getByPlaceholderText('Enter your password'), 'password');
 
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await act(async () => {
+      fireEvent.press(getByText('Sign In'));
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith('/(tabs)');
+      });
+    });
 
-    expect(mockReplace).toHaveBeenCalledWith('/(tabs)');
     expect(mockBack).not.toHaveBeenCalled();
   });
 });
