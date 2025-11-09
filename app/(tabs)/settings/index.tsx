@@ -278,6 +278,8 @@ export default function SettingsScreen() {
                     size="$5"
                     height={48}
                     borderRadius="$3"
+                    borderStyle="solid"
+                    borderColor="$borderColor"
                     backgroundColor={isActive ? '$accentColor' : '$backgroundStrong'}
                     color={isActive ? 'white' : '$color'}
                     pressStyle={{

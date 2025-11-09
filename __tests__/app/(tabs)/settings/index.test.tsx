@@ -78,10 +78,21 @@ jest.mock('react-native-gesture-handler', () => {
 // Mock Tamagui
 jest.mock('tamagui', () => {
   const mockReact = jest.requireActual('react');
+
+  const CardComponent = ({ children, ...props }: any) =>
+    mockReact.createElement('View', props, children);
+
+  CardComponent.Header = ({ children, ...props }: any) =>
+    mockReact.createElement('View', props, children);
+
+  CardComponent.Footer = ({ children, ...props }: any) =>
+    mockReact.createElement('View', props, children);
+
   return {
     YStack: ({ children, testID, ...props }: any) =>
       mockReact.createElement('View', { testID, ...props }, children),
     XStack: ({ children, ...props }: any) => mockReact.createElement('View', props, children),
+    Card: CardComponent,
     Paragraph: ({ children, ...props }: any) => mockReact.createElement('Text', props, children),
     Button: ({ children, onPress, disabled, ...props }: any) =>
       mockReact.createElement(
