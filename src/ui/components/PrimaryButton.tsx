@@ -7,12 +7,10 @@ export function PrimaryButton({ size = '$5', children, ...rest }: PrimaryButtonP
   return (
     <Button
       size={size}
-      borderRadius="$3"
+      width="100%"
       backgroundColor="$accentColor"
       color="white"
       fontWeight="600"
-      justifyContent="center"
-      alignItems="center"
       minHeight={48}
       hoverStyle={{ backgroundColor: '$accentColorHover' }}
       pressStyle={{ backgroundColor: '$accentColorHover' }}

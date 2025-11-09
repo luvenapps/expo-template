@@ -1,5 +1,17 @@
 import { useSessionStore } from '@/auth/session';
+import { DOMAIN } from '@/config/domain.config';
+import {
+  createDeviceLocal,
+  createEntryLocal,
+  createPrimaryEntityLocal,
+  createReminderLocal,
+} from '@/data';
+import { clearAllTables, getDb, hasData } from '@/db/sqlite';
+import { onDatabaseReset } from '@/db/sqlite/events';
+import { withDatabaseRetry } from '@/db/sqlite/retry';
+import { useSyncStore } from '@/state';
 import { pullUpdates, pushOutbox, useSync } from '@/sync';
+import { clearAll as clearOutbox, getPending } from '@/sync/outbox';
 import { PrimaryButton, ScreenContainer, SecondaryButton, SettingsSection } from '@/ui';
 import { useThemeContext, type ThemeName } from '@/ui/theme/ThemeProvider';
 import { Monitor, Moon, Sun } from '@tamagui/lucide-icons';
@@ -8,18 +20,6 @@ import type { ComponentType } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform, ScrollView } from 'react-native';
 import { Button, Paragraph, XStack, YStack } from 'tamagui';
-import {
-  createDeviceLocal,
-  createEntryLocal,
-  createPrimaryEntityLocal,
-  createReminderLocal,
-} from '@/data';
-import { clearAll as clearOutbox, getPending } from '@/sync/outbox';
-import { useSyncStore } from '@/state';
-import { DOMAIN } from '@/config/domain.config';
-import { clearAllTables, getDb, hasData } from '@/db/sqlite';
-import { withDatabaseRetry } from '@/db/sqlite/retry';
-import { onDatabaseReset } from '@/db/sqlite/events';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -255,7 +255,11 @@ export default function SettingsScreen() {
                 : 'Sign in to sync your data across devices.'
             }
           >
-            <PrimaryButton disabled={isLoading} onPress={handleAuthAction}>
+            <PrimaryButton
+              marginBottom={isNative ? '$5' : ''}
+              disabled={isLoading}
+              onPress={handleAuthAction}
+            >
               {isLoading ? 'Loading…' : status === 'authenticated' ? 'Sign Out' : 'Sign In'}
             </PrimaryButton>
           </SettingsSection>
@@ -295,75 +299,69 @@ export default function SettingsScreen() {
 
           {isNative && (
             <>
-              <YStack height="$1" backgroundColor="$borderColor" marginVertical="$4" />
-
-              <YStack gap="$3">
-                <Paragraph textAlign="center" fontWeight="600">
-                  Sync Status: {syncStatus.toUpperCase()}
+              <SettingsSection
+                title="Sync & Storage"
+                description="Review local queue status and run a manual sync with Supabase."
+                footer={syncDisabledMessage}
+              >
+                <Paragraph color="$colorMuted" textAlign="center">
+                  Status: {syncStatus.toUpperCase()}
                 </Paragraph>
-                <Paragraph textAlign="center" color="$colorMuted">
+                <Paragraph color="$colorMuted" textAlign="center">
                   Queue size: {queueSize}
                 </Paragraph>
-                <Paragraph textAlign="center" color="$colorMuted">
+                <Paragraph color="$colorMuted" textAlign="center">
                   Last synced: {lastSyncedAt ? new Date(lastSyncedAt).toLocaleString() : 'Never'}
                 </Paragraph>
                 {lastError ? (
-                  <Paragraph textAlign="center" color="$colorMuted">
+                  <Paragraph color="$colorMuted" textAlign="center">
                     Last error: {lastError}
                   </Paragraph>
                 ) : null}
-                {syncDisabledMessage ? (
-                  <Paragraph textAlign="center" color="$colorMuted">
-                    {syncDisabledMessage}
-                  </Paragraph>
-                ) : null}
-                <PrimaryButton
-                  size="$5"
-                  disabled={!canSync || isSyncing || !hasOutboxData}
-                  onPress={handleManualSync}
-                  marginBottom="$4"
-                >
-                  {isSyncing ? 'Syncing…' : 'Sync now'}
-                </PrimaryButton>
-              </YStack>
-
-              <YStack height="$1" backgroundColor="$borderColor" marginVertical="$4" />
-
-              {showDevTools && (
-                <YStack gap="$3" marginBottom="$4">
-                  <Paragraph textAlign="center" fontWeight="600">
-                    Developer Tools (local-only)
-                  </Paragraph>
-                  <Paragraph textAlign="center" color="$colorMuted">
-                    Seeds sample records in SQLite and queues them for sync. Intended for manual
-                    testing on native builds.
-                  </Paragraph>
+                <XStack>
                   <PrimaryButton
-                    disabled={!hasSession || isSeeding || isSyncing}
-                    onPress={handleSeedSampleData}
+                    size="$5"
+                    disabled={!canSync || isSyncing || !hasOutboxData}
+                    onPress={handleManualSync}
                   >
-                    {isSeeding ? 'Seeding…' : 'Seed sample data'}
+                    {isSyncing ? 'Syncing…' : 'Sync now'}
                   </PrimaryButton>
-                  <SecondaryButton
-                    disabled={!hasSession || !hasOutboxData}
-                    onPress={handleClearOutbox}
-                  >
-                    Clear outbox
-                  </SecondaryButton>
-                  <SecondaryButton
-                    disabled={!hasSession || isClearing || !hasDbData}
-                    onPress={handleClearLocalDatabase}
-                  >
-                    {isClearing ? 'Clearing…' : 'Clear local database'}
-                  </SecondaryButton>
-                  {devStatus ? (
-                    <Paragraph textAlign="center" color="$colorMuted">
-                      {devStatus}
-                    </Paragraph>
-                  ) : null}
-                  <YStack height="$1" backgroundColor="$borderColor" marginVertical="$4" />
-                </YStack>
-              )}
+                </XStack>
+              </SettingsSection>
+
+              {showDevTools ? (
+                <SettingsSection
+                  title="Developer Utilities"
+                  description="Seed and clear local data for manual testing on native builds."
+                  footer={devStatus ?? undefined}
+                >
+                  <XStack>
+                    <PrimaryButton
+                      disabled={!hasSession || isSeeding || isSyncing}
+                      onPress={handleSeedSampleData}
+                    >
+                      {isSeeding ? 'Seeding…' : 'Seed sample data'}
+                    </PrimaryButton>
+                  </XStack>
+
+                  <XStack>
+                    <SecondaryButton
+                      disabled={!hasSession || !hasOutboxData}
+                      onPress={handleClearOutbox}
+                    >
+                      Clear outbox
+                    </SecondaryButton>
+                  </XStack>
+                  <XStack>
+                    <SecondaryButton
+                      disabled={!hasSession || isClearing || !hasDbData}
+                      onPress={handleClearLocalDatabase}
+                    >
+                      {isClearing ? 'Clearing…' : 'Clear local database'}
+                    </SecondaryButton>
+                  </XStack>
+                </SettingsSection>
+              ) : null}
             </>
           )}
 

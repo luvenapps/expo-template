@@ -324,7 +324,7 @@ describe('SettingsScreen', () => {
       });
 
       const { getByText } = render(<SettingsScreen />);
-      expect(getByText(/Sync Status:/)).toBeDefined();
+      expect(getByText('Sync & Storage')).toBeDefined();
       expect(getByText(/Queue size: 5/)).toBeDefined();
       expect(getByText(/Last error: Network error/)).toBeDefined();
     });
@@ -337,7 +337,7 @@ describe('SettingsScreen', () => {
       });
 
       const { queryByText } = render(<SettingsScreen />);
-      expect(queryByText(/Sync Status:/)).toBeNull();
+      expect(queryByText('Sync & Storage')).toBeNull();
 
       Object.defineProperty(Platform, 'OS', {
         value: originalPlatform,

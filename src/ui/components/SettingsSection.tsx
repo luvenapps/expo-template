@@ -5,9 +5,9 @@ type SettingsSectionProps = PropsWithChildren<{
   title: string;
   description?: string;
   icon?: ReactNode;
-}> & {
-  footer?: ReactNode;
-};
+  footer?: ReactNode | string;
+  align?: 'start' | 'center';
+}>;
 
 export function SettingsSection({
   title,
@@ -29,7 +29,7 @@ export function SettingsSection({
       shadowOpacity={0.08}
       shadowRadius={16}
     >
-      <YStack gap="$2">
+      <YStack gap="$2" alignItems="center">
         <YStack flexDirection="row" alignItems="center" gap="$2">
           {icon}
           <Paragraph fontWeight="700" fontSize="$5">
@@ -37,16 +37,20 @@ export function SettingsSection({
           </Paragraph>
         </YStack>
         {description ? (
-          <Paragraph color="$colorMuted" fontSize="$3">
+          <Paragraph color="$colorMuted" fontSize="$3" textAlign="center">
             {description}
           </Paragraph>
         ) : null}
       </YStack>
       <YStack gap="$3">{children}</YStack>
       {footer ? (
-        <Paragraph color="$colorMuted" fontSize="$2">
-          {footer}
-        </Paragraph>
+        typeof footer === 'string' ? (
+          <Paragraph color="$colorMuted" fontSize="$2" textAlign="center">
+            {footer}
+          </Paragraph>
+        ) : (
+          footer
+        )
       ) : null}
     </YStack>
   );

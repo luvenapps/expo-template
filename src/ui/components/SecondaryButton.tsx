@@ -6,6 +6,7 @@ export type SecondaryButtonProps = ComponentProps<typeof Button>;
 export function SecondaryButton({ size = '$5', children, ...rest }: SecondaryButtonProps) {
   return (
     <Button
+      width="100%"
       size={size}
       borderRadius="$3"
       backgroundColor="$background"
@@ -13,8 +14,6 @@ export function SecondaryButton({ size = '$5', children, ...rest }: SecondaryBut
       borderWidth={1}
       borderColor="$borderColor"
       fontWeight="600"
-      justifyContent="center"
-      alignItems="center"
       minHeight={48}
       hoverStyle={{ backgroundColor: '$backgroundStrong' }}
       pressStyle={{ backgroundColor: '$backgroundPress' }}

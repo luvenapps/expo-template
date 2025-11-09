@@ -617,4 +617,26 @@ describe('useSyncTask', () => {
       expect(result).toBe(BackgroundTask.BackgroundTaskResult.Failed);
     });
   });
+
+  describe('edge cases', () => {
+    it('should handle sync after unmount gracefully', async () => {
+      const { result, unmount } = renderHook(() =>
+        useSyncTask({ engine: mockEngine as any, enabled: true, autoStart: false }),
+      );
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      mockEngine.runSync.mockClear();
+      unmount();
+
+      await act(async () => {
+        await result.current.triggerSync();
+      });
+
+      // Should not run sync after unmount
+      expect(mockEngine.runSync).not.toHaveBeenCalled();
+    });
+  });
 });
