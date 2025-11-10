@@ -330,6 +330,26 @@ Jest config; prefer them over relative imports.
 
 - **Design primitives** — common components live under `src/ui/components` (e.g., `PrimaryButton` for call-to-action styling).
 
+## UI Components & Tamagui
+
+- **Prefer Tamagui primitives** – Use built-in Tamagui components (`Button`, `Input`, `Card`, `YStack`, `XStack`, `View`, `Text`, etc.) instead of building custom components from scratch.
+- **Component hierarchy**:
+  1. Use Tamagui primitives directly when possible
+  2. Compose Tamagui primitives into reusable components for common patterns (e.g., `FormField`, `ScreenContainer`)
+  3. Only build custom components when Tamagui doesn't provide the needed functionality
+- **Styling**: Use Tamagui's theme tokens (`$background`, `$color`, `$borderColor`, etc.) for consistency across light/dark modes
+- **Custom components**: Located in `src/ui/components/` – reusable UI building blocks
+  - `ScreenContainer` – Page wrapper with safe area handling and keyboard avoidance
+  - `FormField` – Input wrapper with label, helper text, and error states
+  - `Text.tsx` – Semantic text components (`TitleText`, `SubtitleText`, `BodyText`, `LabelText`, `CaptionText`)
+  - `PrimaryButton` – Styled button for primary actions
+  - `Card` – Already provided by Tamagui; use directly for cards/containers
+- **Theme configuration**: `tamagui.config.ts` defines tokens and theme values
+- **When to create new components**:
+  - Repeated patterns that combine multiple Tamagui primitives
+  - Components that need consistent behavior across the app (e.g., form fields with validation)
+  - Semantic wrappers that improve code readability (e.g., `TitleText` instead of `Text fontSize="$8"`)
+
 ## Tooling & Hooks
 
 - **Husky hooks** enforce quality gates:
