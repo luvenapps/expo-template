@@ -1,42 +1,10 @@
 /* istanbul ignore file */
 import { createInterFont } from '@tamagui/font-inter';
 import { createFont, createTamagui, createTokens } from 'tamagui';
+import { tamaguiColorTokens } from './src/ui/theme/palette';
 
 const tokens = createTokens({
-  color: {
-    // Light theme tokens
-    backgroundLight: '#FFFFFF',
-    backgroundStrongLight: '#F1F5F9',
-    backgroundHoverLight: '#F8FAFC',
-    backgroundPressLight: '#E2E8F0',
-    colorLight: '#0F172A',
-    colorMutedLight: '#475569',
-    accentLight: '#2563EB',
-    accentHoverLight: '#1D4ED8',
-    accentMutedLight: '#94A3B8',
-    borderColorLight: '#CBD5F5',
-    borderColorPressLight: '#94A3B8',
-    outlineColorLight: '#2563EB',
-    surfaceLight: '#F8FAFC',
-    secondaryBackgroundLight: '#F1F5F9',
-    secondaryTextLight: '#475569',
-    // Dark theme tokens
-    backgroundDark: '#0F172A',
-    backgroundStrongDark: '#111827',
-    backgroundHoverDark: '#1C2534',
-    backgroundPressDark: '#1F2937',
-    colorDark: '#E2E8F0',
-    colorMutedDark: '#94A3B8',
-    accentDark: '#60A5FA',
-    accentHoverDark: '#3B82F6',
-    accentMutedDark: '#94A3B8',
-    borderColorDark: '#334155',
-    borderColorPressDark: '#1E293B',
-    outlineColorDark: '#60A5FA',
-    surfaceDark: '#111827',
-    secondaryBackgroundDark: '#1F2937',
-    secondaryTextDark: '#94A3B8',
-  },
+  color: tamaguiColorTokens,
   space: {
     0: 0,
     1: 4,
@@ -121,7 +89,7 @@ const themes = {
     colorMuted: tokens.color.colorMutedLight,
     accentColor: tokens.color.accentLight,
     accentColorHover: tokens.color.accentHoverLight,
-    accentColorPress: '#1E40AF',
+    accentColorPress: tokens.color.accentPressLight,
     accentColorMuted: tokens.color.accentMutedLight,
     borderColor: tokens.color.borderColorLight,
     borderColorHover: tokens.color.borderColorPressLight,
@@ -131,6 +99,9 @@ const themes = {
     surface: tokens.color.surfaceLight,
     secondaryBackground: tokens.color.secondaryBackgroundLight,
     secondaryText: tokens.color.secondaryTextLight,
+    dangerColor: tokens.color.dangerLight,
+    dangerColorHover: tokens.color.dangerHoverLight,
+    dangerBackground: tokens.color.dangerBackgroundLight,
   },
   dark: {
     background: tokens.color.backgroundDark,
@@ -142,7 +113,7 @@ const themes = {
     colorMuted: tokens.color.colorMutedDark,
     accentColor: tokens.color.accentDark,
     accentColorHover: tokens.color.accentHoverDark,
-    accentColorPress: '#2563EB',
+    accentColorPress: tokens.color.accentPressDark,
     accentColorMuted: tokens.color.accentMutedDark,
     borderColor: tokens.color.borderColorDark,
     borderColorHover: tokens.color.borderColorPressDark,
@@ -152,6 +123,9 @@ const themes = {
     surface: tokens.color.surfaceDark,
     secondaryBackground: tokens.color.secondaryBackgroundDark,
     secondaryText: tokens.color.secondaryTextDark,
+    dangerColor: tokens.color.dangerDark,
+    dangerColorHover: tokens.color.dangerHoverDark,
+    dangerBackground: tokens.color.dangerBackgroundDark,
   },
 };
 

@@ -1,4 +1,5 @@
 import { DOMAIN } from '@/config/domain.config';
+import { themePalettes } from '@/ui/theme/palette';
 import { getThemePalette, ThemeProvider, useThemeContext } from '@/ui/theme/ThemeProvider';
 import { act, renderHook } from '@testing-library/react-native';
 import React, { PropsWithChildren } from 'react';
@@ -84,6 +85,9 @@ describe('ThemeProvider', () => {
   });
 
   const wrapper = ({ children }: PropsWithChildren) => <ThemeProvider>{children}</ThemeProvider>;
+
+  const expectedLightPalette = themePalettes.light;
+  const expectedDarkPalette = themePalettes.dark;
 
   describe('Provider Rendering', () => {
     it('should provide theme context to children', () => {
@@ -187,16 +191,7 @@ describe('ThemeProvider', () => {
         result.current.setPreference('light');
       });
 
-      expect(result.current.palette).toEqual({
-        background: '#FFFFFF',
-        text: '#0F172A',
-        mutedText: '#475569',
-        accent: '#2563EB',
-        accentMuted: '#94A3B8',
-        surface: '#F8FAFC',
-        secondaryBackground: '#F1F5F9',
-        secondaryText: '#475569',
-      });
+      expect(result.current.palette).toEqual(expectedLightPalette);
     });
 
     it('should resolve dark theme to dark palette', () => {
@@ -206,16 +201,7 @@ describe('ThemeProvider', () => {
         result.current.setPreference('dark');
       });
 
-      expect(result.current.palette).toEqual({
-        background: '#0F172A',
-        text: '#E2E8F0',
-        mutedText: '#94A3B8',
-        accent: '#60A5FA',
-        accentMuted: '#94A3B8',
-        surface: '#111827',
-        secondaryBackground: '#1F2937',
-        secondaryText: '#94A3B8',
-      });
+      expect(result.current.palette).toEqual(expectedDarkPalette);
     });
 
     it('should resolve system theme to light palette when system is light', () => {
@@ -227,16 +213,7 @@ describe('ThemeProvider', () => {
       });
 
       expect(result.current.resolvedTheme).toBe('light');
-      expect(result.current.palette).toEqual({
-        background: '#FFFFFF',
-        text: '#0F172A',
-        mutedText: '#475569',
-        accent: '#2563EB',
-        accentMuted: '#94A3B8',
-        surface: '#F8FAFC',
-        secondaryBackground: '#F1F5F9',
-        secondaryText: '#475569',
-      });
+      expect(result.current.palette).toEqual(expectedLightPalette);
     });
 
     it('should resolve system theme to dark palette when system is dark', () => {
@@ -248,16 +225,7 @@ describe('ThemeProvider', () => {
       });
 
       expect(result.current.resolvedTheme).toBe('dark');
-      expect(result.current.palette).toEqual({
-        background: '#0F172A',
-        text: '#E2E8F0',
-        mutedText: '#94A3B8',
-        accent: '#60A5FA',
-        accentMuted: '#94A3B8',
-        surface: '#111827',
-        secondaryBackground: '#1F2937',
-        secondaryText: '#94A3B8',
-      });
+      expect(result.current.palette).toEqual(expectedDarkPalette);
     });
   });
 
@@ -354,79 +322,34 @@ describe('ThemeProvider', () => {
     it('should return light palette for light theme', () => {
       const palette = getThemePalette('light');
 
-      expect(palette).toEqual({
-        background: '#FFFFFF',
-        text: '#0F172A',
-        mutedText: '#475569',
-        accent: '#2563EB',
-        accentMuted: '#94A3B8',
-        surface: '#F8FAFC',
-        secondaryBackground: '#F1F5F9',
-        secondaryText: '#475569',
-      });
+      expect(palette).toEqual(expectedLightPalette);
     });
 
     it('should return dark palette for dark theme', () => {
       const palette = getThemePalette('dark');
 
-      expect(palette).toEqual({
-        background: '#0F172A',
-        text: '#E2E8F0',
-        mutedText: '#94A3B8',
-        accent: '#60A5FA',
-        accentMuted: '#94A3B8',
-        surface: '#111827',
-        secondaryBackground: '#1F2937',
-        secondaryText: '#94A3B8',
-      });
+      expect(palette).toEqual(expectedDarkPalette);
     });
 
     it('should return light palette for system theme when system is light', () => {
       mockColorScheme = 'light';
       const palette = getThemePalette('system');
 
-      expect(palette).toEqual({
-        background: '#FFFFFF',
-        text: '#0F172A',
-        mutedText: '#475569',
-        accent: '#2563EB',
-        accentMuted: '#94A3B8',
-        surface: '#F8FAFC',
-        secondaryBackground: '#F1F5F9',
-        secondaryText: '#475569',
-      });
+      expect(palette).toEqual(expectedLightPalette);
     });
 
     it('should return dark palette for system theme when system is dark', () => {
       mockColorScheme = 'dark';
       const palette = getThemePalette('system');
 
-      expect(palette).toEqual({
-        background: '#0F172A',
-        text: '#E2E8F0',
-        mutedText: '#94A3B8',
-        accent: '#60A5FA',
-        accentMuted: '#94A3B8',
-        surface: '#111827',
-        secondaryBackground: '#1F2937',
-        secondaryText: '#94A3B8',
-      });
+      expect(palette).toEqual(expectedDarkPalette);
     });
 
     it('should default to light palette when system colorScheme is null', () => {
       mockColorScheme = null;
       const palette = getThemePalette('system');
 
-      expect(palette).toEqual({
-        background: '#FFFFFF',
-        text: '#0F172A',
-        mutedText: '#475569',
-        accent: '#2563EB',
-        accentMuted: '#94A3B8',
-        surface: '#F8FAFC',
-        secondaryBackground: '#F1F5F9',
-        secondaryText: '#475569',
-      });
+      expect(palette).toEqual(expectedLightPalette);
     });
   });
 
@@ -438,9 +361,9 @@ describe('ThemeProvider', () => {
         result.current.setPreference('light');
       });
 
-      expect(result.current.palette.background).toBe('#FFFFFF');
-      expect(result.current.palette.text).toBe('#0F172A');
-      expect(result.current.palette.mutedText).toBe('#475569');
+      expect(result.current.palette.background).toBe(expectedLightPalette.background);
+      expect(result.current.palette.text).toBe(expectedLightPalette.text);
+      expect(result.current.palette.mutedText).toBe(expectedLightPalette.mutedText);
     });
 
     it('should have correct dark palette values', () => {
@@ -450,9 +373,9 @@ describe('ThemeProvider', () => {
         result.current.setPreference('dark');
       });
 
-      expect(result.current.palette.background).toBe('#0F172A');
-      expect(result.current.palette.text).toBe('#E2E8F0');
-      expect(result.current.palette.mutedText).toBe('#94A3B8');
+      expect(result.current.palette.background).toBe(expectedDarkPalette.background);
+      expect(result.current.palette.text).toBe(expectedDarkPalette.text);
+      expect(result.current.palette.mutedText).toBe(expectedDarkPalette.mutedText);
     });
   });
 

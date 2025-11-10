@@ -140,12 +140,12 @@ export default function LoginScreen() {
             {error ? (
               <YStack
                 padding="$3"
-                backgroundColor="$backgroundPress"
+                backgroundColor="$dangerBackground"
                 borderRadius="$3"
                 borderWidth={1}
-                borderColor="$borderColor"
+                borderColor="$dangerColor"
               >
-                <BodyText color="red" textAlign="center" fontSize="$3">
+                <BodyText color="$dangerColor" textAlign="center" fontSize="$3">
                   {error}
                 </BodyText>
               </YStack>
