@@ -9,8 +9,7 @@ function TabIcon({ color, Icon }: { color: string; Icon: typeof Home }) {
 }
 
 export default function TabsLayout() {
-  const { resolvedTheme, palette } = useThemeContext();
-  const isDark = resolvedTheme === 'dark';
+  const { palette } = useThemeContext();
   const activeColor = palette.accent;
   const inactiveColor = palette.accentMuted;
 

@@ -41,6 +41,8 @@ jest.mock('@/ui/theme/ThemeProvider', () => ({
       background: '#FFFFFF',
       text: '#0F172A',
       mutedText: '#475569',
+      accent: '#2563EB',
+      accentMuted: '#94A3B8',
     },
   })),
   ThemeProvider: ({ children }: any) => children,
@@ -117,6 +119,8 @@ describe('RootLayout', () => {
         background: '#0F172A',
         text: '#FFFFFF',
         mutedText: '#94A3B8',
+        accent: '#60A5FA',
+        accentMuted: '#94A3B8',
       },
     });
 

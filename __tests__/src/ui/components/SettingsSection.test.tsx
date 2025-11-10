@@ -23,6 +23,12 @@ jest.mock('tamagui', () => {
   };
 });
 
+jest.mock('@/ui/theme/ThemeProvider', () => ({
+  useThemeContext: jest.fn(() => ({
+    resolvedTheme: 'light',
+  })),
+}));
+
 import { SettingsSection } from '@/ui/components/SettingsSection';
 import { render } from '@testing-library/react-native';
 import { Text } from 'react-native';

@@ -34,11 +34,18 @@ const mockUseThemeContext = useThemeContext as jest.Mock;
 describe('TabsLayout', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUseThemeContext.mockReturnValue({
+      resolvedTheme: 'light',
+      palette: { accent: '#2563EB', accentMuted: '#94A3B8' },
+    });
   });
 
   describe('Theme Colors', () => {
     it('should use dark theme colors when theme is dark', () => {
-      mockUseThemeContext.mockReturnValue({ resolvedTheme: 'dark' });
+      mockUseThemeContext.mockReturnValue({
+        resolvedTheme: 'dark',
+        palette: { accent: '#60A5FA', accentMuted: '#94A3B8' },
+      });
 
       const { UNSAFE_root } = render(<TabsLayout />);
       const tabs = UNSAFE_root.findByType('Tabs' as any);
@@ -48,7 +55,10 @@ describe('TabsLayout', () => {
     });
 
     it('should use light theme colors when theme is light', () => {
-      mockUseThemeContext.mockReturnValue({ resolvedTheme: 'light' });
+      mockUseThemeContext.mockReturnValue({
+        resolvedTheme: 'light',
+        palette: { accent: '#2563EB', accentMuted: '#94A3B8' },
+      });
 
       const { UNSAFE_root } = render(<TabsLayout />);
       const tabs = UNSAFE_root.findByType('Tabs' as any);
@@ -60,7 +70,10 @@ describe('TabsLayout', () => {
 
   describe('Screen Options', () => {
     it('should not set headerShown in screenOptions', () => {
-      mockUseThemeContext.mockReturnValue({ resolvedTheme: 'light' });
+      mockUseThemeContext.mockReturnValue({
+        resolvedTheme: 'light',
+        palette: { accent: '#2563EB', accentMuted: '#94A3B8' },
+      });
 
       const { UNSAFE_root } = render(<TabsLayout />);
       const tabs = UNSAFE_root.findByType('Tabs' as any);
@@ -72,7 +85,10 @@ describe('TabsLayout', () => {
 
   describe('Tab Screens', () => {
     it('should render index screen with correct configuration', () => {
-      mockUseThemeContext.mockReturnValue({ resolvedTheme: 'light' });
+      mockUseThemeContext.mockReturnValue({
+        resolvedTheme: 'light',
+        palette: { accent: '#2563EB', accentMuted: '#94A3B8' },
+      });
 
       const { UNSAFE_root } = render(<TabsLayout />);
       const screens = UNSAFE_root.findAllByType('TabsScreen' as any);
@@ -84,7 +100,10 @@ describe('TabsLayout', () => {
     });
 
     it('should render settings screen with correct configuration', () => {
-      mockUseThemeContext.mockReturnValue({ resolvedTheme: 'light' });
+      mockUseThemeContext.mockReturnValue({
+        resolvedTheme: 'light',
+        palette: { accent: '#2563EB', accentMuted: '#94A3B8' },
+      });
 
       const { UNSAFE_root } = render(<TabsLayout />);
       const screens = UNSAFE_root.findAllByType('TabsScreen' as any);
@@ -96,7 +115,10 @@ describe('TabsLayout', () => {
     });
 
     it('should render exactly 2 tab screens', () => {
-      mockUseThemeContext.mockReturnValue({ resolvedTheme: 'light' });
+      mockUseThemeContext.mockReturnValue({
+        resolvedTheme: 'light',
+        palette: { accent: '#2563EB', accentMuted: '#94A3B8' },
+      });
 
       const { UNSAFE_root } = render(<TabsLayout />);
       const screens = UNSAFE_root.findAllByType('TabsScreen' as any);
@@ -107,7 +129,10 @@ describe('TabsLayout', () => {
 
   describe('Tab Icons', () => {
     it('should render Home icon for index screen with correct props', () => {
-      mockUseThemeContext.mockReturnValue({ resolvedTheme: 'light' });
+      mockUseThemeContext.mockReturnValue({
+        resolvedTheme: 'light',
+        palette: { accent: '#2563EB', accentMuted: '#94A3B8' },
+      });
 
       const { UNSAFE_root } = render(<TabsLayout />);
       const screens = UNSAFE_root.findAllByType('TabsScreen' as any);
@@ -122,7 +147,10 @@ describe('TabsLayout', () => {
     });
 
     it('should render Settings icon for settings screen with correct props', () => {
-      mockUseThemeContext.mockReturnValue({ resolvedTheme: 'light' });
+      mockUseThemeContext.mockReturnValue({
+        resolvedTheme: 'light',
+        palette: { accent: '#2563EB', accentMuted: '#94A3B8' },
+      });
 
       const { UNSAFE_root } = render(<TabsLayout />);
       const screens = UNSAFE_root.findAllByType('TabsScreen' as any);
@@ -137,7 +165,10 @@ describe('TabsLayout', () => {
     });
 
     it('should pass different colors to tab icons correctly', () => {
-      mockUseThemeContext.mockReturnValue({ resolvedTheme: 'dark' });
+      mockUseThemeContext.mockReturnValue({
+        resolvedTheme: 'dark',
+        palette: { accent: '#60A5FA', accentMuted: '#94A3B8' },
+      });
 
       const { UNSAFE_root } = render(<TabsLayout />);
       const screens = UNSAFE_root.findAllByType('TabsScreen' as any);
@@ -156,7 +187,10 @@ describe('TabsLayout', () => {
 
   describe('Integration', () => {
     it('should render complete component structure', () => {
-      mockUseThemeContext.mockReturnValue({ resolvedTheme: 'light' });
+      mockUseThemeContext.mockReturnValue({
+        resolvedTheme: 'light',
+        palette: { accent: '#2563EB', accentMuted: '#94A3B8' },
+      });
 
       const { UNSAFE_root } = render(<TabsLayout />);
 
