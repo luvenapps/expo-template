@@ -8,5 +8,6 @@ export * from './components/FormField';
 export * from './components/StatCard';
 export * from './components/SliderField';
 export * from './components/StreakChart';
+export * from './components/CalendarHeatmap';
 export * from './providers/AppProviders';
 

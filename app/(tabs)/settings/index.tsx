@@ -13,6 +13,7 @@ import { useSyncStore } from '@/state';
 import { pullUpdates, pushOutbox, useSync } from '@/sync';
 import { clearAll as clearOutbox, getPending } from '@/sync/outbox';
 import {
+  CalendarHeatmap,
   PrimaryButton,
   ScreenContainer,
   SecondaryButton,
@@ -28,6 +29,7 @@ import type { ComponentType } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import { Button, Paragraph, Progress, Switch, XStack, YStack } from 'tamagui';
+import { ensureNotificationPermission } from '@/notifications';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -256,6 +258,38 @@ export default function SettingsScreen() {
     { label: 'Focus block', value: 3, max: 5 },
     { label: 'Wind-down', value: 2, max: 4 },
   ];
+  const HEATMAP_SAMPLE = [
+    [0, 1, 2, 3, 1, 0, 2],
+    [1, 2, 3, 4, 2, 1, 0],
+    [0, 1, 3, 4, 3, 2, 1],
+    [1, 0, 2, 3, 4, 2, 1],
+  ];
+
+  const handleReminderToggle = useCallback(
+    async (next: boolean) => {
+      setRemindersEnabled(next);
+      if (next) {
+        const granted = await ensureNotificationPermission();
+        if (!granted) {
+          setRemindersEnabled(false);
+          setDevStatus('Enable notifications in OS settings to turn on reminders.');
+          return;
+        }
+        setDevStatus('Reminders enabled (scheduling arrives in Stage 5).');
+      } else {
+        setDevStatus('Reminders disabled.');
+      }
+    },
+    [setDevStatus],
+  );
+
+  const handleSummaryToggle = useCallback(
+    (next: boolean) => {
+      setDailySummaryEnabled(next);
+      setDevStatus(next ? 'Daily summary enabled (placeholder).' : 'Daily summary disabled.');
+    },
+    [setDevStatus],
+  );
 
   return (
     <ScreenContainer contentContainerStyle={{ flexGrow: 1, paddingBottom: 96 }}>
@@ -323,8 +357,7 @@ export default function SettingsScreen() {
               </YStack>
               <Switch
                 checked={remindersEnabled}
-                onCheckedChange={(checked) => setRemindersEnabled(Boolean(checked))}
-                disabled
+                onCheckedChange={(checked) => handleReminderToggle(Boolean(checked))}
               >
                 <Switch.Thumb />
               </Switch>
@@ -339,8 +372,7 @@ export default function SettingsScreen() {
               </YStack>
               <Switch
                 checked={dailySummaryEnabled}
-                onCheckedChange={(checked) => setDailySummaryEnabled(Boolean(checked))}
-                disabled
+                onCheckedChange={(checked) => handleSummaryToggle(Boolean(checked))}
               >
                 <Switch.Thumb />
               </Switch>
@@ -363,6 +395,13 @@ export default function SettingsScreen() {
           description="Quick look at upcoming streaks (placeholder until main UI lands)."
         >
           <StreakChart data={STREAK_SAMPLE} />
+        </SettingsSection>
+
+        <SettingsSection
+          title="Calendar preview"
+          description="Consistency heatmap placeholder for upcoming habit flows."
+        >
+          <CalendarHeatmap weeks={HEATMAP_SAMPLE.length} values={HEATMAP_SAMPLE} />
         </SettingsSection>
 
         {isNative && (

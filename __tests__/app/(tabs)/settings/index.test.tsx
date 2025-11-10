@@ -155,6 +155,28 @@ jest.mock('@tamagui/lucide-icons', () => ({
   },
 }));
 
+jest.mock('expo-notifications', () => ({
+  getPermissionsAsync: jest.fn(() =>
+    Promise.resolve({
+      granted: true,
+      status: 'granted',
+      canAskAgain: true,
+    }),
+  ),
+  requestPermissionsAsync: jest.fn(() =>
+    Promise.resolve({
+      granted: true,
+      status: 'granted',
+    }),
+  ),
+  scheduleNotificationAsync: jest.fn(),
+  cancelScheduledNotificationAsync: jest.fn(),
+  cancelAllScheduledNotificationsAsync: jest.fn(),
+  PermissionStatus: {
+    GRANTED: 'granted',
+  },
+}));
+
 const mockTx = { id: 'tx' };
 const mockTransaction = jest.fn((cb: (tx: typeof mockTx) => Promise<any>) =>
   Promise.resolve(cb(mockTx)),
