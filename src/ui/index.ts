@@ -5,5 +5,7 @@ export * from './components/SecondaryButton';
 export * from './components/SettingsSection';
 export * from './components/Text';
 export * from './components/FormField';
+export * from './components/StatCard';
+export * from './components/SliderField';
 export * from './providers/AppProviders';
 

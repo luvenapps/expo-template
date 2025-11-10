@@ -98,11 +98,21 @@ jest.mock('tamagui', () => {
 
   ProgressComponent.Indicator = ({ ...props }: any) => mockReact.createElement('View', props);
 
+  const SliderComponent = ({ children, ...props }: any) =>
+    mockReact.createElement('View', props, children);
+
+  SliderComponent.Track = ({ children, ...props }: any) =>
+    mockReact.createElement('View', props, children);
+  SliderComponent.TrackActive = ({ ...props }: any) => mockReact.createElement('View', props);
+  SliderComponent.Thumb = ({ ...props }: any) => mockReact.createElement('View', props);
+
   return {
+    View: ({ children, ...props }: any) => mockReact.createElement('View', props, children),
     YStack: ({ children, testID, ...props }: any) =>
       mockReact.createElement('View', { testID, ...props }, children),
     XStack: ({ children, ...props }: any) => mockReact.createElement('View', props, children),
     Card: CardComponent,
+    Text: ({ children, ...props }: any) => mockReact.createElement('Text', props, children),
     Paragraph: ({ children, ...props }: any) => mockReact.createElement('Text', props, children),
     Button: ({ children, onPress, disabled, ...props }: any) =>
       mockReact.createElement(
@@ -113,6 +123,7 @@ jest.mock('tamagui', () => {
     H3: ({ children, ...props }: any) => mockReact.createElement('Text', props, children),
     Switch: SwitchComponent,
     Progress: ProgressComponent,
+    Slider: SliderComponent,
   };
 });
 
@@ -129,6 +140,14 @@ jest.mock('@tamagui/lucide-icons', () => ({
   Moon: ({ size, color }: any) => {
     const mockReact = jest.requireActual('react');
     return mockReact.createElement('View', { testID: 'moon-icon', size, color });
+  },
+  Calendar: ({ size, color }: any) => {
+    const mockReact = jest.requireActual('react');
+    return mockReact.createElement('View', { testID: 'calendar-icon', size, color });
+  },
+  RefreshCw: ({ size, color }: any) => {
+    const mockReact = jest.requireActual('react');
+    return mockReact.createElement('View', { testID: 'refresh-icon', size, color });
   },
 }));
 
@@ -348,7 +367,7 @@ describe('SettingsScreen', () => {
 
       const { getByText } = render(<SettingsScreen />);
       expect(getByText('Sync & Storage')).toBeDefined();
-      expect(getByText(/Queue size: 5/)).toBeDefined();
+      expect(getByText('Queue size')).toBeDefined();
       expect(getByText(/Last error: Network error/)).toBeDefined();
     });
 

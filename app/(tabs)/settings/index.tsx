@@ -12,9 +12,16 @@ import { withDatabaseRetry } from '@/db/sqlite/retry';
 import { useSyncStore } from '@/state';
 import { pullUpdates, pushOutbox, useSync } from '@/sync';
 import { clearAll as clearOutbox, getPending } from '@/sync/outbox';
-import { PrimaryButton, ScreenContainer, SecondaryButton, SettingsSection } from '@/ui';
+import {
+  PrimaryButton,
+  ScreenContainer,
+  SecondaryButton,
+  SettingsSection,
+  SliderField,
+  StatCard,
+} from '@/ui';
 import { useThemeContext, type ThemeName } from '@/ui/theme/ThemeProvider';
-import { Monitor, Moon, Sun } from '@tamagui/lucide-icons';
+import { Calendar, Monitor, Moon, RefreshCw, Sun } from '@tamagui/lucide-icons';
 import { useRouter } from 'expo-router';
 import type { ComponentType } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -49,6 +56,7 @@ export default function SettingsScreen() {
   const [hasDbData, setHasDbData] = useState(false);
   const [remindersEnabled, setRemindersEnabled] = useState(true);
   const [dailySummaryEnabled, setDailySummaryEnabled] = useState(false);
+  const [quietHours, setQuietHours] = useState<number[]>([20, 24]);
   const hasOutboxData = queueSize > 0; // Use sync store's queue size instead of manual check
   const isSeedingRef = useRef(false); // Synchronous lock to prevent rapid-clicking (state updates are async)
   const isClearingRef = useRef(false); // Synchronous lock for clear operations
@@ -241,6 +249,7 @@ export default function SettingsScreen() {
     { value: 'dark', label: 'Dark', Icon: Moon },
   ];
   const QUEUE_CAPACITY = 10;
+  const queuePercent = Math.min(1, queueSize / QUEUE_CAPACITY);
 
   return (
     <ScreenContainer contentContainerStyle={{ flexGrow: 1, paddingBottom: 96 }}>
@@ -262,7 +271,7 @@ export default function SettingsScreen() {
           </PrimaryButton>
         </SettingsSection>
 
-        <SettingsSection title="Theme" description="Choose how Better Habits looks on this device.">
+        <SettingsSection title="Theme" description="Select a theme on this device.">
           <XStack gap="$2">
             {THEME_OPTIONS.map(({ value, label, Icon }) => {
               const isActive = themePreference === value;
@@ -298,10 +307,10 @@ export default function SettingsScreen() {
           title="Notifications"
           description="Control reminder prompts and daily summaries. (Coming soon)"
         >
-          <YStack gap="$3">
+          <YStack gap="$4">
             <XStack alignItems="center" justifyContent="space-between">
               <YStack gap="$1" flex={1} paddingRight="$3">
-                <Paragraph fontWeight="600">Reminders</Paragraph>
+                <Paragraph fontWeight="600">Habit reminders</Paragraph>
                 <Paragraph color="$colorMuted" fontSize="$3">
                   Send push notifications when it’s time to log progress.
                 </Paragraph>
@@ -330,6 +339,16 @@ export default function SettingsScreen() {
                 <Switch.Thumb />
               </Switch>
             </XStack>
+
+            <SliderField
+              label="Quiet hours"
+              value={quietHours}
+              onValueChange={setQuietHours}
+              min={0}
+              max={24}
+              step={1}
+              helperText="Reminders snoozed during these hours"
+            />
           </YStack>
         </SettingsSection>
 
@@ -340,22 +359,32 @@ export default function SettingsScreen() {
               description="Review local queue status and run a manual sync with Supabase."
               footer={syncDisabledMessage}
             >
+              <XStack gap="$2" flexWrap="wrap">
+                <StatCard
+                  flex={1}
+                  label="Queue size"
+                  value={queueSize}
+                  helperText={hasOutboxData ? 'Pending sync' : 'Outbox empty'}
+                  icon={<RefreshCw size={14} color="$accentColor" />}
+                />
+                <StatCard
+                  flex={1}
+                  label="Last synced"
+                  value={lastSyncedAt ? new Date(lastSyncedAt).toLocaleDateString() : 'Never'}
+                  helperText={
+                    lastSyncedAt ? new Date(lastSyncedAt).toLocaleTimeString() : undefined
+                  }
+                  icon={<Calendar size={14} color="$accentColor" />}
+                />
+              </XStack>
               <Paragraph color="$colorMuted" textAlign="center">
                 Status: {syncStatus.toUpperCase()}
               </Paragraph>
-              <Paragraph color="$colorMuted" textAlign="center">
-                Queue size: {queueSize}
-              </Paragraph>
               <YStack gap="$1">
                 <Paragraph fontWeight="600">
-                  Outbox queue • {Math.min(100, Math.round((queueSize / QUEUE_CAPACITY) * 100))}%
+                  Outbox queue • {Math.round(queuePercent * 100)}%
                 </Paragraph>
-                <Progress
-                  key={`progress-${queueSize}`}
-                  value={Math.min(100, (queueSize / QUEUE_CAPACITY) * 100)}
-                  max={100}
-                  height={18}
-                >
+                <Progress value={queuePercent * 100} size="$3" height={18}>
                   <Progress.Indicator backgroundColor="$accentColor" />
                 </Progress>
                 <Paragraph color="$colorMuted" fontSize="$3">

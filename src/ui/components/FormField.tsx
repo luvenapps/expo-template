@@ -48,7 +48,9 @@ export const FormField = forwardRef<React.ComponentRef<typeof Input>, FormFieldP
           ) : null}
         </View>
         {(helperText || errorText) && (
-          <CaptionText color={helperColor}>{errorText ?? helperText}</CaptionText>
+          <CaptionText color={helperColor} testID="form-field-helper">
+            {errorText ?? helperText}
+          </CaptionText>
         )}
       </YStack>
     );
