@@ -19,7 +19,7 @@ import { useRouter } from 'expo-router';
 import type { ComponentType } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
-import { Button, Paragraph, XStack, YStack } from 'tamagui';
+import { Button, Paragraph, Progress, Switch, XStack, YStack } from 'tamagui';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -47,6 +47,8 @@ export default function SettingsScreen() {
   const [isSeeding, setIsSeeding] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [hasDbData, setHasDbData] = useState(false);
+  const [remindersEnabled, setRemindersEnabled] = useState(true);
+  const [dailySummaryEnabled, setDailySummaryEnabled] = useState(false);
   const hasOutboxData = queueSize > 0; // Use sync store's queue size instead of manual check
   const isSeedingRef = useRef(false); // Synchronous lock to prevent rapid-clicking (state updates are async)
   const isClearingRef = useRef(false); // Synchronous lock for clear operations
@@ -238,6 +240,7 @@ export default function SettingsScreen() {
     { value: 'light', label: 'Light', Icon: Sun },
     { value: 'dark', label: 'Dark', Icon: Moon },
   ];
+  const QUEUE_CAPACITY = 10;
 
   return (
     <ScreenContainer contentContainerStyle={{ flexGrow: 1, paddingBottom: 96 }}>
@@ -291,6 +294,45 @@ export default function SettingsScreen() {
           </XStack>
         </SettingsSection>
 
+        <SettingsSection
+          title="Notifications"
+          description="Control reminder prompts and daily summaries. (Coming soon)"
+        >
+          <YStack gap="$3">
+            <XStack alignItems="center" justifyContent="space-between">
+              <YStack gap="$1" flex={1} paddingRight="$3">
+                <Paragraph fontWeight="600">Reminders</Paragraph>
+                <Paragraph color="$colorMuted" fontSize="$3">
+                  Send push notifications when it’s time to log progress.
+                </Paragraph>
+              </YStack>
+              <Switch
+                checked={remindersEnabled}
+                onCheckedChange={(checked) => setRemindersEnabled(Boolean(checked))}
+                disabled
+              >
+                <Switch.Thumb />
+              </Switch>
+            </XStack>
+
+            <XStack alignItems="center" justifyContent="space-between">
+              <YStack gap="$1" flex={1} paddingRight="$3">
+                <Paragraph fontWeight="600">Daily summary</Paragraph>
+                <Paragraph color="$colorMuted" fontSize="$3">
+                  Receive a brief recap of streaks and upcoming habits.
+                </Paragraph>
+              </YStack>
+              <Switch
+                checked={dailySummaryEnabled}
+                onCheckedChange={(checked) => setDailySummaryEnabled(Boolean(checked))}
+                disabled
+              >
+                <Switch.Thumb />
+              </Switch>
+            </XStack>
+          </YStack>
+        </SettingsSection>
+
         {isNative && (
           <>
             <SettingsSection
@@ -304,6 +346,22 @@ export default function SettingsScreen() {
               <Paragraph color="$colorMuted" textAlign="center">
                 Queue size: {queueSize}
               </Paragraph>
+              <YStack gap="$1">
+                <Paragraph fontWeight="600">
+                  Outbox queue • {Math.min(100, Math.round((queueSize / QUEUE_CAPACITY) * 100))}%
+                </Paragraph>
+                <Progress
+                  key={`progress-${queueSize}`}
+                  value={Math.min(100, (queueSize / QUEUE_CAPACITY) * 100)}
+                  max={100}
+                  height={18}
+                >
+                  <Progress.Indicator backgroundColor="$accentColor" />
+                </Progress>
+                <Paragraph color="$colorMuted" fontSize="$3">
+                  {queueSize} pending item{queueSize === 1 ? '' : 's'} waiting
+                </Paragraph>
+              </YStack>
               <Paragraph color="$colorMuted" textAlign="center">
                 Last synced: {lastSyncedAt ? new Date(lastSyncedAt).toLocaleString() : 'Never'}
               </Paragraph>

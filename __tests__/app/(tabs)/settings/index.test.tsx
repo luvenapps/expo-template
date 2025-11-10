@@ -88,6 +88,16 @@ jest.mock('tamagui', () => {
   CardComponent.Footer = ({ children, ...props }: any) =>
     mockReact.createElement('View', props, children);
 
+  const SwitchComponent = ({ children, ...props }: any) =>
+    mockReact.createElement('View', props, children);
+
+  SwitchComponent.Thumb = ({ ...props }: any) => mockReact.createElement('View', props);
+
+  const ProgressComponent = ({ children, ...props }: any) =>
+    mockReact.createElement('View', props, children);
+
+  ProgressComponent.Indicator = ({ ...props }: any) => mockReact.createElement('View', props);
+
   return {
     YStack: ({ children, testID, ...props }: any) =>
       mockReact.createElement('View', { testID, ...props }, children),
@@ -101,6 +111,8 @@ jest.mock('tamagui', () => {
         mockReact.createElement('Text', {}, children),
       ),
     H3: ({ children, ...props }: any) => mockReact.createElement('Text', props, children),
+    Switch: SwitchComponent,
+    Progress: ProgressComponent,
   };
 });
 
