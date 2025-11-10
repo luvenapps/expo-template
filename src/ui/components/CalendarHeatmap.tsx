@@ -3,7 +3,13 @@ import { XStack, YStack } from 'tamagui';
 import { CaptionText, LabelText } from './Text';
 
 const DEFAULT_DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-const COLORS = ['#E2E8F0', '#BFDBFE', '#93C5FD', '#60A5FA', '#2563EB'];
+const COLOR_TOKENS = [
+  '$backgroundStrong',
+  '$backgroundPress',
+  '$accentColor',
+  '$accentColorHover',
+  '$accentColorPress',
+];
 
 type CalendarHeatmapProps = {
   weeks: number;
@@ -25,14 +31,14 @@ export function CalendarHeatmap({
           <YStack key={`week-${weekIndex}`} gap="$1">
             {dayLabels.map((_, dayIndex) => {
               const intensity = values?.[weekIndex]?.[dayIndex] ?? 0;
-              const colorIndex = Math.min(COLORS.length - 1, Math.max(0, intensity));
+              const colorIndex = Math.min(COLOR_TOKENS.length - 1, Math.max(0, intensity));
               return (
                 <YStack
                   key={`cell-${weekIndex}-${dayIndex}`}
                   width={16}
                   height={16}
                   borderRadius={4}
-                  backgroundColor={COLORS[colorIndex]}
+                  backgroundColor={COLOR_TOKENS[colorIndex]}
                 />
               );
             })}
@@ -43,7 +49,7 @@ export function CalendarHeatmap({
         <CaptionText color="$colorMuted">{dayLabels.join(' ')}</CaptionText>
         {legend ?? (
           <XStack gap="$1" alignItems="center">
-            {COLORS.map((color, index) => (
+            {COLOR_TOKENS.map((color) => (
               <YStack key={color} width={16} height={8} borderRadius={2} backgroundColor={color} />
             ))}
             <LabelText fontSize="$2">Less • More</LabelText>
