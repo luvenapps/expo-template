@@ -109,7 +109,7 @@ describe('ScreenContainer', () => {
       );
 
       const container = getByTestId('screen-container');
-      expect(container.props.backgroundColor).toBe('#FFFFFF');
+      expect(container.props.backgroundColor).toBe('$background');
     });
 
     it('should apply flex: 1', () => {

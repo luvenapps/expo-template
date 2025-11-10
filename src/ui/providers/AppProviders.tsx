@@ -1,15 +1,15 @@
+import { initSessionListener, useSessionStore } from '@/auth/session';
+import { getQueryClient, getQueryClientPersistOptions } from '@/state';
+import { pullUpdates, pushOutbox, useSync } from '@/sync';
+import { useThemeContext } from '@/ui/theme/ThemeProvider';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
+import { StatusBar } from 'expo-status-bar';
 import { PropsWithChildren, useEffect } from 'react';
 import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
 import { YStack } from 'tamagui';
-import { QueryClientProvider } from '@tanstack/react-query';
-import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
-import { getQueryClient, getQueryClientPersistOptions } from '@/state';
-import { initSessionListener, useSessionStore } from '@/auth/session';
-import { useSync, pushOutbox, pullUpdates } from '@/sync';
-import { useThemeContext } from '@/ui/theme/ThemeProvider';
 
 const queryClient = getQueryClient();
 const persistOptions = getQueryClientPersistOptions();

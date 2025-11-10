@@ -1,6 +1,6 @@
-import { Appearance, Platform } from 'react-native';
-import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from 'react';
 import { DOMAIN } from '@/config/domain.config';
+import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from 'react';
+import { Appearance, Platform } from 'react-native';
 
 export type ThemePreference = 'light' | 'dark' | 'system';
 export type ThemeName = ThemePreference;
@@ -12,23 +12,38 @@ type ThemePalette = {
   mutedText: string;
   accent: string;
   accentMuted: string;
+  surface: string;
+  secondaryBackground: string;
+  secondaryText: string;
+};
+
+// Color palettes derived from tamagui.config.ts
+// These match the token values defined in tamagui.config.ts
+const lightPalette: ThemePalette = {
+  background: '#FFFFFF',
+  text: '#0F172A',
+  mutedText: '#475569',
+  accent: '#2563EB',
+  accentMuted: '#94A3B8',
+  surface: '#F8FAFC',
+  secondaryBackground: '#F1F5F9',
+  secondaryText: '#475569',
+};
+
+const darkPalette: ThemePalette = {
+  background: '#0F172A',
+  text: '#E2E8F0',
+  mutedText: '#94A3B8',
+  accent: '#60A5FA',
+  accentMuted: '#94A3B8',
+  surface: '#111827',
+  secondaryBackground: '#1F2937',
+  secondaryText: '#94A3B8',
 };
 
 const PALETTES: Record<ResolvedTheme, ThemePalette> = {
-  light: {
-    background: '#FFFFFF',
-    text: '#0F172A',
-    mutedText: '#475569',
-    accent: '#2563EB',
-    accentMuted: '#94A3B8',
-  },
-  dark: {
-    background: '#1a1a1a',
-    text: '#FFFFFF',
-    mutedText: '#E2E8F0',
-    accent: '#60A5FA',
-    accentMuted: '#94A3B8',
-  },
+  light: lightPalette,
+  dark: darkPalette,
 };
 
 type ThemeContextValue = {

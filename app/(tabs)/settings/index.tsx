@@ -70,7 +70,7 @@ export default function SettingsScreen() {
       : null;
   const isSyncing = syncStatus === 'syncing';
   const { theme: themePreference, setTheme, palette } = useThemeContext();
-  const accentHex = palette?.accent ?? '#2563EB';
+  const accentHex = palette.accent;
   const hasSession = Boolean(session?.user?.id);
 
   const checkDatabaseData = useCallback(async () => {

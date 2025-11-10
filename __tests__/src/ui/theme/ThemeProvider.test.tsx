@@ -193,6 +193,9 @@ describe('ThemeProvider', () => {
         mutedText: '#475569',
         accent: '#2563EB',
         accentMuted: '#94A3B8',
+        surface: '#F8FAFC',
+        secondaryBackground: '#F1F5F9',
+        secondaryText: '#475569',
       });
     });
 
@@ -204,11 +207,14 @@ describe('ThemeProvider', () => {
       });
 
       expect(result.current.palette).toEqual({
-        background: '#1a1a1a',
-        text: '#FFFFFF',
-        mutedText: '#E2E8F0',
+        background: '#0F172A',
+        text: '#E2E8F0',
+        mutedText: '#94A3B8',
         accent: '#60A5FA',
         accentMuted: '#94A3B8',
+        surface: '#111827',
+        secondaryBackground: '#1F2937',
+        secondaryText: '#94A3B8',
       });
     });
 
@@ -227,6 +233,9 @@ describe('ThemeProvider', () => {
         mutedText: '#475569',
         accent: '#2563EB',
         accentMuted: '#94A3B8',
+        surface: '#F8FAFC',
+        secondaryBackground: '#F1F5F9',
+        secondaryText: '#475569',
       });
     });
 
@@ -240,11 +249,14 @@ describe('ThemeProvider', () => {
 
       expect(result.current.resolvedTheme).toBe('dark');
       expect(result.current.palette).toEqual({
-        background: '#1a1a1a',
-        text: '#FFFFFF',
-        mutedText: '#E2E8F0',
+        background: '#0F172A',
+        text: '#E2E8F0',
+        mutedText: '#94A3B8',
         accent: '#60A5FA',
         accentMuted: '#94A3B8',
+        surface: '#111827',
+        secondaryBackground: '#1F2937',
+        secondaryText: '#94A3B8',
       });
     });
   });
@@ -266,7 +278,7 @@ describe('ThemeProvider', () => {
       });
 
       expect(result.current.resolvedTheme).toBe('dark');
-      expect(result.current.palette.background).toBe('#1a1a1a');
+      expect(result.current.palette.background).toBe('#0F172A');
     });
 
     it('should update resolved theme when system theme changes from dark to light', () => {
@@ -348,6 +360,9 @@ describe('ThemeProvider', () => {
         mutedText: '#475569',
         accent: '#2563EB',
         accentMuted: '#94A3B8',
+        surface: '#F8FAFC',
+        secondaryBackground: '#F1F5F9',
+        secondaryText: '#475569',
       });
     });
 
@@ -355,11 +370,14 @@ describe('ThemeProvider', () => {
       const palette = getThemePalette('dark');
 
       expect(palette).toEqual({
-        background: '#1a1a1a',
-        text: '#FFFFFF',
-        mutedText: '#E2E8F0',
+        background: '#0F172A',
+        text: '#E2E8F0',
+        mutedText: '#94A3B8',
         accent: '#60A5FA',
         accentMuted: '#94A3B8',
+        surface: '#111827',
+        secondaryBackground: '#1F2937',
+        secondaryText: '#94A3B8',
       });
     });
 
@@ -373,6 +391,9 @@ describe('ThemeProvider', () => {
         mutedText: '#475569',
         accent: '#2563EB',
         accentMuted: '#94A3B8',
+        surface: '#F8FAFC',
+        secondaryBackground: '#F1F5F9',
+        secondaryText: '#475569',
       });
     });
 
@@ -381,11 +402,14 @@ describe('ThemeProvider', () => {
       const palette = getThemePalette('system');
 
       expect(palette).toEqual({
-        background: '#1a1a1a',
-        text: '#FFFFFF',
-        mutedText: '#E2E8F0',
+        background: '#0F172A',
+        text: '#E2E8F0',
+        mutedText: '#94A3B8',
         accent: '#60A5FA',
         accentMuted: '#94A3B8',
+        surface: '#111827',
+        secondaryBackground: '#1F2937',
+        secondaryText: '#94A3B8',
       });
     });
 
@@ -399,6 +423,9 @@ describe('ThemeProvider', () => {
         mutedText: '#475569',
         accent: '#2563EB',
         accentMuted: '#94A3B8',
+        surface: '#F8FAFC',
+        secondaryBackground: '#F1F5F9',
+        secondaryText: '#475569',
       });
     });
   });
@@ -423,9 +450,9 @@ describe('ThemeProvider', () => {
         result.current.setPreference('dark');
       });
 
-      expect(result.current.palette.background).toBe('#1a1a1a');
-      expect(result.current.palette.text).toBe('#FFFFFF');
-      expect(result.current.palette.mutedText).toBe('#E2E8F0');
+      expect(result.current.palette.background).toBe('#0F172A');
+      expect(result.current.palette.text).toBe('#E2E8F0');
+      expect(result.current.palette.mutedText).toBe('#94A3B8');
     });
   });
 

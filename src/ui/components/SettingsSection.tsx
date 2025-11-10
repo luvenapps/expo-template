@@ -1,5 +1,4 @@
 import type { PropsWithChildren, ReactNode } from 'react';
-import { useThemeContext } from '@/ui/theme/ThemeProvider';
 import { Card, Paragraph, XStack, YStack } from 'tamagui';
 
 type SettingsSectionProps = PropsWithChildren<{
@@ -17,15 +16,12 @@ export function SettingsSection({
   children,
   footer,
 }: SettingsSectionProps) {
-  const { resolvedTheme } = useThemeContext();
-  const backgroundColor = resolvedTheme === 'dark' ? '$backgroundStrong' : '$background';
-
   return (
-    <Card size="$4" bordered backgroundColor={backgroundColor}>
+    <Card size="$4" bordered backgroundColor="$surface">
       <Card.Header padded gap="$2" alignItems="center">
         <XStack alignItems="center" gap="$2">
           {icon}
-          <Paragraph fontWeight="700" fontSize="$5">
+          <Paragraph fontWeight="700" fontSize="$5" color="$color">
             {title}
           </Paragraph>
         </XStack>

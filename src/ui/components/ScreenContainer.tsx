@@ -1,4 +1,3 @@
-import { useThemeContext } from '@/ui/theme/ThemeProvider';
 import { PropsWithChildren } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -29,9 +28,7 @@ export function ScreenContainer({
   const insets = useSafeAreaInsets();
   const topPadding = Math.max(insets.top, 12) + 12;
   const bottomPadding = Math.max(insets.bottom, 12) + 12;
-  const { palette } = useThemeContext();
-  const resolvedBackground = backgroundColor ?? palette.background;
-  const resolvedColor = palette.text;
+  const resolvedBackground = backgroundColor ?? '$background';
 
   const content = (
     <YStack
@@ -44,7 +41,6 @@ export function ScreenContainer({
       paddingBottom={bottomPadding}
       paddingHorizontal={paddingHorizontal}
       backgroundColor={resolvedBackground}
-      style={{ color: resolvedColor }}
       gap={gap}
     >
       {children}

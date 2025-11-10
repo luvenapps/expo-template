@@ -1,8 +1,7 @@
-import { Home, Settings } from '@tamagui/lucide-icons';
-import { Tabs } from 'expo-router';
-
 import { DOMAIN } from '@/config/domain.config';
 import { useThemeContext } from '@/ui/theme/ThemeProvider';
+import { Home, Settings } from '@tamagui/lucide-icons';
+import { Tabs } from 'expo-router';
 
 function TabIcon({ color, Icon }: { color: string; Icon: typeof Home }) {
   return <Icon size={22} color={color} />;
@@ -10,14 +9,12 @@ function TabIcon({ color, Icon }: { color: string; Icon: typeof Home }) {
 
 export default function TabsLayout() {
   const { palette } = useThemeContext();
-  const activeColor = palette.accent;
-  const inactiveColor = palette.accentMuted;
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: activeColor,
-        tabBarInactiveTintColor: inactiveColor,
+        tabBarActiveTintColor: palette.accent,
+        tabBarInactiveTintColor: palette.accentMuted,
       }}
     >
       <Tabs.Screen

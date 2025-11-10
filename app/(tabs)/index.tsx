@@ -5,6 +5,7 @@ import { H2, Paragraph } from 'tamagui';
 
 export default function HomeScreen() {
   const router = useRouter();
+
   return (
     <>
       <ScreenContainer gap="$4" alignItems="center">
