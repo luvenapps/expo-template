@@ -23,15 +23,18 @@ jest.mock('tamagui', () => {
   };
 });
 
-jest.mock('@/ui/theme/ThemeProvider', () => ({
-  useThemeContext: jest.fn(() => ({
-    resolvedTheme: 'light',
-    palette: {
-      surface: '#FFFFFF',
-      text: '#0F172A',
-    },
-  })),
-}));
+jest.mock('@/ui/theme/ThemeProvider', () => {
+  const { themePalettes } = jest.requireActual('@/ui/theme/palette');
+  return {
+    useThemeContext: jest.fn(() => ({
+      resolvedTheme: 'light',
+      palette: {
+        surface: themePalettes.light.surface,
+        text: themePalettes.light.text,
+      },
+    })),
+  };
+});
 
 import { SettingsSection } from '@/ui/components/SettingsSection';
 import { render } from '@testing-library/react-native';

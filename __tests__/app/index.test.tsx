@@ -10,16 +10,19 @@ jest.mock('expo-router', () => ({
 }));
 
 // Mock ThemeProvider
-jest.mock('@/ui/theme/ThemeProvider', () => ({
-  useThemeContext: jest.fn(() => ({
-    resolvedTheme: 'light',
-    palette: {
-      background: '#FFFFFF',
-      text: '#0F172A',
-      mutedText: '#475569',
-    },
-  })),
-}));
+jest.mock('@/ui/theme/ThemeProvider', () => {
+  const { themePalettes } = jest.requireActual('@/ui/theme/palette');
+  return {
+    useThemeContext: jest.fn(() => ({
+      resolvedTheme: 'light',
+      palette: {
+        background: themePalettes.light.background,
+        text: themePalettes.light.text,
+        mutedText: themePalettes.light.mutedText,
+      },
+    })),
+  };
+});
 
 import { DOMAIN } from '@/config/domain.config';
 import { fireEvent, render, screen } from '@testing-library/react-native';

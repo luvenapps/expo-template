@@ -34,19 +34,22 @@ jest.mock('@/sync', () => ({
 }));
 
 // Mock ThemeProvider
-jest.mock('@/ui/theme/ThemeProvider', () => ({
-  useThemeContext: jest.fn(() => ({
-    resolvedTheme: 'light',
-    palette: {
-      background: '#FFFFFF',
-      text: '#0F172A',
-      mutedText: '#475569',
-      accent: '#2563EB',
-      accentMuted: '#94A3B8',
-    },
-  })),
-  ThemeProvider: ({ children }: any) => children,
-}));
+jest.mock('@/ui/theme/ThemeProvider', () => {
+  const { themePalettes } = jest.requireActual('@/ui/theme/palette');
+  return {
+    useThemeContext: jest.fn(() => ({
+      resolvedTheme: 'light',
+      palette: {
+        background: themePalettes.light.background,
+        text: themePalettes.light.text,
+        mutedText: themePalettes.light.mutedText,
+        accent: themePalettes.light.accent,
+        accentMuted: themePalettes.light.accentMuted,
+      },
+    })),
+    ThemeProvider: ({ children }: any) => children,
+  };
+});
 
 // Mock Tamagui
 jest.mock('tamagui', () => ({
@@ -113,14 +116,15 @@ describe('RootLayout', () => {
   test('renders with dark theme when resolvedTheme is dark', () => {
     // Mock dark theme
     const { useThemeContext } = require('@/ui/theme/ThemeProvider');
+    const { themePalettes } = require('@/ui/theme/palette');
     useThemeContext.mockReturnValueOnce({
       resolvedTheme: 'dark',
       palette: {
-        background: '#0F172A',
-        text: '#FFFFFF',
-        mutedText: '#94A3B8',
-        accent: '#60A5FA',
-        accentMuted: '#94A3B8',
+        background: themePalettes.dark.background,
+        text: themePalettes.dark.text,
+        mutedText: themePalettes.dark.mutedText,
+        accent: themePalettes.dark.accent,
+        accentMuted: themePalettes.dark.accentMuted,
       },
     });
 

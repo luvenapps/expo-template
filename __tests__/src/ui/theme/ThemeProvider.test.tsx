@@ -246,7 +246,7 @@ describe('ThemeProvider', () => {
       });
 
       expect(result.current.resolvedTheme).toBe('dark');
-      expect(result.current.palette.background).toBe('#0F172A');
+      expect(result.current.palette.background).toBe(expectedDarkPalette.background);
     });
 
     it('should update resolved theme when system theme changes from dark to light', () => {
@@ -265,7 +265,7 @@ describe('ThemeProvider', () => {
       });
 
       expect(result.current.resolvedTheme).toBe('light');
-      expect(result.current.palette.background).toBe('#FFFFFF');
+      expect(result.current.palette.background).toBe(expectedLightPalette.background);
     });
 
     it('should ignore null colorScheme changes', () => {

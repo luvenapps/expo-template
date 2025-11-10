@@ -25,23 +25,26 @@ jest.mock('expo-router', () => {
 const mockSetTheme = jest.fn();
 
 // Mock ThemeProvider
-jest.mock('@/ui/theme/ThemeProvider', () => ({
-  useThemeContext: jest.fn(() => ({
-    theme: 'system',
-    setTheme: mockSetTheme,
-    resolvedTheme: 'dark',
-    palette: {
-      background: '#1a1a1a',
-      text: '#FFFFFF',
-      mutedText: '#E2E8F0',
-      accent: '#2563EB',
-      accentMuted: '#94A3B8',
-      surface: '#111827',
-      secondaryBackground: '#1E3A8A',
-      secondaryText: '#BFDBFE',
-    },
-  })),
-}));
+jest.mock('@/ui/theme/ThemeProvider', () => {
+  const { themePalettes } = jest.requireActual('@/ui/theme/palette');
+  return {
+    useThemeContext: jest.fn(() => ({
+      theme: 'system',
+      setTheme: mockSetTheme,
+      resolvedTheme: 'dark',
+      palette: {
+        background: themePalettes.dark.background,
+        text: themePalettes.dark.text,
+        mutedText: themePalettes.dark.mutedText,
+        accent: themePalettes.dark.accent,
+        accentMuted: themePalettes.dark.accentMuted,
+        surface: themePalettes.dark.surface,
+        secondaryBackground: themePalettes.dark.secondaryBackground,
+        secondaryText: themePalettes.dark.secondaryText,
+      },
+    })),
+  };
+});
 
 // Mock auth session
 jest.mock('@/auth/session', () => ({
@@ -239,6 +242,7 @@ import { withDatabaseRetry } from '@/db/sqlite/retry';
 import { useSync } from '@/sync';
 import { clearAll as clearOutbox } from '@/sync/outbox';
 import { useThemeContext } from '@/ui/theme/ThemeProvider';
+import { themePalettes } from '@/ui/theme/palette';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import React from 'react';
 import { Platform } from 'react-native';
@@ -460,11 +464,7 @@ describe('SettingsScreen', () => {
         theme: 'light',
         setTheme: mockSetTheme,
         resolvedTheme: 'light',
-        palette: {
-          background: '#FFFFFF',
-          text: '#0F172A',
-          mutedText: '#475569',
-        },
+        palette: themePalettes.light,
       });
 
       const { getByLabelText } = render(<SettingsScreen />);

@@ -56,16 +56,21 @@ jest.mock('@/sync', () => ({
 }));
 
 // Mock ThemeProvider
-jest.mock('@/ui/theme/ThemeProvider', () => ({
-  useThemeContext: jest.fn(() => ({
-    resolvedTheme: 'light',
-    palette: {
-      background: '#FFFFFF',
-      text: '#0F172A',
-      mutedText: '#475569',
-    },
-  })),
-}));
+jest.mock('@/ui/theme/ThemeProvider', () => {
+  const { themePalettes } = jest.requireActual('@/ui/theme/palette');
+  return {
+    useThemeContext: jest.fn(() => ({
+      resolvedTheme: 'light',
+      palette: {
+        background: themePalettes.light.background,
+        text: themePalettes.light.text,
+        mutedText: themePalettes.light.mutedText,
+      },
+    })),
+  };
+});
+
+const actualThemePalettes = jest.requireActual('@/ui/theme/palette').themePalettes;
 
 import { AppProviders } from '@/ui/providers/AppProviders';
 import { render } from '@testing-library/react-native';
@@ -134,7 +139,10 @@ describe('AppProviders', () => {
       );
 
       const gestureHandler = UNSAFE_root.findByType('GestureHandlerRootView' as any);
-      expect(gestureHandler.props.style).toEqual({ flex: 1, backgroundColor: '#FFFFFF' });
+      expect(gestureHandler.props.style).toEqual({
+        flex: 1,
+        backgroundColor: actualThemePalettes.light.background,
+      });
     });
 
     it('should render SafeAreaProvider inside GestureHandlerRootView', () => {
@@ -186,13 +194,10 @@ describe('AppProviders', () => {
 
     it('should pass style="light" to StatusBar when theme is dark', () => {
       const { useThemeContext } = require('@/ui/theme/ThemeProvider');
+      const { themePalettes } = require('@/ui/theme/palette');
       useThemeContext.mockReturnValue({
         resolvedTheme: 'dark',
-        palette: {
-          background: '#1a1a1a',
-          text: '#FFFFFF',
-          mutedText: '#E2E8F0',
-        },
+        palette: themePalettes.dark,
       });
 
       const { UNSAFE_root } = render(
