@@ -149,6 +149,10 @@ jest.mock('@tamagui/lucide-icons', () => ({
     const mockReact = jest.requireActual('react');
     return mockReact.createElement('View', { testID: 'refresh-icon', size, color });
   },
+  Flame: ({ size, color }: any) => {
+    const mockReact = jest.requireActual('react');
+    return mockReact.createElement('View', { testID: 'flame-icon', size, color });
+  },
 }));
 
 const mockTx = { id: 'tx' };

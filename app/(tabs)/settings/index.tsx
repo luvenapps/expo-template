@@ -19,9 +19,10 @@ import {
   SettingsSection,
   SliderField,
   StatCard,
+  StreakChart,
 } from '@/ui';
 import { useThemeContext, type ThemeName } from '@/ui/theme/ThemeProvider';
-import { Calendar, Monitor, Moon, RefreshCw, Sun } from '@tamagui/lucide-icons';
+import { Calendar, Flame, Monitor, Moon, RefreshCw, Sun } from '@tamagui/lucide-icons';
 import { useRouter } from 'expo-router';
 import type { ComponentType } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -250,6 +251,11 @@ export default function SettingsScreen() {
   ];
   const QUEUE_CAPACITY = 10;
   const queuePercent = Math.min(1, queueSize / QUEUE_CAPACITY);
+  const STREAK_SAMPLE = [
+    { label: 'Daily review', value: 4, max: 7, icon: <Flame size={16} color="$accentColor" /> },
+    { label: 'Focus block', value: 3, max: 5 },
+    { label: 'Wind-down', value: 2, max: 4 },
+  ];
 
   return (
     <ScreenContainer contentContainerStyle={{ flexGrow: 1, paddingBottom: 96 }}>
@@ -310,7 +316,7 @@ export default function SettingsScreen() {
           <YStack gap="$4">
             <XStack alignItems="center" justifyContent="space-between">
               <YStack gap="$1" flex={1} paddingRight="$3">
-                <Paragraph fontWeight="600">Habit reminders</Paragraph>
+                <Paragraph fontWeight="600">Reminders</Paragraph>
                 <Paragraph color="$colorMuted" fontSize="$3">
                   Send push notifications when it’s time to log progress.
                 </Paragraph>
@@ -328,7 +334,7 @@ export default function SettingsScreen() {
               <YStack gap="$1" flex={1} paddingRight="$3">
                 <Paragraph fontWeight="600">Daily summary</Paragraph>
                 <Paragraph color="$colorMuted" fontSize="$3">
-                  Receive a brief recap of streaks and upcoming habits.
+                  Receive a brief recap of streaks.
                 </Paragraph>
               </YStack>
               <Switch
@@ -350,6 +356,13 @@ export default function SettingsScreen() {
               helperText="Reminders snoozed during these hours"
             />
           </YStack>
+        </SettingsSection>
+
+        <SettingsSection
+          title="Streak preview"
+          description="Quick look at upcoming streaks (placeholder until main UI lands)."
+        >
+          <StreakChart data={STREAK_SAMPLE} />
         </SettingsSection>
 
         {isNative && (

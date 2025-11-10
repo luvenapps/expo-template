@@ -7,5 +7,6 @@ export * from './components/Text';
 export * from './components/FormField';
 export * from './components/StatCard';
 export * from './components/SliderField';
+export * from './components/StreakChart';
 export * from './providers/AppProviders';
 
