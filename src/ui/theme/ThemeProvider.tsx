@@ -10,6 +10,8 @@ type ThemePalette = {
   background: string;
   text: string;
   mutedText: string;
+  accent: string;
+  accentMuted: string;
 };
 
 const PALETTES: Record<ResolvedTheme, ThemePalette> = {
@@ -17,11 +19,15 @@ const PALETTES: Record<ResolvedTheme, ThemePalette> = {
     background: '#FFFFFF',
     text: '#0F172A',
     mutedText: '#475569',
+    accent: '#2563EB',
+    accentMuted: '#94A3B8',
   },
   dark: {
     background: '#1a1a1a',
     text: '#FFFFFF',
     mutedText: '#E2E8F0',
+    accent: '#60A5FA',
+    accentMuted: '#94A3B8',
   },
 };
 

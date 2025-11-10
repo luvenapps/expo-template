@@ -1,4 +1,5 @@
 import type { ComponentProps, ReactNode } from 'react';
+import { useThemeContext } from '@/ui/theme/ThemeProvider';
 import { Card, XStack, YStack } from 'tamagui';
 import { BodyText, CaptionText, TitleText } from './Text';
 
@@ -23,11 +24,14 @@ export function StatCard({
   minWidth,
   maxWidth,
 }: StatCardProps) {
+  const { resolvedTheme } = useThemeContext();
+  const backgroundColor = resolvedTheme === 'dark' ? '$backgroundStrong' : '$background';
+
   return (
     <Card
       bordered
       padding="$3"
-      backgroundColor="$backgroundStrong"
+      backgroundColor={backgroundColor}
       flex={flex}
       minWidth={minWidth}
       maxWidth={maxWidth}

@@ -69,7 +69,8 @@ export default function SettingsScreen() {
       ? 'Sign in to enable syncing with your Supabase account.'
       : null;
   const isSyncing = syncStatus === 'syncing';
-  const { theme: themePreference, setTheme } = useThemeContext();
+  const { theme: themePreference, setTheme, palette } = useThemeContext();
+  const accentHex = palette?.accent ?? '#2563EB';
   const hasSession = Boolean(session?.user?.id);
 
   const checkDatabaseData = useCallback(async () => {
@@ -147,7 +148,7 @@ export default function SettingsScreen() {
               userId,
               name: `Sample ${new Date().toLocaleTimeString()}`,
               cadence: 'daily',
-              color: '#60a5fa',
+              color: accentHex,
             },
             { database: tx },
           );
@@ -324,8 +325,8 @@ export default function SettingsScreen() {
                   borderRadius="$3"
                   borderStyle="solid"
                   borderColor="$borderColor"
-                  backgroundColor={isActive ? '$accentColor' : '$backgroundStrong'}
-                  color={isActive ? 'white' : '$color'}
+                  backgroundColor={isActive ? '$accentColor' : '$background'}
+                  color="$color"
                   pressStyle={{
                     backgroundColor: isActive ? '$accentColor' : '$backgroundPress',
                   }}

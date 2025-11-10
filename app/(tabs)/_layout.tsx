@@ -9,14 +9,16 @@ function TabIcon({ color, Icon }: { color: string; Icon: typeof Home }) {
 }
 
 export default function TabsLayout() {
-  const { resolvedTheme } = useThemeContext();
+  const { resolvedTheme, palette } = useThemeContext();
   const isDark = resolvedTheme === 'dark';
+  const activeColor = palette.accent;
+  const inactiveColor = palette.accentMuted;
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: isDark ? '#60A5FA' : '#2563EB',
-        tabBarInactiveTintColor: isDark ? '#94A3B8' : '#94A3B8',
+        tabBarActiveTintColor: activeColor,
+        tabBarInactiveTintColor: inactiveColor,
       }}
     >
       <Tabs.Screen

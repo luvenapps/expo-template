@@ -34,6 +34,8 @@ jest.mock('@/ui/theme/ThemeProvider', () => ({
       background: '#1a1a1a',
       text: '#FFFFFF',
       mutedText: '#E2E8F0',
+      accent: '#2563EB',
+      accentMuted: '#94A3B8',
     },
   })),
 }));
@@ -557,7 +559,7 @@ describe('SettingsScreen', () => {
         userId: 'user-123',
         name: 'Sample',
         cadence: 'daily',
-        color: '#60a5fa',
+        color: '#2563EB',
       };
 
       mockedCreatePrimaryEntityLocal.mockResolvedValue(mockPrimaryEntity);
@@ -575,7 +577,7 @@ describe('SettingsScreen', () => {
           expect.objectContaining({
             userId: 'user-123',
             cadence: 'daily',
-            color: '#60a5fa',
+            color: '#2563EB',
           }),
           { database: mockTx },
         );
