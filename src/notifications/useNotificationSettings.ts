@@ -1,16 +1,16 @@
-import { useAnalytics } from '@/observability/AnalyticsProvider';
+import {
+  cancelAllScheduledNotifications,
+  ensureNotificationPermission,
+} from '@/notifications/notifications';
 import {
   NotificationPreferences,
   loadNotificationPreferences,
   persistNotificationPreferences,
 } from '@/notifications/preferences';
-import {
-  cancelAllScheduledNotifications,
-  ensureNotificationPermission,
-} from '@/notifications/notifications';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Platform } from 'react-native';
+import { useAnalytics } from '@/observability/AnalyticsProvider';
 import * as Notifications from 'expo-notifications';
+import { useCallback, useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 
 export type NotificationPermissionState =
   | 'granted'

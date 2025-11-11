@@ -6,8 +6,19 @@ Stage 5 focuses on the instrumentation agents need to reason about runtime behav
 
 - `src/observability/AnalyticsProvider.tsx` exposes `useAnalytics()` with `trackEvent`, `trackError`, and `trackPerformance`.
 - The provider is wired into `AppProviders`, so every screen/component can call `useAnalytics` without extra plumbing.
-- In dev, events/errors print to the console with `[Observability]` prefixes; swap the internals when you hook up Segment, Amplitude, etc.
+- Events still log to `[Observability]` in dev, but when `EXPO_PUBLIC_ANALYTICS_ENDPOINT` and `EXPO_PUBLIC_ANALYTICS_WRITE_KEY` are set, payloads are POSTed to that endpoint with a `Bearer` token—point it at Segment/PostHog/etc.
 - For unit tests, mock `useAnalytics` to avoid console noise (see `__tests__/src/notifications/useNotificationSettings.test.tsx`).
+
+### Configuration
+
+```bash
+EXPO_PUBLIC_ANALYTICS_ENDPOINT=https://example.com/analytics
+EXPO_PUBLIC_ANALYTICS_WRITE_KEY=your-public-write-key
+```
+
+- Store these as EAS secrets for preview/prod builds.
+- Endpoint must accept JSON bodies shaped like `{ kind: 'event' | 'error' | 'performance', ... }`.
+- When unset, the provider quietly logs to console without network calls.
 
 ### Event conventions
 
