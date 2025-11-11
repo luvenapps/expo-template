@@ -45,6 +45,7 @@
     "@tanstack/query-sync-storage-persister": "^5.90.8",
     "@tanstack/react-query": "^5.90.5",
     "@tanstack/react-query-persist-client": "^5.90.8",
+    "dayjs": "^1.11.19",
     "drizzle-orm": "^0.44.6",
     "expo": "54.0.23",
     "expo-application": "~7.0.7",
