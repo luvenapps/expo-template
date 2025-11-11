@@ -42,7 +42,13 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": ["expo-router", "expo-system-ui", "expo-sqlite", "expo-background-task"],
+    "plugins": [
+      "expo-router",
+      "expo-system-ui",
+      "expo-sqlite",
+      "expo-background-task",
+      "expo-localization"
+    ],
     "experiments": {
       "typedRoutes": true
     }

@@ -1,7 +1,24 @@
 import { DOMAIN } from '@/config/domain.config';
+import PostHog, { PostHogProvider } from 'posthog-react-native';
 import { createContext, PropsWithChildren, useContext, useMemo } from 'react';
 import { Platform } from 'react-native';
 import { v4 as uuidv4 } from 'uuid';
+
+// Safely import expo-device with fallback
+let Device: any = {
+  osVersion: undefined,
+  modelName: undefined,
+  manufacturer: undefined,
+  deviceYearClass: undefined,
+  osBuildId: undefined,
+};
+
+try {
+  const DeviceModule = require('expo-device');
+  Device = DeviceModule;
+} catch {
+  // expo-device not available, use defaults
+}
 
 export type AnalyticsEventPayload = Record<string, unknown>;
 
@@ -31,12 +48,18 @@ const isDev = typeof __DEV__ !== 'undefined' && __DEV__;
 const ANALYTICS_STORAGE_KEY = `${DOMAIN.app.storageKey}-analytics-id`;
 const ANALYTICS_STORAGE_NAMESPACE = `${DOMAIN.app.cursorStorageId}-analytics`;
 let cachedDistinctId: string | null = null;
+let posthogClient: PostHog | null = null;
 
 function getAnalyticsConfig() {
-  return {
-    endpoint: process.env.EXPO_PUBLIC_ANALYTICS_ENDPOINT ?? '',
-    writeKey: process.env.EXPO_PUBLIC_ANALYTICS_WRITE_KEY ?? '',
-  };
+  const host =
+    process.env.EXPO_PUBLIC_ANALYTICS_HOST ?? process.env.EXPO_PUBLIC_ANALYTICS_ENDPOINT ?? '';
+  const writeKey = process.env.EXPO_PUBLIC_ANALYTICS_WRITE_KEY ?? '';
+  return { host, writeKey };
+}
+
+function sanitizeHost(host: string) {
+  if (!host) return '';
+  return host.replace(/\/capture\/?$/, '').replace(/\/$/, '');
 }
 
 function getNativeStore() {
@@ -56,6 +79,7 @@ function persistDistinctId(id: string) {
     }
     return;
   }
+
   getNativeStore()?.set(ANALYTICS_STORAGE_KEY, id);
 }
 
@@ -90,7 +114,6 @@ function loadDistinctId() {
 
 function logToConsole(level: 'info' | 'warn' | 'error', message: string, payload?: unknown) {
   if (!isDev) return;
-
   console[level](`[Observability] ${message}`, payload ?? '');
 }
 
@@ -116,101 +139,52 @@ type AnalyticsEnvelope =
       timestamp: string;
     };
 
-async function sendAnalytics(envelope: AnalyticsEnvelope) {
-  const { endpoint, writeKey } = getAnalyticsConfig();
-  if (!endpoint || !writeKey) return;
+function ensurePosthogClient() {
+  if (posthogClient) return posthogClient;
 
-  const isPosthog = endpoint.includes('posthog');
+  const { host, writeKey } = getAnalyticsConfig();
+  if (!writeKey) return null;
+
+  const sanitizedHost = sanitizeHost(host || 'https://app.posthog.com');
+  if (!sanitizedHost) return null;
 
   try {
-    if (isPosthog) {
-      const distinctId = loadDistinctId();
-      const posthogBody = mapEnvelopeToPosthog(envelope, distinctId, writeKey);
-      await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(posthogBody),
-      });
-      return;
-    }
-
-    await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${writeKey}`,
-      },
-      body: JSON.stringify(envelope),
+    posthogClient = new PostHog(writeKey, {
+      host: sanitizedHost,
+      captureAppLifecycleEvents: true,
+      enablePersistSessionIdAcrossRestart: true,
+      customStorage: getPosthogStorage(),
     });
+    posthogClient.identify(loadDistinctId());
+    const deviceType =
+      Platform.OS === 'ios' ? 'iOS' : Platform.OS === 'android' ? 'Android' : 'Web';
+    const deviceProps = {
+      $device_type: deviceType,
+      $os: Platform.OS,
+      $os_version: Device.osVersion,
+      $device_name: Device.modelName,
+      $device_manufacturer: Device.manufacturer,
+      $device_year_class: Device.deviceYearClass,
+      $app_name: DOMAIN.app.displayName,
+      $app_version: Device.osBuildId,
+    };
+    void posthogClient.register(
+      Object.fromEntries(
+        Object.entries(deviceProps).filter(
+          ([_key, value]) => value !== undefined && value !== null,
+        ),
+      ) as Record<string, number | string | boolean>,
+    );
   } catch (error) {
-    logToConsole('warn', 'analytics:failed', { message: (error as Error).message });
+    logToConsole('warn', 'analytics:init-failed', { message: (error as Error).message });
+    posthogClient = null;
   }
-}
 
-type PosthogPayload = {
-  api_key: string;
-  event: string;
-  distinct_id: string;
-  properties?: Record<string, unknown>;
-  timestamp: string;
-};
-
-function mapEnvelopeToPosthog(
-  envelope: AnalyticsEnvelope,
-  distinctId: string,
-  writeKey: string,
-): PosthogPayload {
-  const base: PosthogPayload = {
-    api_key: writeKey,
-    event: '',
-    distinct_id: distinctId,
-    timestamp: envelope.timestamp,
-    properties: {
-      $lib: DOMAIN.app.name,
-    },
-  };
-
-  switch (envelope.kind) {
-    case 'event':
-      return {
-        ...base,
-        event: envelope.event,
-        properties: {
-          ...base.properties,
-          kind: 'event',
-          ...envelope.payload,
-        },
-      };
-    case 'error':
-      return {
-        ...base,
-        event: 'observability:error',
-        properties: {
-          ...base.properties,
-          kind: 'error',
-          message: envelope.message,
-          stack: envelope.stack,
-          ...envelope.metadata,
-        },
-      };
-    case 'performance':
-    default:
-      return {
-        ...base,
-        event: `observability:perf:${envelope.name}`,
-        properties: {
-          ...base.properties,
-          kind: 'performance',
-          durationMs: envelope.durationMs,
-          ...envelope.metadata,
-        },
-      };
-  }
+  return posthogClient;
 }
 
 export function AnalyticsProvider({ children }: PropsWithChildren) {
+  const client = ensurePosthogClient();
   const value = useMemo<AnalyticsContextValue>(() => {
     const trackEvent = (event: string, payload?: AnalyticsEventPayload) => {
       const envelope: AnalyticsEnvelope = {
@@ -220,7 +194,7 @@ export function AnalyticsProvider({ children }: PropsWithChildren) {
         timestamp: new Date().toISOString(),
       };
       logToConsole('info', `event:${event}`, envelope);
-      void sendAnalytics(envelope);
+      void dispatchAnalytics(envelope, client);
     };
 
     const trackError = (error: Error | string, metadata?: AnalyticsEventPayload) => {
@@ -235,7 +209,7 @@ export function AnalyticsProvider({ children }: PropsWithChildren) {
         timestamp: new Date().toISOString(),
       };
       logToConsole('error', 'error', { ...envelope, metadata: { ...(metadata ?? {}), stack } });
-      void sendAnalytics(envelope);
+      void dispatchAnalytics(envelope, client);
     };
 
     const trackPerformance = (metric: PerformanceMetric) => {
@@ -247,7 +221,7 @@ export function AnalyticsProvider({ children }: PropsWithChildren) {
         timestamp: new Date().toISOString(),
       };
       logToConsole('info', `perf:${metric.name}`, envelope);
-      void sendAnalytics(envelope);
+      void dispatchAnalytics(envelope, client);
     };
 
     return {
@@ -255,11 +229,103 @@ export function AnalyticsProvider({ children }: PropsWithChildren) {
       trackError,
       trackPerformance,
     };
-  }, []);
+  }, [client]);
 
-  return <AnalyticsContext.Provider value={value}>{children}</AnalyticsContext.Provider>;
+  const content = <AnalyticsContext.Provider value={value}>{children}</AnalyticsContext.Provider>;
+
+  if (client) {
+    return <PostHogProvider client={client}>{content}</PostHogProvider>;
+  }
+
+  return content;
 }
 
 export function useAnalytics() {
   return useContext(AnalyticsContext);
+}
+
+function dispatchAnalytics(envelope: AnalyticsEnvelope, client: PostHog | null) {
+  if (!client) return;
+
+  switch (envelope.kind) {
+    case 'event':
+      void client.capture(envelope.event, {
+        ...envelope.payload,
+        timestamp: envelope.timestamp,
+      });
+      break;
+    case 'error':
+      const errorProps: Record<string, any> = {
+        message: envelope.message,
+        timestamp: envelope.timestamp,
+        ...envelope.metadata,
+      };
+      if (envelope.stack) {
+        errorProps.stack = envelope.stack;
+      }
+      void client.capture('observability:error', {
+        ...errorProps,
+      });
+      break;
+    case 'performance':
+      const perfProps: Record<string, any> = {
+        ...envelope.metadata,
+        timestamp: envelope.timestamp,
+      };
+      if (typeof envelope.durationMs === 'number') {
+        perfProps.durationMs = envelope.durationMs;
+      }
+      void client.capture(`observability:perf:${envelope.name}`, {
+        ...perfProps,
+      });
+      break;
+    default:
+      break;
+  }
+}
+
+type BasicStorage = {
+  setItem: (key: string, value: string) => Promise<void> | void;
+  getItem: (key: string) => Promise<string | null> | (string | null);
+  removeItem: (key: string) => Promise<void> | void;
+};
+
+function getPosthogStorage(): BasicStorage {
+  if (Platform.OS === 'web') {
+    if (typeof globalThis !== 'undefined' && 'localStorage' in globalThis) {
+      return {
+        setItem: (key, value) => {
+          globalThis.localStorage.setItem(key, value);
+        },
+        getItem: (key) => globalThis.localStorage.getItem(key),
+        removeItem: (key) => {
+          globalThis.localStorage.removeItem(key);
+        },
+      };
+    }
+  } else {
+    const nativeStore = getNativeStore();
+    if (nativeStore) {
+      return {
+        setItem: (key, value) => {
+          nativeStore.set(key, value);
+        },
+        getItem: (key) => nativeStore.getString(key) ?? null,
+        removeItem: (key) => {
+          nativeStore.delete(key);
+        },
+      };
+    }
+  }
+
+  const memory = new Map<string, string>();
+  return {
+    setItem: (key, value) => {
+      memory.set(key, value);
+    },
+    getItem: (key) => memory.get(key) ?? null,
+    removeItem: (key) => {
+      memory.delete(key);
+    },
+  };
 }

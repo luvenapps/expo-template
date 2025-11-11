@@ -5,20 +5,22 @@ Stage 5 focuses on the instrumentation agents need to reason about runtime behav
 ## Analytics Provider
 
 - `src/observability/AnalyticsProvider.tsx` exposes `useAnalytics()` with `trackEvent`, `trackError`, and `trackPerformance`.
-- The provider is wired into `AppProviders`, so every screen/component can call `useAnalytics` without extra plumbing.
-- Events still log to `[Observability]` in dev, but when `EXPO_PUBLIC_ANALYTICS_ENDPOINT` and `EXPO_PUBLIC_ANALYTICS_WRITE_KEY` are set, payloads are POSTed to that endpoint with a `Bearer` token—point it at Segment/PostHog/etc.
-- For unit tests, mock `useAnalytics` to avoid console noise (see `__tests__/src/notifications/useNotificationSettings.test.tsx`).
+- Under the hood we instantiate the official `posthog-react-native` client, wrap the tree in `PostHogProvider`, and forward every envelope via `posthog.capture(...)`. Dev builds still log to `[Observability]` for quick inspection.
+- Expo web complains about missing storage by default, so we inject a custom storage layer (localStorage/MMKV fallback) and persist a generated distinct id so every event has a stable anonymous user id.
+- We persist a locally generated distinct id (MMKV/localStorage) so events remain tied to the same anonymous user until you call `identify` elsewhere.
+- For unit tests, mock `useAnalytics` (or the PostHog module) to avoid console noise (see `__tests__/src/observability/AnalyticsProvider.test.tsx`).
 
 ### Configuration
 
 ```bash
-EXPO_PUBLIC_ANALYTICS_ENDPOINT=https://example.com/analytics
-EXPO_PUBLIC_ANALYTICS_WRITE_KEY=your-public-write-key
+EXPO_PUBLIC_ANALYTICS_ENDPOINT=https://app.posthog.com
+# or self-hosted: https://us.i.posthog.com / https://posthog.mycompany.com
+EXPO_PUBLIC_ANALYTICS_WRITE_KEY=phc_your_project_key
 ```
 
-- Store these as EAS secrets for preview/prod builds.
-- Endpoint must accept JSON bodies shaped like `{ kind: 'event' | 'error' | 'performance', ... }`.
-- When unset, the provider quietly logs to console without network calls.
+- If you prefer a separate host env var, set `EXPO_PUBLIC_ANALYTICS_HOST`; otherwise we fall back to `EXPO_PUBLIC_ANALYTICS_ENDPOINT`.
+- Store the values as EAS secrets for preview/prod builds. Locally you can drop them into `.env.local`.
+- When unset, the provider quietly logs to console and skips PostHog initialization.
 
 ### Event conventions
 
