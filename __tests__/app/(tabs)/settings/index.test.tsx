@@ -24,6 +24,10 @@ jest.mock('expo-router', () => {
 // Mock setTheme
 const mockSetTheme = jest.fn();
 
+const mockToggleReminders = jest.fn();
+const mockToggleDailySummary = jest.fn();
+const mockUpdateQuietHours = jest.fn();
+
 // Mock ThemeProvider
 jest.mock('@/ui/theme/ThemeProvider', () => {
   const { themePalettes } = jest.requireActual('@/ui/theme/palette');
@@ -45,6 +49,23 @@ jest.mock('@/ui/theme/ThemeProvider', () => {
     })),
   };
 });
+
+jest.mock('@/notifications/useNotificationSettings', () => ({
+  useNotificationSettings: jest.fn(() => ({
+    remindersEnabled: false,
+    dailySummaryEnabled: false,
+    quietHours: [20, 23],
+    permissionStatus: 'prompt',
+    statusMessage: null,
+    error: null,
+    isSupported: true,
+    isChecking: false,
+    toggleReminders: mockToggleReminders,
+    toggleDailySummary: mockToggleDailySummary,
+    updateQuietHours: mockUpdateQuietHours,
+    refreshPermissionStatus: jest.fn(),
+  })),
+}));
 
 // Mock auth session
 jest.mock('@/auth/session', () => ({
@@ -241,6 +262,7 @@ import { clearAllTables, getDb, hasData } from '@/db/sqlite';
 import { withDatabaseRetry } from '@/db/sqlite/retry';
 import { useSync } from '@/sync';
 import { clearAll as clearOutbox } from '@/sync/outbox';
+import { useNotificationSettings } from '@/notifications/useNotificationSettings';
 import { useThemeContext } from '@/ui/theme/ThemeProvider';
 import { themePalettes } from '@/ui/theme/palette';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
@@ -260,11 +282,35 @@ const mockedHasData = hasData as unknown as jest.Mock;
 const mockedClearAllTables = clearAllTables as unknown as jest.Mock;
 const mockedGetDb = getDb as unknown as jest.Mock;
 const mockedWithDatabaseRetry = withDatabaseRetry as unknown as jest.Mock;
+const mockedUseNotificationSettings = useNotificationSettings as unknown as jest.Mock;
+
+type NotificationSettingsMock = ReturnType<typeof useNotificationSettings>;
+
+const buildNotificationSettings = (
+  overrides: Partial<NotificationSettingsMock> = {},
+): NotificationSettingsMock => ({
+  remindersEnabled: false,
+  dailySummaryEnabled: false,
+  quietHours: [20, 23],
+  permissionStatus: 'prompt',
+  statusMessage: null,
+  error: null,
+  isSupported: true,
+  isChecking: false,
+  toggleReminders: mockToggleReminders,
+  toggleDailySummary: mockToggleDailySummary,
+  updateQuietHours: mockUpdateQuietHours,
+  refreshPermissionStatus: jest.fn(),
+  ...overrides,
+});
 
 describe('SettingsScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockPush.mockClear();
+    mockToggleReminders.mockClear();
+    mockToggleDailySummary.mockClear();
+    mockUpdateQuietHours.mockClear();
     mockDatabaseResetListeners = [];
     mockTransaction.mockClear();
     mockTransaction.mockImplementation((cb) => Promise.resolve(cb(mockTx)));
@@ -279,6 +325,7 @@ describe('SettingsScreen', () => {
       lastError: null,
       triggerSync: jest.fn(),
     }));
+    mockedUseNotificationSettings.mockReturnValue(buildNotificationSettings());
   });
 
   describe('Unauthenticated State', () => {
@@ -443,6 +490,46 @@ describe('SettingsScreen', () => {
       const { getByText } = render(<SettingsScreen />);
       fireEvent.press(getByText('Sync now'));
       expect(triggerSync).toHaveBeenCalled();
+    });
+  });
+
+  describe('Notifications Section', () => {
+    beforeEach(() => {
+      mockedUseSessionStore.mockImplementation((selector: any) =>
+        selector({
+          status: 'authenticated',
+          session: { user: { email: 'user@example.com' } },
+          signOut: jest.fn(),
+          isLoading: false,
+        }),
+      );
+    });
+
+    it('shows permission guidance text based on status', () => {
+      mockedUseNotificationSettings.mockReturnValue(
+        buildNotificationSettings({ permissionStatus: 'blocked' }),
+      );
+
+      const { getByText } = render(<SettingsScreen />);
+      expect(getByText('Notifications are blocked in system settings.')).toBeDefined();
+    });
+
+    it('surfaces status messages from notification hook', () => {
+      mockedUseNotificationSettings.mockReturnValue(
+        buildNotificationSettings({ statusMessage: 'Reminders enabled.' }),
+      );
+
+      const { getAllByText } = render(<SettingsScreen />);
+      expect(getAllByText('Reminders enabled.').length).toBeGreaterThan(0);
+    });
+
+    it('surfaces errors from notification hook', () => {
+      mockedUseNotificationSettings.mockReturnValue(
+        buildNotificationSettings({ error: 'Notifications unavailable.' }),
+      );
+
+      const { getAllByText } = render(<SettingsScreen />);
+      expect(getAllByText('Notifications unavailable.').length).toBeGreaterThan(0);
     });
   });
 

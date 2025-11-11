@@ -10,6 +10,7 @@ import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { YStack } from 'tamagui';
+import { AnalyticsProvider } from '@/observability/AnalyticsProvider';
 
 const queryClient = getQueryClient();
 const persistOptions = getQueryClientPersistOptions();
@@ -34,19 +35,21 @@ export function AppProviders({ children }: PropsWithChildren) {
   });
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: palette.background }}>
-      <SafeAreaProvider>
-        {isWeb && persistOptions ? (
-          <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
-            <AppContent resolvedTheme={resolvedTheme}>{children}</AppContent>
-          </PersistQueryClientProvider>
-        ) : (
-          <QueryClientProvider client={queryClient}>
-            <AppContent resolvedTheme={resolvedTheme}>{children}</AppContent>
-          </QueryClientProvider>
-        )}
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <AnalyticsProvider>
+      <GestureHandlerRootView style={{ flex: 1, backgroundColor: palette.background }}>
+        <SafeAreaProvider>
+          {isWeb && persistOptions ? (
+            <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
+              <AppContent resolvedTheme={resolvedTheme}>{children}</AppContent>
+            </PersistQueryClientProvider>
+          ) : (
+            <QueryClientProvider client={queryClient}>
+              <AppContent resolvedTheme={resolvedTheme}>{children}</AppContent>
+            </QueryClientProvider>
+          )}
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </AnalyticsProvider>
   );
 }
 

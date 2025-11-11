@@ -26,10 +26,10 @@ import { useThemeContext, type ThemeName } from '@/ui/theme/ThemeProvider';
 import { Calendar, Flame, Monitor, Moon, RefreshCw, Sun } from '@tamagui/lucide-icons';
 import { useRouter } from 'expo-router';
 import type { ComponentType } from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import { Button, Paragraph, Progress, Switch, XStack, YStack } from 'tamagui';
-import { ensureNotificationPermission } from '@/notifications';
+import { useNotificationSettings } from '@/notifications/useNotificationSettings';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -57,9 +57,19 @@ export default function SettingsScreen() {
   const [isSeeding, setIsSeeding] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [hasDbData, setHasDbData] = useState(false);
-  const [remindersEnabled, setRemindersEnabled] = useState(true);
-  const [dailySummaryEnabled, setDailySummaryEnabled] = useState(false);
-  const [quietHours, setQuietHours] = useState<number[]>([20, 24]);
+  const {
+    remindersEnabled,
+    dailySummaryEnabled,
+    quietHours,
+    permissionStatus,
+    statusMessage: notificationStatusMessage,
+    error: notificationError,
+    isSupported: notificationsSupported,
+    isChecking: isCheckingNotifications,
+    toggleReminders,
+    toggleDailySummary,
+    updateQuietHours,
+  } = useNotificationSettings();
   const hasOutboxData = queueSize > 0; // Use sync store's queue size instead of manual check
   const isSeedingRef = useRef(false); // Synchronous lock to prevent rapid-clicking (state updates are async)
   const isClearingRef = useRef(false); // Synchronous lock for clear operations
@@ -266,31 +276,25 @@ export default function SettingsScreen() {
     [1, 0, 2, 3, 4, 2, 1],
   ];
 
-  const handleReminderToggle = useCallback(
-    async (next: boolean) => {
-      setRemindersEnabled(next);
-      if (next) {
-        const granted = await ensureNotificationPermission();
-        if (!granted) {
-          setRemindersEnabled(false);
-          setDevStatus('Enable notifications in OS settings to turn on reminders.');
-          return;
-        }
-        setDevStatus('Reminders enabled (scheduling arrives in Stage 5).');
-      } else {
-        setDevStatus('Reminders disabled.');
-      }
-    },
-    [setDevStatus],
-  );
+  const notificationStatusCopy = useMemo(() => {
+    if (!notificationsSupported) {
+      return 'Notifications are unavailable on this platform.';
+    }
 
-  const handleSummaryToggle = useCallback(
-    (next: boolean) => {
-      setDailySummaryEnabled(next);
-      setDevStatus(next ? 'Daily summary enabled (placeholder).' : 'Daily summary disabled.');
-    },
-    [setDevStatus],
-  );
+    switch (permissionStatus) {
+      case 'granted':
+        return 'Notifications are enabled for this device.';
+      case 'prompt':
+        return 'Enable notifications to receive reminders.';
+      case 'denied':
+        return 'Notifications are currently denied.';
+      case 'blocked':
+        return 'Notifications are blocked in system settings.';
+      case 'unavailable':
+      default:
+        return 'Notifications are unavailable on this platform.';
+    }
+  }, [notificationsSupported, permissionStatus]);
 
   return (
     <ScreenContainer contentContainerStyle={{ flexGrow: 1, paddingBottom: 96 }}>
@@ -346,7 +350,8 @@ export default function SettingsScreen() {
 
         <SettingsSection
           title="Notifications"
-          description="Control reminder prompts and daily summaries. (Coming soon)"
+          description="Control reminder prompts and daily summaries."
+          footer={notificationError ?? notificationStatusMessage ?? undefined}
         >
           <YStack gap="$4">
             <XStack alignItems="center" justifyContent="space-between">
@@ -357,8 +362,9 @@ export default function SettingsScreen() {
                 </Paragraph>
               </YStack>
               <Switch
+                disabled={!notificationsSupported || isCheckingNotifications}
                 checked={remindersEnabled}
-                onCheckedChange={(checked) => handleReminderToggle(Boolean(checked))}
+                onCheckedChange={(checked) => toggleReminders(Boolean(checked))}
               >
                 <Switch.Thumb />
               </Switch>
@@ -372,8 +378,9 @@ export default function SettingsScreen() {
                 </Paragraph>
               </YStack>
               <Switch
+                disabled={!notificationsSupported || permissionStatus === 'blocked'}
                 checked={dailySummaryEnabled}
-                onCheckedChange={(checked) => handleSummaryToggle(Boolean(checked))}
+                onCheckedChange={(checked) => toggleDailySummary(Boolean(checked))}
               >
                 <Switch.Thumb />
               </Switch>
@@ -382,12 +389,25 @@ export default function SettingsScreen() {
             <SliderField
               label="Quiet hours"
               value={quietHours}
-              onValueChange={setQuietHours}
+              onValueChange={updateQuietHours}
               min={0}
               max={24}
               step={1}
               helperText="Reminders snoozed during these hours"
             />
+            <Paragraph color="$colorMuted" fontSize="$3">
+              {notificationStatusCopy}
+            </Paragraph>
+            {notificationStatusMessage ? (
+              <Paragraph color="$colorMuted" fontSize="$3">
+                {notificationStatusMessage}
+              </Paragraph>
+            ) : null}
+            {notificationError ? (
+              <Paragraph color="$dangerColor" fontSize="$3">
+                {notificationError}
+              </Paragraph>
+            ) : null}
           </YStack>
         </SettingsSection>
 
