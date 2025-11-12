@@ -27,6 +27,14 @@ jest.mock('expo-status-bar', () => ({
   },
 }));
 
+// Mock expo-notifications
+const mockNotificationSubscription = { remove: jest.fn() };
+jest.mock('expo-notifications', () => ({
+  setNotificationCategoryAsync: jest.fn(),
+  setNotificationHandler: jest.fn(),
+  addNotificationReceivedListener: jest.fn(() => mockNotificationSubscription),
+}));
+
 // Mock auth session
 const mockSessionState = {
   status: 'unauthenticated',

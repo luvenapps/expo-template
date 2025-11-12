@@ -30,6 +30,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import { Button, Paragraph, Progress, Switch, XStack, YStack } from 'tamagui';
 import { useNotificationSettings } from '@/notifications/useNotificationSettings';
+import { scheduleReminder } from '@/notifications/scheduler';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -223,6 +224,34 @@ export default function SettingsScreen() {
       useSyncStore.getState().setQueueSize(0);
     } catch (error) {
       setDevStatus((error as Error).message);
+    }
+  };
+
+  const handleTestReminder = async () => {
+    if (!notificationsSupported) {
+      setDevStatus('Reminders are unavailable on this platform.');
+      return;
+    }
+    setDevStatus('Scheduling test reminder...');
+    const fireDate = new Date(Date.now() + 60 * 1000);
+    try {
+      const id = await scheduleReminder(
+        {
+          id: `dev-test-${Date.now()}`,
+          title: 'Better Habits Reminder',
+          body: 'This is a test reminder (arrives in ~1 minute).',
+          fireDate,
+        },
+        { quietHours },
+      );
+      if (!id) {
+        setDevStatus('Unable to schedule reminder. Check notification permissions.');
+        return;
+      }
+      setDevStatus('Test reminder scheduled. Check your notifications in ~1 minute.');
+    } catch (reminderError) {
+      console.error('[Settings] scheduleReminder failed', reminderError);
+      setDevStatus('Failed to schedule reminder.');
     }
   };
 
@@ -512,6 +541,11 @@ export default function SettingsScreen() {
                     onPress={handleClearLocalDatabase}
                   >
                     {isClearing ? 'Clearing…' : 'Clear local database'}
+                  </SecondaryButton>
+                </XStack>
+                <XStack>
+                  <SecondaryButton disabled={!notificationsSupported} onPress={handleTestReminder}>
+                    Schedule test reminder
                   </SecondaryButton>
                 </XStack>
               </SettingsSection>

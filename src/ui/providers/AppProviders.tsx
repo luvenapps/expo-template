@@ -1,4 +1,5 @@
 import { initSessionListener, useSessionStore } from '@/auth/session';
+import { registerNotificationCategories, configureNotificationHandler } from '@/notifications';
 import { getQueryClient, getQueryClientPersistOptions } from '@/state';
 import { pullUpdates, pushOutbox, useSync } from '@/sync';
 import { useThemeContext } from '@/ui/theme/ThemeProvider';
@@ -11,6 +12,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { YStack } from 'tamagui';
 import { AnalyticsProvider } from '@/observability/AnalyticsProvider';
+import * as Notifications from 'expo-notifications';
+import { Alert } from 'react-native';
 
 const queryClient = getQueryClient();
 const persistOptions = getQueryClientPersistOptions();
@@ -24,6 +27,22 @@ export function AppProviders({ children }: PropsWithChildren) {
 
   useEffect(() => {
     initSessionListener();
+    registerNotificationCategories().catch(() => undefined);
+    configureNotificationHandler().catch(() => undefined);
+
+    let subscription: Notifications.Subscription | undefined;
+    if (Platform.OS !== 'web') {
+      subscription = Notifications.addNotificationReceivedListener((notification) => {
+        const { data, title, body } = notification.request.content;
+        if (data?.namespace === 'betterhabits-reminders') {
+          Alert.alert(title ?? 'Reminder', body ?? 'Time to check Better Habits');
+        }
+      });
+    }
+
+    return () => {
+      subscription?.remove();
+    };
   }, []);
 
   useSync({
