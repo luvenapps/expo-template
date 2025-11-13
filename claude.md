@@ -107,3 +107,8 @@ When starting work:
 ---
 
 Remember: **Verification over assumption. Questions over guesses.**
+
+## Response Formatting
+
+- When the user requests a commit message, respond with two separate fenced code blocks (title first, body second) so they can copy them easily.
+- After finishing any coding task, proactively provide the commit title/body in that format without waiting for the user to ask.

@@ -27,6 +27,7 @@ const mockSetTheme = jest.fn();
 const mockToggleReminders = jest.fn();
 const mockToggleDailySummary = jest.fn();
 const mockUpdateQuietHours = jest.fn();
+const mockTrackError = jest.fn();
 
 // Mock ThemeProvider
 jest.mock('@/ui/theme/ThemeProvider', () => {
@@ -49,6 +50,14 @@ jest.mock('@/ui/theme/ThemeProvider', () => {
     })),
   };
 });
+
+jest.mock('@/observability/AnalyticsProvider', () => ({
+  useAnalytics: () => ({
+    trackEvent: jest.fn(),
+    trackError: mockTrackError,
+    trackPerformance: jest.fn(),
+  }),
+}));
 
 jest.mock('@/notifications/useNotificationSettings', () => ({
   useNotificationSettings: jest.fn(() => ({
@@ -311,6 +320,7 @@ describe('SettingsScreen', () => {
     mockToggleReminders.mockClear();
     mockToggleDailySummary.mockClear();
     mockUpdateQuietHours.mockClear();
+    mockTrackError.mockClear();
     mockDatabaseResetListeners = [];
     mockTransaction.mockClear();
     mockTransaction.mockImplementation((cb) => Promise.resolve(cb(mockTx)));

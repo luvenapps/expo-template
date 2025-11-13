@@ -8,6 +8,14 @@ jest.mock('@/auth/client', () => ({
   },
 }));
 
+jest.mock('@/errors/friendly', () => ({
+  resolveFriendlyError: jest.fn((error: any) => ({
+    title: error.message || 'Unexpected error',
+    description: error.message || 'Unexpected error',
+    code: 'unknown',
+  })),
+}));
+
 type SupabaseAuth = (typeof import('@/auth/client'))['supabase']['auth'];
 
 const auth = require('@/auth/client').supabase.auth as SupabaseAuth;
@@ -36,13 +44,13 @@ describe('auth/service', () => {
   test('signInWithEmail returns error message', async () => {
     mockReturn('signInWithPassword', 'Invalid credentials');
     const result = await signInWithEmail('user@example.com', 'password');
-    expect(result).toEqual({ success: false, error: 'Invalid credentials' });
+    expect(result).toEqual({ success: false, error: 'Invalid credentials', code: 'unknown' });
   });
 
   test('signOut handles errors', async () => {
     mockReturn('signOut', 'Failed');
     const result = await signOut();
-    expect(result).toEqual({ success: false, error: 'Failed' });
+    expect(result).toEqual({ success: false, error: 'Failed', code: 'unknown' });
   });
 
   test('signInWithOAuth succeeds', async () => {
@@ -55,7 +63,7 @@ describe('auth/service', () => {
   test('signInWithOAuth returns error message', async () => {
     mockReturn('signInWithOAuth', 'OAuth failed');
     const result = await signInWithOAuth('google');
-    expect(result).toEqual({ success: false, error: 'OAuth failed' });
+    expect(result).toEqual({ success: false, error: 'OAuth failed', code: 'unknown' });
     expect(auth.signInWithOAuth).toHaveBeenCalledWith({ provider: 'google' });
   });
 });

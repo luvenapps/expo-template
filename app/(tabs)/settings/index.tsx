@@ -9,6 +9,7 @@ import {
 import { clearAllTables, getDb, hasData } from '@/db/sqlite';
 import { onDatabaseReset } from '@/db/sqlite/events';
 import { withDatabaseRetry } from '@/db/sqlite/retry';
+import { resolveFriendlyError } from '@/errors/friendly';
 import { useSyncStore } from '@/state';
 import { pullUpdates, pushOutbox, useSync } from '@/sync';
 import { clearAll as clearOutbox, getPending } from '@/sync/outbox';
@@ -23,6 +24,7 @@ import {
   ToastContainer,
   useToast,
 } from '@/ui';
+import { useAnalytics } from '@/observability/AnalyticsProvider';
 import { useThemeContext, type ThemeName } from '@/ui/theme/ThemeProvider';
 import { Calendar, Flame, Monitor, Moon, RefreshCw, Sun } from '@tamagui/lucide-icons';
 import { useRouter } from 'expo-router';
@@ -76,6 +78,24 @@ export default function SettingsScreen() {
   const isSeedingRef = useRef(false); // Synchronous lock to prevent rapid-clicking (state updates are async)
   const isClearingRef = useRef(false); // Synchronous lock for clear operations
   const toast = useToast();
+  const analytics = useAnalytics();
+  const reportFriendlyError = useCallback(
+    (error: unknown, surface: string) => {
+      const friendly = resolveFriendlyError(error);
+      analytics.trackError(friendly.title, {
+        surface,
+        code: friendly.code,
+        originalMessage: friendly.originalMessage,
+      });
+      toast.show({
+        type: friendly.type,
+        title: friendly.title,
+        description: friendly.description,
+      });
+      return friendly;
+    },
+    [analytics, toast],
+  );
   const syncDisabledMessage = !isNative
     ? 'Background sync requires the iOS or Android app to access the local database.'
     : status !== 'authenticated'
@@ -141,11 +161,8 @@ export default function SettingsScreen() {
       });
     } catch (syncError) {
       console.error('[Settings] manual sync failed', syncError);
-      toast.show({
-        type: 'error',
-        title: 'Sync failed',
-        description: (syncError as Error).message,
-      });
+      const friendly = reportFriendlyError(syncError, 'settings.sync');
+      setDevStatus(friendly.description ?? friendly.title);
     }
   };
 
@@ -232,13 +249,8 @@ export default function SettingsScreen() {
       useSyncStore.getState().setQueueSize(pending.length);
     } catch (error) {
       console.error('[Settings] Seed sample data failed:', error);
-      const description = (error as Error).message;
-      setDevStatus(`Error: ${description}`);
-      toast.show({
-        type: 'error',
-        title: 'Seed failed',
-        description,
-      });
+      const friendly = reportFriendlyError(error, 'settings.seed');
+      setDevStatus(`Error: ${friendly.description ?? friendly.title}`);
     } finally {
       setIsSeeding(false);
       isSeedingRef.current = false;
@@ -257,13 +269,8 @@ export default function SettingsScreen() {
         title: 'Outbox cleared',
       });
     } catch (error) {
-      const description = (error as Error).message;
-      setDevStatus(description);
-      toast.show({
-        type: 'error',
-        title: 'Failed to clear outbox',
-        description,
-      });
+      const friendly = reportFriendlyError(error, 'settings.clear-outbox');
+      setDevStatus(friendly.description ?? friendly.title);
     }
   };
 
@@ -299,12 +306,8 @@ export default function SettingsScreen() {
       });
     } catch (reminderError) {
       console.error('[Settings] scheduleReminder failed', reminderError);
-      setDevStatus(`Reminder scheduling failed: ${(reminderError as Error).message}`);
-      toast.show({
-        type: 'error',
-        title: 'Failed to schedule reminder.',
-        description: (reminderError as Error).message,
-      });
+      const friendly = reportFriendlyError(reminderError, 'settings.test-reminder');
+      setDevStatus(`Reminder scheduling failed: ${friendly.description ?? friendly.title}`);
     }
   };
 
@@ -328,7 +331,8 @@ export default function SettingsScreen() {
       useSyncStore.getState().setQueueSize(0);
     } catch (error) {
       console.error('[Settings] Clear local database failed:', error);
-      setDevStatus(`Error: ${(error as Error).message}`);
+      const friendly = reportFriendlyError(error, 'settings.clear-db');
+      setDevStatus(`Error: ${friendly.description ?? friendly.title}`);
     } finally {
       setIsClearing(false);
       isClearingRef.current = false;

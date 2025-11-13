@@ -34,6 +34,23 @@ EXPO_PUBLIC_ANALYTICS_WRITE_KEY=phc_your_project_key
 
 Add new events in the relevant hooks/components and keep namespaced by feature (`sync:*`, `habits:*`, etc.).
 
+### Friendly error catalog
+
+Stage 8 introduces a shared resolver (`src/errors/friendly.ts`) so low-level errors map to actionable copy + analytics events. Every time `resolveFriendlyError` is used we also call `useAnalytics().trackError(...)` with the codes below.
+
+| Code                       | Title                     | Description                                                            | Typical source                    |
+| -------------------------- | ------------------------- | ---------------------------------------------------------------------- | --------------------------------- |
+| `network.offline`          | Check your connection     | We could not reach the server. Verify connectivity and retry.          | Supabase auth, sync, seed data    |
+| `sqlite.constraint`        | Already saved             | Entry already exists; nudge users to edit the original.                | Local seed/sample data            |
+| `sqlite.storage-full`      | Device storage is full    | Prompt user to free space before retrying.                             | Local seed/sample data            |
+| `sqlite.busy`              | Database is busy          | Ask the user to wait a moment.                                         | Background sync, rapid edits      |
+| `auth.invalid-credentials` | Invalid email or password | Friendly copy for Supabase “Invalid login credentials”.                | Email/password login              |
+| `auth.rate-limit`          | Too many attempts         | Rate-limit or throttling errors from Supabase auth/edge functions.     | Login or reminder scheduling      |
+| `notifications.permission` | Notifications unavailable | Expo Notifications cannot reach the edge function / permissions issue. | “Schedule test reminder” dev tool |
+| `unknown`                  | Something went wrong      | Fallback for everything else; we still surface the original message.   | Any                               |
+
+When adding new errors, extend `resolveFriendlyError` and update this table so UX + support stay in sync.
+
 ## Notification Settings
 
 - `src/notifications/useNotificationSettings.ts` centralises permission checks and persisted preferences.
