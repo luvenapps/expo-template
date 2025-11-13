@@ -17,8 +17,17 @@
       },
       "ios": { "buildConfiguration": "Release", "simulator": true }
     },
+    "preview": {
+      "distribution": "internal",
+      "channel": "preview",
+      "env": { "EXPO_PUBLIC_ENV": "preview" },
+      "android": { "buildType": "apk" },
+      "ios": { "simulator": false }
+    },
     "production": {
       "channel": "production",
+      "autoIncrement": true,
+      "env": { "EXPO_PUBLIC_ENV": "production" },
       "android": { "buildType": "app-bundle" },
       "ios": { "buildConfiguration": "Release" }
     }
