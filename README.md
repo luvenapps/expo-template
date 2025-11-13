@@ -571,6 +571,21 @@ Follow these steps in order when setting up the project for the first time:
    - ✅ You can create an account
    - ✅ Data syncs between local (SQLite) and Supabase (Postgres)
 
+### Build size checklist
+
+Before shipping preview/production builds, follow [`docs/build-size.md`](docs/build-size.md):
+
+- Measure IPA/AAB artifacts via `node scripts/report-build-size.mjs <path>`.
+- Generate bundle reports with the commands in the doc (based on `npx react-native bundle`).
+- Keep Android artifacts ≤ 25 MB and iOS artifacts ≤ 30 MB; investigate any regressions before submitting to the stores.
+
+### Deployment scripts
+
+- `npm run build:preview:ios` / `npm run build:preview:android` – internal preview builds (staging Supabase).
+- `npm run build:prod:ios` / `npm run build:prod:android` – production builds with auto-incremented versions.
+- `npm run submit:prod:ios` / `npm run submit:prod:android` – upload the latest artifacts to TestFlight / Google Play Internal Testing (requires `eas submit` credentials configured in `eas.json`).
+- `npm run version:bump -- --type patch|minor|major` – bumps `package.json`/`app.json` versions and increments iOS/Android build numbers automatically.
+
 ### Daily Development
 
 1. **Start Supabase** (Terminal 1):
@@ -609,6 +624,15 @@ Follow these steps in order when setting up the project for the first time:
 - **Next**: Implement service worker + background sync for full offline parity with native apps
 
 ### Testing on Physical Devices
+
+4. **Configure preview/staging credentials**:
+
+   ```bash
+   cp .env.preview.example .env.preview
+   # replace the Supabase + analytics values with your preview/staging project
+   ```
+
+   The preview file is used when running `eas build --profile preview` (or `--profile production` once those credentials are set as EAS secrets). It mirrors `.env.prod`, but points at your staging Supabase project so internal testers don’t pollute production data.
 
 When testing on a **physical phone or tablet**, the device needs to connect to Supabase running on your Mac. By default, `.env.local` uses `127.0.0.1` (localhost), which only works for simulators running on the same machine.
 

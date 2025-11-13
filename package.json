@@ -32,7 +32,14 @@
     "db:clean": "node scripts/clean-migrations.mjs",
     "supabase:push": "npx supabase db push",
     "supabase:dev": "node scripts/supabase-dev.mjs",
-    "supabase:deploy": "node scripts/supabase-deploy.mjs"
+    "supabase:deploy": "node scripts/supabase-deploy.mjs",
+    "build:preview:ios": "eas build --platform ios --profile preview",
+    "build:preview:android": "eas build --platform android --profile preview",
+    "build:prod:ios": "eas build --platform ios --profile production",
+    "build:prod:android": "eas build --platform android --profile production",
+    "submit:prod:ios": "eas submit --platform ios --profile production",
+    "submit:prod:android": "eas submit --platform android --profile production",
+    "version:bump": "node scripts/bump-version.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.76.0",
@@ -100,7 +107,8 @@
     "prettier": "^3.6.2",
     "react-test-renderer": "19.1.0",
     "supabase": "^2.54.11",
-    "typescript": "~5.9.2"
+    "typescript": "~5.9.2",
+    "semver": "^7.6.3"
   },
   "private": true,
   "overrides": {
