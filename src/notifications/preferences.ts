@@ -10,7 +10,7 @@ export type NotificationPreferences = {
 export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   remindersEnabled: false,
   dailySummaryEnabled: false,
-  quietHours: [20, 23],
+  quietHours: [0, 0],
 };
 
 const STORAGE_KEY = `${DOMAIN.app.storageKey}-notification-preferences`;

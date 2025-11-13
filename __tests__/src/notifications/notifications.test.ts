@@ -6,6 +6,9 @@ import {
   scheduleLocalNotification,
   cancelScheduledNotification,
   cancelAllScheduledNotifications,
+  incrementBadgeCount,
+  resetBadgeCount,
+  __resetBadgeCounterForTests,
 } from '@/notifications/notifications';
 
 type PermissionResult = Notifications.NotificationPermissionsStatus;
@@ -23,6 +26,7 @@ jest.mock('expo-notifications', () => ({
   scheduleNotificationAsync: jest.fn(),
   cancelScheduledNotificationAsync: jest.fn(),
   cancelAllScheduledNotificationsAsync: jest.fn(),
+  setBadgeCountAsync: jest.fn(),
 }));
 
 const getPermissionsAsync = Notifications.getPermissionsAsync as jest.MockedFunction<
@@ -40,12 +44,16 @@ const cancelAsync = Notifications.cancelScheduledNotificationAsync as jest.Mocke
 const cancelAllAsync = Notifications.cancelAllScheduledNotificationsAsync as jest.MockedFunction<
   typeof Notifications.cancelAllScheduledNotificationsAsync
 >;
+const setBadgeCountAsync = Notifications.setBadgeCountAsync as jest.MockedFunction<
+  typeof Notifications.setBadgeCountAsync
+>;
 
 describe('notifications helpers', () => {
   const originalPlatform = Platform.OS;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    __resetBadgeCounterForTests();
     Object.defineProperty(Platform, 'OS', {
       value: 'ios',
       configurable: true,
@@ -113,6 +121,19 @@ describe('notifications helpers', () => {
     });
   });
 
+  it('includes badge value when provided', async () => {
+    getPermissionsAsync.mockResolvedValueOnce(grantedPermissions());
+    scheduleNotificationAsync.mockResolvedValueOnce('id-2');
+
+    const id = await scheduleLocalNotification({ title: 'Hi', body: 'Test', badge: 4 });
+
+    expect(id).toBe('id-2');
+    expect(scheduleNotificationAsync).toHaveBeenCalledWith({
+      content: { title: 'Hi', body: 'Test', data: undefined, badge: 4 },
+      trigger: null,
+    });
+  });
+
   it('does not schedule when permission denied', async () => {
     getPermissionsAsync.mockResolvedValueOnce(
       grantedPermissions({
@@ -154,5 +175,42 @@ describe('notifications helpers', () => {
     Object.defineProperty(Platform, 'OS', { value: 'web' });
     await cancelAllScheduledNotifications();
     expect(cancelAllAsync).not.toHaveBeenCalled();
+  });
+
+  it('increments badge count on iOS without updating system immediately', async () => {
+    Object.defineProperty(Platform, 'OS', { value: 'ios' });
+
+    const first = await incrementBadgeCount();
+    const second = await incrementBadgeCount();
+
+    expect(first).toBe(1);
+    expect(second).toBe(2);
+    expect(setBadgeCountAsync).not.toHaveBeenCalled();
+  });
+
+  it('returns null for badge increment on non-iOS platforms', async () => {
+    Object.defineProperty(Platform, 'OS', { value: 'android' });
+
+    const result = await incrementBadgeCount();
+
+    expect(result).toBeNull();
+    expect(setBadgeCountAsync).not.toHaveBeenCalled();
+  });
+
+  it('resets badge count on iOS', async () => {
+    Object.defineProperty(Platform, 'OS', { value: 'ios' });
+    setBadgeCountAsync.mockResolvedValueOnce(undefined as any);
+
+    await resetBadgeCount();
+
+    expect(setBadgeCountAsync).toHaveBeenCalledWith(0);
+  });
+
+  it('skips badge reset on non-iOS', async () => {
+    Object.defineProperty(Platform, 'OS', { value: 'android' });
+
+    await resetBadgeCount();
+
+    expect(setBadgeCountAsync).not.toHaveBeenCalled();
   });
 });

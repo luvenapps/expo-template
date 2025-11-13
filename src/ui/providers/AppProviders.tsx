@@ -1,5 +1,9 @@
 import { initSessionListener, useSessionStore } from '@/auth/session';
-import { registerNotificationCategories, configureNotificationHandler } from '@/notifications';
+import {
+  registerNotificationCategories,
+  configureNotificationHandler,
+  resetBadgeCount,
+} from '@/notifications';
 import { getQueryClient, getQueryClientPersistOptions } from '@/state';
 import { pullUpdates, pushOutbox, useSync } from '@/sync';
 import { useThemeContext } from '@/ui/theme/ThemeProvider';
@@ -7,13 +11,11 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { StatusBar } from 'expo-status-bar';
 import { PropsWithChildren, useEffect } from 'react';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { YStack } from 'tamagui';
 import { AnalyticsProvider } from '@/observability/AnalyticsProvider';
-import * as Notifications from 'expo-notifications';
-import { Alert } from 'react-native';
 
 const queryClient = getQueryClient();
 const persistOptions = getQueryClientPersistOptions();
@@ -29,19 +31,26 @@ export function AppProviders({ children }: PropsWithChildren) {
     initSessionListener();
     registerNotificationCategories().catch(() => undefined);
     configureNotificationHandler().catch(() => undefined);
+  }, []);
 
-    let subscription: Notifications.Subscription | undefined;
-    if (Platform.OS !== 'web') {
-      subscription = Notifications.addNotificationReceivedListener((notification) => {
-        const { data, title, body } = notification.request.content;
-        if (data?.namespace === 'betterhabits-reminders') {
-          Alert.alert(title ?? 'Reminder', body ?? 'Time to check Better Habits');
-        }
-      });
+  useEffect(() => {
+    if (Platform.OS !== 'ios') {
+      return undefined;
     }
 
+    const clearBadge = () => {
+      resetBadgeCount().catch(() => undefined);
+    };
+
+    clearBadge();
+    const subscription = AppState.addEventListener?.('change', (state) => {
+      if (state === 'active') {
+        clearBadge();
+      }
+    });
+
     return () => {
-      subscription?.remove();
+      subscription?.remove?.();
     };
   }, []);
 

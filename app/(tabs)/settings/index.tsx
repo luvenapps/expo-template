@@ -18,9 +18,10 @@ import {
   ScreenContainer,
   SecondaryButton,
   SettingsSection,
-  SliderField,
   StatCard,
   StreakChart,
+  ToastContainer,
+  useToast,
 } from '@/ui';
 import { useThemeContext, type ThemeName } from '@/ui/theme/ThemeProvider';
 import { Calendar, Flame, Monitor, Moon, RefreshCw, Sun } from '@tamagui/lucide-icons';
@@ -29,6 +30,7 @@ import type { ComponentType } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import { Button, Paragraph, Progress, Switch, XStack, YStack } from 'tamagui';
+import { DEFAULT_NOTIFICATION_PREFERENCES } from '@/notifications/preferences';
 import { useNotificationSettings } from '@/notifications/useNotificationSettings';
 import { scheduleReminder } from '@/notifications/scheduler';
 
@@ -61,7 +63,7 @@ export default function SettingsScreen() {
   const {
     remindersEnabled,
     dailySummaryEnabled,
-    quietHours,
+    quietHours = DEFAULT_NOTIFICATION_PREFERENCES.quietHours,
     permissionStatus,
     statusMessage: notificationStatusMessage,
     error: notificationError,
@@ -69,11 +71,11 @@ export default function SettingsScreen() {
     isChecking: isCheckingNotifications,
     toggleReminders,
     toggleDailySummary,
-    updateQuietHours,
   } = useNotificationSettings();
   const hasOutboxData = queueSize > 0; // Use sync store's queue size instead of manual check
   const isSeedingRef = useRef(false); // Synchronous lock to prevent rapid-clicking (state updates are async)
   const isClearingRef = useRef(false); // Synchronous lock for clear operations
+  const toast = useToast();
   const syncDisabledMessage = !isNative
     ? 'Background sync requires the iOS or Android app to access the local database.'
     : status !== 'authenticated'
@@ -121,11 +123,30 @@ export default function SettingsScreen() {
   };
 
   const handleManualSync = async () => {
-    if (!canSync) return;
-    await triggerSync();
-    // Refresh database check after sync (may have pulled new data)
-    // Note: queueSize updates automatically via sync store
-    await checkDatabaseData();
+    if (!canSync) {
+      toast.show({
+        type: 'info',
+        title: 'Sync unavailable',
+        description: syncDisabledMessage ?? 'Background sync runs only on native builds.',
+      });
+      return;
+    }
+    try {
+      await triggerSync();
+      await checkDatabaseData();
+      toast.show({
+        type: 'success',
+        title: 'Sync started',
+        description: 'We will notify you if an error occurs.',
+      });
+    } catch (syncError) {
+      console.error('[Settings] manual sync failed', syncError);
+      toast.show({
+        type: 'error',
+        title: 'Sync failed',
+        description: (syncError as Error).message,
+      });
+    }
   };
 
   const handleThemeSelection = (value: ThemeName) => {
@@ -197,9 +218,13 @@ export default function SettingsScreen() {
         });
       });
 
-      setDevStatus(
-        `Seeded sample data locally (entity ${primary.id.slice(0, 8)}…). Run "Sync now" to push.`,
-      );
+      const message = `Seeded sample data locally (entity ${primary.id.slice(0, 8)}…). Run "Sync now" to push.`;
+      setDevStatus(message);
+      toast.show({
+        type: 'success',
+        title: 'Seed completed',
+        description: message,
+      });
       // Refresh database check and manually update queue size
       await checkDatabaseData();
       // Update queue size in sync store so buttons reflect outbox state
@@ -207,7 +232,13 @@ export default function SettingsScreen() {
       useSyncStore.getState().setQueueSize(pending.length);
     } catch (error) {
       console.error('[Settings] Seed sample data failed:', error);
-      setDevStatus(`Error: ${(error as Error).message}`);
+      const description = (error as Error).message;
+      setDevStatus(`Error: ${description}`);
+      toast.show({
+        type: 'error',
+        title: 'Seed failed',
+        description,
+      });
     } finally {
       setIsSeeding(false);
       isSeedingRef.current = false;
@@ -220,19 +251,31 @@ export default function SettingsScreen() {
       setDevStatus(null);
       await clearOutbox();
       setDevStatus('Outbox cleared.');
-      // Update queue size to 0 (outbox is now empty)
       useSyncStore.getState().setQueueSize(0);
+      toast.show({
+        type: 'success',
+        title: 'Outbox cleared',
+      });
     } catch (error) {
-      setDevStatus((error as Error).message);
+      const description = (error as Error).message;
+      setDevStatus(description);
+      toast.show({
+        type: 'error',
+        title: 'Failed to clear outbox',
+        description,
+      });
     }
   };
 
   const handleTestReminder = async () => {
     if (!notificationsSupported) {
-      setDevStatus('Reminders are unavailable on this platform.');
+      toast.show({
+        type: 'error',
+        title: 'Notifications unavailable on this platform.',
+        duration: 4000,
+      });
       return;
     }
-    setDevStatus('Scheduling test reminder...');
     const fireDate = new Date(Date.now() + 60 * 1000);
     try {
       const id = await scheduleReminder(
@@ -249,9 +292,19 @@ export default function SettingsScreen() {
         return;
       }
       setDevStatus('Test reminder scheduled. Check your notifications in ~1 minute.');
+      toast.show({
+        type: 'success',
+        title: 'Reminder scheduled',
+        description: 'You will receive an alert shortly.',
+      });
     } catch (reminderError) {
       console.error('[Settings] scheduleReminder failed', reminderError);
-      setDevStatus('Failed to schedule reminder.');
+      setDevStatus(`Reminder scheduling failed: ${(reminderError as Error).message}`);
+      toast.show({
+        type: 'error',
+        title: 'Failed to schedule reminder.',
+        description: (reminderError as Error).message,
+      });
     }
   };
 
@@ -327,6 +380,7 @@ export default function SettingsScreen() {
 
   return (
     <ScreenContainer contentContainerStyle={{ flexGrow: 1, paddingBottom: 96 }}>
+      <ToastContainer messages={toast.messages} dismiss={toast.dismiss} />
       <YStack gap="$4">
         <SettingsSection
           title="Account"
@@ -415,15 +469,6 @@ export default function SettingsScreen() {
               </Switch>
             </XStack>
 
-            <SliderField
-              label="Quiet hours"
-              value={quietHours}
-              onValueChange={updateQuietHours}
-              min={0}
-              max={24}
-              step={1}
-              helperText="Reminders snoozed during these hours"
-            />
             <Paragraph color="$colorMuted" fontSize="$3">
               {notificationStatusCopy}
             </Paragraph>

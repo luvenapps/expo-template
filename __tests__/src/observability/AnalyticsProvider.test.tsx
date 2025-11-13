@@ -523,4 +523,92 @@ describe('AnalyticsProvider', () => {
     // Restore for other tests
     process.env.EXPO_PUBLIC_ANALYTICS_WRITE_KEY = 'test-key';
   });
+
+  it('works on web platform without throwing', () => {
+    Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
+
+    const TestComponent = () => {
+      const analytics = useAnalytics();
+      expect(analytics).toBeDefined();
+      expect(analytics.trackEvent).toBeDefined();
+      expect(analytics.trackError).toBeDefined();
+      expect(analytics.trackPerformance).toBeDefined();
+      return null;
+    };
+
+    expect(() => {
+      render(
+        <AnalyticsProvider>
+          <TestComponent />
+        </AnalyticsProvider>,
+      );
+    }).not.toThrow();
+  });
+
+  it('works on native platform without throwing', () => {
+    Object.defineProperty(Platform, 'OS', { value: 'android', configurable: true });
+
+    const TestComponent = () => {
+      const analytics = useAnalytics();
+      expect(analytics).toBeDefined();
+      expect(analytics.trackEvent).toBeDefined();
+      expect(analytics.trackError).toBeDefined();
+      expect(analytics.trackPerformance).toBeDefined();
+      return null;
+    };
+
+    expect(() => {
+      render(
+        <AnalyticsProvider>
+          <TestComponent />
+        </AnalyticsProvider>,
+      );
+    }).not.toThrow();
+  });
+
+  it('provides storage adapter for PostHog on web', () => {
+    Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
+
+    const TestComponent = () => {
+      const analytics = useAnalytics();
+      expect(analytics).toBeDefined();
+      return null;
+    };
+
+    expect(() => {
+      render(
+        <AnalyticsProvider>
+          <TestComponent />
+        </AnalyticsProvider>,
+      );
+    }).not.toThrow();
+
+    // Verify storage methods are available
+    expect(mockLocalStorage.setItem).toBeDefined();
+    expect(mockLocalStorage.getItem).toBeDefined();
+    expect(mockLocalStorage.removeItem).toBeDefined();
+  });
+
+  it('provides storage adapter for PostHog on native', () => {
+    Object.defineProperty(Platform, 'OS', { value: 'ios', configurable: true });
+
+    const TestComponent = () => {
+      const analytics = useAnalytics();
+      expect(analytics).toBeDefined();
+      return null;
+    };
+
+    expect(() => {
+      render(
+        <AnalyticsProvider>
+          <TestComponent />
+        </AnalyticsProvider>,
+      );
+    }).not.toThrow();
+
+    // Verify storage methods are available
+    expect(mockMMKV.set).toBeDefined();
+    expect(mockMMKV.getString).toBeDefined();
+    expect(mockMMKV.delete).toBeDefined();
+  });
 });

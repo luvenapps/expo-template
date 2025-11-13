@@ -3,8 +3,17 @@ import { createInterFont } from '@tamagui/font-inter';
 import { createFont, createTamagui, createTokens } from 'tamagui';
 import { tamaguiColorTokens } from './src/ui/theme/palette';
 
+const colorTokens = {
+  ...tamaguiColorTokens,
+  shadowColorLight: 'rgba(15, 23, 42, 0.25)',
+  shadowColorDark: 'rgba(0, 0, 0, 0.65)',
+} as typeof tamaguiColorTokens & {
+  shadowColorLight: string;
+  shadowColorDark: string;
+};
+
 const tokens = createTokens({
-  color: tamaguiColorTokens,
+  color: colorTokens,
   space: {
     0: 0,
     1: 4,
@@ -102,6 +111,7 @@ const themes = {
     dangerColor: tokens.color.dangerLight,
     dangerColorHover: tokens.color.dangerHoverLight,
     dangerBackground: tokens.color.dangerBackgroundLight,
+    shadowColor: tokens.color.shadowColorLight,
   },
   dark: {
     background: tokens.color.backgroundDark,
@@ -126,6 +136,7 @@ const themes = {
     dangerColor: tokens.color.dangerDark,
     dangerColorHover: tokens.color.dangerHoverDark,
     dangerBackground: tokens.color.dangerBackgroundDark,
+    shadowColor: tokens.color.shadowColorDark,
   },
 };
 

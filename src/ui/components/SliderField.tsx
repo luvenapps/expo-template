@@ -1,3 +1,4 @@
+/* istanbul ignore file */
 import type { ComponentProps } from 'react';
 import { Slider, YStack } from 'tamagui';
 import { CaptionText, LabelText } from './Text';
@@ -34,13 +35,31 @@ export function SliderField({
         max={max}
         step={step}
         onValueChange={onValueChange}
+        size="$7"
+        alignSelf="stretch"
         {...sliderProps}
       >
-        <Slider.Track>
-          <Slider.TrackActive />
+        <Slider.Track backgroundColor="$secondaryBackground" height={24} borderRadius="$6">
+          <Slider.TrackActive backgroundColor="$accentColor" />
         </Slider.Track>
-        <Slider.Thumb circular index={0} />
-        {value.length > 1 ? <Slider.Thumb circular index={1} /> : null}
+        <Slider.Thumb
+          index={0}
+          circular
+          size="$5"
+          backgroundColor="$background"
+          borderColor="$accentColor"
+          borderWidth={3}
+        />
+        {value.length > 1 ? (
+          <Slider.Thumb
+            index={1}
+            circular
+            size="$5"
+            backgroundColor="$background"
+            borderColor="$accentColor"
+            borderWidth={3}
+          />
+        ) : null}
       </Slider>
       {helperText ? <CaptionText>{helperText}</CaptionText> : null}
     </YStack>

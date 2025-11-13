@@ -27,6 +27,12 @@ jest.mock('expo-status-bar', () => ({
   },
 }));
 
+jest.mock('@/notifications', () => ({
+  registerNotificationCategories: jest.fn().mockResolvedValue(undefined),
+  configureNotificationHandler: jest.fn().mockResolvedValue(undefined),
+  resetBadgeCount: jest.fn().mockResolvedValue(undefined),
+}));
+
 // Mock expo-notifications
 const mockNotificationSubscription = { remove: jest.fn() };
 jest.mock('expo-notifications', () => ({
@@ -316,6 +322,32 @@ describe('AppProviders', () => {
           autoStart: true,
         }),
       );
+    });
+
+    it('resets badge count on mount for iOS', () => {
+      const { resetBadgeCount } = require('@/notifications');
+      render(
+        <AppProviders>
+          <Text>Test</Text>
+        </AppProviders>,
+      );
+      expect(resetBadgeCount).toHaveBeenCalled();
+    });
+
+    it('skips badge reset on non-iOS platforms', () => {
+      const { resetBadgeCount } = require('@/notifications');
+      const { Platform } = require('react-native');
+      const originalOS = Platform.OS;
+      Object.defineProperty(Platform, 'OS', { value: 'android', configurable: true });
+
+      render(
+        <AppProviders>
+          <Text>Test</Text>
+        </AppProviders>,
+      );
+
+      expect(resetBadgeCount).not.toHaveBeenCalled();
+      Object.defineProperty(Platform, 'OS', { value: originalOS, configurable: true });
     });
   });
 

@@ -1,6 +1,8 @@
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 
+let pendingBadgeCounter = 0;
+
 /**
  * Local notifications helpers.
  *
@@ -14,6 +16,7 @@ export type LocalNotificationOptions = {
   body: string;
   data?: Record<string, unknown>;
   trigger?: Notifications.NotificationTriggerInput | null;
+  badge?: number | null;
 };
 
 export async function ensureNotificationPermission() {
@@ -36,6 +39,7 @@ export async function scheduleLocalNotification({
   body,
   data,
   trigger,
+  badge,
 }: LocalNotificationOptions) {
   if (Platform.OS === 'web') {
     return null;
@@ -46,12 +50,18 @@ export async function scheduleLocalNotification({
     return null;
   }
 
+  const content: Notifications.NotificationContentInput = {
+    title,
+    body,
+    data,
+  };
+
+  if (typeof badge === 'number') {
+    content.badge = badge;
+  }
+
   return Notifications.scheduleNotificationAsync({
-    content: {
-      title,
-      body,
-      data,
-    },
+    content,
     trigger: trigger ?? null,
   });
 }
@@ -70,4 +80,34 @@ export async function cancelAllScheduledNotifications() {
   }
 
   await Notifications.cancelAllScheduledNotificationsAsync();
+}
+
+export async function incrementBadgeCount(): Promise<number | null> {
+  if (Platform.OS !== 'ios') {
+    return null;
+  }
+
+  try {
+    pendingBadgeCounter += 1;
+    return pendingBadgeCounter;
+  } catch {
+    return null;
+  }
+}
+
+export async function resetBadgeCount() {
+  pendingBadgeCounter = 0;
+  if (Platform.OS !== 'ios') {
+    return;
+  }
+
+  try {
+    await Notifications.setBadgeCountAsync(0);
+  } catch {
+    // noop - badge reset is best-effort
+  }
+}
+
+export function __resetBadgeCounterForTests() {
+  pendingBadgeCounter = 0;
 }

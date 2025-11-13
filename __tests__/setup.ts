@@ -1,3 +1,18 @@
+// Suppress console warnings in tests
+const originalWarn = console.warn;
+console.warn = (...args: any[]) => {
+  const message = args[0];
+  // Suppress expo-notifications warning about Expo Go SDK 53
+  if (
+    typeof message === 'string' &&
+    message.includes('expo-notifications') &&
+    message.includes('SDK 53')
+  ) {
+    return;
+  }
+  originalWarn(...args);
+};
+
 // Mock Supabase globally for all tests
 jest.mock('@supabase/supabase-js', () => ({
   createClient: jest.fn(() => ({
@@ -60,4 +75,15 @@ jest.mock('expo-task-manager', () => ({
   registerTaskAsync: jest.fn().mockResolvedValue(undefined),
   unregisterTaskAsync: jest.fn().mockResolvedValue(undefined),
   isTaskDefined: jest.fn(() => false),
+}));
+
+// Mock Toast to prevent state updates during tests
+jest.mock('@/ui/components/Toast', () => ({
+  useToast: () => ({
+    messages: [],
+    show: jest.fn(() => ''),
+    dismiss: jest.fn(),
+    clear: jest.fn(),
+  }),
+  ToastContainer: () => null,
 }));
