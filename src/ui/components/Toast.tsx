@@ -33,6 +33,8 @@ export function useToast() {
   return { messages, ...api };
 }
 
+export type ToastController = ReturnType<typeof useToast>;
+
 type ToastContainerProps = {
   messages: ToastMessage[];
   dismiss: (id: string) => void;

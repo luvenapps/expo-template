@@ -10,6 +10,10 @@ import { clearAllTables, getDb, hasData } from '@/db/sqlite';
 import { onDatabaseReset } from '@/db/sqlite/events';
 import { withDatabaseRetry } from '@/db/sqlite/retry';
 import { resolveFriendlyError } from '@/errors/friendly';
+import { DEFAULT_NOTIFICATION_PREFERENCES } from '@/notifications/preferences';
+import { scheduleReminder } from '@/notifications/scheduler';
+import { useNotificationSettings } from '@/notifications/useNotificationSettings';
+import { useAnalytics } from '@/observability/AnalyticsProvider';
 import { useSyncStore } from '@/state';
 import { pullUpdates, pushOutbox, useSync } from '@/sync';
 import { clearAll as clearOutbox, getPending } from '@/sync/outbox';
@@ -24,17 +28,13 @@ import {
   ToastContainer,
   useToast,
 } from '@/ui';
-import { useAnalytics } from '@/observability/AnalyticsProvider';
 import { useThemeContext, type ThemeName } from '@/ui/theme/ThemeProvider';
 import { Calendar, Flame, Monitor, Moon, RefreshCw, Sun } from '@tamagui/lucide-icons';
 import { useRouter } from 'expo-router';
 import type { ComponentType } from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import { Button, Paragraph, Progress, Switch, XStack, YStack } from 'tamagui';
-import { DEFAULT_NOTIFICATION_PREFERENCES } from '@/notifications/preferences';
-import { useNotificationSettings } from '@/notifications/useNotificationSettings';
-import { scheduleReminder } from '@/notifications/scheduler';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -311,6 +311,14 @@ export default function SettingsScreen() {
     }
   };
 
+  useEffect(() => {
+    if (!remindersEnabled) {
+      if (devStatus && devStatus.includes('Test reminder scheduled')) {
+        setDevStatus('Test reminder deleted. Reminders were disabled.');
+      }
+    }
+  }, [remindersEnabled, devStatus]);
+
   const handleClearLocalDatabase = async () => {
     if (!isNative) return;
 
@@ -361,26 +369,6 @@ export default function SettingsScreen() {
     [0, 1, 3, 4, 3, 2, 1],
     [1, 0, 2, 3, 4, 2, 1],
   ];
-
-  const notificationStatusCopy = useMemo(() => {
-    if (!notificationsSupported) {
-      return 'Notifications are unavailable on this platform.';
-    }
-
-    switch (permissionStatus) {
-      case 'granted':
-        return 'Notifications are enabled for this device.';
-      case 'prompt':
-        return 'Enable notifications to receive reminders.';
-      case 'denied':
-        return 'Notifications are currently denied.';
-      case 'blocked':
-        return 'Notifications are blocked in system settings.';
-      case 'unavailable':
-      default:
-        return 'Notifications are unavailable on this platform.';
-    }
-  }, [notificationsSupported, permissionStatus]);
 
   return (
     <ScreenContainer contentContainerStyle={{ flexGrow: 1, paddingBottom: 96 }}>
@@ -438,7 +426,7 @@ export default function SettingsScreen() {
         <SettingsSection
           title="Notifications"
           description="Control reminder prompts and daily summaries."
-          footer={notificationError ?? notificationStatusMessage ?? undefined}
+          footer={notificationError ?? undefined}
         >
           <YStack gap="$4">
             <XStack alignItems="center" justifyContent="space-between">
@@ -452,8 +440,12 @@ export default function SettingsScreen() {
                 disabled={!notificationsSupported || isCheckingNotifications}
                 checked={remindersEnabled}
                 onCheckedChange={(checked) => toggleReminders(Boolean(checked))}
+                size="$7"
+                borderColor="$borderColor"
+                backgroundColor={remindersEnabled ? '$accentColor' : '$secondaryBackground'}
+                pressStyle={{ opacity: 0.9 }}
               >
-                <Switch.Thumb />
+                <Switch.Thumb borderWidth={1} borderColor="$borderColor" />
               </Switch>
             </XStack>
 
@@ -468,24 +460,39 @@ export default function SettingsScreen() {
                 disabled={!notificationsSupported || permissionStatus === 'blocked'}
                 checked={dailySummaryEnabled}
                 onCheckedChange={(checked) => toggleDailySummary(Boolean(checked))}
+                size="$7"
+                borderColor="$borderColor"
+                backgroundColor={dailySummaryEnabled ? '$accentColor' : '$secondaryBackground'}
+                pressStyle={{ opacity: 0.9 }}
               >
-                <Switch.Thumb />
+                <Switch.Thumb borderWidth={1} borderColor="$borderColor" />
               </Switch>
             </XStack>
 
-            <Paragraph color="$colorMuted" fontSize="$3">
-              {notificationStatusCopy}
-            </Paragraph>
-            {notificationStatusMessage ? (
-              <Paragraph color="$colorMuted" fontSize="$3">
-                {notificationStatusMessage}
-              </Paragraph>
-            ) : null}
-            {notificationError ? (
-              <Paragraph color="$dangerColor" fontSize="$3">
-                {notificationError}
-              </Paragraph>
-            ) : null}
+            <YStack gap="$1">
+              {notificationStatusMessage ? (
+                <Paragraph color="$colorMuted" fontSize="$3">
+                  {notificationStatusMessage}
+                </Paragraph>
+              ) : null}
+              <XStack alignItems="center" gap="$2">
+                <Paragraph fontWeight="600">Reminders</Paragraph>
+                <Paragraph color="$colorMuted" fontSize="$3">
+                  {remindersEnabled ? 'Enabled' : 'Disabled'}
+                </Paragraph>
+              </XStack>
+              <XStack alignItems="center" gap="$2">
+                <Paragraph fontWeight="600">Daily summary</Paragraph>
+                <Paragraph color="$colorMuted" fontSize="$3">
+                  {dailySummaryEnabled ? 'Enabled' : 'Disabled'}
+                </Paragraph>
+              </XStack>
+              {notificationError ? (
+                <Paragraph color="$dangerColor" fontSize="$3">
+                  {notificationError}
+                </Paragraph>
+              ) : null}
+            </YStack>
           </YStack>
         </SettingsSection>
 
@@ -593,7 +600,10 @@ export default function SettingsScreen() {
                   </SecondaryButton>
                 </XStack>
                 <XStack>
-                  <SecondaryButton disabled={!notificationsSupported} onPress={handleTestReminder}>
+                  <SecondaryButton
+                    disabled={!notificationsSupported || !remindersEnabled}
+                    onPress={handleTestReminder}
+                  >
                     Schedule test reminder
                   </SecondaryButton>
                 </XStack>

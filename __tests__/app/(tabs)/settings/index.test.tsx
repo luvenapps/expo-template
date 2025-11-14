@@ -310,6 +310,8 @@ const buildNotificationSettings = (
   toggleDailySummary: mockToggleDailySummary,
   updateQuietHours: mockUpdateQuietHours,
   refreshPermissionStatus: jest.fn(),
+  scheduleHabitReminder: jest.fn(),
+  cancelHabitReminder: jest.fn(),
   ...overrides,
 });
 
@@ -517,11 +519,17 @@ describe('SettingsScreen', () => {
 
     it('shows permission guidance text based on status', () => {
       mockedUseNotificationSettings.mockReturnValue(
-        buildNotificationSettings({ permissionStatus: 'blocked' }),
+        buildNotificationSettings({
+          permissionStatus: 'blocked',
+          error: 'Notifications are blocked in system settings.',
+        }),
       );
 
-      const { getByText } = render(<SettingsScreen />);
-      expect(getByText('Notifications are blocked in system settings.')).toBeDefined();
+      const { getAllByText } = render(<SettingsScreen />);
+      expect(getAllByText('Reminders').length).toBeGreaterThan(0);
+      expect(getAllByText('Notifications are blocked in system settings.').length).toBeGreaterThan(
+        0,
+      );
     });
 
     it('surfaces status messages from notification hook', () => {

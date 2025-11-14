@@ -16,6 +16,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { YStack } from 'tamagui';
 import { AnalyticsProvider } from '@/observability/AnalyticsProvider';
+import { ForegroundReminderToastHost } from '@/notifications/ForegroundReminderToastHost';
 
 const queryClient = getQueryClient();
 const persistOptions = getQueryClientPersistOptions();
@@ -65,6 +66,7 @@ export function AppProviders({ children }: PropsWithChildren) {
   return (
     <AnalyticsProvider>
       <GestureHandlerRootView style={{ flex: 1, backgroundColor: palette.background }}>
+        <ForegroundReminderToastHost />
         <SafeAreaProvider>
           {isWeb && persistOptions ? (
             <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
