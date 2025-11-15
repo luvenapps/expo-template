@@ -10,11 +10,11 @@ import {
   TitleText,
 } from '@/ui';
 import type { NavigationProp, ParamListBase } from '@react-navigation/native';
-import { Eye, EyeOff } from '@tamagui/lucide-icons';
+import { Apple, Eye, EyeOff } from '@tamagui/lucide-icons';
 import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
-import { TextInput } from 'react-native';
-import { Button, Card, Form, View, YStack } from 'tamagui';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { Platform, TextInput } from 'react-native';
+import { Button, Card, Form, Paragraph, View, YStack } from 'tamagui';
 
 export default function LoginScreen() {
   const navigation = useNavigation<NavigationProp<ParamListBase>>();
@@ -24,6 +24,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const signInWithEmail = useSessionStore((state) => state.signInWithEmail);
+  const signInWithOAuth = useSessionStore((state) => state.signInWithOAuth);
   const setError = useSessionStore((state) => state.setError);
   const isLoading = useSessionStore((state) => state.isLoading);
   const error = useSessionStore((state) => state.error);
@@ -60,6 +61,24 @@ export default function LoginScreen() {
       }
     }
   };
+
+  const oauthButtons = useMemo(
+    () => [
+      {
+        provider: 'apple' as const,
+        label: 'Continue with Apple',
+        icon: <Apple size={18} color="$color" />,
+        disabled: Platform.OS === 'android',
+      },
+      {
+        provider: 'google' as const,
+        label: 'Continue with Google',
+        icon: <Paragraph fontWeight="700">G</Paragraph>,
+        disabled: false,
+      },
+    ],
+    [],
+  );
 
   return (
     <ScreenContainer
@@ -162,12 +181,31 @@ export default function LoginScreen() {
             <View marginTop={10}>
               <CaptionText color="$colorMuted">Or</CaptionText>
             </View>
-            <Button flex={1} width="100%" height={48} variant="outlined" disabled>
-              Continue with Apple
-            </Button>
-            <Button flex={1} width="100%" height={48} variant="outlined" disabled>
-              Continue with Google
-            </Button>
+            {oauthButtons.map(({ provider, label, icon, disabled }) => (
+              <Button
+                key={provider}
+                flex={1}
+                width="100%"
+                height={48}
+                variant="outlined"
+                disabled={disabled || isLoading}
+                accessibilityLabel={`oauth-${provider}`}
+                onPress={async () => {
+                  const result = await signInWithOAuth(provider);
+                  if (result.success) {
+                    setError(null);
+                    router.replace('/(tabs)');
+                  } else if (result.error) {
+                    setError(result.error);
+                  }
+                }}
+              >
+                <View flexDirection="row" alignItems="center" gap="$2">
+                  {icon}
+                  <CaptionText>{label}</CaptionText>
+                </View>
+              </Button>
+            ))}
           </YStack>
         </YStack>
       </Card>

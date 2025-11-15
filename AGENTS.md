@@ -8,6 +8,7 @@ and codebase conventions so agents can run reliably without human context.
 
 - **Commit messages**: When the user asks for a commit message, always output two separate fenced code blocks—one for the title and one for the body—so the user can copy each with a single click.
 - **Automatic commit summaries**: After you finish any coding task, proactively provide the commit message (title + body) in separate fenced code blocks without waiting for the user to ask.
+- **Stay scoped**: Only modify files directly related to the user’s request. If a change seems adjacent but wasn’t explicitly approved, ask before touching it.
 
 ## Environment Baseline
 

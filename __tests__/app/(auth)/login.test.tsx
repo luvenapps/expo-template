@@ -24,16 +24,16 @@ jest.mock('@/ui/theme/ThemeProvider', () => {
 });
 
 // Mock Tamagui Lucide Icons
-jest.mock('@tamagui/lucide-icons', () => ({
-  Eye: ({ size, color }: any) => {
-    const mockReact = jest.requireActual('react');
-    return mockReact.createElement('View', { testID: 'eye-icon', size, color });
-  },
-  EyeOff: ({ size, color }: any) => {
-    const mockReact = jest.requireActual('react');
-    return mockReact.createElement('View', { testID: 'eye-off-icon', size, color });
-  },
-}));
+jest.mock('@tamagui/lucide-icons', () => {
+  const mockReact = jest.requireActual('react');
+  const FakeIcon = ({ testID }: { testID: string }) => mockReact.createElement('View', { testID });
+  return {
+    Eye: () => mockReact.createElement(FakeIcon, { testID: 'eye-icon' }),
+    EyeOff: () => mockReact.createElement(FakeIcon, { testID: 'eye-off-icon' }),
+    Apple: () => mockReact.createElement(FakeIcon, { testID: 'apple-icon' }),
+    Github: () => mockReact.createElement(FakeIcon, { testID: 'github-icon' }),
+  };
+});
 
 jest.mock('tamagui', () => {
   const actual = jest.requireActual('tamagui');
@@ -137,6 +137,7 @@ describe('LoginScreen', () => {
     mockedUseSessionStore.mockImplementation((selector: any) =>
       selector({
         signInWithEmail: jest.fn().mockResolvedValue({ success: true }),
+        signInWithOAuth: jest.fn().mockResolvedValue({ success: true }),
         setError: jest.fn(),
         isLoading: false,
         error: null,
@@ -153,6 +154,7 @@ describe('LoginScreen', () => {
     mockedUseSessionStore.mockImplementation((selector: any) =>
       selector({
         signInWithEmail: signInMock,
+        signInWithOAuth: jest.fn().mockResolvedValue({ success: true }),
         setError: jest.fn(),
         isLoading: false,
         error: null,
@@ -177,6 +179,7 @@ describe('LoginScreen', () => {
     mockedUseSessionStore.mockImplementation((selector: any) =>
       selector({
         signInWithEmail: signInMock,
+        signInWithOAuth: jest.fn().mockResolvedValue({ success: true }),
         setError: jest.fn(),
         isLoading: false,
         error: null,
@@ -291,4 +294,22 @@ describe('LoginScreen', () => {
 
     expect(mockBack).not.toHaveBeenCalled();
   });
+});
+test('handles OAuth sign in', async () => {
+  const oauthMock = jest.fn().mockResolvedValue({ success: true });
+  mockedUseSessionStore.mockImplementation((selector: any) =>
+    selector({
+      signInWithEmail: jest.fn().mockResolvedValue({ success: true }),
+      signInWithOAuth: oauthMock,
+      setError: jest.fn(),
+      isLoading: false,
+      error: null,
+    }),
+  );
+
+  const { getByText } = render(<LoginScreen />);
+  await act(async () => {
+    fireEvent.press(getByText('Continue with Google'));
+  });
+  expect(oauthMock).toHaveBeenCalledWith('google');
 });

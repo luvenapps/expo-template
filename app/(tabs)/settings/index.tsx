@@ -34,7 +34,7 @@ import { useRouter } from 'expo-router';
 import type { ComponentType } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
-import { Button, Paragraph, Progress, Switch, XStack, YStack } from 'tamagui';
+import { Button, Paragraph, Progress, Switch, View, XStack, YStack } from 'tamagui';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -67,7 +67,6 @@ export default function SettingsScreen() {
     dailySummaryEnabled,
     quietHours = DEFAULT_NOTIFICATION_PREFERENCES.quietHours,
     permissionStatus,
-    statusMessage: notificationStatusMessage,
     error: notificationError,
     isSupported: notificationsSupported,
     isChecking: isCheckingNotifications,
@@ -105,6 +104,33 @@ export default function SettingsScreen() {
   const { theme: themePreference, setTheme, palette } = useThemeContext();
   const accentHex = palette.accent;
   const hasSession = Boolean(session?.user?.id);
+  const renderToggle = useCallback(
+    ({
+      checked,
+      disabled,
+      onChange,
+    }: {
+      checked: boolean;
+      disabled: boolean;
+      onChange: (checked: boolean) => void;
+    }) => (
+      <View width={Platform.OS === 'web' ? 64 : 'auto'} alignItems="flex-end">
+        <Switch
+          size="$7"
+          disabled={disabled}
+          checked={checked}
+          onCheckedChange={(val) => onChange(Boolean(val))}
+          borderColor={Platform.OS === 'web' ? '$borderColor' : undefined}
+          borderWidth={Platform.OS === 'web' ? 1 : undefined}
+          backgroundColor={checked ? palette.accent : palette.secondaryBackground}
+          pressStyle={{ opacity: 0.9 }}
+        >
+          <Switch.Thumb borderWidth={1} borderColor="$borderColor" />
+        </Switch>
+      </View>
+    ),
+    [palette],
+  );
 
   const checkDatabaseData = useCallback(async () => {
     if (!isNative) return;
@@ -436,17 +462,13 @@ export default function SettingsScreen() {
                   Send push notifications when it’s time to log progress.
                 </Paragraph>
               </YStack>
-              <Switch
-                disabled={!notificationsSupported || isCheckingNotifications}
-                checked={remindersEnabled}
-                onCheckedChange={(checked) => toggleReminders(Boolean(checked))}
-                size="$7"
-                borderColor="$borderColor"
-                backgroundColor={remindersEnabled ? '$accentColor' : '$secondaryBackground'}
-                pressStyle={{ opacity: 0.9 }}
-              >
-                <Switch.Thumb borderWidth={1} borderColor="$borderColor" />
-              </Switch>
+              <View width={Platform.OS === 'web' ? 64 : 'auto'}>
+                {renderToggle({
+                  checked: remindersEnabled,
+                  disabled: !notificationsSupported || isCheckingNotifications,
+                  onChange: (checked) => toggleReminders(checked),
+                })}
+              </View>
             </XStack>
 
             <XStack alignItems="center" justifyContent="space-between">
@@ -456,37 +478,20 @@ export default function SettingsScreen() {
                   Receive a brief recap of streaks.
                 </Paragraph>
               </YStack>
-              <Switch
-                disabled={!notificationsSupported || permissionStatus === 'blocked'}
-                checked={dailySummaryEnabled}
-                onCheckedChange={(checked) => toggleDailySummary(Boolean(checked))}
-                size="$7"
-                borderColor="$borderColor"
-                backgroundColor={dailySummaryEnabled ? '$accentColor' : '$secondaryBackground'}
-                pressStyle={{ opacity: 0.9 }}
-              >
-                <Switch.Thumb borderWidth={1} borderColor="$borderColor" />
-              </Switch>
+              {renderToggle({
+                checked: dailySummaryEnabled,
+                disabled: !notificationsSupported || permissionStatus === 'blocked',
+                onChange: (checked) => toggleDailySummary(checked),
+              })}
             </XStack>
 
             <YStack gap="$1">
-              {notificationStatusMessage ? (
-                <Paragraph color="$colorMuted" fontSize="$3">
-                  {notificationStatusMessage}
-                </Paragraph>
-              ) : null}
-              <XStack alignItems="center" gap="$2">
-                <Paragraph fontWeight="600">Reminders</Paragraph>
-                <Paragraph color="$colorMuted" fontSize="$3">
-                  {remindersEnabled ? 'Enabled' : 'Disabled'}
-                </Paragraph>
-              </XStack>
-              <XStack alignItems="center" gap="$2">
-                <Paragraph fontWeight="600">Daily summary</Paragraph>
-                <Paragraph color="$colorMuted" fontSize="$3">
-                  {dailySummaryEnabled ? 'Enabled' : 'Disabled'}
-                </Paragraph>
-              </XStack>
+              <Paragraph color="$colorMuted" fontSize="$3">
+                Reminders {remindersEnabled ? 'Enabled' : 'Disabled'}
+              </Paragraph>
+              <Paragraph color="$colorMuted" fontSize="$3">
+                Daily summary {dailySummaryEnabled ? 'Enabled' : 'Disabled'}
+              </Paragraph>
               {notificationError ? (
                 <Paragraph color="$dangerColor" fontSize="$3">
                   {notificationError}

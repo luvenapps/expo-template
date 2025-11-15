@@ -534,11 +534,11 @@ describe('SettingsScreen', () => {
 
     it('surfaces status messages from notification hook', () => {
       mockedUseNotificationSettings.mockReturnValue(
-        buildNotificationSettings({ statusMessage: 'Reminders enabled.' }),
+        buildNotificationSettings({ remindersEnabled: true }),
       );
 
       const { getAllByText } = render(<SettingsScreen />);
-      expect(getAllByText('Reminders enabled.').length).toBeGreaterThan(0);
+      expect(getAllByText('Reminders Enabled').length).toBeGreaterThan(0);
     });
 
     it('surfaces errors from notification hook', () => {

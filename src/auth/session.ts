@@ -1,8 +1,9 @@
 import { create } from 'zustand';
-import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
+import type { AuthChangeEvent, Session, Provider } from '@supabase/supabase-js';
 import { supabase } from './client';
 import {
   signInWithEmail as supabaseSignInWithEmail,
+  signInWithOAuth as supabaseSignInWithOAuth,
   signOut as supabaseSignOut,
   type AuthResult,
 } from './service';
@@ -18,6 +19,7 @@ type SessionState = {
   setLoading: (isLoading: boolean) => void;
   setError: (error: string | null) => void;
   signInWithEmail: (email: string, password: string) => Promise<AuthResult>;
+  signInWithOAuth: (provider: Provider) => Promise<AuthResult>;
   signOut: () => Promise<AuthResult>;
   reset: () => void;
 };
@@ -41,6 +43,14 @@ export const useSessionStore = create<SessionState>((set) => ({
       set({ error: result.error, isLoading: false, status: 'unauthenticated' });
     } else {
       set({ isLoading: false });
+    }
+    return result;
+  },
+  signInWithOAuth: async (provider) => {
+    set({ isLoading: true, error: null });
+    const result = await supabaseSignInWithOAuth(provider);
+    if (!result.success && result.error) {
+      set({ error: result.error, isLoading: false });
     }
     return result;
   },
