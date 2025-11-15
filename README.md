@@ -586,6 +586,31 @@ Before shipping preview/production builds, follow [`docs/build-size.md`](docs/bu
 - `npm run submit:prod:ios` / `npm run submit:prod:android` – upload the latest artifacts to TestFlight / Google Play Internal Testing (requires `eas submit` credentials configured in `eas.json`).
 - `npm run version:bump -- --type patch|minor|major` – bumps `package.json`/`app.json` versions and increments iOS/Android build numbers automatically.
 
+### Social authentication setup
+
+We follow Supabase's Expo social-auth flow. Before enabling Apple/Google sign-in, make sure the callback URL `betterhabits://auth/callback` is registered everywhere (Scheme is already defined in `app.json`).
+
+1. **Supabase dashboard**
+   - Go to _Authentication → URL Configuration_.
+   - Add `betterhabits://auth/callback` to Redirect URLs.
+   - Add your hosted URL (e.g., `https://yourdomain.com/auth/callback`) if you deploy a web build.
+
+2. **Apple**
+   - Follow [Apple's “Sign in with Apple” instructions](https://developer.apple.com/design/human-interface-guidelines/sign-in-with-apple) to create a **Services ID** and associated key under the same team as your bundle identifier (`com.luvenapps.betterhabits`).
+   - In the Apple developer portal set the callback URL to `https://<your-supabase-project>.supabase.co/auth/v1/callback`.
+   - In Supabase, open _Authentication → Providers → Apple_ and paste the Services ID, Team ID, Key ID, and .p8 key contents.
+
+3. **Google**
+   - Visit [Google Identity → Branding](https://developers.google.com/identity/branding-guidelines) and generate OAuth credentials for Android, iOS, and Web.
+   - For iOS, use the bundle ID `com.luvenapps.betterhabits`. For Android, use the package name `com.luvenapps.betterhabits` and the SHA-1 from your keystore. For Web, set the authorized redirect URI to `https://<your-supabase-project>.supabase.co/auth/v1/callback`.
+   - In Supabase, enable the Google provider and paste the generated Client ID/Secret(s).
+
+4. **Expo credentials (optional)**
+   - If you run `expo run:ios`/`android` with custom schemes, keep `scheme` set to `betterhabits` in `app.json` so the linking helper resolves `betterhabits://auth/callback` correctly.
+   - No extra packages are needed; the app uses `expo-linking` to open the OAuth URL and the Supabase session listener updates state once the user returns.
+
+After these steps, the Apple and Google buttons on the login screen will launch the proper OAuth flow on iOS, Android, and web.
+
 ### Daily Development
 
 1. **Start Supabase** (Terminal 1):

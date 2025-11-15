@@ -95,6 +95,10 @@ import { render } from '@testing-library/react-native';
 import React from 'react';
 import RootLayout from '../../app/_layout';
 
+jest.mock('@/db/sqlite/cleanup', () => ({
+  cleanupSoftDeletedRecords: jest.fn().mockResolvedValue(0),
+}));
+
 describe('RootLayout', () => {
   beforeEach(() => {
     recordedScreens.length = 0;

@@ -33,6 +33,10 @@ jest.mock('@/notifications', () => ({
   resetBadgeCount: jest.fn().mockResolvedValue(undefined),
 }));
 
+jest.mock('@/db/sqlite/cleanup', () => ({
+  cleanupSoftDeletedRecords: jest.fn().mockResolvedValue(0),
+}));
+
 // Mock expo-notifications
 const mockNotificationSubscription = { remove: jest.fn() };
 jest.mock('expo-notifications', () => ({

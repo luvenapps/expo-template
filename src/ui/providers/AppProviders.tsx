@@ -10,13 +10,14 @@ import { useThemeContext } from '@/ui/theme/ThemeProvider';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { StatusBar } from 'expo-status-bar';
-import { PropsWithChildren, useEffect } from 'react';
+import { PropsWithChildren, useEffect, useRef } from 'react';
 import { AppState, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { YStack } from 'tamagui';
 import { AnalyticsProvider } from '@/observability/AnalyticsProvider';
 import { ForegroundReminderToastHost } from '@/notifications/ForegroundReminderToastHost';
+import { cleanupSoftDeletedRecords } from '@/db/sqlite/cleanup';
 
 const queryClient = getQueryClient();
 const persistOptions = getQueryClientPersistOptions();
@@ -55,13 +56,41 @@ export function AppProviders({ children }: PropsWithChildren) {
     };
   }, []);
 
-  useSync({
+  const { status: syncStatus, queueSize } = useSync({
     push: pushOutbox,
     pull: pullUpdates,
     enabled: syncEnabled,
     autoStart: syncEnabled,
     backgroundInterval: 15 * 60,
   });
+
+  const lastCleanupRef = useRef(0);
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      return;
+    }
+
+    if (queueSize > 0 || syncStatus === 'syncing') {
+      return;
+    }
+
+    const now = Date.now();
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    if (now - lastCleanupRef.current < DAY_MS) {
+      return;
+    }
+
+    lastCleanupRef.current = now;
+    cleanupSoftDeletedRecords()
+      .then((removed) => {
+        if (removed > 0) {
+          console.log(`[SQLite] Cleaned up ${removed} soft-deleted records`);
+        }
+      })
+      .catch((error) => {
+        console.error('[SQLite] Soft-delete cleanup failed:', error);
+      });
+  }, [queueSize, syncStatus]);
 
   return (
     <AnalyticsProvider>
