@@ -73,7 +73,20 @@ export default function LoginScreen() {
       {
         provider: 'google' as const,
         label: 'Continue with Google',
-        icon: <Paragraph fontWeight="700">G</Paragraph>,
+        icon: (
+          <View
+            width={20}
+            height={20}
+            borderRadius={10}
+            backgroundColor="$secondaryBackground"
+            alignItems="center"
+            justifyContent="center"
+          >
+            <Paragraph fontWeight="700" color="$accentColor">
+              G
+            </Paragraph>
+          </View>
+        ),
         disabled: false,
       },
     ],
@@ -187,7 +200,10 @@ export default function LoginScreen() {
                 flex={1}
                 width="100%"
                 height={48}
-                variant="outlined"
+                backgroundColor="$surface"
+                borderRadius="$3"
+                borderWidth={1}
+                borderColor="$borderColor"
                 disabled={disabled || isLoading}
                 accessibilityLabel={`oauth-${provider}`}
                 onPress={async () => {
