@@ -10,11 +10,10 @@ import { clearAllTables, getDb, hasData } from '@/db/sqlite';
 import { archiveOldEntries } from '@/db/sqlite/archive';
 import { onDatabaseReset } from '@/db/sqlite/events';
 import { withDatabaseRetry } from '@/db/sqlite/retry';
-import { resolveFriendlyError } from '@/errors/friendly';
+import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
 import { DEFAULT_NOTIFICATION_PREFERENCES } from '@/notifications/preferences';
 import { scheduleReminder } from '@/notifications/scheduler';
 import { useNotificationSettings } from '@/notifications/useNotificationSettings';
-import { useAnalytics } from '@/observability/AnalyticsProvider';
 import { useSyncStore } from '@/state';
 import { pullUpdates, pushOutbox, useSync } from '@/sync';
 import { resetCursors } from '@/sync/cursors';
@@ -83,24 +82,7 @@ export default function SettingsScreen() {
   const isSeedingRef = useRef(false); // Synchronous lock to prevent rapid-clicking (state updates are async)
   const isClearingRef = useRef(false); // Synchronous lock for clear operations
   const toast = useToast();
-  const analytics = useAnalytics();
-  const reportFriendlyError = useCallback(
-    (error: unknown, surface: string) => {
-      const friendly = resolveFriendlyError(error);
-      analytics.trackError(friendly.title, {
-        surface,
-        code: friendly.code,
-        originalMessage: friendly.originalMessage,
-      });
-      toast.show({
-        type: friendly.type,
-        title: friendly.title,
-        description: friendly.description,
-      });
-      return friendly;
-    },
-    [analytics, toast],
-  );
+  const showFriendlyError = useFriendlyErrorHandler(toast);
   const syncDisabledMessage = !isNative
     ? 'Background sync requires the iOS or Android app to access the local database.'
     : status !== 'authenticated'
@@ -208,7 +190,7 @@ export default function SettingsScreen() {
       });
     } catch (syncError) {
       console.error('[Settings] manual sync failed', syncError);
-      const friendly = reportFriendlyError(syncError, 'settings.sync');
+      const friendly = showFriendlyError(syncError, { surface: 'settings.sync' });
       setDevStatus(friendly.description ?? friendly.title);
     }
   };
@@ -239,7 +221,7 @@ export default function SettingsScreen() {
       );
     } catch (error) {
       console.error('[Settings] archive entries failed', error);
-      const friendly = reportFriendlyError(error, 'settings.archive');
+      const friendly = showFriendlyError(error, { surface: 'settings.archive' });
       setDevStatus(friendly.description ?? friendly.title);
     } finally {
       setIsArchiving(false);
@@ -325,7 +307,7 @@ export default function SettingsScreen() {
       useSyncStore.getState().setQueueSize(pending.length);
     } catch (error) {
       console.error('[Settings] Seed sample data failed:', error);
-      const friendly = reportFriendlyError(error, 'settings.seed');
+      const friendly = showFriendlyError(error, { surface: 'settings.seed' });
       setDevStatus(`Error: ${friendly.description ?? friendly.title}`);
     } finally {
       setIsSeeding(false);
@@ -345,7 +327,7 @@ export default function SettingsScreen() {
         title: 'Outbox cleared',
       });
     } catch (error) {
-      const friendly = reportFriendlyError(error, 'settings.clear-outbox');
+      const friendly = showFriendlyError(error, { surface: 'settings.clear-outbox' });
       setDevStatus(friendly.description ?? friendly.title);
     }
   };
@@ -382,7 +364,7 @@ export default function SettingsScreen() {
       });
     } catch (reminderError) {
       console.error('[Settings] scheduleReminder failed', reminderError);
-      const friendly = reportFriendlyError(reminderError, 'settings.test-reminder');
+      const friendly = showFriendlyError(reminderError, { surface: 'settings.test-reminder' });
       setDevStatus(`Reminder scheduling failed: ${friendly.description ?? friendly.title}`);
     }
   };
@@ -416,7 +398,7 @@ export default function SettingsScreen() {
       useSyncStore.getState().setQueueSize(0);
     } catch (error) {
       console.error('[Settings] Clear local database failed:', error);
-      const friendly = reportFriendlyError(error, 'settings.clear-db');
+      const friendly = showFriendlyError(error, { surface: 'settings.clear-db' });
       setDevStatus(`Error: ${friendly.description ?? friendly.title}`);
     } finally {
       setIsClearing(false);
@@ -439,7 +421,7 @@ export default function SettingsScreen() {
       });
     } catch (error) {
       console.error('[Settings] Optimize database failed:', error);
-      const friendly = reportFriendlyError(error, 'settings.optimize-db');
+      const friendly = showFriendlyError(error, { surface: 'settings.optimize-db' });
       setDevStatus(`Error: ${friendly.description ?? friendly.title}`);
     } finally {
       setIsOptimizingDb(false);

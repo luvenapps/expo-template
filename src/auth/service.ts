@@ -1,13 +1,14 @@
 import type { Provider } from '@supabase/supabase-js';
 import { Platform } from 'react-native';
 import * as Linking from 'expo-linking';
-import { resolveFriendlyError } from '@/errors/friendly';
+import { resolveFriendlyError, type FriendlyError } from '@/errors/friendly';
 import { supabase } from './client';
 
 export type AuthResult = {
   success: boolean;
   error?: string;
   code?: string;
+  friendlyError?: FriendlyError;
 };
 
 export async function signInWithEmail(email: string, password: string): Promise<AuthResult> {
@@ -18,6 +19,7 @@ export async function signInWithEmail(email: string, password: string): Promise<
       success: false,
       error: friendly.description ?? friendly.title,
       code: friendly.code,
+      friendlyError: friendly,
     };
   }
   return { success: true };
@@ -40,6 +42,7 @@ export async function signInWithOAuth(provider: Provider): Promise<AuthResult> {
       success: false,
       error: friendly.description ?? friendly.title,
       code: friendly.code,
+      friendlyError: friendly,
     };
   }
 
@@ -66,6 +69,7 @@ export async function signOut(): Promise<AuthResult> {
       success: false,
       error: friendly.description ?? friendly.title,
       code: friendly.code,
+      friendlyError: friendly,
     };
   }
   return { success: true };

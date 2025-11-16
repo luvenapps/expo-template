@@ -8,7 +8,10 @@ import {
   ScreenContainer,
   SubtitleText,
   TitleText,
+  ToastContainer,
+  useToast,
 } from '@/ui';
+import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
 import type { NavigationProp, ParamListBase } from '@react-navigation/native';
 import { Apple, Eye, EyeOff } from '@tamagui/lucide-icons';
 import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
@@ -28,6 +31,8 @@ export default function LoginScreen() {
   const setError = useSessionStore((state) => state.setError);
   const isLoading = useSessionStore((state) => state.isLoading);
   const error = useSessionStore((state) => state.error);
+  const toast = useToast();
+  const showFriendlyError = useFriendlyErrorHandler(toast);
 
   const isFormValid = email.trim() !== '' && isValidEmail(email) && password.trim() !== '';
 
@@ -40,6 +45,25 @@ export default function LoginScreen() {
       setShowPassword(false);
       setError(null);
     }, [setError]),
+  );
+
+  const handleAuthError = useCallback(
+    (result: Awaited<ReturnType<typeof signInWithEmail>>, surface: string, retry?: () => void) => {
+      if (result.success) {
+        return;
+      }
+
+      showFriendlyError(result.friendlyError ?? result.error ?? 'An error occurred', {
+        surface,
+        toast: retry
+          ? {
+              retryLabel: 'Retry',
+              onRetry: retry,
+            }
+          : undefined,
+      });
+    },
+    [showFriendlyError],
   );
 
   const handleSubmit = async () => {
@@ -59,6 +83,24 @@ export default function LoginScreen() {
       } else {
         router.replace('/(tabs)');
       }
+    } else {
+      handleAuthError(result, 'auth.login.email', () => {
+        void handleSubmit();
+      });
+    }
+  };
+
+  const handleOAuthSignIn = async (provider: 'apple' | 'google') => {
+    const result = await signInWithOAuth(provider);
+    if (result.success) {
+      setError(null);
+      if (navigation.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/(tabs)');
+      }
+    } else {
+      handleAuthError(result, `auth.login.oauth.${provider}`);
     }
   };
 
@@ -206,14 +248,8 @@ export default function LoginScreen() {
                 borderColor="$borderColor"
                 disabled={disabled || isLoading}
                 accessibilityLabel={`oauth-${provider}`}
-                onPress={async () => {
-                  const result = await signInWithOAuth(provider);
-                  if (result.success) {
-                    setError(null);
-                    router.replace('/(tabs)');
-                  } else if (result.error) {
-                    setError(result.error);
-                  }
+                onPress={() => {
+                  void handleOAuthSignIn(provider);
                 }}
               >
                 <View flexDirection="row" alignItems="center" gap="$2">
@@ -225,6 +261,7 @@ export default function LoginScreen() {
           </YStack>
         </YStack>
       </Card>
+      <ToastContainer messages={toast.messages} dismiss={toast.dismiss} />
     </ScreenContainer>
   );
 }

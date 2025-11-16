@@ -51,6 +51,8 @@ Stage 8 introduces a shared resolver (`src/errors/friendly.ts`) so low-level err
 
 When adding new errors, extend `resolveFriendlyError` and update this table so UX + support stay in sync.
 
+Use `useFriendlyErrorHandler(toastController)` to show consistent toasts (with optional retry actions) and automatically emit `trackError` analytics whenever you catch/handle an error.
+
 ## Notification Settings
 
 - `src/notifications/useNotificationSettings.ts` centralises permission checks and persisted preferences.

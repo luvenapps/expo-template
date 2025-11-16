@@ -10,6 +10,8 @@ export type ToastMessage = {
   title: string;
   description?: string;
   duration?: number;
+  actionLabel?: string;
+  onAction?: () => void;
 };
 
 export function useToast() {
@@ -81,11 +83,16 @@ type ToastItemProps = {
 };
 
 function ToastItem({ message, onDismiss }: ToastItemProps) {
-  const { type = 'info', title, description } = message;
+  const { type = 'info', title, description, actionLabel, onAction } = message;
   const colors: Record<ToastType, { background: string; text: string }> = {
     success: { background: '$backgroundStrong', text: '$color' },
     error: { background: '$dangerBackground', text: '$dangerColor' },
     info: { background: '$surface', text: '$color' },
+  };
+
+  const handleAction = () => {
+    onAction?.();
+    onDismiss();
   };
 
   return (
@@ -102,7 +109,7 @@ function ToastItem({ message, onDismiss }: ToastItemProps) {
       borderWidth={1}
       borderColor="$borderColor"
     >
-      <YStack flex={1} paddingRight="$3">
+      <YStack flex={1} paddingRight="$3" gap="$1">
         <Paragraph fontWeight="600" color={colors[type].text}>
           {title}
         </Paragraph>
@@ -111,8 +118,23 @@ function ToastItem({ message, onDismiss }: ToastItemProps) {
             {description}
           </Paragraph>
         ) : null}
+        {actionLabel && onAction ? (
+          <Paragraph
+            fontSize="$3"
+            fontWeight="600"
+            color="$accentColor"
+            onPress={handleAction}
+            hoverStyle={{ opacity: 0.8, cursor: 'pointer' }}
+          >
+            {actionLabel}
+          </Paragraph>
+        ) : null}
       </YStack>
-      <Paragraph color="$colorMuted" onPress={onDismiss}>
+      <Paragraph
+        color="$colorMuted"
+        onPress={onDismiss}
+        hoverStyle={{ opacity: 0.8, cursor: 'pointer' }}
+      >
         ×
       </Paragraph>
     </XStack>

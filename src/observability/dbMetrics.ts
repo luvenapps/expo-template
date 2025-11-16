@@ -19,6 +19,7 @@ async function loadSqliteModule(): Promise<SqliteModule> {
     return sqliteModuleOverride;
   }
 
+  /* istanbul ignore next - dynamic import not testable in Jest without VM modules */
   return import('expo-sqlite');
 }
 
