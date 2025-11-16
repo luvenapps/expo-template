@@ -7,6 +7,7 @@ import {
   createReminderLocal,
 } from '@/data';
 import { clearAllTables, getDb, hasData } from '@/db/sqlite';
+import { archiveOldEntries } from '@/db/sqlite/archive';
 import { onDatabaseReset } from '@/db/sqlite/events';
 import { withDatabaseRetry } from '@/db/sqlite/retry';
 import { resolveFriendlyError } from '@/errors/friendly';
@@ -16,6 +17,7 @@ import { useNotificationSettings } from '@/notifications/useNotificationSettings
 import { useAnalytics } from '@/observability/AnalyticsProvider';
 import { useSyncStore } from '@/state';
 import { pullUpdates, pushOutbox, useSync } from '@/sync';
+import { resetCursors } from '@/sync/cursors';
 import { clearAll as clearOutbox, getPending } from '@/sync/outbox';
 import {
   CalendarHeatmap,
@@ -34,7 +36,7 @@ import { useRouter } from 'expo-router';
 import type { ComponentType } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
-import { Button, Paragraph, Progress, Switch, View, XStack, YStack } from 'tamagui';
+import { Button, Paragraph, Progress, Switch, Text, View, XStack, YStack } from 'tamagui';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -61,6 +63,8 @@ export default function SettingsScreen() {
   const [devStatus, setDevStatus] = useState<string | null>(null);
   const [isSeeding, setIsSeeding] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
+  const [archiveOffsetDays, setArchiveOffsetDays] = useState<0 | -1>(0);
   const [hasDbData, setHasDbData] = useState(false);
   const {
     remindersEnabled,
@@ -100,6 +104,21 @@ export default function SettingsScreen() {
     : status !== 'authenticated'
       ? 'Sign in to enable syncing with your Supabase account.'
       : null;
+  const archiveOptions: { value: 0 | -1; label: string; helper: string }[] = [
+    {
+      value: 0,
+      label: 'Before today',
+      helper: 'Archive entries dated prior to today.',
+    },
+    {
+      value: -1,
+      label: 'Include today',
+      helper: 'Archive entries including today.',
+    },
+  ];
+  const archiveOptionHelper =
+    archiveOptions.find((option) => option.value === archiveOffsetDays)?.helper ??
+    'Archive entries dated prior to today.';
   const isSyncing = syncStatus === 'syncing';
   const { theme: themePreference, setTheme, palette } = useThemeContext();
   const accentHex = palette.accent;
@@ -146,10 +165,10 @@ export default function SettingsScreen() {
   // Check for database data on mount and when session changes
   // Note: Outbox data is tracked via queueSize from sync store
   useEffect(() => {
-    if (isNative && hasSession) {
+    if (isNative) {
       checkDatabaseData();
     }
-  }, [isNative, hasSession, checkDatabaseData]);
+  }, [isNative, checkDatabaseData]);
 
   useEffect(() => {
     if (!isNative) return undefined;
@@ -194,6 +213,35 @@ export default function SettingsScreen() {
 
   const handleThemeSelection = (value: ThemeName) => {
     setTheme(value);
+  };
+
+  const handleArchiveOldEntries = async () => {
+    if (!isNative || isArchiving) return;
+    try {
+      setIsArchiving(true);
+      setDevStatus('Archiving entries for testing...');
+      const archived = await archiveOldEntries({ olderThanDays: archiveOffsetDays });
+      await checkDatabaseData();
+      toast.show({
+        type: archived > 0 ? 'success' : 'info',
+        title: archived > 0 ? 'Entries archived' : 'No entries to archive',
+        description:
+          archived > 0
+            ? `${archived} entr${archived === 1 ? 'y' : 'ies'} were flagged as archived.`
+            : 'All entries are newer than the archive threshold.',
+      });
+      setDevStatus(
+        archived > 0
+          ? `Archived ${archived} entr${archived === 1 ? 'y' : 'ies'} for manual validation.`
+          : 'Archive complete. No qualifying entries found.',
+      );
+    } catch (error) {
+      console.error('[Settings] archive entries failed', error);
+      const friendly = reportFriendlyError(error, 'settings.archive');
+      setDevStatus(friendly.description ?? friendly.title);
+    } finally {
+      setIsArchiving(false);
+    }
   };
 
   const handleSeedSampleData = async () => {
@@ -359,6 +407,7 @@ export default function SettingsScreen() {
       setIsClearing(true);
       setDevStatus('Clearing local database...');
       await clearAllTables();
+      resetCursors();
       setDevStatus('Local database cleared successfully.');
       // Refresh database check and update queue size (both are now empty)
       await checkDatabaseData();
@@ -565,7 +614,7 @@ export default function SettingsScreen() {
               <XStack>
                 <PrimaryButton
                   size="$5"
-                  disabled={!canSync || isSyncing || !hasOutboxData}
+                  disabled={!canSync || isSyncing}
                   onPress={handleManualSync}
                 >
                   {isSyncing ? 'Syncing…' : 'Sync now'}
@@ -598,10 +647,15 @@ export default function SettingsScreen() {
                 </XStack>
                 <XStack>
                   <SecondaryButton
-                    disabled={!hasSession || isClearing || !hasDbData}
+                    disabled={isClearing || !hasDbData}
                     onPress={handleClearLocalDatabase}
                   >
                     {isClearing ? 'Clearing…' : 'Clear local database'}
+                  </SecondaryButton>
+                </XStack>
+                <XStack>
+                  <SecondaryButton onPress={() => router.push('/(tabs)/settings/database')}>
+                    View local database
                   </SecondaryButton>
                 </XStack>
                 <XStack>
@@ -612,6 +666,39 @@ export default function SettingsScreen() {
                     Schedule test reminder
                   </SecondaryButton>
                 </XStack>
+                <YStack gap="$2">
+                  <XStack gap="$3" alignItems="center" justifyContent="space-between">
+                    <SecondaryButton
+                      disabled={isArchiving}
+                      onPress={handleArchiveOldEntries}
+                      flex={1}
+                    >
+                      {isArchiving ? 'Archiving…' : 'Archive'}
+                    </SecondaryButton>
+                    <YStack gap="$2" alignItems="center">
+                      <Switch
+                        size="$7"
+                        disabled={isArchiving}
+                        checked={archiveOffsetDays === -1}
+                        onCheckedChange={(val) => setArchiveOffsetDays(val ? -1 : 0)}
+                        borderColor={Platform.OS === 'web' ? '$borderColor' : undefined}
+                        borderWidth={Platform.OS === 'web' ? 1 : undefined}
+                        backgroundColor={
+                          archiveOffsetDays === -1 ? palette.accent : palette.secondaryBackground
+                        }
+                        pressStyle={{ opacity: 0.9 }}
+                      >
+                        <Switch.Thumb borderWidth={1} borderColor="$borderColor" />
+                      </Switch>
+                      <Text fontSize="$3" color="$colorMuted">
+                        Include today
+                      </Text>
+                    </YStack>
+                  </XStack>
+                  <Paragraph textAlign="center" color="$colorMuted" fontSize="$3">
+                    {archiveOptionHelper}
+                  </Paragraph>
+                </YStack>
               </SettingsSection>
             ) : null}
           </>

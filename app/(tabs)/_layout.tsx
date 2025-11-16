@@ -25,10 +25,11 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="settings/index"
+        name="settings"
         options={{
           title: 'Settings',
           tabBarIcon: ({ color }) => <TabIcon color={color} Icon={Settings} />,
+          headerShown: false,
         }}
       />
     </Tabs>

@@ -99,6 +99,10 @@ jest.mock('@/db/sqlite/cleanup', () => ({
   cleanupSoftDeletedRecords: jest.fn().mockResolvedValue(0),
 }));
 
+jest.mock('@/db/sqlite/archive', () => ({
+  archiveOldEntries: jest.fn().mockResolvedValue(0),
+}));
+
 describe('RootLayout', () => {
   beforeEach(() => {
     recordedScreens.length = 0;

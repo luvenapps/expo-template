@@ -107,7 +107,7 @@ describe('TabsLayout', () => {
 
       const { UNSAFE_root } = render(<TabsLayout />);
       const screens = UNSAFE_root.findAllByType('TabsScreen' as any);
-      const settingsScreen = screens.find((s: any) => s.props.name === 'settings/index');
+      const settingsScreen = screens.find((s: any) => s.props.name === 'settings');
 
       expect(settingsScreen).toBeDefined();
       expect(settingsScreen.props.options.title).toBe('Settings');
@@ -154,7 +154,7 @@ describe('TabsLayout', () => {
 
       const { UNSAFE_root } = render(<TabsLayout />);
       const screens = UNSAFE_root.findAllByType('TabsScreen' as any);
-      const settingsScreen = screens.find((s: any) => s.props.name === 'settings/index');
+      const settingsScreen = screens.find((s: any) => s.props.name === 'settings');
 
       const iconElement = settingsScreen.props.options.tabBarIcon({ color: '#94A3B8' });
       const rendered = render(iconElement);
@@ -205,7 +205,7 @@ describe('TabsLayout', () => {
       // Check screen names
       const screenNames = screens.map((s: any) => s.props.name);
       expect(screenNames).toContain('index');
-      expect(screenNames).toContain('settings/index');
+      expect(screenNames).toContain('settings');
     });
   });
 });

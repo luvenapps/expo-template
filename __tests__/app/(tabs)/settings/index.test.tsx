@@ -59,6 +59,11 @@ jest.mock('@/observability/AnalyticsProvider', () => ({
   }),
 }));
 
+jest.mock('@/sync/cursors', () => ({
+  __esModule: true,
+  resetCursors: jest.fn(),
+}));
+
 jest.mock('@/notifications/useNotificationSettings', () => ({
   useNotificationSettings: jest.fn(() => ({
     remindersEnabled: false,
@@ -165,6 +170,30 @@ jest.mock('tamagui', () => {
   };
 });
 
+jest.mock('@tamagui/select', () => {
+  const mockReact = jest.requireActual('react');
+  const SelectComponent = ({ children }: any) => mockReact.createElement('View', {}, children);
+  const simple =
+    (displayName: string) =>
+    ({ children, ...props }: any) =>
+      mockReact.createElement('View', { testID: displayName, ...props }, children);
+
+  SelectComponent.Trigger = simple('SelectTrigger');
+  SelectComponent.Value = simple('SelectValue');
+  SelectComponent.Content = simple('SelectContent');
+  SelectComponent.Viewport = simple('SelectViewport');
+  SelectComponent.ScrollUpButton = simple('SelectScrollUpButton');
+  SelectComponent.ScrollDownButton = simple('SelectScrollDownButton');
+  SelectComponent.Item = simple('SelectItem');
+  SelectComponent.ItemText = simple('SelectItemText');
+  SelectComponent.ItemIndicator = simple('SelectItemIndicator');
+
+  return {
+    __esModule: true,
+    Select: SelectComponent,
+  };
+});
+
 // Mock Tamagui Lucide Icons
 jest.mock('@tamagui/lucide-icons', () => ({
   Monitor: ({ size, color }: any) => {
@@ -190,6 +219,18 @@ jest.mock('@tamagui/lucide-icons', () => ({
   Flame: ({ size, color }: any) => {
     const mockReact = jest.requireActual('react');
     return mockReact.createElement('View', { testID: 'flame-icon', size, color });
+  },
+  Check: ({ size, color }: any) => {
+    const mockReact = jest.requireActual('react');
+    return mockReact.createElement('View', { testID: 'check-icon', size, color });
+  },
+  ChevronDown: ({ size, color }: any) => {
+    const mockReact = jest.requireActual('react');
+    return mockReact.createElement('View', { testID: 'chevron-down-icon', size, color });
+  },
+  ChevronUp: ({ size, color }: any) => {
+    const mockReact = jest.requireActual('react');
+    return mockReact.createElement('View', { testID: 'chevron-up-icon', size, color });
   },
 }));
 
@@ -271,6 +312,7 @@ import { clearAllTables, getDb, hasData } from '@/db/sqlite';
 import { withDatabaseRetry } from '@/db/sqlite/retry';
 import { useSync } from '@/sync';
 import { clearAll as clearOutbox } from '@/sync/outbox';
+import { resetCursors } from '@/sync/cursors';
 import { useNotificationSettings } from '@/notifications/useNotificationSettings';
 import { useThemeContext } from '@/ui/theme/ThemeProvider';
 import { themePalettes } from '@/ui/theme/palette';
@@ -292,6 +334,7 @@ const mockedClearAllTables = clearAllTables as unknown as jest.Mock;
 const mockedGetDb = getDb as unknown as jest.Mock;
 const mockedWithDatabaseRetry = withDatabaseRetry as unknown as jest.Mock;
 const mockedUseNotificationSettings = useNotificationSettings as unknown as jest.Mock;
+const mockedResetCursors = resetCursors as unknown as jest.Mock;
 
 type NotificationSettingsMock = ReturnType<typeof useNotificationSettings>;
 
@@ -990,6 +1033,9 @@ describe('SettingsScreen', () => {
       await waitFor(() => {
         expect(mockedClearAllTables).toHaveBeenCalled();
       });
+      await waitFor(() => {
+        expect(mockedResetCursors).toHaveBeenCalledTimes(1);
+      });
 
       await waitFor(() => {
         expect(getByText('Local database cleared successfully.')).toBeDefined();
@@ -1009,6 +1055,8 @@ describe('SettingsScreen', () => {
       await waitFor(() => {
         expect(getByText('Error: Failed to clear database')).toBeDefined();
       });
+
+      expect(mockedResetCursors).not.toHaveBeenCalled();
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         '[Settings] Clear local database failed:',
@@ -1041,6 +1089,7 @@ describe('SettingsScreen', () => {
 
       // Verify clearAllTables was only called once (not twice)
       expect(mockedClearAllTables).toHaveBeenCalledTimes(1);
+      expect(mockedResetCursors).toHaveBeenCalledTimes(1);
 
       // Verify the console.log was called for the second click
       expect(consoleLogSpy).toHaveBeenCalledWith(

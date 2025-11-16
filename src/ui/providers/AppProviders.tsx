@@ -18,6 +18,7 @@ import { YStack } from 'tamagui';
 import { AnalyticsProvider } from '@/observability/AnalyticsProvider';
 import { ForegroundReminderToastHost } from '@/notifications/ForegroundReminderToastHost';
 import { cleanupSoftDeletedRecords } from '@/db/sqlite/cleanup';
+import { archiveOldEntries } from '@/db/sqlite/archive';
 
 const queryClient = getQueryClient();
 const persistOptions = getQueryClientPersistOptions();
@@ -65,6 +66,7 @@ export function AppProviders({ children }: PropsWithChildren) {
   });
 
   const lastCleanupRef = useRef(0);
+  const lastArchiveRef = useRef(0);
   useEffect(() => {
     if (Platform.OS === 'web') {
       return;
@@ -90,6 +92,19 @@ export function AppProviders({ children }: PropsWithChildren) {
       .catch((error) => {
         console.error('[SQLite] Soft-delete cleanup failed:', error);
       });
+
+    if (now - lastArchiveRef.current >= 7 * DAY_MS) {
+      lastArchiveRef.current = now;
+      archiveOldEntries()
+        .then((archived) => {
+          if (archived > 0) {
+            console.log(`[SQLite] Archived ${archived} entries older than 2 years`);
+          }
+        })
+        .catch((error) => {
+          console.error('[SQLite] Archive routine failed:', error);
+        });
+    }
   }, [queueSize, syncStatus]);
 
   return (
