@@ -19,6 +19,7 @@ import { AnalyticsProvider } from '@/observability/AnalyticsProvider';
 import { ForegroundReminderToastHost } from '@/notifications/ForegroundReminderToastHost';
 import { cleanupSoftDeletedRecords } from '@/db/sqlite/cleanup';
 import { archiveOldEntries } from '@/db/sqlite/archive';
+import { optimizeDatabase } from '@/db/sqlite/maintenance';
 
 const queryClient = getQueryClient();
 const persistOptions = getQueryClientPersistOptions();
@@ -67,6 +68,7 @@ export function AppProviders({ children }: PropsWithChildren) {
 
   const lastCleanupRef = useRef(0);
   const lastArchiveRef = useRef(0);
+  const lastOptimizationRef = useRef(0);
   useEffect(() => {
     if (Platform.OS === 'web') {
       return;
@@ -83,10 +85,26 @@ export function AppProviders({ children }: PropsWithChildren) {
     }
 
     lastCleanupRef.current = now;
+    const requestOptimization = () => {
+      const timestamp = Date.now();
+      if (timestamp - lastOptimizationRef.current < DAY_MS) {
+        return;
+      }
+      lastOptimizationRef.current = timestamp;
+      optimizeDatabase({ vacuum: true })
+        .then(() => {
+          console.log('[SQLite] Ran VACUUM/PRAGMA optimize');
+        })
+        .catch((error) => {
+          console.error('[SQLite] Optimization routine failed:', error);
+        });
+    };
+
     cleanupSoftDeletedRecords()
       .then((removed) => {
         if (removed > 0) {
           console.log(`[SQLite] Cleaned up ${removed} soft-deleted records`);
+          requestOptimization();
         }
       })
       .catch((error) => {
@@ -99,6 +117,7 @@ export function AppProviders({ children }: PropsWithChildren) {
         .then((archived) => {
           if (archived > 0) {
             console.log(`[SQLite] Archived ${archived} entries older than 2 years`);
+            requestOptimization();
           }
         })
         .catch((error) => {

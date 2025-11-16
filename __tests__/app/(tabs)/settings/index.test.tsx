@@ -59,6 +59,13 @@ jest.mock('@/observability/AnalyticsProvider', () => ({
   }),
 }));
 
+jest.mock('@/db/sqlite/maintenance', () => ({
+  __esModule: true,
+  optimizeDatabase: jest.fn(() =>
+    Promise.resolve({ vacuumed: true, optimized: true, pragmas: true }),
+  ),
+}));
+
 jest.mock('@/sync/cursors', () => ({
   __esModule: true,
   resetCursors: jest.fn(),
@@ -1097,6 +1104,68 @@ describe('SettingsScreen', () => {
       );
 
       consoleLogSpy.mockRestore();
+    });
+  });
+
+  describe('Developer Tools - Optimize Database', () => {
+    const originalDev = (global as any).__DEV__;
+
+    beforeEach(() => {
+      (global as any).__DEV__ = true;
+      mockedUseSessionStore.mockImplementation((selector: any) =>
+        selector({
+          status: 'authenticated',
+          session: {
+            user: {
+              id: 'user-123',
+              email: 'test@example.com',
+            },
+          },
+          signOut: jest.fn(),
+          isLoading: false,
+        }),
+      );
+      const { optimizeDatabase } = require('@/db/sqlite/maintenance');
+      optimizeDatabase.mockClear();
+    });
+
+    afterEach(() => {
+      (global as any).__DEV__ = originalDev;
+    });
+
+    it('optimizes the database on demand', async () => {
+      const { getByText } = render(<SettingsScreen />);
+
+      fireEvent.press(getByText('Optimize database'));
+
+      await waitFor(() => {
+        const { optimizeDatabase } = require('@/db/sqlite/maintenance');
+        expect(optimizeDatabase).toHaveBeenCalled();
+      });
+
+      await waitFor(() => {
+        expect(getByText('Database optimized successfully.')).toBeDefined();
+      });
+    });
+
+    it('handles errors while optimizing the database', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const { optimizeDatabase } = require('@/db/sqlite/maintenance');
+      optimizeDatabase.mockRejectedValueOnce(new Error('VACUUM failed'));
+
+      const { getByText } = render(<SettingsScreen />);
+
+      fireEvent.press(getByText('Optimize database'));
+
+      await waitFor(() => {
+        expect(getByText('Error: VACUUM failed')).toBeDefined();
+      });
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '[Settings] Optimize database failed:',
+        expect.any(Error),
+      );
+      consoleErrorSpy.mockRestore();
     });
   });
 });

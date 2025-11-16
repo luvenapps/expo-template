@@ -19,6 +19,7 @@ import { useSyncStore } from '@/state';
 import { pullUpdates, pushOutbox, useSync } from '@/sync';
 import { resetCursors } from '@/sync/cursors';
 import { clearAll as clearOutbox, getPending } from '@/sync/outbox';
+import { optimizeDatabase } from '@/db/sqlite/maintenance';
 import {
   CalendarHeatmap,
   PrimaryButton,
@@ -64,8 +65,9 @@ export default function SettingsScreen() {
   const [isSeeding, setIsSeeding] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
+  const [isOptimizingDb, setIsOptimizingDb] = useState(false);
   const [archiveOffsetDays, setArchiveOffsetDays] = useState<0 | -1>(0);
-  const [hasDbData, setHasDbData] = useState(false);
+  const [, setHasDbData] = useState(false);
   const {
     remindersEnabled,
     dailySummaryEnabled,
@@ -422,6 +424,28 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleOptimizeDatabase = async () => {
+    if (!isNative || isOptimizingDb) return;
+
+    try {
+      setIsOptimizingDb(true);
+      setDevStatus('Optimizing database...');
+      await optimizeDatabase();
+      setDevStatus('Database optimized successfully.');
+      toast.show({
+        type: 'success',
+        title: 'Database optimized',
+        description: 'Reclaimed space and refreshed indexes.',
+      });
+    } catch (error) {
+      console.error('[Settings] Optimize database failed:', error);
+      const friendly = reportFriendlyError(error, 'settings.optimize-db');
+      setDevStatus(`Error: ${friendly.description ?? friendly.title}`);
+    } finally {
+      setIsOptimizingDb(false);
+    }
+  };
+
   const THEME_OPTIONS: {
     value: ThemeName;
     label: string;
@@ -646,11 +670,13 @@ export default function SettingsScreen() {
                   </SecondaryButton>
                 </XStack>
                 <XStack>
-                  <SecondaryButton
-                    disabled={isClearing || !hasDbData}
-                    onPress={handleClearLocalDatabase}
-                  >
+                  <SecondaryButton disabled={isClearing} onPress={handleClearLocalDatabase}>
                     {isClearing ? 'Clearing…' : 'Clear local database'}
+                  </SecondaryButton>
+                </XStack>
+                <XStack>
+                  <SecondaryButton disabled={isOptimizingDb} onPress={handleOptimizeDatabase}>
+                    {isOptimizingDb ? 'Optimizing…' : 'Optimize database'}
                   </SecondaryButton>
                 </XStack>
                 <XStack>

@@ -41,6 +41,10 @@ jest.mock('@/db/sqlite/archive', () => ({
   archiveOldEntries: jest.fn().mockResolvedValue(0),
 }));
 
+jest.mock('@/db/sqlite/maintenance', () => ({
+  optimizeDatabase: jest.fn().mockResolvedValue({ vacuumed: true, optimized: true, pragmas: true }),
+}));
+
 // Mock expo-notifications
 const mockNotificationSubscription = { remove: jest.fn() };
 jest.mock('expo-notifications', () => ({
@@ -95,11 +99,28 @@ jest.mock('@/ui/theme/ThemeProvider', () => {
 const actualThemePalettes = jest.requireActual('@/ui/theme/palette').themePalettes;
 
 import { AppProviders } from '@/ui/providers/AppProviders';
-import { render } from '@testing-library/react-native';
+import { render, waitFor } from '@testing-library/react-native';
 import React from 'react';
 import { Text, View } from 'react-native';
 
 describe('AppProviders', () => {
+  // Suppress console output during tests
+  const originalConsoleLog = console.log;
+  const originalConsoleWarn = console.warn;
+  const originalConsoleError = console.error;
+
+  beforeAll(() => {
+    console.log = jest.fn();
+    console.warn = jest.fn();
+    console.error = jest.fn();
+  });
+
+  afterAll(() => {
+    console.log = originalConsoleLog;
+    console.warn = originalConsoleWarn;
+    console.error = originalConsoleError;
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockSessionState.status = 'unauthenticated';
@@ -356,6 +377,42 @@ describe('AppProviders', () => {
 
       expect(resetBadgeCount).not.toHaveBeenCalled();
       Object.defineProperty(Platform, 'OS', { value: originalOS, configurable: true });
+    });
+
+    it('runs database optimization after cleanup removes records', async () => {
+      const { cleanupSoftDeletedRecords } = require('@/db/sqlite/cleanup');
+      const { optimizeDatabase } = require('@/db/sqlite/maintenance');
+      mockSessionState.status = 'authenticated';
+      cleanupSoftDeletedRecords.mockResolvedValueOnce(5);
+
+      render(
+        <AppProviders>
+          <Text>Test</Text>
+        </AppProviders>,
+      );
+
+      await waitFor(() => {
+        expect(optimizeDatabase).toHaveBeenCalled();
+      });
+    });
+
+    it('runs database optimization after archival removes entries', async () => {
+      const { cleanupSoftDeletedRecords } = require('@/db/sqlite/cleanup');
+      const { archiveOldEntries } = require('@/db/sqlite/archive');
+      const { optimizeDatabase } = require('@/db/sqlite/maintenance');
+      mockSessionState.status = 'authenticated';
+      cleanupSoftDeletedRecords.mockResolvedValueOnce(0);
+      archiveOldEntries.mockResolvedValueOnce(3);
+
+      render(
+        <AppProviders>
+          <Text>Test</Text>
+        </AppProviders>,
+      );
+
+      await waitFor(() => {
+        expect(optimizeDatabase).toHaveBeenCalled();
+      });
     });
   });
 
