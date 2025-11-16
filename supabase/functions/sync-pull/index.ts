@@ -18,6 +18,11 @@ type PullResponse = {
   cursors: CursorPayload;
 };
 
+type RequestBody = {
+  cursors?: CursorPayload;
+  windowStart?: string | null;
+};
+
 serve(async (req: Request) => {
   try {
     if (req.method !== 'POST') {
@@ -46,15 +51,9 @@ serve(async (req: Request) => {
       return errorResponse('Invalid JSON body', 400);
     }
 
-    const cursors: CursorPayload =
-      typeof body === 'object' &&
-      body &&
-      'cursors' in body &&
-      typeof (body as { cursors: unknown }).cursors === 'object'
-        ? ((body as { cursors: CursorPayload }).cursors ?? {})
-        : {};
+    const { cursors, windowStart } = normalizeRequestBody(body);
 
-    const response = await pullTables(supabase, user.id, cursors);
+    const response = await pullTables(supabase, user.id, cursors, windowStart);
 
     return jsonResponse(response);
   } catch (error) {
@@ -63,10 +62,25 @@ serve(async (req: Request) => {
   }
 });
 
+function normalizeRequestBody(body: unknown): {
+  cursors: CursorPayload;
+  windowStart: string | null;
+} {
+  if (typeof body !== 'object' || !body) {
+    return { cursors: {}, windowStart: null };
+  }
+
+  const payload = body as RequestBody;
+  const cursors = payload.cursors ?? {};
+  const windowStart = typeof payload.windowStart === 'string' ? payload.windowStart : null;
+  return { cursors, windowStart };
+}
+
 async function pullTables(
   supabase: SupabaseClient,
   userId: string,
   cursors: CursorPayload,
+  windowStart: string | null,
 ): Promise<PullResponse> {
   const records: PullResponse['records'] = {};
   const nextCursors: CursorPayload = {};
@@ -86,6 +100,10 @@ async function pullTables(
 
     if (cursor) {
       query = query.gt('updated_at', cursor);
+    }
+
+    if (windowStart) {
+      query = query.gte('updated_at', windowStart);
     }
 
     const { data, error } = await query;

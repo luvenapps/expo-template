@@ -389,6 +389,25 @@ describe('sync driver', () => {
       expect(mockClearCursor).toHaveBeenCalledWith(`sync:${DOMAIN.entities.reminders.tableName}`);
     });
 
+    it('includes a windowStart timestamp in sync-pull payload', async () => {
+      const nowSpy = jest
+        .spyOn(Date, 'now')
+        .mockReturnValue(new Date('2025-11-10T00:00:00.000Z').getTime());
+
+      await pullUpdates();
+
+      expect(mockInvoke).toHaveBeenCalledWith(
+        'sync-pull',
+        expect.objectContaining({
+          body: expect.objectContaining({
+            windowStart: '2024-01-01T00:00:00.000Z',
+          }),
+        }),
+      );
+
+      nowSpy.mockRestore();
+    });
+
     it('throws when Supabase returns error', async () => {
       mockInvoke.mockResolvedValue({
         data: null,

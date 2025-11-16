@@ -78,6 +78,14 @@ type RemoteRow = Record<string, unknown>;
 
 const PLATFORM_UNSUPPORTED_ERROR =
   'Sync is only available on iOS and Android. Please use native builds to synchronise data.';
+const SYNC_WINDOW_YEARS = 2;
+
+function getWindowStartIso() {
+  const now = new Date();
+  const startYear = now.getUTCFullYear() - 1; // include current + previous year starting January
+  const windowStart = new Date(Date.UTC(startYear, 0, 1, 0, 0, 0, 0));
+  return windowStart.toISOString();
+}
 
 export async function pushOutbox(records: OutboxRecord[]) {
   if (!records.length) return;
@@ -129,8 +137,10 @@ export async function pullUpdates() {
     SYNC_TABLES.map((table) => [table, getCursor(`sync:${table}`)]),
   ) as Record<SyncTable, string | null>;
 
+  const windowStart = SYNC_WINDOW_YEARS > 0 ? getWindowStartIso() : null;
+
   const { data, error } = await supabase.functions.invoke<SyncPullResponse>('sync-pull', {
-    body: { cursors: cursorMap },
+    body: { cursors: cursorMap, windowStart },
   });
 
   if (error) {
