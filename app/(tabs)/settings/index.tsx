@@ -9,8 +9,10 @@ import {
 import { clearAllTables, getDb, hasData } from '@/db/sqlite';
 import { archiveOldEntries } from '@/db/sqlite/archive';
 import { onDatabaseReset } from '@/db/sqlite/events';
+import { optimizeDatabase } from '@/db/sqlite/maintenance';
 import { withDatabaseRetry } from '@/db/sqlite/retry';
 import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
+import { clearBroadcastMessage, setBroadcastMessage } from '@/messaging/store';
 import { DEFAULT_NOTIFICATION_PREFERENCES } from '@/notifications/preferences';
 import { scheduleReminder } from '@/notifications/scheduler';
 import { useNotificationSettings } from '@/notifications/useNotificationSettings';
@@ -18,9 +20,9 @@ import { useSyncStore } from '@/state';
 import { pullUpdates, pushOutbox, useSync } from '@/sync';
 import { resetCursors } from '@/sync/cursors';
 import { clearAll as clearOutbox, getPending } from '@/sync/outbox';
-import { optimizeDatabase } from '@/db/sqlite/maintenance';
 import {
   CalendarHeatmap,
+  MessagingBanner,
   PrimaryButton,
   ScreenContainer,
   SecondaryButton,
@@ -428,6 +430,24 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleLoadSampleAnnouncement = () => {
+    const sample = {
+      id: `sample-${Date.now()}`,
+      title: 'Featured update',
+      body: 'Test banner to preview the broadcast messaging system. Tap to view details.',
+      ctaLabel: 'View details',
+      publishedAt: new Date().toISOString(),
+    };
+    setBroadcastMessage(sample);
+    setDevStatus('Sample announcement loaded.');
+    toast.show({ type: 'success', title: 'Announcement loaded' });
+  };
+
+  const handleClearAnnouncement = () => {
+    clearBroadcastMessage();
+    setDevStatus('Announcements cleared.');
+  };
+
   const THEME_OPTIONS: {
     value: ThemeName;
     label: string;
@@ -454,6 +474,7 @@ export default function SettingsScreen() {
   const content = (
     <ScreenContainer contentContainerStyle={{ flexGrow: 1, paddingBottom: 96 }}>
       <YStack gap="$4">
+        <MessagingBanner />
         <SettingsSection
           title="Account"
           description={
@@ -663,6 +684,21 @@ export default function SettingsScreen() {
                 <XStack>
                   <SecondaryButton onPress={() => router.push('/(tabs)/settings/database')}>
                     View local database
+                  </SecondaryButton>
+                </XStack>
+                <XStack>
+                  <PrimaryButton onPress={handleLoadSampleAnnouncement}>
+                    Load Announcement
+                  </PrimaryButton>
+                </XStack>
+                <XStack>
+                  <SecondaryButton onPress={() => router.push('/(tabs)/settings/messages')}>
+                    Open messages page
+                  </SecondaryButton>
+                </XStack>
+                <XStack>
+                  <SecondaryButton onPress={handleClearAnnouncement}>
+                    Clear announcement
                   </SecondaryButton>
                 </XStack>
                 <XStack>
