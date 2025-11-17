@@ -63,9 +63,10 @@ export function ToastContainer({ messages, dismiss }: ToastContainerProps) {
   return (
     <YStack
       position="absolute"
-      bottom="$4"
-      left="$4"
-      right="$4"
+      top="$4"
+      width="90%"
+      maxWidth={480}
+      alignSelf="center"
       gap="$2"
       pointerEvents="box-none"
       zIndex={1000}

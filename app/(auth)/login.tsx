@@ -33,6 +33,7 @@ export default function LoginScreen() {
   const error = useSessionStore((state) => state.error);
   const toast = useToast();
   const showFriendlyError = useFriendlyErrorHandler(toast);
+  const errorToastId = useRef<string | null>(null);
 
   const isFormValid = email.trim() !== '' && isValidEmail(email) && password.trim() !== '';
 
@@ -48,20 +49,22 @@ export default function LoginScreen() {
   );
 
   const handleAuthError = useCallback(
-    (result: Awaited<ReturnType<typeof signInWithEmail>>, surface: string, retry?: () => void) => {
+    (result: Awaited<ReturnType<typeof signInWithEmail>>, surface: string) => {
       if (result.success) {
         return;
       }
 
-      showFriendlyError(result.friendlyError ?? result.error ?? 'An error occurred', {
-        surface,
-        toast: retry
-          ? {
-              retryLabel: 'Retry',
-              onRetry: retry,
-            }
-          : undefined,
-      });
+      const { toastId } = showFriendlyError(
+        result.friendlyError ?? result.error ?? 'An error occurred',
+        {
+          surface,
+          suppressToast: true,
+          toast: {
+            id: errorToastId.current ?? undefined,
+          },
+        },
+      );
+      errorToastId.current = toastId ?? errorToastId.current;
     },
     [showFriendlyError],
   );
@@ -84,9 +87,7 @@ export default function LoginScreen() {
         router.replace('/(tabs)');
       }
     } else {
-      handleAuthError(result, 'auth.login.email', () => {
-        void handleSubmit();
-      });
+      handleAuthError(result, 'auth.login.email');
     }
   };
 
@@ -135,7 +136,7 @@ export default function LoginScreen() {
     [],
   );
 
-  return (
+  const content = (
     <ScreenContainer
       alignItems="center"
       paddingHorizontal="$6"
@@ -261,7 +262,13 @@ export default function LoginScreen() {
           </YStack>
         </YStack>
       </Card>
-      <ToastContainer messages={toast.messages} dismiss={toast.dismiss} />
     </ScreenContainer>
+  );
+
+  return (
+    <>
+      {content}
+      <ToastContainer messages={toast.messages} dismiss={toast.dismiss} />
+    </>
   );
 }

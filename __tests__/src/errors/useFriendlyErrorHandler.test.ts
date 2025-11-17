@@ -153,6 +153,7 @@ describe('useFriendlyErrorHandler', () => {
       handler(friendlyError, { surface: 'test-surface' });
 
       expect(mockToast.show).toHaveBeenCalledWith({
+        id: undefined,
         type: 'error',
         title: 'Test Error',
         description: 'Test description',
@@ -192,6 +193,43 @@ describe('useFriendlyErrorHandler', () => {
 
       expect(mockToast.show).toHaveBeenCalled();
     });
+
+    it('dismisses existing toast when id is provided', () => {
+      const friendlyError: FriendlyError = {
+        code: 'unknown',
+        title: 'Test Error',
+        description: 'Test description',
+        type: 'error',
+      };
+
+      const { result } = renderHook(() => useFriendlyErrorHandler(mockToast));
+      const handler = result.current;
+
+      handler(friendlyError, { surface: 'test-surface', toast: { id: 'existing-toast' } });
+
+      expect(mockToast.dismiss).toHaveBeenCalledWith('existing-toast');
+      expect(mockToast.show).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'existing-toast',
+        }),
+      );
+    });
+
+    it('does not dismiss when no id is provided', () => {
+      const friendlyError: FriendlyError = {
+        code: 'unknown',
+        title: 'Test Error',
+        description: 'Test description',
+        type: 'error',
+      };
+
+      const { result } = renderHook(() => useFriendlyErrorHandler(mockToast));
+      const handler = result.current;
+
+      handler(friendlyError, { surface: 'test-surface' });
+
+      expect(mockToast.dismiss).not.toHaveBeenCalled();
+    });
   });
 
   describe('retry functionality', () => {
@@ -217,6 +255,7 @@ describe('useFriendlyErrorHandler', () => {
       });
 
       expect(mockToast.show).toHaveBeenCalledWith({
+        id: undefined,
         type: 'error',
         title: 'Test Error',
         description: 'Test description',
@@ -246,6 +285,7 @@ describe('useFriendlyErrorHandler', () => {
       });
 
       expect(mockToast.show).toHaveBeenCalledWith({
+        id: undefined,
         type: 'error',
         title: 'Test Error',
         description: 'Test description',
@@ -268,6 +308,7 @@ describe('useFriendlyErrorHandler', () => {
       handler(friendlyError, { surface: 'test-surface' });
 
       expect(mockToast.show).toHaveBeenCalledWith({
+        id: undefined,
         type: 'error',
         title: 'Test Error',
         description: 'Test description',
@@ -290,6 +331,7 @@ describe('useFriendlyErrorHandler', () => {
       handler(friendlyError, { surface: 'test-surface' });
 
       expect(mockToast.show).toHaveBeenCalledWith({
+        id: undefined,
         type: 'error',
         title: 'Test Error',
         description: 'Test description',
@@ -317,6 +359,7 @@ describe('useFriendlyErrorHandler', () => {
       });
 
       expect(mockToast.show).toHaveBeenCalledWith({
+        id: undefined,
         type: 'error',
         title: 'Test Error',
         description: 'Test description',
@@ -370,7 +413,7 @@ describe('useFriendlyErrorHandler', () => {
   });
 
   describe('return value', () => {
-    it('returns the friendly error', () => {
+    it('returns the friendly error with toastId', () => {
       const friendlyError: FriendlyError = {
         code: 'unknown',
         title: 'Test Error',
@@ -378,12 +421,15 @@ describe('useFriendlyErrorHandler', () => {
         type: 'error',
       };
 
+      (mockToast.show as jest.Mock).mockReturnValue('toast-123');
+
       const { result } = renderHook(() => useFriendlyErrorHandler(mockToast));
       const handler = result.current;
 
       const returned = handler(friendlyError, { surface: 'test-surface' });
 
-      expect(returned).toBe(friendlyError);
+      expect(returned.friendly).toBe(friendlyError);
+      expect(returned.toastId).toBe('toast-123');
     });
 
     it('returns the resolved friendly error', () => {
@@ -396,13 +442,32 @@ describe('useFriendlyErrorHandler', () => {
       };
 
       mockResolveFriendlyError.mockReturnValue(resolvedError);
+      (mockToast.show as jest.Mock).mockReturnValue('toast-456');
 
       const { result } = renderHook(() => useFriendlyErrorHandler(mockToast));
       const handler = result.current;
 
       const returned = handler(genericError, { surface: 'test-surface' });
 
-      expect(returned).toBe(resolvedError);
+      expect(returned.friendly).toBe(resolvedError);
+      expect(returned.toastId).toBe('toast-456');
+    });
+
+    it('returns undefined toastId when toast is suppressed', () => {
+      const friendlyError: FriendlyError = {
+        code: 'unknown',
+        title: 'Test Error',
+        description: 'Test description',
+        type: 'error',
+      };
+
+      const { result } = renderHook(() => useFriendlyErrorHandler(mockToast));
+      const handler = result.current;
+
+      const returned = handler(friendlyError, { surface: 'test-surface', suppressToast: true });
+
+      expect(returned.friendly).toBe(friendlyError);
+      expect(returned.toastId).toBeUndefined();
     });
   });
 });

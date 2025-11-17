@@ -7,6 +7,7 @@ type ErrorOptions = {
   toast?: {
     retryLabel?: string;
     onRetry?: () => void;
+    id?: string;
   };
   suppressToast?: boolean;
 };
@@ -17,10 +18,15 @@ function isFriendlyError(error: unknown): error is FriendlyError {
   );
 }
 
+type HandlerResult = {
+  friendly: FriendlyError;
+  toastId?: string;
+};
+
 export function useFriendlyErrorHandler(toast: ToastController) {
   const analytics = useAnalytics();
 
-  return (error: unknown, options: ErrorOptions) => {
+  return (error: unknown, options: ErrorOptions): HandlerResult => {
     const friendly = isFriendlyError(error)
       ? (error as FriendlyError)
       : resolveFriendlyError(error);
@@ -31,11 +37,18 @@ export function useFriendlyErrorHandler(toast: ToastController) {
       originalMessage: friendly.originalMessage,
     });
 
+    let toastId: string | undefined;
     if (!options.suppressToast) {
+      const existingId = options.toast?.id;
+      if (existingId) {
+        toast.dismiss(existingId);
+      }
+
       const retryLabel =
         options.toast?.retryLabel ?? (options.toast?.onRetry ? 'Retry' : undefined);
 
-      toast.show({
+      toastId = toast.show({
+        id: existingId,
         type: friendly.type,
         title: friendly.title,
         description: friendly.description,
@@ -44,6 +57,6 @@ export function useFriendlyErrorHandler(toast: ToastController) {
       });
     }
 
-    return friendly;
+    return { friendly, toastId };
   };
 }

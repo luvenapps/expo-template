@@ -51,6 +51,8 @@ export const useSessionStore = create<SessionState>((set) => ({
     const result = await supabaseSignInWithOAuth(provider);
     if (!result.success && result.error) {
       set({ error: result.error, isLoading: false });
+    } else {
+      set({ isLoading: false });
     }
     return result;
   },

@@ -190,7 +190,7 @@ export default function SettingsScreen() {
       });
     } catch (syncError) {
       console.error('[Settings] manual sync failed', syncError);
-      const friendly = showFriendlyError(syncError, { surface: 'settings.sync' });
+      const { friendly } = showFriendlyError(syncError, { surface: 'settings.sync' });
       setDevStatus(friendly.description ?? friendly.title);
     }
   };
@@ -221,7 +221,7 @@ export default function SettingsScreen() {
       );
     } catch (error) {
       console.error('[Settings] archive entries failed', error);
-      const friendly = showFriendlyError(error, { surface: 'settings.archive' });
+      const { friendly } = showFriendlyError(error, { surface: 'settings.archive' });
       setDevStatus(friendly.description ?? friendly.title);
     } finally {
       setIsArchiving(false);
@@ -307,7 +307,7 @@ export default function SettingsScreen() {
       useSyncStore.getState().setQueueSize(pending.length);
     } catch (error) {
       console.error('[Settings] Seed sample data failed:', error);
-      const friendly = showFriendlyError(error, { surface: 'settings.seed' });
+      const { friendly } = showFriendlyError(error, { surface: 'settings.seed' });
       setDevStatus(`Error: ${friendly.description ?? friendly.title}`);
     } finally {
       setIsSeeding(false);
@@ -327,7 +327,7 @@ export default function SettingsScreen() {
         title: 'Outbox cleared',
       });
     } catch (error) {
-      const friendly = showFriendlyError(error, { surface: 'settings.clear-outbox' });
+      const { friendly } = showFriendlyError(error, { surface: 'settings.clear-outbox' });
       setDevStatus(friendly.description ?? friendly.title);
     }
   };
@@ -364,7 +364,7 @@ export default function SettingsScreen() {
       });
     } catch (reminderError) {
       console.error('[Settings] scheduleReminder failed', reminderError);
-      const friendly = showFriendlyError(reminderError, { surface: 'settings.test-reminder' });
+      const { friendly } = showFriendlyError(reminderError, { surface: 'settings.test-reminder' });
       setDevStatus(`Reminder scheduling failed: ${friendly.description ?? friendly.title}`);
     }
   };
@@ -398,7 +398,7 @@ export default function SettingsScreen() {
       useSyncStore.getState().setQueueSize(0);
     } catch (error) {
       console.error('[Settings] Clear local database failed:', error);
-      const friendly = showFriendlyError(error, { surface: 'settings.clear-db' });
+      const { friendly } = showFriendlyError(error, { surface: 'settings.clear-db' });
       setDevStatus(`Error: ${friendly.description ?? friendly.title}`);
     } finally {
       setIsClearing(false);
@@ -421,7 +421,7 @@ export default function SettingsScreen() {
       });
     } catch (error) {
       console.error('[Settings] Optimize database failed:', error);
-      const friendly = showFriendlyError(error, { surface: 'settings.optimize-db' });
+      const { friendly } = showFriendlyError(error, { surface: 'settings.optimize-db' });
       setDevStatus(`Error: ${friendly.description ?? friendly.title}`);
     } finally {
       setIsOptimizingDb(false);
@@ -451,9 +451,8 @@ export default function SettingsScreen() {
     [1, 0, 2, 3, 4, 2, 1],
   ];
 
-  return (
+  const content = (
     <ScreenContainer contentContainerStyle={{ flexGrow: 1, paddingBottom: 96 }}>
-      <ToastContainer messages={toast.messages} dismiss={toast.dismiss} />
       <YStack gap="$4">
         <SettingsSection
           title="Account"
@@ -717,5 +716,12 @@ export default function SettingsScreen() {
         </Paragraph>
       </YStack>
     </ScreenContainer>
+  );
+
+  return (
+    <>
+      {content}
+      <ToastContainer messages={toast.messages} dismiss={toast.dismiss} />
+    </>
   );
 }
