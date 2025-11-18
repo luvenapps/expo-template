@@ -4,6 +4,8 @@ jest.mock('@/auth/client', () => ({
       signInWithPassword: jest.fn(),
       signInWithOAuth: jest.fn(),
       signOut: jest.fn(),
+      signUp: jest.fn(),
+      resetPasswordForEmail: jest.fn(),
     },
   },
 }));
@@ -26,7 +28,13 @@ const mockRequireOptionalNativeModule = ExpoModulesCore.requireOptionalNativeMod
 const mockOpenAuthSessionAsync = ExpoModulesCore.__openAuthSessionAsyncMock as jest.Mock;
 
 import { Platform } from 'react-native';
-import { signInWithEmail, signInWithOAuth, signOut } from '@/auth/service';
+import {
+  signInWithEmail,
+  signInWithOAuth,
+  signOut,
+  signUpWithEmail,
+  sendPasswordReset,
+} from '@/auth/service';
 
 jest.mock('expo-linking', () => ({
   createURL: jest.fn(() => 'betterhabits://auth/callback'),
@@ -195,5 +203,53 @@ describe('auth/service', () => {
     expect(result).toEqual({ success: true });
     expect(mockAssign).toHaveBeenCalledWith('https://example.com');
     expect(mockOpenAuthSessionAsync).not.toHaveBeenCalled();
+  });
+
+  test('signUpWithEmail returns success', async () => {
+    mockReturn('signUp');
+    const result = await signUpWithEmail('new@example.com', 'password123');
+    expect(result).toEqual({ success: true });
+    expect(auth.signUp).toHaveBeenCalledWith({ email: 'new@example.com', password: 'password123' });
+  });
+
+  test('signUpWithEmail handles errors', async () => {
+    mockReturn('signUp', { error: 'Email taken' });
+    const result = await signUpWithEmail('new@example.com', 'password123');
+    expect(result).toEqual({
+      success: false,
+      error: 'Email taken',
+      code: 'unknown',
+      friendlyError: {
+        title: 'Email taken',
+        description: 'Email taken',
+        code: 'unknown',
+        type: 'error',
+      },
+    });
+  });
+
+  test('sendPasswordReset returns success', async () => {
+    mockReturn('resetPasswordForEmail');
+    const result = await sendPasswordReset('user@example.com');
+    expect(result).toEqual({ success: true });
+    expect(auth.resetPasswordForEmail).toHaveBeenCalledWith('user@example.com', {
+      redirectTo: 'betterhabits://auth/callback',
+    });
+  });
+
+  test('sendPasswordReset handles errors', async () => {
+    mockReturn('resetPasswordForEmail', { error: 'No user' });
+    const result = await sendPasswordReset('user@example.com');
+    expect(result).toEqual({
+      success: false,
+      error: 'No user',
+      code: 'unknown',
+      friendlyError: {
+        title: 'No user',
+        description: 'No user',
+        code: 'unknown',
+        type: 'error',
+      },
+    });
   });
 });

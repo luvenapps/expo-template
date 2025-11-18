@@ -94,12 +94,14 @@ jest.mock('@/auth/session', () => ({
 }));
 
 const mockReplace = jest.fn();
+const mockPush = jest.fn();
 const mockBack = jest.fn();
 const mockCanGoBack = jest.fn(() => true);
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({
     replace: mockReplace,
+    push: mockPush,
     back: mockBack,
   }),
   useNavigation: () => ({
@@ -132,6 +134,7 @@ afterAll(() => {
 describe('LoginScreen', () => {
   beforeEach(() => {
     mockReplace.mockClear();
+    mockPush.mockClear();
     mockBack.mockClear();
     mockCanGoBack.mockClear();
     mockCanGoBack.mockReturnValue(true);
@@ -200,6 +203,12 @@ describe('LoginScreen', () => {
     });
 
     expect(mockReplace).not.toHaveBeenCalled();
+  });
+
+  test('forgot password link navigates to reset screen', () => {
+    const { getByText } = render(<LoginScreen />);
+    fireEvent.press(getByText('Forgot your password?'));
+    expect(mockPush).toHaveBeenCalledWith('/(auth)/forgot-password');
   });
 
   test('disables button when loading', () => {

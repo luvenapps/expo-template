@@ -309,6 +309,7 @@ export default function LoginScreen() {
               textAlign="right"
               color="$accentColor"
               fontWeight="600"
+              onPress={() => router.push('/(auth)/forgot-password')}
               hoverStyle={{ opacity: 0.8, cursor: 'pointer' }}
             >
               Forgot your password?
@@ -335,8 +336,20 @@ export default function LoginScreen() {
             </Form.Trigger>
           </Form>
 
+          <YStack
+            gap="$2"
+            width="100%"
+            alignItems="center"
+            marginTop={Platform.OS === 'web' ? '$4' : '$5'}
+          >
+            <CaptionText color="$colorMuted">Don&apos;t have an account?</CaptionText>
+            <PrimaryButton width="100%" onPress={() => router.push('/(auth)/signup')}>
+              Create account
+            </PrimaryButton>
+          </YStack>
+
           <YStack gap="$3" width="100%" alignItems="center">
-            <View marginTop={10}>
+            <View marginTop={Platform.OS === 'web' ? 0 : 10}>
               <CaptionText color="$colorMuted">Or</CaptionText>
             </View>
             {oauthButtons.map(

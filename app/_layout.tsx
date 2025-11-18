@@ -29,7 +29,7 @@ function ThemedApp() {
         <AppProviders>
           <Stack screenOptions={{ headerBackButtonDisplayMode: 'minimal' }}>
             <Stack.Screen name="index" options={{ headerShown: false }} />
-            <Stack.Screen name="(auth)" options={{ title: 'Sign in' }} />
+            <Stack.Screen name="(auth)" options={{ title: 'Sign In' }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="details" />
           </Stack>

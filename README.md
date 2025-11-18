@@ -612,6 +612,11 @@ We implement Supabase’s [Expo React Native social auth quickstart](https://sup
 
 After following the quickstart, the “Continue with Apple/Google” buttons in `app/(auth)/login.tsx` should launch the appropriate flows on iOS, Android, and web without additional code changes.
 
+#### Email sign up & password reset
+
+- `app/(auth)/signup.tsx` reuses the login form primitives so users can create accounts with email/password (plus the same friendly-error surface).
+- `app/(auth)/forgot-password.tsx` sends Supabase reset links. The login screen links to both routes so users can switch between sign in, sign up, and password recovery without leaving the auth stack.
+
 ### Daily Development
 
 1. **Start Supabase** (Terminal 1):

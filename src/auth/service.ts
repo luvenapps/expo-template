@@ -107,3 +107,33 @@ export async function signOut(): Promise<AuthResult> {
   }
   return { success: true };
 }
+
+export async function signUpWithEmail(email: string, password: string): Promise<AuthResult> {
+  const { error } = await supabase.auth.signUp({ email, password });
+  if (error) {
+    const friendly = resolveFriendlyError(error);
+    return {
+      success: false,
+      error: friendly.description ?? friendly.title,
+      code: friendly.code,
+      friendlyError: friendly,
+    };
+  }
+  return { success: true };
+}
+
+export async function sendPasswordReset(email: string): Promise<AuthResult> {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: Linking.createURL('auth/callback'),
+  });
+  if (error) {
+    const friendly = resolveFriendlyError(error);
+    return {
+      success: false,
+      error: friendly.description ?? friendly.title,
+      code: friendly.code,
+      friendlyError: friendly,
+    };
+  }
+  return { success: true };
+}
