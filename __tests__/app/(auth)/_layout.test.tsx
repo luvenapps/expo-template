@@ -3,6 +3,10 @@ import { render } from '@testing-library/react-native';
 import React from 'react';
 import AuthLayout from '../../../app/(auth)/_layout';
 
+jest.mock('@react-navigation/elements', () => ({
+  HeaderBackButton: () => null,
+}));
+
 jest.mock('expo-router', () => {
   const MockStack: any = ({ children }: { children: React.ReactNode }) => <>{children}</>;
   MockStack.displayName = 'MockStack';
@@ -11,6 +15,11 @@ jest.mock('expo-router', () => {
   MockStack.Screen = MockScreen;
   return {
     Stack: MockStack,
+    useRouter: jest.fn(() => ({
+      canGoBack: jest.fn(() => true),
+      back: jest.fn(),
+      replace: jest.fn(),
+    })),
   };
 });
 

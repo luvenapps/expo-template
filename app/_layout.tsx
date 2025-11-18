@@ -27,9 +27,9 @@ function ThemedApp() {
     <NavigationThemeProvider value={resolvedTheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Theme name={resolvedTheme}>
         <AppProviders>
-          <Stack screenOptions={{ headerBackButtonDisplayMode: 'minimal' }}>
+          <Stack>
             <Stack.Screen name="index" options={{ headerShown: false }} />
-            <Stack.Screen name="(auth)" options={{ title: 'Sign In' }} />
+            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="details" />
           </Stack>

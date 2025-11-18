@@ -1,5 +1,4 @@
 const recordedScreens: string[] = [];
-let recordedProps: Record<string, unknown> | undefined;
 
 jest.mock('react-native-gesture-handler', () => ({
   GestureHandlerRootView: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
@@ -74,11 +73,7 @@ jest.mock('@react-navigation/native', () => ({
 }));
 
 jest.mock('expo-router', () => {
-  const MockStack: any = ({
-    children,
-    ...props
-  }: React.PropsWithChildren<Record<string, unknown>>) => {
-    recordedProps = props;
+  const MockStack: any = ({ children }: React.PropsWithChildren<Record<string, unknown>>) => {
     return <>{children}</>;
   };
 
@@ -103,18 +98,39 @@ jest.mock('@/db/sqlite/archive', () => ({
   archiveOldEntries: jest.fn().mockResolvedValue(0),
 }));
 
+jest.mock('@/db/sqlite/maintenance', () => ({
+  optimizeDatabase: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock('@/observability/AnalyticsProvider', () => ({
+  AnalyticsProvider: ({ children }: any) => children,
+}));
+
+jest.mock('@/notifications', () => ({
+  registerNotificationCategories: jest.fn().mockResolvedValue(undefined),
+  configureNotificationHandler: jest.fn().mockResolvedValue(undefined),
+  resetBadgeCount: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock('@/notifications/ForegroundReminderToastHost', () => ({
+  ForegroundReminderToastHost: () => null,
+}));
+
+jest.mock('@/state', () => ({
+  getQueryClient: jest.fn(() => ({
+    mount: jest.fn(),
+    unmount: jest.fn(),
+  })),
+  getQueryClientPersistOptions: jest.fn(() => null),
+}));
+
 describe('RootLayout', () => {
   beforeEach(() => {
     recordedScreens.length = 0;
-    recordedProps = undefined;
   });
 
-  test('applies shared header options and registers screens', () => {
+  test('registers all screens', () => {
     render(<RootLayout />);
-
-    expect(recordedProps?.screenOptions).toMatchObject({
-      headerBackButtonDisplayMode: 'minimal',
-    });
 
     expect(recordedScreens).toEqual(
       expect.arrayContaining(['index', '(auth)', '(tabs)', 'details']),
