@@ -80,6 +80,7 @@ jest.mock('tamagui', () => {
     View: createForwarded(View),
     Card: createForwarded(View),
     Form,
+    useThemeName: jest.fn(() => 'light'),
   };
 });
 
@@ -278,6 +279,16 @@ describe('LoginScreen', () => {
     expect(passwordInput.props.secureTextEntry).toBe(true);
   });
 
+  test('focuses password field when email submit is pressed', () => {
+    const { getByPlaceholderText } = render(<LoginScreen />);
+    const emailInput = getByPlaceholderText('you@example.com');
+
+    // Should not throw when onSubmitEditing is called
+    expect(() => {
+      fireEvent(emailInput, 'submitEditing');
+    }).not.toThrow();
+  });
+
   test('replaces to tabs when no history exists', async () => {
     mockCanGoBack.mockReturnValue(false);
     const { getByPlaceholderText, getByText } = render(<LoginScreen />);
@@ -295,21 +306,122 @@ describe('LoginScreen', () => {
     expect(mockBack).not.toHaveBeenCalled();
   });
 });
-test('handles OAuth sign in', async () => {
-  const oauthMock = jest.fn().mockResolvedValue({ success: true });
-  mockedUseSessionStore.mockImplementation((selector: any) =>
-    selector({
-      signInWithEmail: jest.fn().mockResolvedValue({ success: true }),
-      signInWithOAuth: oauthMock,
-      setError: jest.fn(),
-      isLoading: false,
-      error: null,
-    }),
-  );
-
-  const { getByText } = render(<LoginScreen />);
-  await act(async () => {
-    fireEvent.press(getByText('Continue with Google'));
+describe('OAuth authentication', () => {
+  beforeEach(() => {
+    mockReplace.mockClear();
+    mockBack.mockClear();
+    mockCanGoBack.mockClear();
   });
-  expect(oauthMock).toHaveBeenCalledWith('google');
+
+  test('handles OAuth sign in', async () => {
+    mockCanGoBack.mockReturnValue(true);
+    const oauthMock = jest.fn().mockResolvedValue({ success: true });
+    mockedUseSessionStore.mockImplementation((selector: any) =>
+      selector({
+        signInWithEmail: jest.fn().mockResolvedValue({ success: true }),
+        signInWithOAuth: oauthMock,
+        setError: jest.fn(),
+        isLoading: false,
+        error: null,
+      }),
+    );
+
+    const { getByText } = render(<LoginScreen />);
+    await act(async () => {
+      fireEvent.press(getByText('Continue with Google'));
+    });
+    expect(oauthMock).toHaveBeenCalledWith('google');
+  });
+
+  test('navigates back on successful OAuth login when canGoBack is true', async () => {
+    mockCanGoBack.mockReturnValue(true);
+    const oauthMock = jest.fn().mockResolvedValue({ success: true });
+    mockedUseSessionStore.mockImplementation((selector: any) =>
+      selector({
+        signInWithEmail: jest.fn().mockResolvedValue({ success: true }),
+        signInWithOAuth: oauthMock,
+        setError: jest.fn(),
+        isLoading: false,
+        error: null,
+      }),
+    );
+
+    const { getByText } = render(<LoginScreen />);
+    await act(async () => {
+      fireEvent.press(getByText('Continue with Google'));
+      await waitFor(() => {
+        expect(mockBack).toHaveBeenCalled();
+      });
+    });
+    expect(mockReplace).not.toHaveBeenCalled();
+  });
+
+  test('replaces to tabs on successful OAuth login when canGoBack is false', async () => {
+    mockCanGoBack.mockReturnValue(false);
+    const oauthMock = jest.fn().mockResolvedValue({ success: true });
+    mockedUseSessionStore.mockImplementation((selector: any) =>
+      selector({
+        signInWithEmail: jest.fn().mockResolvedValue({ success: true }),
+        signInWithOAuth: oauthMock,
+        setError: jest.fn(),
+        isLoading: false,
+        error: null,
+      }),
+    );
+
+    const { getByText } = render(<LoginScreen />);
+    await act(async () => {
+      fireEvent.press(getByText('Continue with Google'));
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith('/(tabs)');
+      });
+    });
+    expect(mockBack).not.toHaveBeenCalled();
+  });
+
+  test('handles OAuth sign in failure', async () => {
+    mockCanGoBack.mockReturnValue(true);
+    const oauthMock = jest
+      .fn()
+      .mockResolvedValue({ success: false, error: 'OAuth authentication failed' });
+    mockedUseSessionStore.mockImplementation((selector: any) =>
+      selector({
+        signInWithEmail: jest.fn().mockResolvedValue({ success: true }),
+        signInWithOAuth: oauthMock,
+        setError: jest.fn(),
+        isLoading: false,
+        error: null,
+      }),
+    );
+
+    const { getByText } = render(<LoginScreen />);
+    await act(async () => {
+      fireEvent.press(getByText('Continue with Google'));
+      // Wait for async OAuth to complete
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(mockBack).not.toHaveBeenCalled();
+    expect(mockReplace).not.toHaveBeenCalled();
+  });
+
+  test('handles OAuth sign in for Apple provider', async () => {
+    mockCanGoBack.mockReturnValue(true);
+    const oauthMock = jest.fn().mockResolvedValue({ success: true });
+    mockedUseSessionStore.mockImplementation((selector: any) =>
+      selector({
+        signInWithEmail: jest.fn().mockResolvedValue({ success: true }),
+        signInWithOAuth: oauthMock,
+        setError: jest.fn(),
+        isLoading: false,
+        error: null,
+      }),
+    );
+
+    const { getByText } = render(<LoginScreen />);
+    await act(async () => {
+      fireEvent.press(getByText('Continue with Apple'));
+    });
+    expect(oauthMock).toHaveBeenCalledWith('apple');
+  });
 });

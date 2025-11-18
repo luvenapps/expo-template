@@ -13,6 +13,7 @@ jest.mock('@/errors/friendly', () => ({
     title: error.message || 'Unexpected error',
     description: error.message || 'Unexpected error',
     code: 'unknown',
+    type: 'error',
   })),
 }));
 
@@ -20,6 +21,9 @@ type SupabaseAuth = (typeof import('@/auth/client'))['supabase']['auth'];
 
 const auth = require('@/auth/client').supabase.auth as SupabaseAuth;
 const ExpoLinking = require('expo-linking');
+const ExpoModulesCore = require('expo-modules-core');
+const mockRequireOptionalNativeModule = ExpoModulesCore.requireOptionalNativeModule as jest.Mock;
+const mockOpenAuthSessionAsync = ExpoModulesCore.__openAuthSessionAsyncMock as jest.Mock;
 
 import { Platform } from 'react-native';
 import { signInWithEmail, signInWithOAuth, signOut } from '@/auth/service';
@@ -28,6 +32,17 @@ jest.mock('expo-linking', () => ({
   createURL: jest.fn(() => 'betterhabits://auth/callback'),
   openURL: jest.fn(() => Promise.resolve()),
 }));
+
+jest.mock('expo-modules-core', () => {
+  const openAuthSessionAsync = jest.fn(() => Promise.resolve({ type: 'success' }));
+  const requireOptionalNativeModule = jest.fn(() => ({
+    openAuthSessionAsync,
+  }));
+  return {
+    requireOptionalNativeModule,
+    __openAuthSessionAsyncMock: openAuthSessionAsync,
+  };
+});
 
 const mockReturn = (method: keyof SupabaseAuth, opts: { error?: string; url?: string } = {}) => {
   const payload: any = { error: opts.error ? { message: opts.error } : null };
@@ -42,6 +57,10 @@ describe('auth/service', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     Object.defineProperty(Platform, 'OS', { value: 'ios' });
+    mockOpenAuthSessionAsync.mockResolvedValue({ type: 'success' });
+    mockRequireOptionalNativeModule.mockReturnValue({
+      openAuthSessionAsync: mockOpenAuthSessionAsync,
+    });
   });
 
   test('signInWithEmail returns success', async () => {
@@ -65,8 +84,16 @@ describe('auth/service', () => {
         title: 'Invalid credentials',
         description: 'Invalid credentials',
         code: 'unknown',
+        type: 'error',
       },
     });
+  });
+
+  test('signOut returns success', async () => {
+    mockReturn('signOut');
+    const result = await signOut();
+    expect(result).toEqual({ success: true });
+    expect(auth.signOut).toHaveBeenCalled();
   });
 
   test('signOut handles errors', async () => {
@@ -80,6 +107,7 @@ describe('auth/service', () => {
         title: 'Failed',
         description: 'Failed',
         code: 'unknown',
+        type: 'error',
       },
     });
   });
@@ -92,7 +120,11 @@ describe('auth/service', () => {
       provider: 'github',
       options: expect.objectContaining({ skipBrowserRedirect: true }),
     });
-    expect(ExpoLinking.openURL).toHaveBeenCalled();
+    expect(mockOpenAuthSessionAsync).toHaveBeenCalledWith(
+      'https://example.com',
+      'betterhabits://auth/callback',
+      {},
+    );
   });
 
   test('signInWithOAuth returns error message', async () => {
@@ -106,11 +138,62 @@ describe('auth/service', () => {
         title: 'OAuth failed',
         description: 'OAuth failed',
         code: 'unknown',
+        type: 'error',
       },
     });
     expect(auth.signInWithOAuth).toHaveBeenCalledWith({
       provider: 'google',
       options: expect.any(Object),
     });
+  });
+
+  test('signInWithOAuth propagates browser errors', async () => {
+    mockReturn('signInWithOAuth');
+    mockOpenAuthSessionAsync.mockRejectedValueOnce(new Error('Failed to open browser'));
+    const result = await signInWithOAuth('google');
+    expect(result).toEqual({
+      success: false,
+      error: 'Failed to open browser',
+      code: 'auth.oauth.browser',
+      friendlyError: {
+        title: 'Unable to open sign-in window',
+        description: 'Failed to open browser',
+        code: 'auth.oauth.browser',
+        type: 'error',
+      },
+    });
+  });
+
+  test('signInWithOAuth falls back to Linking when AuthSession is unavailable', async () => {
+    mockReturn('signInWithOAuth');
+    mockRequireOptionalNativeModule.mockReturnValueOnce(null);
+    const result = await signInWithOAuth('google');
+    expect(result).toEqual({ success: true });
+    expect(ExpoLinking.openURL).toHaveBeenCalledWith('https://example.com');
+  });
+
+  test('signInWithOAuth returns success when authUrl is null', async () => {
+    mockReturn('signInWithOAuth', { url: '' });
+    const result = await signInWithOAuth('google');
+    expect(result).toEqual({ success: true });
+    expect(mockOpenAuthSessionAsync).not.toHaveBeenCalled();
+    expect(ExpoLinking.openURL).not.toHaveBeenCalled();
+  });
+
+  test('signInWithOAuth uses window.location.assign on web platform', async () => {
+    Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
+    const mockAssign = jest.fn();
+    Object.defineProperty(global, 'window', {
+      value: { location: { assign: mockAssign } },
+      writable: true,
+      configurable: true,
+    });
+
+    mockReturn('signInWithOAuth');
+    const result = await signInWithOAuth('google');
+
+    expect(result).toEqual({ success: true });
+    expect(mockAssign).toHaveBeenCalledWith('https://example.com');
+    expect(mockOpenAuthSessionAsync).not.toHaveBeenCalled();
   });
 });

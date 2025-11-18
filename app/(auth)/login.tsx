@@ -1,5 +1,6 @@
 import { useSessionStore } from '@/auth/session';
 import { isValidEmail } from '@/data/validation';
+import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
 import {
   BodyText,
   CaptionText,
@@ -11,13 +12,13 @@ import {
   ToastContainer,
   useToast,
 } from '@/ui';
-import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
 import type { NavigationProp, ParamListBase } from '@react-navigation/native';
-import { Apple, Eye, EyeOff } from '@tamagui/lucide-icons';
+import { Eye, EyeOff } from '@tamagui/lucide-icons';
 import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Platform, TextInput } from 'react-native';
-import { Button, Card, Form, Paragraph, View, YStack } from 'tamagui';
+import Svg, { Path } from 'react-native-svg';
+import { Button, Card, Form, View, YStack, useThemeName } from 'tamagui';
 
 export default function LoginScreen() {
   const navigation = useNavigation<NavigationProp<ParamListBase>>();
@@ -105,36 +106,137 @@ export default function LoginScreen() {
     }
   };
 
-  const oauthButtons = useMemo(
-    () => [
-      {
-        provider: 'apple' as const,
+  const themeName = useThemeName();
+  const isDarkMode = themeName?.toLowerCase().includes('dark');
+
+  const oauthButtons = useMemo(() => {
+    type OAuthButton = {
+      provider: 'apple' | 'google';
+      label: string;
+      icon: ReactNode;
+      disabled?: boolean;
+      variant: 'apple' | 'google';
+      textColor?: string;
+      backgroundColor?: string;
+      borderColor?: string;
+      hoverBackgroundColor?: string;
+      hoverBorderColor?: string;
+      hoverTextColor?: string;
+      buttonHeight?: number;
+      fontSize?: number;
+      iconSize?: number;
+      minWidth?: number;
+      horizontalPadding?: number;
+      titlePaddingEnd?: number;
+      iconPaddingTop?: number;
+      iconPaddingBottom?: number;
+    };
+
+    const buttons: OAuthButton[] = [];
+
+    if (Platform.OS !== 'android') {
+      const appleDark = {
+        backgroundColor: '#000000',
+        borderColor: '#8E918F',
+        textColor: '#FFFFFF',
+        hoverBackgroundColor: '#1F1F1F',
+        hoverBorderColor: '#E3E3E3',
+        hoverTextColor: '#FFFFFF',
+      };
+
+      const appleLight = {
+        backgroundColor: '#FFFFFF',
+        borderColor: '#747775',
+        textColor: '#000000',
+        hoverBackgroundColor: '#F5F5F5',
+        hoverBorderColor: '#1F1F1F',
+        hoverTextColor: '#000000',
+      };
+
+      buttons.push({
+        provider: 'apple',
         label: 'Continue with Apple',
-        icon: <Apple size={18} color="$color" />,
-        disabled: Platform.OS === 'android',
-      },
-      {
-        provider: 'google' as const,
-        label: 'Continue with Google',
         icon: (
-          <View
-            width={20}
-            height={20}
-            borderRadius={10}
-            backgroundColor="$secondaryBackground"
-            alignItems="center"
-            justifyContent="center"
-          >
-            <Paragraph fontWeight="700" color="$accentColor">
-              G
-            </Paragraph>
-          </View>
+          <Svg width={18} height={18} viewBox="0 0 18 18" role="img">
+            <Path
+              d="M13.545 9.5c.027 2.381 1.832 3.173 1.855 3.186-.015.048-.291 1.008-.96 1.997-.578.853-1.175 1.703-2.12 1.72-.927.017-1.225-.557-2.287-.557-1.062 0-1.399.54-2.286.574-.915.035-1.612-.919-2.192-1.77-1.191-1.729-2.101-4.887-1.2-7.02.61-1.402 1.707-2.286 3.1-2.304.97-.018 1.881.62 2.286.62.406 0 1.574-.768 2.653-.654.452.018 1.725.183 2.515 1.38-.065.041-1.511.875-1.464 2.828z"
+              fill={isDarkMode ? '#FFFFFF' : '#000000'}
+            />
+            <Path
+              d="M11.91 4.063c.483-.589.808-1.41.72-2.23-.697.029-1.547.465-2.052 1.054-.45.52-.842 1.353-.737 2.154.774.06 1.585-.395 2.068-.978z"
+              fill={isDarkMode ? '#FFFFFF' : '#000000'}
+            />
+          </Svg>
         ),
-        disabled: false,
-      },
-    ],
-    [],
-  );
+        variant: 'apple',
+        ...(isDarkMode ? appleDark : appleLight),
+        buttonHeight: 40,
+        fontSize: 16,
+        iconSize: 18,
+        minWidth: 140,
+        horizontalPadding: 12,
+        titlePaddingEnd: 16,
+        iconPaddingTop: 2,
+        iconPaddingBottom: 4,
+      });
+    }
+
+    const googleStyles = isDarkMode
+      ? {
+          backgroundColor: '#131314',
+          borderColor: '#8E918F',
+          textColor: '#E3E3E3',
+          hoverBackgroundColor: '#1F1F1F',
+          hoverBorderColor: '#E3E3E3',
+          hoverTextColor: '#FFFFFF',
+        }
+      : {
+          backgroundColor: '#FFFFFF',
+          borderColor: '#747775',
+          textColor: '#1F1F1F',
+          hoverBackgroundColor: '#F6F8F9',
+          hoverBorderColor: '#1F1F1F',
+          hoverTextColor: '#1F1F1F',
+        };
+
+    buttons.push({
+      provider: 'google',
+      label: 'Continue with Google',
+      icon: (
+        <Svg width={18} height={18} viewBox="0 0 18 18" role="img">
+          <Path
+            d="M17.64 9.2045c0-.638-.0573-1.251-.1636-1.836H9v3.474h4.843c-.2087 1.125-.8437 2.078-1.797 2.717v2.258h2.908c1.7025-1.567 2.685-3.874 2.685-6.613z"
+            fill="#4285F4"
+          />
+          <Path
+            d="M9 18c2.43 0 4.467-0.806 5.956-2.182l-2.908-2.258c-.807.54-1.84.86-3.048.86-2.344 0-4.328-1.583-5.036-3.71H.957v2.332C2.438 15.983 5.481 18 9 18z"
+            fill="#34A853"
+          />
+          <Path
+            d="M3.964 10.71c-.183-.54-.287-1.117-.287-1.71s.104-1.17.287-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.347 2.827.957 4.042l3.007-2.332z"
+            fill="#FBBC05"
+          />
+          <Path
+            d="M9 3.542c1.322 0 2.51.455 3.444 1.348l2.583-2.583C13.463.915 11.426 0 9 0 5.481 0 2.438 2.017.957 4.958l3.007 2.332C4.672 5.163 6.656 3.542 9 3.542z"
+            fill="#EA4335"
+          />
+        </Svg>
+      ),
+      variant: 'google',
+      disabled: false,
+      ...googleStyles,
+      buttonHeight: 40,
+      fontSize: 16,
+      iconSize: 18,
+      minWidth: 140,
+      horizontalPadding: 12,
+      titlePaddingEnd: 16,
+      iconPaddingTop: 0,
+      iconPaddingBottom: 0,
+    });
+
+    return buttons;
+  }, [isDarkMode]);
 
   const content = (
     <ScreenContainer
@@ -237,28 +339,92 @@ export default function LoginScreen() {
             <View marginTop={10}>
               <CaptionText color="$colorMuted">Or</CaptionText>
             </View>
-            {oauthButtons.map(({ provider, label, icon, disabled }) => (
-              <Button
-                key={provider}
-                flex={1}
-                width="100%"
-                height={48}
-                backgroundColor="$surface"
-                borderRadius="$3"
-                borderWidth={1}
-                borderColor="$borderColor"
-                disabled={disabled || isLoading}
-                accessibilityLabel={`oauth-${provider}`}
-                onPress={() => {
-                  void handleOAuthSignIn(provider);
-                }}
-              >
-                <View flexDirection="row" alignItems="center" gap="$2">
-                  {icon}
-                  <CaptionText>{label}</CaptionText>
-                </View>
-              </Button>
-            ))}
+            {oauthButtons.map(
+              ({
+                provider,
+                label,
+                icon,
+                disabled,
+                backgroundColor,
+                borderColor,
+                textColor,
+                hoverBackgroundColor,
+                hoverBorderColor,
+                hoverTextColor,
+                buttonHeight,
+                fontSize,
+                iconSize,
+                minWidth,
+                horizontalPadding,
+                titlePaddingEnd,
+                iconPaddingTop,
+                iconPaddingBottom,
+              }) => (
+                <Button
+                  key={provider}
+                  flex={1}
+                  width="100%"
+                  minWidth={minWidth}
+                  height={buttonHeight ?? 40}
+                  paddingHorizontal={horizontalPadding ?? 12}
+                  backgroundColor={backgroundColor ?? '$surface'}
+                  borderRadius="$2"
+                  borderWidth={1}
+                  borderColor={borderColor ?? '$borderColor'}
+                  color={textColor ?? '$color'}
+                  disabled={disabled || isLoading}
+                  aria-label={`oauth-${provider}`}
+                  hoverStyle={{
+                    backgroundColor: hoverBackgroundColor ?? backgroundColor ?? '$surface',
+                    borderColor: hoverBorderColor ?? borderColor ?? '#1F1F1F',
+                    shadowColor: 'rgba(60, 64, 67, 0.3)',
+                    shadowRadius: 3,
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: 1,
+                  }}
+                  pressStyle={{
+                    opacity: 0.9,
+                  }}
+                  disabledStyle={{
+                    opacity: 0.5,
+                  }}
+                  onPress={() => {
+                    void handleOAuthSignIn(provider);
+                  }}
+                >
+                  <View
+                    flexDirection="row"
+                    alignItems="center"
+                    justifyContent="center"
+                    gap="$2"
+                    width="100%"
+                  >
+                    <View
+                      width={iconSize ?? 20}
+                      height={buttonHeight ?? 40}
+                      alignItems="center"
+                      justifyContent="center"
+                      paddingTop={iconPaddingTop ?? 0}
+                      paddingBottom={iconPaddingBottom ?? 0}
+                    >
+                      {icon}
+                    </View>
+                    <BodyText
+                      color={textColor ?? '$color'}
+                      fontWeight="600"
+                      fontSize={fontSize ?? 16}
+                      flexShrink={1}
+                      paddingRight={titlePaddingEnd ?? 16}
+                      hoverStyle={{
+                        color: hoverTextColor ?? textColor ?? '$color',
+                      }}
+                    >
+                      {label}
+                    </BodyText>
+                  </View>
+                </Button>
+              ),
+            )}
           </YStack>
         </YStack>
       </Card>

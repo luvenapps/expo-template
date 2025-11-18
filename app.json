@@ -47,7 +47,8 @@
       "expo-system-ui",
       "expo-sqlite",
       "expo-background-task",
-      "expo-localization"
+      "expo-localization",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true

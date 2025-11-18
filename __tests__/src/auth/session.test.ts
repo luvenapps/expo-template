@@ -20,10 +20,12 @@ jest.mock('@/auth/client', () => ({
 
 // Mock auth service functions
 const mockSignInWithEmail = jest.fn();
+const mockSignInWithOAuth = jest.fn();
 const mockSignOut = jest.fn();
 
 jest.mock('@/auth/service', () => ({
   signInWithEmail: (...args: any[]) => mockSignInWithEmail(...args),
+  signInWithOAuth: (...args: any[]) => mockSignInWithOAuth(...args),
   signOut: (...args: any[]) => mockSignOut(...args),
 }));
 
@@ -56,6 +58,7 @@ const mockSession: MockSession = {
 describe('session store', () => {
   beforeEach(() => {
     mockSignInWithEmail.mockClear();
+    mockSignInWithOAuth.mockClear();
     mockSignOut.mockClear();
     resetSessionStore();
   });
@@ -177,6 +180,32 @@ describe('session store', () => {
     expect(result.success).toBe(false);
     expect(useSessionStore.getState().error).toBe('Invalid credentials');
     expect(useSessionStore.getState().status).toBe('unauthenticated');
+    expect(useSessionStore.getState().isLoading).toBe(false);
+  });
+
+  test('signInWithOAuth handles successful OAuth login', async () => {
+    mockSignInWithOAuth.mockResolvedValue({ success: true });
+
+    const { signInWithOAuth } = useSessionStore.getState();
+    const result = await signInWithOAuth('google');
+
+    expect(mockSignInWithOAuth).toHaveBeenCalledWith('google');
+    expect(result.success).toBe(true);
+    expect(useSessionStore.getState().isLoading).toBe(false);
+  });
+
+  test('signInWithOAuth handles failed OAuth login', async () => {
+    mockSignInWithOAuth.mockResolvedValue({
+      success: false,
+      error: 'OAuth failed',
+    });
+
+    const { signInWithOAuth } = useSessionStore.getState();
+    const result = await signInWithOAuth('google');
+
+    expect(mockSignInWithOAuth).toHaveBeenCalledWith('google');
+    expect(result.success).toBe(false);
+    expect(useSessionStore.getState().error).toBe('OAuth failed');
     expect(useSessionStore.getState().isLoading).toBe(false);
   });
 

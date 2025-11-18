@@ -7,6 +7,7 @@ export type FriendlyErrorCode =
   | 'sqlite.storage-full'
   | 'sqlite.busy'
   | 'auth.invalid-credentials'
+  | 'auth.oauth.browser'
   | 'auth.rate-limit'
   | 'notifications.permission'
   | 'unknown';
