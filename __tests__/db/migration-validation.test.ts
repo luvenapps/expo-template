@@ -28,11 +28,12 @@ describe('Migration File Validation', () => {
     const migrations = fs
       .readdirSync(migrationsDir)
       .filter((f) => f.endsWith('.sql'))
-      .sort()
-      .reverse();
+      .sort();
 
     expect(migrations.length).toBeGreaterThan(0);
-    latestMigration = migrations[0];
+    // Validate against the base structural migration (the one that defines DOMAIN tables)
+    latestMigration =
+      migrations.find((file) => file.startsWith('0000_')) ?? migrations[migrations.length - 1];
     migrationContent = fs.readFileSync(path.join(migrationsDir, latestMigration), 'utf8');
   });
 

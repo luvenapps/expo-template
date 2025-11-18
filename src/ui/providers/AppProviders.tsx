@@ -20,6 +20,7 @@ import { ForegroundReminderToastHost } from '@/notifications/ForegroundReminderT
 import { cleanupSoftDeletedRecords } from '@/db/sqlite/cleanup';
 import { archiveOldEntries } from '@/db/sqlite/archive';
 import { optimizeDatabase } from '@/db/sqlite/maintenance';
+import { useMessagesSync } from '@/messaging/useMessages';
 
 const queryClient = getQueryClient();
 const persistOptions = getQueryClientPersistOptions();
@@ -30,6 +31,7 @@ export function AppProviders({ children }: PropsWithChildren) {
   const isAuthenticated = sessionStatus === 'authenticated';
   const syncEnabled = Platform.OS !== 'web' && isAuthenticated;
   const { resolvedTheme, palette } = useThemeContext();
+  useMessagesSync();
 
   useEffect(() => {
     initSessionListener();

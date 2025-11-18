@@ -45,6 +45,10 @@ jest.mock('@/db/sqlite/maintenance', () => ({
   optimizeDatabase: jest.fn().mockResolvedValue({ vacuumed: true, optimized: true, pragmas: true }),
 }));
 
+jest.mock('@/messaging/useMessages', () => ({
+  useMessagesSync: jest.fn(),
+}));
+
 // Mock expo-notifications
 const mockNotificationSubscription = { remove: jest.fn() };
 jest.mock('expo-notifications', () => ({
