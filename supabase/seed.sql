@@ -689,3 +689,5 @@ SELECT pg_catalog.setval('"supabase_functions"."hooks_id_seq"', 1, false);
 -- \unrestrict ttCQ79duPKs4ID6e8C2lGrxUVCtNOYUvrtY1lGd6qiUXaE8m0be3OljeKrQOMag
 
 RESET ALL;
+
+-- Sample broadcast message for local dev

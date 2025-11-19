@@ -617,6 +617,10 @@ After following the quickstart, the “Continue with Apple/Google” buttons in 
 - `app/(auth)/signup.tsx` reuses the login form primitives so users can create accounts with email/password (plus the same friendly-error surface).
 - `app/(auth)/forgot-password.tsx` sends Supabase reset links. The login screen links to both routes so users can switch between sign in, sign up, and password recovery without leaving the auth stack.
 
+### Messaging & Push
+
+We plan to use OneSignal for messaging (push + in-app). Native Expo builds will use the OneSignal Expo plugin, and Expo web will use the OneSignal Web SDK/service worker. Integration work lives in Stage 9 of the roadmap; the old Supabase-based banner has been removed.
+
 ### Daily Development
 
 1. **Start Supabase** (Terminal 1):

@@ -124,10 +124,6 @@ jest.mock('@/state', () => ({
   getQueryClientPersistOptions: jest.fn(() => null),
 }));
 
-jest.mock('@/messaging/useMessages', () => ({
-  useMessagesSync: jest.fn(),
-}));
-
 describe('RootLayout', () => {
   beforeEach(() => {
     recordedScreens.length = 0;
