@@ -619,11 +619,9 @@ After following the quickstart, the “Continue with Apple/Google” buttons in 
 
 ### Analytics & Messaging
 
-We're migrating observability from PostHog/OneSignal to Firebase Analytics + Firebase In-App Messaging (with Expo Push for remote notifications). Supabase remains our source of truth for auth/sync, and `expo-notifications` still powers local reminders.
-
-- The codebase is vendor-agnostic today: `AnalyticsProvider` logs envelopes in dev builds until Firebase wiring lands.
-- Remaining work: wire Firebase Analytics + In-App Messaging, add Expo Push helpers, and migrate existing analytics events to the new provider so product/campaign teams can self-serve telemetry.
-- `docs/firebase-setup.md` walks through provisioning Firebase projects, placing `GoogleService-Info.plist` / `google-services.json` under `credentials/`, and capturing the Expo web config snippet.
+- Firebase Analytics + Firebase In-App Messaging are the current observability stack; Supabase still powers auth/sync, and `expo-notifications` handles local reminders.
+- Native builds load Firebase via the config plugin (`credentials/GoogleService-Info.plist`, `credentials/google-services.json`). Expo web initializes Firebase when `.env.local` defines `EXPO_PUBLIC_FIREBASE_API_KEY`, `EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN`, `EXPO_PUBLIC_FIREBASE_PROJECT_ID`, `EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET`, `EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`, `EXPO_PUBLIC_FIREBASE_APP_ID`, `EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID`.
+- `docs/firebase-setup.md` walks through generating those files/vars. Once they exist, `AnalyticsProvider` forwards events, errors, and perf metrics to Firebase; otherwise it keeps logging envelopes locally.
 
 ### Daily Development
 

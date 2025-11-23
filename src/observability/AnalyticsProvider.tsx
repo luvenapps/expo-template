@@ -11,43 +11,43 @@ export type PerformanceMetric = {
   metadata?: AnalyticsEventPayload;
 };
 
-type AnalyticsContextValue = {
+export type AnalyticsContextValue = {
   trackEvent: (event: string, payload?: AnalyticsEventPayload) => void;
   trackError: (error: Error | string, metadata?: AnalyticsEventPayload) => void;
   trackPerformance: (metric: PerformanceMetric) => void;
 };
 
-type AnalyticsEnvelopeBase = {
+export type AnalyticsEnvelopeBase = {
   timestamp: string;
   distinctId: string;
 };
 
-type AnalyticsEventEnvelope = AnalyticsEnvelopeBase & {
+export type AnalyticsEventEnvelope = AnalyticsEnvelopeBase & {
   kind: 'event';
   event: string;
   payload?: AnalyticsEventPayload;
 };
 
-type AnalyticsErrorEnvelope = AnalyticsEnvelopeBase & {
+export type AnalyticsErrorEnvelope = AnalyticsEnvelopeBase & {
   kind: 'error';
   message: string;
   stack?: string;
   metadata?: AnalyticsEventPayload;
 };
 
-type AnalyticsPerformanceEnvelope = AnalyticsEnvelopeBase & {
+export type AnalyticsPerformanceEnvelope = AnalyticsEnvelopeBase & {
   kind: 'performance';
   name: string;
   durationMs?: number;
   metadata?: AnalyticsEventPayload;
 };
 
-type AnalyticsEnvelope =
+export type AnalyticsEnvelope =
   | AnalyticsEventEnvelope
   | AnalyticsErrorEnvelope
   | AnalyticsPerformanceEnvelope;
 
-type AnalyticsBackend = {
+export type AnalyticsBackend = {
   trackEvent: (envelope: AnalyticsEventEnvelope) => void | Promise<void>;
   trackError: (envelope: AnalyticsErrorEnvelope) => void | Promise<void>;
   trackPerformance: (envelope: AnalyticsPerformanceEnvelope) => void | Promise<void>;

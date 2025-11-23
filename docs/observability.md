@@ -5,7 +5,7 @@ Stage 5 focuses on the instrumentation agents need to reason about runtime behav
 ## Analytics Provider
 
 - `src/observability/AnalyticsProvider.tsx` exposes `useAnalytics()` with `trackEvent`, `trackError`, and `trackPerformance`.
-- The provider is now vendor-agnostic: it always emits `[Observability] ...` logs in dev builds and queues envelopes for whatever backend Stage 9 wires in (Firebase Analytics + In-App Messaging).
+- The provider emits `[Observability] ...` logs in dev builds and forwards envelopes to Firebase Analytics whenever the native config files and/or web env vars are present (see `docs/firebase-setup.md`).
 - Expo web can lack `localStorage`, so we keep the MMKV/localStorage fallback and persist a generated distinct id for future analytics backends.
 - The distinct id lives in MMKV (native) or `localStorage` (web) under `${DOMAIN.app.storageKey}-analytics-id`.
 - The Jest suite stubs these storage layers (`__tests__/src/observability/AnalyticsProvider.test.tsx`) so you can assert against console output without real network calls.
