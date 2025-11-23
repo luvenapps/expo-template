@@ -48,10 +48,9 @@ Inside the same Firebase project, register each platform:
 ## 4. Verify locally
 
 1. After dropping the plist/json, run `npm start` for Metro and `npm run ios` / `npm run android` to rebuild dev clients so the Firebase config is embedded.
-2. When Firebase Analytics and In-App Messaging are wired into the app, use Firebase DebugView to confirm events arrive.
+2. Open the Expo app (native + web) and trigger a few actions (e.g., toggles in Settings). In the Firebase Console → Analytics → DebugView you should see events like `notifications:reminders` appear almost immediately.
 
 ## 5. Next steps
 
-- Finish wiring the Firebase Analytics/In-App Messaging providers and Expo Push helpers.
-- Update `.env.local` with the Expo web Firebase values before testing web analytics.
+- Keep Firebase credentials up to date whenever you rotate keys or add new environments. For web, ensure `.env.local` reflects the latest Expo config values.
 - Revisit this doc whenever you rotate Firebase credentials or add additional apps/environments.

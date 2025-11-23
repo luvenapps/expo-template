@@ -17,6 +17,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "__APP_ID__",
       "buildNumber": "1",
+      "googleServicesFile": "./credentials/GoogleService-Info.plist",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -24,6 +25,7 @@
     "android": {
       "versionCode": 1,
       "softwareKeyboardLayoutMode": "pan",
+      "googleServicesFile": "./credentials/google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"

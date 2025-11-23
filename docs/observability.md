@@ -5,14 +5,16 @@ Stage 5 focuses on the instrumentation agents need to reason about runtime behav
 ## Analytics Provider
 
 - `src/observability/AnalyticsProvider.tsx` exposes `useAnalytics()` with `trackEvent`, `trackError`, and `trackPerformance`.
-- The provider emits `[Observability] ...` logs in dev builds and forwards envelopes to Firebase Analytics whenever the native config files and/or web env vars are present (see `docs/firebase-setup.md`).
+- The provider emits `[Observability] ...` logs in dev builds and forwards envelopes to Firebase Analytics whenever the native config files and/or web env vars are present (see `docs/firebase-setup.md` for setup instructions).
 - Expo web can lack `localStorage`, so we keep the MMKV/localStorage fallback and persist a generated distinct id for future analytics backends.
 - The distinct id lives in MMKV (native) or `localStorage` (web) under `${DOMAIN.app.storageKey}-analytics-id`.
 - The Jest suite stubs these storage layers (`__tests__/src/observability/AnalyticsProvider.test.tsx`) so you can assert against console output without real network calls.
 
 ### Configuration
 
-No runtime configuration is required today—the provider simply logs envelopes in development. Once Stage 9 finishes the Firebase migration we’ll document the required env vars and config files (Firebase API keys, `GoogleService-Info.plist`, `google-services.json`, etc.).
+- Native builds: add `credentials/GoogleService-Info.plist` and `credentials/google-services.json` (Expo config plugin loads them automatically).
+- Web builds: populate `.env.local` with `EXPO_PUBLIC_FIREBASE_*` values so the Firebase JS SDK initializes in Expo Web.
+- If either configuration is missing, the provider gracefully falls back to console logging only.
 
 ### Event conventions
 

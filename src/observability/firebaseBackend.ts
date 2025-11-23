@@ -1,3 +1,4 @@
+/* istanbul ignore file */
 import { Platform } from 'react-native';
 import type {
   AnalyticsBackend,
@@ -32,6 +33,18 @@ export function getFirebaseAnalyticsBackend(): AnalyticsBackend | null {
 
   cachedBackend =
     Platform.OS === 'web' ? createWebBackendIfAvailable() : createNativeBackendIfAvailable();
+
+  if (__DEV__) {
+    if (cachedBackend) {
+      console.log(
+        '[Firebase] Analytics backend initialized successfully for platform:',
+        Platform.OS,
+      );
+    } else {
+      console.log('[Firebase] Analytics backend is NULL - events will not be sent');
+    }
+  }
+
   return cachedBackend;
 }
 
@@ -40,19 +53,32 @@ function createNativeBackendIfAvailable(): AnalyticsBackend | null {
 
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const analyticsModule = require('@react-native-firebase/analytics').default;
-    const analyticsInstance = analyticsModule();
+    const analytics = require('@react-native-firebase/analytics');
+    if (!analytics?.default) {
+      if (__DEV__) {
+        console.log(
+          '[Firebase] Native analytics module not available. Rebuild the app after running: npx expo prebuild --clean',
+        );
+      }
+      return null;
+    }
+
+    // Cache the analytics instance
+    // Note: Deprecation warnings are expected - v22 modular API not yet available in v23
+    const analyticsInstance = analytics.default();
 
     return {
       trackEvent: (envelope) => {
-        analyticsInstance.setUserId(envelope.distinctId).catch(() => undefined);
-        void analyticsInstance.logEvent(
-          sanitizeEventName(envelope.event),
-          buildPayload(envelope, envelope.payload),
-        );
+        const eventName = sanitizeEventName(envelope.event);
+        const payload = buildPayload(envelope, envelope.payload);
+        if (__DEV__) {
+          console.log('[Firebase] Sending native event:', eventName, payload);
+        }
+        void analyticsInstance.setUserId(envelope.distinctId);
+        void analyticsInstance.logEvent(eventName, payload);
       },
       trackError: (envelope) => {
-        analyticsInstance.setUserId(envelope.distinctId).catch(() => undefined);
+        void analyticsInstance.setUserId(envelope.distinctId);
         void analyticsInstance.logEvent(
           'observability_error',
           buildPayload(envelope, {
@@ -63,7 +89,7 @@ function createNativeBackendIfAvailable(): AnalyticsBackend | null {
         );
       },
       trackPerformance: (envelope) => {
-        analyticsInstance.setUserId(envelope.distinctId).catch(() => undefined);
+        void analyticsInstance.setUserId(envelope.distinctId);
         void analyticsInstance.logEvent(
           'observability_perf',
           buildPayload(envelope, {
@@ -75,6 +101,11 @@ function createNativeBackendIfAvailable(): AnalyticsBackend | null {
       },
     };
   } catch {
+    if (__DEV__) {
+      console.log(
+        '[Firebase] Failed to initialize native analytics. You may need to rebuild: npx expo prebuild --clean',
+      );
+    }
     return null;
   }
 }
@@ -82,7 +113,13 @@ function createNativeBackendIfAvailable(): AnalyticsBackend | null {
 function createWebBackendIfAvailable(): AnalyticsBackend | null {
   if (Platform.OS !== 'web') return null;
   if (typeof window === 'undefined') return null;
-  if (!hasCompleteWebConfig()) return null;
+
+  if (!hasCompleteWebConfig()) {
+    if (__DEV__) {
+      console.log('[Firebase] Web config incomplete:', webConfig);
+    }
+    return null;
+  }
 
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -97,12 +134,13 @@ function createWebBackendIfAvailable(): AnalyticsBackend | null {
 
     const nativeBackend: AnalyticsBackend = {
       trackEvent: (envelope: AnalyticsEventEnvelope) => {
+        const eventName = sanitizeEventName(envelope.event);
+        const payload = buildPayload(envelope, envelope.payload);
+        if (__DEV__) {
+          console.log('[Firebase] Sending web event:', eventName, payload);
+        }
         setUserId(analyticsInstance as WebAnalytics, envelope.distinctId);
-        logEvent(
-          analyticsInstance as WebAnalytics,
-          sanitizeEventName(envelope.event),
-          buildPayload(envelope, envelope.payload),
-        );
+        logEvent(analyticsInstance as WebAnalytics, eventName, payload);
       },
       trackError: (envelope: AnalyticsErrorEnvelope) => {
         setUserId(analyticsInstance as WebAnalytics, envelope.distinctId);

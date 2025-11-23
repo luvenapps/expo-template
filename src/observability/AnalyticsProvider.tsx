@@ -2,6 +2,7 @@ import { DOMAIN } from '@/config/domain.config';
 import { createContext, PropsWithChildren, useContext, useMemo } from 'react';
 import { Platform } from 'react-native';
 import { v4 as uuidv4 } from 'uuid';
+import { getFirebaseAnalyticsBackend } from './firebaseBackend';
 
 export type AnalyticsEventPayload = Record<string, unknown>;
 
@@ -131,7 +132,7 @@ function ensureAnalyticsBackend() {
   if (analyticsBackend !== undefined) {
     return analyticsBackend;
   }
-  analyticsBackend = null;
+  analyticsBackend = getFirebaseAnalyticsBackend();
   return analyticsBackend;
 }
 
