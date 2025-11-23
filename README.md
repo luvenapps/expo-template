@@ -622,8 +622,8 @@ After following the quickstart, the “Continue with Apple/Google” buttons in 
 We're migrating observability from PostHog/OneSignal to Firebase Analytics + Firebase In-App Messaging (with Expo Push for remote notifications). Supabase remains our source of truth for auth/sync, and `expo-notifications` still powers local reminders.
 
 - The codebase is vendor-agnostic today: `AnalyticsProvider` logs envelopes in dev builds until Firebase wiring lands.
-- Stage 9’s roadmap tasks cover the full migration (remove legacy deps, install Firebase SDK/config plugins, add Expo Push helpers, document Firebase console setup).
-- When Firebase integration ships, we’ll document where to place `GoogleService-Info.plist`, `google-services.json`, and the web config snippet for local builds.
+- Remaining work: wire Firebase Analytics + In-App Messaging, add Expo Push helpers, and migrate existing analytics events to the new provider so product/campaign teams can self-serve telemetry.
+- `docs/firebase-setup.md` walks through provisioning Firebase projects, placing `GoogleService-Info.plist` / `google-services.json` under `credentials/`, and capturing the Expo web config snippet.
 
 ### Daily Development
 

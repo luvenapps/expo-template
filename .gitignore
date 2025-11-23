@@ -46,6 +46,7 @@ yarn-error.*
 /ios
 /android
 .tamagui/
+credentials/
 
 # GitHub Actions Self-Hosted Runner (Local Runtime)
 .github/runner/_

@@ -48,7 +48,18 @@
       "expo-sqlite",
       "expo-background-task",
       "expo-localization",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "@react-native-firebase/app",
+        {
+          "ios": {
+            "googleServicesFile": "./credentials/GoogleService-Info.plist"
+          },
+          "android": {
+            "googleServicesFile": "./credentials/google-services.json"
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
