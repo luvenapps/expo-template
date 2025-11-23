@@ -5,22 +5,14 @@ Stage 5 focuses on the instrumentation agents need to reason about runtime behav
 ## Analytics Provider
 
 - `src/observability/AnalyticsProvider.tsx` exposes `useAnalytics()` with `trackEvent`, `trackError`, and `trackPerformance`.
-- Under the hood we instantiate the official `posthog-react-native` client, wrap the tree in `PostHogProvider`, and forward every envelope via `posthog.capture(...)`. Dev builds still log to `[Observability]` for quick inspection.
-- Expo web complains about missing storage by default, so we inject a custom storage layer (localStorage/MMKV fallback) and persist a generated distinct id so every event has a stable anonymous user id.
-- We persist a locally generated distinct id (MMKV/localStorage) so events remain tied to the same anonymous user until you call `identify` elsewhere.
-- For unit tests, mock `useAnalytics` (or the PostHog module) to avoid console noise (see `__tests__/src/observability/AnalyticsProvider.test.tsx`).
+- The provider is now vendor-agnostic: it always emits `[Observability] ...` logs in dev builds and queues envelopes for whatever backend Stage 9 wires in (Firebase Analytics + In-App Messaging).
+- Expo web can lack `localStorage`, so we keep the MMKV/localStorage fallback and persist a generated distinct id for future analytics backends.
+- The distinct id lives in MMKV (native) or `localStorage` (web) under `${DOMAIN.app.storageKey}-analytics-id`.
+- The Jest suite stubs these storage layers (`__tests__/src/observability/AnalyticsProvider.test.tsx`) so you can assert against console output without real network calls.
 
 ### Configuration
 
-```bash
-EXPO_PUBLIC_ANALYTICS_ENDPOINT=https://app.posthog.com
-# or self-hosted: https://us.i.posthog.com / https://posthog.mycompany.com
-EXPO_PUBLIC_ANALYTICS_WRITE_KEY=phc_your_project_key
-```
-
-- If you prefer a separate host env var, set `EXPO_PUBLIC_ANALYTICS_HOST`; otherwise we fall back to `EXPO_PUBLIC_ANALYTICS_ENDPOINT`.
-- Store the values as EAS secrets for preview/prod builds. Locally you can drop them into `.env.local`.
-- When unset, the provider quietly logs to console and skips PostHog initialization.
+No runtime configuration is required today—the provider simply logs envelopes in development. Once Stage 9 finishes the Firebase migration we’ll document the required env vars and config files (Firebase API keys, `GoogleService-Info.plist`, `google-services.json`, etc.).
 
 ### Event conventions
 
