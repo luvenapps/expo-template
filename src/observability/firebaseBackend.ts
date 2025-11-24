@@ -74,8 +74,22 @@ function createNativeBackendIfAvailable(): AnalyticsBackend | null {
         if (__DEV__) {
           console.log('[Firebase] Sending native event:', eventName, payload);
         }
-        void analyticsInstance.setUserId(envelope.distinctId);
-        void analyticsInstance.logEvent(eventName, payload);
+        analyticsInstance
+          .setUserId(envelope.distinctId)
+          .then(() => {
+            if (__DEV__) console.log('[Firebase] User ID set successfully');
+          })
+          .catch((err: Error) => {
+            if (__DEV__) console.error('[Firebase] Failed to set user ID:', err);
+          });
+        analyticsInstance
+          .logEvent(eventName, payload)
+          .then(() => {
+            if (__DEV__) console.log('[Firebase] Event logged successfully:', eventName);
+          })
+          .catch((err: Error) => {
+            if (__DEV__) console.error('[Firebase] Failed to log event:', eventName, err);
+          });
       },
       trackError: (envelope) => {
         void analyticsInstance.setUserId(envelope.distinctId);
