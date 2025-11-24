@@ -1,0 +1,73 @@
+import { Platform } from 'react-native';
+import {
+  __resetInAppMessagingProviderForTests,
+  initializeInAppMessaging,
+  pauseMessages,
+  setMessageTriggers,
+} from '@/notifications/inAppMessaging';
+
+jest.mock('@react-native-firebase/in-app-messaging', () => {
+  const mockSetAutomaticDataCollectionEnabled = jest.fn();
+  const mockSetMessagesDisplaySuppressed = jest.fn();
+  const mockTriggerEvent = jest.fn();
+  return {
+    __esModule: true,
+    default: jest.fn(() => ({
+      setAutomaticDataCollectionEnabled: mockSetAutomaticDataCollectionEnabled,
+      setMessagesDisplaySuppressed: mockSetMessagesDisplaySuppressed,
+      triggerEvent: mockTriggerEvent,
+    })),
+    __mock: {
+      mockSetAutomaticDataCollectionEnabled,
+      mockSetMessagesDisplaySuppressed,
+      mockTriggerEvent,
+    },
+  };
+});
+
+describe('inAppMessaging', () => {
+  const originalPlatform = Platform.OS;
+
+  beforeEach(() => {
+    __resetInAppMessagingProviderForTests();
+    Object.defineProperty(Platform, 'OS', { value: 'ios', configurable: true });
+  });
+
+  afterEach(() => {
+    Object.defineProperty(Platform, 'OS', { value: originalPlatform, configurable: true });
+  });
+
+  it('initializes IAM on native', async () => {
+    const iamModule = jest.requireMock('@react-native-firebase/in-app-messaging');
+    await initializeInAppMessaging();
+    expect(iamModule.__mock.mockSetAutomaticDataCollectionEnabled).toHaveBeenCalledWith(true);
+    expect(iamModule.__mock.mockSetMessagesDisplaySuppressed).toHaveBeenCalledWith(false);
+  });
+
+  it('triggers events on native', async () => {
+    const iamModule = jest.requireMock('@react-native-firebase/in-app-messaging');
+    await setMessageTriggers({ foo: 'bar', hello: '' });
+    expect(iamModule.__mock.mockTriggerEvent).toHaveBeenCalledWith('bar');
+    expect(iamModule.__mock.mockTriggerEvent).toHaveBeenCalledWith('hello');
+  });
+
+  it('pauses messages on native', async () => {
+    const iamModule = jest.requireMock('@react-native-firebase/in-app-messaging');
+    await pauseMessages(true);
+    expect(iamModule.__mock.mockSetMessagesDisplaySuppressed).toHaveBeenCalledWith(true);
+  });
+
+  it('no-ops on web', async () => {
+    Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
+    const iamModule = jest.requireMock('@react-native-firebase/in-app-messaging');
+    iamModule.__mock.mockSetAutomaticDataCollectionEnabled.mockClear();
+    iamModule.__mock.mockTriggerEvent.mockClear();
+
+    await initializeInAppMessaging();
+    await setMessageTriggers({ foo: 'bar' });
+    await pauseMessages(true);
+
+    expect(iamModule.__mock.mockSetAutomaticDataCollectionEnabled).not.toHaveBeenCalled();
+    expect(iamModule.__mock.mockTriggerEvent).not.toHaveBeenCalled();
+  });
+});

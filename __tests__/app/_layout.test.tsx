@@ -110,6 +110,7 @@ jest.mock('@/notifications', () => ({
   registerNotificationCategories: jest.fn().mockResolvedValue(undefined),
   configureNotificationHandler: jest.fn().mockResolvedValue(undefined),
   resetBadgeCount: jest.fn().mockResolvedValue(undefined),
+  initializeInAppMessaging: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock('@/notifications/ForegroundReminderToastHost', () => ({

@@ -3,6 +3,7 @@ import {
   registerNotificationCategories,
   configureNotificationHandler,
   resetBadgeCount,
+  initializeInAppMessaging,
 } from '@/notifications';
 import { getQueryClient, getQueryClientPersistOptions } from '@/state';
 import { pullUpdates, pushOutbox, useSync } from '@/sync';
@@ -35,6 +36,7 @@ export function AppProviders({ children }: PropsWithChildren) {
     initSessionListener();
     registerNotificationCategories().catch(() => undefined);
     configureNotificationHandler().catch(() => undefined);
+    initializeInAppMessaging().catch(() => undefined);
   }, []);
 
   useEffect(() => {
