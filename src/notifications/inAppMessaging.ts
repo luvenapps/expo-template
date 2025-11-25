@@ -1,6 +1,12 @@
 import { Platform } from 'react-native';
+import { useAnalytics } from '@/observability/AnalyticsProvider';
 
 type FirebaseIAMModule = typeof import('@react-native-firebase/in-app-messaging').default;
+type FirebaseIAMInstance = ReturnType<FirebaseIAMModule> & {
+  onMessageDisplayed?: (listener: () => void) => void;
+  onMessageDismissed?: (listener: () => void) => void;
+  onMessageClicked?: (listener: () => void) => void;
+};
 
 export type InAppMessagingProvider = {
   initialize: () => void | Promise<void>;
@@ -15,6 +21,19 @@ const noopProvider: InAppMessagingProvider = {
 };
 
 let provider: InAppMessagingProvider | null | undefined;
+let analytics: ReturnType<typeof useAnalytics> | null = null;
+
+function getAnalytics() {
+  if (analytics) return analytics;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { useAnalytics: analyticsHook } = require('@/observability/AnalyticsProvider');
+    analytics = analyticsHook();
+    return analytics;
+  } catch {
+    return null;
+  }
+}
 
 function loadFirebaseModule(): FirebaseIAMModule | null {
   if (Platform.OS === 'web') return null;
@@ -32,13 +51,28 @@ function createFirebaseProvider(): InAppMessagingProvider | null {
   const iamModule = loadFirebaseModule();
   if (!iamModule) return null;
 
-  const iam = iamModule();
+  const iam = iamModule() as FirebaseIAMInstance;
 
   return {
     initialize: async () => {
       // Enable IAM and allow display
       await iam.setAutomaticDataCollectionEnabled(true);
       await iam.setMessagesDisplaySuppressed(false);
+      if (typeof iam.onMessageDisplayed === 'function') {
+        iam.onMessageDisplayed(() => {
+          getAnalytics()?.trackEvent('iam:displayed');
+        });
+      }
+      if (typeof iam.onMessageDismissed === 'function') {
+        iam.onMessageDismissed(() => {
+          getAnalytics()?.trackEvent('iam:dismissed');
+        });
+      }
+      if (typeof iam.onMessageClicked === 'function') {
+        iam.onMessageClicked(() => {
+          getAnalytics()?.trackEvent('iam:clicked');
+        });
+      }
     },
     setMessageTriggers: async (triggers) => {
       // Trigger Firebase IAM events for provided keys/values
