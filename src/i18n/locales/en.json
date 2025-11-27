@@ -8,6 +8,8 @@
     "languageSelectorLabel": "Language"
   },
   "settings": {
+    "syncUnavailableWeb": "Background sync requires the iOS or Android app to access the local database.",
+    "syncUnavailableAuth": "Sign in to enable syncing with your Supabase account.",
     "languageTitle": "Language",
     "languageDescription": "Choose your preferred language.",
     "accountTitle": "Account",
@@ -21,6 +23,23 @@
     "themeSystem": "Follow System",
     "themeLight": "Light",
     "themeDark": "Dark",
+    "streakPreviewTitle": "Streak preview",
+    "streakPreviewDescription": "Quick look at upcoming streaks (placeholder until main UI lands).",
+    "calendarPreviewTitle": "Calendar preview",
+    "calendarPreviewDescription": "Consistency heatmap placeholder for upcoming habit flows.",
+    "syncStorageTitle": "Sync & Storage",
+    "syncStorageDescription": "Review local queue status and run a manual sync with Supabase.",
+    "queueSize": "Queue size",
+    "queueHelperPending": "Pending sync",
+    "queueHelperEmpty": "Outbox empty",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "lastSyncedLabel": "Last synced",
+    "never": "Never",
+    "lastErrorLabel": "Last error: {{error}}",
+    "statusLabel": "Status: {{status}}",
+    "outboxQueueLabel": "Outbox queue • {{percent}}%",
+    "pendingItems": "{{count}} pending item{{suffix}} waiting",
     "todayCardTitle": "Today",
     "todayCardSubtitle": "Progress across habits",
     "streaksCardTitle": "Streaks",
@@ -38,6 +57,10 @@
     "remindersDescription": "Send push notifications when it’s time to log progress.",
     "dailySummaryTitle": "Daily summary",
     "dailySummaryDescription": "Receive a brief recap of streaks.",
+    "archiveBeforeToday": "Before today",
+    "archiveBeforeTodayHelper": "Archive entries dated prior to today.",
+    "archiveIncludeToday": "Include today",
+    "archiveIncludeTodayHelper": "Archive entries including today.",
     "upcomingFeatures": "Additional settings will arrive alongside theme controls and data export."
   }
 }

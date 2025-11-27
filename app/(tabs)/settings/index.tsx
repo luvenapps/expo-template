@@ -89,25 +89,25 @@ export default function SettingsScreen() {
   const currentLanguage = (i18n.language ?? 'en').split('-')[0];
   const showFriendlyError = useFriendlyErrorHandler(toast);
   const syncDisabledMessage = !isNative
-    ? 'Background sync requires the iOS or Android app to access the local database.'
+    ? t('settings.syncUnavailableWeb')
     : status !== 'authenticated'
-      ? 'Sign in to enable syncing with your Supabase account.'
+      ? t('settings.syncUnavailableAuth')
       : null;
   const archiveOptions: { value: 0 | -1; label: string; helper: string }[] = [
     {
       value: 0,
-      label: 'Before today',
-      helper: 'Archive entries dated prior to today.',
+      label: t('settings.archiveBeforeToday'),
+      helper: t('settings.archiveBeforeTodayHelper'),
     },
     {
       value: -1,
-      label: 'Include today',
-      helper: 'Archive entries including today.',
+      label: t('settings.archiveIncludeToday'),
+      helper: t('settings.archiveIncludeTodayHelper'),
     },
   ];
   const archiveOptionHelper =
     archiveOptions.find((option) => option.value === archiveOffsetDays)?.helper ??
-    'Archive entries dated prior to today.';
+    t('settings.archiveBeforeTodayHelper');
   const isSyncing = syncStatus === 'syncing';
   const { theme: themePreference, setTheme, palette } = useThemeContext();
   const accentHex = palette.accent;
@@ -541,6 +541,8 @@ export default function SettingsScreen() {
                 <Button
                   key={lang.code}
                   testID={`language-option-${lang.code}`}
+                  accessibilityLabel={lang.label}
+                  accessibilityRole="button"
                   size="$5"
                   height={48}
                   borderRadius="$3"
@@ -642,10 +644,12 @@ export default function SettingsScreen() {
 
             <YStack gap="$1">
               <Paragraph color="$colorMuted" fontSize="$3" testID="settings-reminders-status">
-                {t('settings.remindersTitle')} {remindersEnabled ? 'Enabled' : 'Disabled'}
+                {t('settings.remindersTitle')}{' '}
+                {remindersEnabled ? t('settings.enabled') : t('settings.disabled')}
               </Paragraph>
               <Paragraph color="$colorMuted" fontSize="$3" testID="settings-dailysummary-status">
-                {t('settings.dailySummaryTitle')} {dailySummaryEnabled ? 'Enabled' : 'Disabled'}
+                {t('settings.dailySummaryTitle')}{' '}
+                {dailySummaryEnabled ? t('settings.enabled') : t('settings.disabled')}
               </Paragraph>
               {notificationError ? (
                 <Paragraph color="$dangerColor" fontSize="$3" testID="settings-notification-error">
@@ -657,15 +661,15 @@ export default function SettingsScreen() {
         </SettingsSection>
 
         <SettingsSection
-          title="Streak preview"
-          description="Quick look at upcoming streaks (placeholder until main UI lands)."
+          title={t('settings.streakPreviewTitle')}
+          description={t('settings.streakPreviewDescription')}
         >
           <StreakChart data={STREAK_SAMPLE} />
         </SettingsSection>
 
         <SettingsSection
-          title="Calendar preview"
-          description="Consistency heatmap placeholder for upcoming habit flows."
+          title={t('settings.calendarPreviewTitle')}
+          description={t('settings.calendarPreviewDescription')}
         >
           <CalendarHeatmap weeks={HEATMAP_SAMPLE.length} values={HEATMAP_SAMPLE} />
         </SettingsSection>
@@ -673,8 +677,8 @@ export default function SettingsScreen() {
         {isNative && (
           <>
             <SettingsSection
-              title="Sync & Storage"
-              description="Review local queue status and run a manual sync with Supabase."
+              title={t('settings.syncStorageTitle')}
+              description={t('settings.syncStorageDescription')}
               footer={syncDisabledMessage}
               testID="settings-sync-section"
               footerTestID={syncDisabledMessage ? 'settings-sync-disabled' : undefined}
@@ -682,15 +686,21 @@ export default function SettingsScreen() {
               <XStack gap="$2" flexWrap="wrap">
                 <StatCard
                   flex={1}
-                  label="Queue size"
+                  label={t('settings.queueSize')}
                   value={queueSize}
-                  helperText={hasOutboxData ? 'Pending sync' : 'Outbox empty'}
+                  helperText={
+                    hasOutboxData
+                      ? t('settings.queueHelperPending')
+                      : t('settings.queueHelperEmpty')
+                  }
                   icon={<RefreshCw size={14} color="$accentColor" />}
                 />
                 <StatCard
                   flex={1}
-                  label="Last synced"
-                  value={lastSyncedAt ? new Date(lastSyncedAt).toLocaleDateString() : 'Never'}
+                  label={t('settings.lastSyncedLabel')}
+                  value={
+                    lastSyncedAt ? new Date(lastSyncedAt).toLocaleDateString() : t('settings.never')
+                  }
                   helperText={
                     lastSyncedAt ? new Date(lastSyncedAt).toLocaleTimeString() : undefined
                   }
@@ -698,25 +708,41 @@ export default function SettingsScreen() {
                 />
               </XStack>
               <Paragraph color="$colorMuted" textAlign="center">
-                Status: {syncStatus.toUpperCase()}
+                {(t as unknown as (k: string, opts?: Record<string, any>) => string)(
+                  'settings.statusLabel',
+                  { status: syncStatus.toUpperCase() },
+                )}
               </Paragraph>
               <YStack gap="$1">
                 <Paragraph fontWeight="600">
-                  Outbox queue • {Math.round(queuePercent * 100)}%
+                  {(t as unknown as (k: string, opts?: Record<string, any>) => string)(
+                    'settings.outboxQueueLabel',
+                    { percent: Math.round(queuePercent * 100) },
+                  )}
                 </Paragraph>
                 <Progress value={queuePercent * 100} size="$3" height={18}>
                   <Progress.Indicator backgroundColor="$accentColor" />
                 </Progress>
                 <Paragraph color="$colorMuted" fontSize="$3">
-                  {queueSize} pending item{queueSize === 1 ? '' : 's'} waiting
+                  {(t as unknown as (k: string, opts?: Record<string, any>) => string)(
+                    'settings.pendingItems',
+                    {
+                      count: queueSize,
+                      suffix: queueSize === 1 ? '' : 's',
+                    },
+                  )}
                 </Paragraph>
               </YStack>
               <Paragraph color="$colorMuted" textAlign="center">
-                Last synced: {lastSyncedAt ? new Date(lastSyncedAt).toLocaleString() : 'Never'}
+                {t('settings.lastSyncedLabel')}:{' '}
+                {lastSyncedAt ? new Date(lastSyncedAt).toLocaleString() : t('settings.never')}
               </Paragraph>
               {lastError ? (
                 <Paragraph color="$colorMuted" textAlign="center">
-                  Last error: {lastError}
+                  {(t as unknown as (k: string, opts?: Record<string, any>) => string)(
+                    'settings.lastErrorLabel',
+                    { error: lastError },
+                  )}
                 </Paragraph>
               ) : null}
               <XStack>
@@ -822,7 +848,7 @@ export default function SettingsScreen() {
                         <Switch.Thumb borderWidth={1} borderColor="$borderColor" />
                       </Switch>
                       <Text fontSize="$3" color="$colorMuted">
-                        Include today
+                        {t('settings.archiveIncludeToday')}
                       </Text>
                     </YStack>
                   </XStack>
@@ -841,7 +867,7 @@ export default function SettingsScreen() {
           marginBottom="$4"
           testID="settings-footer-note"
         >
-          Additional settings will arrive alongside theme controls and data export.
+          {t('settings.upcomingFeatures')}
         </Paragraph>
       </YStack>
     </ScreenContainer>

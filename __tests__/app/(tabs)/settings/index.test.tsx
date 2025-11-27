@@ -200,13 +200,12 @@ jest.mock('@tamagui/select', () => {
     Select: SelectComponent,
   };
 });
-
-jest.mock('react-i18next', () => ({
-  useTranslation: () => {
-    const dictionary: Record<string, string> = {
+jest.mock('react-i18next', () => {
+  const translations: Record<string, Record<string, string>> = {
+    en: {
       'settings.accountTitle': 'Account',
       'settings.accountSignInDescription': 'Sign in to sync your data across devices.',
-      'settings.accountSignedInDescription': 'Signed in as test@example.com',
+      'settings.accountSignedInDescription': 'Signed in as {{email}}',
       'settings.signIn': 'Sign In',
       'settings.signOut': 'Sign Out',
       'settings.loading': 'Loading…',
@@ -217,17 +216,126 @@ jest.mock('react-i18next', () => ({
       'settings.themeSystem': 'Follow System',
       'settings.themeLight': 'Light',
       'settings.themeDark': 'Dark',
-    };
-    return {
-      t: (key: string, opts?: Record<string, any>) => {
-        if (key === 'settings.accountSignedInDescription' && opts?.email) {
-          return `Signed in as ${opts.email}`;
-        }
-        return dictionary[key] ?? key;
-      },
-      i18n: { language: 'en', resolvedLanguage: 'en', languages: ['en'] },
-    };
+      'settings.syncStorageTitle': 'Sync & Storage',
+      'settings.syncStorageDescription':
+        'Review local queue status and run a manual sync with Supabase.',
+      'settings.queueSize': 'Queue size',
+      'settings.queueHelperPending': 'Pending sync',
+      'settings.queueHelperEmpty': 'Outbox empty',
+      'settings.lastSyncedLabel': 'Last synced',
+      'settings.never': 'Never',
+      'settings.lastErrorLabel': 'Last error: {{error}}',
+      'settings.statusLabel': 'Status: {{status}}',
+      'settings.outboxQueueLabel': 'Outbox queue • {{percent}}%',
+      'settings.pendingItems': '{{count}} pending item{{suffix}} waiting',
+      'settings.streakPreviewTitle': 'Streak preview',
+      'settings.streakPreviewDescription':
+        'Quick look at upcoming streaks (placeholder until main UI lands).',
+      'settings.calendarPreviewTitle': 'Calendar preview',
+      'settings.calendarPreviewDescription':
+        'Consistency heatmap placeholder for upcoming habit flows.',
+      'settings.remindersTitle': 'Reminders',
+      'settings.dailySummaryTitle': 'Daily summary',
+      'settings.remindersDescription': 'Send push notifications when it’s time to log progress.',
+      'settings.dailySummaryDescription': 'Receive a brief recap of streaks.',
+      'settings.enabled': 'Enabled',
+      'settings.disabled': 'Disabled',
+      'settings.syncUnavailableWeb':
+        'Background sync requires the iOS or Android app to access the local database.',
+      'settings.syncUnavailableAuth': 'Sign in to enable syncing with your Supabase account.',
+      'settings.archiveBeforeToday': 'Before today',
+      'settings.archiveBeforeTodayHelper': 'Archive entries dated prior to today.',
+      'settings.archiveIncludeToday': 'Include today',
+      'settings.archiveIncludeTodayHelper': 'Archive entries including today.',
+      'settings.upcomingFeatures':
+        'Additional settings will arrive alongside theme controls and data export.',
+    },
+    es: {
+      'settings.accountTitle': 'Cuenta',
+      'settings.accountSignInDescription':
+        'Inicia sesión para sincronizar tus datos en todos los dispositivos.',
+      'settings.accountSignedInDescription': 'Sesión iniciada como {{email}}',
+      'settings.signIn': 'Iniciar sesión',
+      'settings.signOut': 'Cerrar sesión',
+      'settings.loading': 'Cargando…',
+      'settings.languageTitle': 'Idioma',
+      'settings.languageDescription': 'Elige tu idioma preferido.',
+      'settings.themeTitle': 'Tema',
+      'settings.themeDescription': 'Selecciona un tema en este dispositivo.',
+      'settings.themeSystem': 'Seguir sistema',
+      'settings.themeLight': 'Claro',
+      'settings.themeDark': 'Oscuro',
+      'settings.syncStorageTitle': 'Sincronización y almacenamiento',
+      'settings.syncStorageDescription':
+        'Revisa la cola local y ejecuta una sincronización manual con Supabase.',
+      'settings.queueSize': 'Tamaño de cola',
+      'settings.queueHelperPending': 'Pendiente de sincronizar',
+      'settings.queueHelperEmpty': 'Bandeja de salida vacía',
+      'settings.lastSyncedLabel': 'Última sincronización',
+      'settings.never': 'Nunca',
+      'settings.lastErrorLabel': 'Último error: {{error}}',
+      'settings.statusLabel': 'Estado: {{status}}',
+      'settings.outboxQueueLabel': 'Cola de salida • {{percent}}%',
+      'settings.pendingItems': '{{count}} elemento{{suffix}} pendiente',
+      'settings.streakPreviewTitle': 'Vista previa de rachas',
+      'settings.streakPreviewDescription':
+        'Vista rápida de rachas próximas (interfaz provisional).',
+      'settings.calendarPreviewTitle': 'Vista previa del calendario',
+      'settings.calendarPreviewDescription':
+        'Mapa de calor provisional para futuras vistas de hábitos.',
+      'settings.remindersTitle': 'Recordatorios',
+      'settings.dailySummaryTitle': 'Resumen diario',
+      'settings.remindersDescription':
+        'Envía notificaciones push cuando sea hora de registrar progreso.',
+      'settings.dailySummaryDescription': 'Recibe un breve resumen de tus rachas.',
+      'settings.enabled': 'Activado',
+      'settings.disabled': 'Desactivado',
+      'settings.syncUnavailableWeb':
+        'La sincronización en segundo plano requiere la app de iOS o Android para acceder a la base de datos local.',
+      'settings.syncUnavailableAuth':
+        'Inicia sesión para habilitar la sincronización con tu cuenta de Supabase.',
+      'settings.archiveBeforeToday': 'Antes de hoy',
+      'settings.archiveBeforeTodayHelper': 'Archivar entradas fechadas antes de hoy.',
+      'settings.archiveIncludeToday': 'Incluir hoy',
+      'settings.archiveIncludeTodayHelper': 'Archivar entradas incluyendo hoy.',
+      'settings.upcomingFeatures':
+        'Pronto llegarán más ajustes junto con controles de tema y exportación de datos.',
+    },
+  };
+
+  return {
+    useTranslation: () => {
+      const lang = (globalThis as any).__TEST_LANG ?? 'en';
+      return {
+        t: (key: string, opts?: Record<string, any>) => {
+          const raw = translations[lang]?.[key];
+          if (!raw) return key;
+          if (opts) {
+            return Object.keys(opts).reduce(
+              (acc, k) => acc.replace(`{{${k}}}`, String(opts[k])),
+              raw,
+            );
+          }
+          return raw;
+        },
+        i18n: {
+          language: lang,
+          resolvedLanguage: lang,
+          languages: [lang],
+        },
+      };
+    },
+  };
+});
+
+jest.mock('@/i18n', () => ({
+  setLanguage: (code: string) => {
+    (globalThis as any).__TEST_LANG = code;
   },
+  supportedLanguages: [
+    { code: 'en', label: 'English' },
+    { code: 'es', label: 'Español' },
+  ],
 }));
 
 // Mock Tamagui Lucide Icons
@@ -632,8 +740,32 @@ describe('SettingsScreen', () => {
     });
   });
 
+  describe('Language Selection', () => {
+    beforeEach(() => {
+      (globalThis as any).__TEST_LANG = 'en';
+      mockedUseSessionStore.mockImplementation((selector: any) =>
+        selector({
+          status: 'unauthenticated',
+          session: null,
+          signOut: jest.fn(),
+          isLoading: false,
+        }),
+      );
+    });
+
+    it('updates copy when switching languages', () => {
+      const { getByText, getByTestId, rerender } = render(<SettingsScreen />);
+      expect(getByText('Language')).toBeTruthy();
+
+      fireEvent.press(getByTestId('language-option-es'));
+      rerender(<SettingsScreen />);
+      expect(getByText('Idioma')).toBeTruthy();
+    });
+  });
+
   describe('Theme Selection', () => {
     beforeEach(() => {
+      (globalThis as any).__TEST_LANG = 'en';
       mockedUseSessionStore.mockImplementation((selector: any) =>
         selector({
           status: 'unauthenticated',

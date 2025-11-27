@@ -8,6 +8,8 @@
     "languageSelectorLabel": "Idioma"
   },
   "settings": {
+    "syncUnavailableWeb": "La sincronización en segundo plano requiere la app de iOS o Android para acceder a la base de datos local.",
+    "syncUnavailableAuth": "Inicia sesión para habilitar la sincronización con tu cuenta de Supabase.",
     "languageTitle": "Idioma",
     "languageDescription": "Elige tu idioma preferido.",
     "accountTitle": "Cuenta",
@@ -21,6 +23,23 @@
     "themeSystem": "Seguir sistema",
     "themeLight": "Claro",
     "themeDark": "Oscuro",
+    "streakPreviewTitle": "Vista previa de rachas",
+    "streakPreviewDescription": "Vista rápida de rachas próximas (interfaz provisional).",
+    "calendarPreviewTitle": "Vista previa del calendario",
+    "calendarPreviewDescription": "Mapa de calor provisional para futuras vistas de hábitos.",
+    "syncStorageTitle": "Sincronización y almacenamiento",
+    "syncStorageDescription": "Revisa la cola local y ejecuta una sincronización manual con Supabase.",
+    "queueSize": "Tamaño de cola",
+    "queueHelperPending": "Pendiente de sincronizar",
+    "queueHelperEmpty": "Bandeja de salida vacía",
+    "enabled": "Activado",
+    "disabled": "Desactivado",
+    "lastSyncedLabel": "Última sincronización",
+    "never": "Nunca",
+    "lastErrorLabel": "Último error: {{error}}",
+    "statusLabel": "Estado: {{status}}",
+    "outboxQueueLabel": "Cola de salida • {{percent}}%",
+    "pendingItems": "{{count}} elemento{{suffix}} pendiente",
     "todayCardTitle": "Hoy",
     "todayCardSubtitle": "Progreso en hábitos",
     "streaksCardTitle": "Rachas",
@@ -38,6 +57,10 @@
     "remindersDescription": "Envía notificaciones push cuando sea hora de registrar progreso.",
     "dailySummaryTitle": "Resumen diario",
     "dailySummaryDescription": "Recibe un breve resumen de tus rachas.",
+    "archiveBeforeToday": "Antes de hoy",
+    "archiveBeforeTodayHelper": "Archivar entradas fechadas antes de hoy.",
+    "archiveIncludeToday": "Incluir hoy",
+    "archiveIncludeTodayHelper": "Archivar entradas incluyendo hoy.",
     "upcomingFeatures": "Pronto llegarán más ajustes junto con controles de tema y exportación de datos."
   }
 }
