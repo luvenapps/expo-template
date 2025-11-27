@@ -25,8 +25,9 @@ import { StreakChart } from '../../../../src/ui/components/StreakChart';
 
 describe('StreakChart', () => {
   it('renders with basic data', () => {
-    const { getByText, getAllByText } = render(
+    const { getByTestId } = render(
       <StreakChart
+        getItemTestID={(_, index) => `streak-${index}`}
         data={[
           { label: 'Current Streak', value: 5, max: 10 },
           { label: 'Longest Streak', value: 15, max: 30 },
@@ -34,22 +35,27 @@ describe('StreakChart', () => {
       />,
     );
 
-    expect(getByText(/Current Streak • 5 days/)).toBeDefined();
-    expect(getByText(/Longest Streak • 15 days/)).toBeDefined();
-    expect(getAllByText('50% complete')).toHaveLength(2);
+    expect(getByTestId('streak-0-label')).toHaveTextContent('Current Streak • 5 days');
+    expect(getByTestId('streak-1-label')).toHaveTextContent('Longest Streak • 15 days');
+    expect(getByTestId('streak-0-percent')).toHaveTextContent('50% complete');
+    expect(getByTestId('streak-1-percent')).toHaveTextContent('50% complete');
   });
 
   it('renders singular "day" when value is 1', () => {
-    const { getByText } = render(
-      <StreakChart data={[{ label: 'Current Streak', value: 1, max: 10 }]} />,
+    const { getByTestId } = render(
+      <StreakChart
+        getItemTestID={(_, index) => `streak-${index}`}
+        data={[{ label: 'Current Streak', value: 1, max: 10 }]}
+      />,
     );
 
-    expect(getByText(/Current Streak • 1 day$/)).toBeDefined();
+    expect(getByTestId('streak-0-label')).toHaveTextContent('Current Streak • 1 day');
   });
 
   it('renders plural "days" when value is not 1', () => {
-    const { getByText } = render(
+    const { getByTestId } = render(
       <StreakChart
+        getItemTestID={(_, index) => `streak-${index}`}
         data={[
           { label: 'Zero days', value: 0, max: 10 },
           { label: 'Multiple days', value: 5, max: 10 },
@@ -57,13 +63,14 @@ describe('StreakChart', () => {
       />,
     );
 
-    expect(getByText(/Zero days • 0 days/)).toBeDefined();
-    expect(getByText(/Multiple days • 5 days/)).toBeDefined();
+    expect(getByTestId('streak-0-label')).toHaveTextContent('Zero days • 0 days');
+    expect(getByTestId('streak-1-label')).toHaveTextContent('Multiple days • 5 days');
   });
 
   it('renders with icon when provided', () => {
     const { getByTestId } = render(
       <StreakChart
+        getItemTestID={(_, index) => `streak-${index}`}
         data={[
           {
             label: 'With Icon',
@@ -80,6 +87,7 @@ describe('StreakChart', () => {
     );
 
     expect(getByTestId('streak-icon')).toBeDefined();
+    expect(getByTestId('streak-0-label')).toHaveTextContent('With Icon • 3 days');
   });
 
   it('renders without icon when not provided', () => {
@@ -91,14 +99,20 @@ describe('StreakChart', () => {
   });
 
   it('uses default max value of 1 when max is not provided', () => {
-    const { getByText } = render(<StreakChart data={[{ label: 'Default Max', value: 1 }]} />);
+    const { getByTestId } = render(
+      <StreakChart
+        getItemTestID={(_, index) => `streak-${index}`}
+        data={[{ label: 'Default Max', value: 1 }]}
+      />,
+    );
 
-    expect(getByText('100% complete')).toBeDefined();
+    expect(getByTestId('streak-0-percent')).toHaveTextContent('100% complete');
   });
 
   it('calculates percent correctly with custom max', () => {
-    const { getByText } = render(
+    const { getByTestId } = render(
       <StreakChart
+        getItemTestID={(_, index) => `streak-${index}`}
         data={[
           { label: 'Quarter', value: 25, max: 100 },
           { label: 'Half', value: 50, max: 100 },
@@ -107,37 +121,49 @@ describe('StreakChart', () => {
       />,
     );
 
-    expect(getByText('25% complete')).toBeDefined();
-    expect(getByText('50% complete')).toBeDefined();
-    expect(getByText('75% complete')).toBeDefined();
+    expect(getByTestId('streak-0-percent')).toHaveTextContent('25% complete');
+    expect(getByTestId('streak-1-percent')).toHaveTextContent('50% complete');
+    expect(getByTestId('streak-2-percent')).toHaveTextContent('75% complete');
   });
 
   it('caps percent at 100% when value exceeds max', () => {
-    const { getByText } = render(
-      <StreakChart data={[{ label: 'Over Max', value: 15, max: 10 }]} />,
+    const { getByTestId } = render(
+      <StreakChart
+        getItemTestID={(_, index) => `streak-${index}`}
+        data={[{ label: 'Over Max', value: 15, max: 10 }]}
+      />,
     );
 
-    expect(getByText('100% complete')).toBeDefined();
+    expect(getByTestId('streak-0-percent')).toHaveTextContent('100% complete');
   });
 
   it('floors percent at 0% when value is negative', () => {
-    const { getByText } = render(
-      <StreakChart data={[{ label: 'Negative', value: -5, max: 10 }]} />,
+    const { getByTestId } = render(
+      <StreakChart
+        getItemTestID={(_, index) => `streak-${index}`}
+        data={[{ label: 'Negative', value: -5, max: 10 }]}
+      />,
     );
 
-    expect(getByText('0% complete')).toBeDefined();
+    expect(getByTestId('streak-0-percent')).toHaveTextContent('0% complete');
   });
 
   it('handles zero max gracefully', () => {
-    const { getByText } = render(<StreakChart data={[{ label: 'Zero Max', value: 5, max: 0 }]} />);
+    const { getByTestId } = render(
+      <StreakChart
+        getItemTestID={(_, index) => `streak-${index}`}
+        data={[{ label: 'Zero Max', value: 5, max: 0 }]}
+      />,
+    );
 
     // value / 0 = Infinity, Math.min(1, Infinity) = 1
-    expect(getByText('100% complete')).toBeDefined();
+    expect(getByTestId('streak-0-percent')).toHaveTextContent('100% complete');
   });
 
   it('renders multiple streaks correctly', () => {
-    const { getByText } = render(
+    const { getByTestId } = render(
       <StreakChart
+        getItemTestID={(_, index) => `streak-${index}`}
         data={[
           { label: 'Streak 1', value: 3, max: 10 },
           { label: 'Streak 2', value: 7, max: 10 },
@@ -146,12 +172,12 @@ describe('StreakChart', () => {
       />,
     );
 
-    expect(getByText(/Streak 1 • 3 days/)).toBeDefined();
-    expect(getByText(/Streak 2 • 7 days/)).toBeDefined();
-    expect(getByText(/Streak 3 • 10 days/)).toBeDefined();
-    expect(getByText('30% complete')).toBeDefined();
-    expect(getByText('70% complete')).toBeDefined();
-    expect(getByText('100% complete')).toBeDefined();
+    expect(getByTestId('streak-0-label')).toHaveTextContent('Streak 1 • 3 days');
+    expect(getByTestId('streak-1-label')).toHaveTextContent('Streak 2 • 7 days');
+    expect(getByTestId('streak-2-label')).toHaveTextContent('Streak 3 • 10 days');
+    expect(getByTestId('streak-0-percent')).toHaveTextContent('30% complete');
+    expect(getByTestId('streak-1-percent')).toHaveTextContent('70% complete');
+    expect(getByTestId('streak-2-percent')).toHaveTextContent('100% complete');
   });
 
   it('renders with empty data array', () => {

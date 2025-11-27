@@ -26,65 +26,88 @@ import { FormField } from '../../../../src/ui/components/FormField';
 
 describe('FormField', () => {
   it('renders with label and input', () => {
-    const { getByText, getByDisplayValue } = render(
-      <FormField label="Email" value="test@example.com" onChangeText={() => {}} />,
+    const { getByTestId, getByDisplayValue } = render(
+      <FormField
+        label="Email"
+        labelTestID="email-label"
+        inputTestID="email-input"
+        value="test@example.com"
+        onChangeText={() => {}}
+      />,
     );
 
-    expect(getByText('Email')).toBeDefined();
+    expect(getByTestId('email-label')).toBeDefined();
     expect(getByDisplayValue('test@example.com')).toBeDefined();
   });
 
   it('renders with required indicator when required is true', () => {
-    const { getByText } = render(
-      <FormField label="Email" required value="" onChangeText={() => {}} />,
-    );
-
-    expect(getByText('Email *')).toBeDefined();
-  });
-
-  it('renders without required indicator when required is false', () => {
-    const { getByText, queryByText } = render(
-      <FormField label="Email" value="" onChangeText={() => {}} />,
-    );
-
-    expect(getByText('Email')).toBeDefined();
-    expect(queryByText('Email *')).toBeNull();
-  });
-
-  it('renders helperText when provided', () => {
-    const { getByText } = render(
+    const { getByTestId } = render(
       <FormField
         label="Email"
-        helperText="Enter your email address"
+        labelTestID="email-label"
+        required
         value=""
         onChangeText={() => {}}
       />,
     );
 
-    expect(getByText('Enter your email address')).toBeDefined();
+    const label = getByTestId('email-label');
+    expect(label.props.children).toEqual(['Email', ' *']);
+  });
+
+  it('renders without required indicator when required is false', () => {
+    const { getByTestId } = render(
+      <FormField label="Email" labelTestID="email-label" value="" onChangeText={() => {}} />,
+    );
+
+    const label = getByTestId('email-label');
+    expect(label.props.children).toEqual(['Email', '']);
+  });
+
+  it('renders helperText when provided', () => {
+    const { getByTestId } = render(
+      <FormField
+        label="Email"
+        helperText="Enter your email address"
+        helperTestID="helper-text"
+        value=""
+        onChangeText={() => {}}
+      />,
+    );
+
+    const helperText = getByTestId('helper-text');
+    expect(helperText.props.children).toBe('Enter your email address');
   });
 
   it('renders errorText when provided', () => {
-    const { getByText } = render(
-      <FormField label="Email" errorText="Invalid email" value="" onChangeText={() => {}} />,
+    const { getByTestId } = render(
+      <FormField
+        label="Email"
+        errorText="Invalid email"
+        helperTestID="error-text"
+        value=""
+        onChangeText={() => {}}
+      />,
     );
 
-    expect(getByText('Invalid email')).toBeDefined();
+    const errorText = getByTestId('error-text');
+    expect(errorText.props.children).toBe('Invalid email');
   });
 
   it('prioritizes errorText over helperText when both are provided', () => {
-    const { getByText, queryByText } = render(
+    const { getByTestId } = render(
       <FormField
         label="Email"
         helperText="Enter your email address"
         errorText="Invalid email"
+        helperTestID="helper-or-error"
         value=""
         onChangeText={() => {}}
       />,
     );
 
-    expect(getByText('Invalid email')).toBeDefined();
-    expect(queryByText('Enter your email address')).toBeNull();
+    const helperOrError = getByTestId('helper-or-error');
+    expect(helperOrError.props.children).toBe('Invalid email');
   });
 
   it('renders rightElement when provided', () => {

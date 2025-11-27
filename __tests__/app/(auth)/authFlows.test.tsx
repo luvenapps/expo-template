@@ -94,13 +94,13 @@ describe('Auth auxiliary flows', () => {
 
   it('submits sign up form', async () => {
     mockedSignUp.mockResolvedValueOnce({ success: true });
-    const { getByPlaceholderText, getByText } = render(<SignUpScreen />);
+    const { getByTestId } = render(<SignUpScreen />);
 
-    fireEvent.changeText(getByPlaceholderText('you@example.com'), 'new@example.com');
-    fireEvent.changeText(getByPlaceholderText('At least 8 characters'), 'password123');
-    fireEvent.changeText(getByPlaceholderText('Re-enter your password'), 'password123');
+    fireEvent.changeText(getByTestId('email-input'), 'new@example.com');
+    fireEvent.changeText(getByTestId('password-input'), 'password123');
+    fireEvent.changeText(getByTestId('confirm-password-input'), 'password123');
 
-    fireEvent.press(getByText('Create account'));
+    fireEvent.press(getByTestId('create-account-button'));
 
     await waitFor(() => {
       expect(mockedSignUp).toHaveBeenCalledWith('new@example.com', 'password123');
@@ -110,10 +110,10 @@ describe('Auth auxiliary flows', () => {
 
   it('submits forgot password form', async () => {
     mockedPasswordReset.mockResolvedValueOnce({ success: true });
-    const { getByPlaceholderText, getByText } = render(<ForgotPasswordScreen />);
+    const { getByTestId } = render(<ForgotPasswordScreen />);
 
-    fireEvent.changeText(getByPlaceholderText('you@example.com'), 'user@example.com');
-    fireEvent.press(getByText('Send reset link'));
+    fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
+    fireEvent.press(getByTestId('send-reset-link-button'));
 
     await waitFor(() => {
       expect(mockedPasswordReset).toHaveBeenCalledWith('user@example.com');

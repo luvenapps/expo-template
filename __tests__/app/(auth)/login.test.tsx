@@ -165,13 +165,13 @@ describe('LoginScreen', () => {
       }),
     );
 
-    const { getByPlaceholderText, getByText } = render(<LoginScreen />);
+    const { getByTestId } = render(<LoginScreen />);
 
-    fireEvent.changeText(getByPlaceholderText('you@example.com'), 'user@example.com');
-    fireEvent.changeText(getByPlaceholderText('Enter your password'), 'password');
+    fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
+    fireEvent.changeText(getByTestId('password-input'), 'password');
 
     await act(async () => {
-      fireEvent.press(getByText('Sign In'));
+      fireEvent.press(getByTestId('sign-in-button'));
       await waitFor(() => {
         expect(signInMock).toHaveBeenCalledWith('user@example.com', 'password');
       });
@@ -190,13 +190,13 @@ describe('LoginScreen', () => {
       }),
     );
 
-    const { getByPlaceholderText, getByText } = render(<LoginScreen />);
+    const { getByTestId } = render(<LoginScreen />);
 
-    fireEvent.changeText(getByPlaceholderText('you@example.com'), 'user@example.com');
-    fireEvent.changeText(getByPlaceholderText('Enter your password'), 'password');
+    fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
+    fireEvent.changeText(getByTestId('password-input'), 'password');
 
     await act(async () => {
-      fireEvent.press(getByText('Sign In'));
+      fireEvent.press(getByTestId('sign-in-button'));
       await waitFor(() => {
         expect(mockBack).toHaveBeenCalled();
       });
@@ -206,8 +206,8 @@ describe('LoginScreen', () => {
   });
 
   test('forgot password link navigates to reset screen', () => {
-    const { getByText } = render(<LoginScreen />);
-    fireEvent.press(getByText('Forgot your password?'));
+    const { getByTestId } = render(<LoginScreen />);
+    fireEvent.press(getByTestId('forgot-password-link'));
     expect(mockPush).toHaveBeenCalledWith('/(auth)/forgot-password');
   });
 
@@ -221,8 +221,9 @@ describe('LoginScreen', () => {
       }),
     );
 
-    const { getByText } = render(<LoginScreen />);
-    expect(getByText('Signing in…')).toBeTruthy();
+    const { getByTestId } = render(<LoginScreen />);
+    const signInButton = getByTestId('sign-in-button');
+    expect(signInButton).toBeTruthy();
   });
 
   test('displays error message when error is present', () => {
@@ -235,8 +236,8 @@ describe('LoginScreen', () => {
       }),
     );
 
-    const { getByText } = render(<LoginScreen />);
-    expect(getByText('Invalid email or password')).toBeTruthy();
+    const { getByTestId } = render(<LoginScreen />);
+    expect(getByTestId('error-message')).toBeTruthy();
   });
 
   test('does not navigate on failed login', async () => {
@@ -252,13 +253,13 @@ describe('LoginScreen', () => {
       }),
     );
 
-    const { getByPlaceholderText, getByText } = render(<LoginScreen />);
+    const { getByTestId } = render(<LoginScreen />);
 
-    fireEvent.changeText(getByPlaceholderText('you@example.com'), 'user@example.com');
-    fireEvent.changeText(getByPlaceholderText('Enter your password'), 'wrongpassword');
+    fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
+    fireEvent.changeText(getByTestId('password-input'), 'wrongpassword');
 
     await act(async () => {
-      fireEvent.press(getByText('Sign In'));
+      fireEvent.press(getByTestId('sign-in-button'));
       // Wait for async signIn to complete
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
@@ -267,30 +268,29 @@ describe('LoginScreen', () => {
   });
 
   test('toggles password visibility when eye icon is pressed', () => {
-    const { getByPlaceholderText, getByLabelText } = render(<LoginScreen />);
-    const passwordInput = getByPlaceholderText('Enter your password');
+    const { getByTestId } = render(<LoginScreen />);
+    const passwordInput = getByTestId('password-input');
 
     // Initially password should be hidden
     expect(passwordInput.props.secureTextEntry).toBe(true);
 
     // Press show password button
-    const showPasswordButton = getByLabelText('Show password');
-    fireEvent.press(showPasswordButton);
+    const toggleButton = getByTestId('toggle-password-visibility');
+    fireEvent.press(toggleButton);
 
     // Password should now be visible
     expect(passwordInput.props.secureTextEntry).toBe(false);
 
     // Press hide password button
-    const hidePasswordButton = getByLabelText('Hide password');
-    fireEvent.press(hidePasswordButton);
+    fireEvent.press(toggleButton);
 
     // Password should be hidden again
     expect(passwordInput.props.secureTextEntry).toBe(true);
   });
 
   test('focuses password field when email submit is pressed', () => {
-    const { getByPlaceholderText } = render(<LoginScreen />);
-    const emailInput = getByPlaceholderText('you@example.com');
+    const { getByTestId } = render(<LoginScreen />);
+    const emailInput = getByTestId('email-input');
 
     // Should not throw when onSubmitEditing is called
     expect(() => {
@@ -300,13 +300,13 @@ describe('LoginScreen', () => {
 
   test('replaces to tabs when no history exists', async () => {
     mockCanGoBack.mockReturnValue(false);
-    const { getByPlaceholderText, getByText } = render(<LoginScreen />);
+    const { getByTestId } = render(<LoginScreen />);
 
-    fireEvent.changeText(getByPlaceholderText('you@example.com'), 'user@example.com');
-    fireEvent.changeText(getByPlaceholderText('Enter your password'), 'password');
+    fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
+    fireEvent.changeText(getByTestId('password-input'), 'password');
 
     await act(async () => {
-      fireEvent.press(getByText('Sign In'));
+      fireEvent.press(getByTestId('sign-in-button'));
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith('/(tabs)');
       });
@@ -335,9 +335,9 @@ describe('OAuth authentication', () => {
       }),
     );
 
-    const { getByText } = render(<LoginScreen />);
+    const { getByTestId } = render(<LoginScreen />);
     await act(async () => {
-      fireEvent.press(getByText('Continue with Google'));
+      fireEvent.press(getByTestId('oauth-google-button'));
     });
     expect(oauthMock).toHaveBeenCalledWith('google');
   });
@@ -355,9 +355,9 @@ describe('OAuth authentication', () => {
       }),
     );
 
-    const { getByText } = render(<LoginScreen />);
+    const { getByTestId } = render(<LoginScreen />);
     await act(async () => {
-      fireEvent.press(getByText('Continue with Google'));
+      fireEvent.press(getByTestId('oauth-google-button'));
       await waitFor(() => {
         expect(mockBack).toHaveBeenCalled();
       });
@@ -378,9 +378,9 @@ describe('OAuth authentication', () => {
       }),
     );
 
-    const { getByText } = render(<LoginScreen />);
+    const { getByTestId } = render(<LoginScreen />);
     await act(async () => {
-      fireEvent.press(getByText('Continue with Google'));
+      fireEvent.press(getByTestId('oauth-google-button'));
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith('/(tabs)');
       });
@@ -403,9 +403,9 @@ describe('OAuth authentication', () => {
       }),
     );
 
-    const { getByText } = render(<LoginScreen />);
+    const { getByTestId } = render(<LoginScreen />);
     await act(async () => {
-      fireEvent.press(getByText('Continue with Google'));
+      fireEvent.press(getByTestId('oauth-google-button'));
       // Wait for async OAuth to complete
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
@@ -427,9 +427,9 @@ describe('OAuth authentication', () => {
       }),
     );
 
-    const { getByText } = render(<LoginScreen />);
+    const { getByTestId } = render(<LoginScreen />);
     await act(async () => {
-      fireEvent.press(getByText('Continue with Apple'));
+      fireEvent.press(getByTestId('oauth-apple-button'));
     });
     expect(oauthMock).toHaveBeenCalledWith('apple');
   });

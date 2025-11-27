@@ -24,7 +24,6 @@ jest.mock('@/ui/theme/ThemeProvider', () => {
   };
 });
 
-import { DOMAIN } from '@/config/domain.config';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import React from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -51,12 +50,12 @@ describe('HomeScreen', () => {
       </SafeAreaProvider>,
     );
 
-    expect(await screen.findByText(`Welcome to ${DOMAIN.app.displayName}`)).toBeTruthy();
-    expect(await screen.findByText('Get Started')).toBeTruthy();
+    expect(await screen.findByTestId('welcome-title')).toBeTruthy();
+    expect(await screen.findByTestId('get-started-button')).toBeTruthy();
   });
 
   test('navigates to settings when Get Started is pressed', async () => {
-    const { getByText } = render(
+    const { getByTestId } = render(
       <SafeAreaProvider
         initialMetrics={{
           frame: { x: 0, y: 0, width: 390, height: 844 },
@@ -69,7 +68,7 @@ describe('HomeScreen', () => {
       </SafeAreaProvider>,
     );
 
-    const button = getByText('Get Started');
+    const button = getByTestId('get-started-button');
     fireEvent.press(button);
 
     expect(mockPush).toHaveBeenCalledWith('/(tabs)/settings');

@@ -263,6 +263,9 @@ export default function LoginScreen() {
 
           <Form onSubmit={handleSubmit} width="100%" gap="$4">
             <FormField
+              testID="email-field"
+              labelTestID="email-label"
+              inputTestID="email-input"
               label="Email"
               placeholder="you@example.com"
               placeholderTextColor="$colorMuted"
@@ -276,6 +279,9 @@ export default function LoginScreen() {
 
             <FormField
               ref={passwordInputRef}
+              testID="password-field"
+              labelTestID="password-label"
+              inputTestID="password-input"
               label="Password"
               placeholder="Enter your password"
               placeholderTextColor="$colorMuted"
@@ -290,6 +296,7 @@ export default function LoginScreen() {
                   position="absolute"
                   right="$0"
                   padding="$1"
+                  testID="toggle-password-visibility"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                   onPress={() => setShowPassword((prev) => !prev)}
                   hoverStyle={{ opacity: 0.7, cursor: 'pointer' }}
@@ -306,6 +313,7 @@ export default function LoginScreen() {
             />
 
             <CaptionText
+              testID="forgot-password-link"
               textAlign="right"
               color="$accentColor"
               fontWeight="600"
@@ -317,6 +325,7 @@ export default function LoginScreen() {
 
             {error ? (
               <YStack
+                testID="error-message"
                 padding="$3"
                 backgroundColor="$dangerBackground"
                 borderRadius="$3"
@@ -330,7 +339,11 @@ export default function LoginScreen() {
             ) : null}
 
             <Form.Trigger asChild>
-              <PrimaryButton disabled={!isFormValid || isLoading} onPress={handleSubmit}>
+              <PrimaryButton
+                testID="sign-in-button"
+                disabled={!isFormValid || isLoading}
+                onPress={handleSubmit}
+              >
                 {isLoading ? 'Signing in…' : 'Sign In'}
               </PrimaryButton>
             </Form.Trigger>
@@ -343,7 +356,11 @@ export default function LoginScreen() {
             marginTop={Platform.OS === 'web' ? '$4' : '$5'}
           >
             <CaptionText color="$colorMuted">Don&apos;t have an account?</CaptionText>
-            <PrimaryButton width="100%" onPress={() => router.push('/(auth)/signup')}>
+            <PrimaryButton
+              testID="create-account-button"
+              width="100%"
+              onPress={() => router.push('/(auth)/signup')}
+            >
               Create account
             </PrimaryButton>
           </YStack>
@@ -375,6 +392,7 @@ export default function LoginScreen() {
               }) => (
                 <Button
                   key={provider}
+                  testID={`oauth-${provider}-button`}
                   flex={1}
                   width="100%"
                   minWidth={minWidth}

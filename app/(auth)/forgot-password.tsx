@@ -75,6 +75,8 @@ export default function ForgotPasswordScreen() {
 
             <Form onSubmit={handleSubmit} width="100%" gap="$4">
               <FormField
+                testID="email-field"
+                inputTestID="email-input"
                 label="Email"
                 placeholder="you@example.com"
                 placeholderTextColor="$colorMuted"
@@ -87,7 +89,11 @@ export default function ForgotPasswordScreen() {
               />
 
               <Form.Trigger asChild>
-                <PrimaryButton disabled={!email.trim() || isSubmitting} onPress={handleSubmit}>
+                <PrimaryButton
+                  testID="send-reset-link-button"
+                  disabled={!email.trim() || isSubmitting}
+                  onPress={handleSubmit}
+                >
                   {isSubmitting ? 'Sending…' : 'Send reset link'}
                 </PrimaryButton>
               </Form.Trigger>
@@ -100,7 +106,11 @@ export default function ForgotPasswordScreen() {
               marginTop={Platform.OS === 'web' ? 0 : '$5'}
             >
               <CaptionText color="$colorMuted">Remembered your password?</CaptionText>
-              <PrimaryButton width="100%" onPress={() => router.replace('/(auth)/login')}>
+              <PrimaryButton
+                testID="back-to-sign-in-button"
+                width="100%"
+                onPress={() => router.replace('/(auth)/login')}
+              >
                 Back to sign in
               </PrimaryButton>
             </YStack>

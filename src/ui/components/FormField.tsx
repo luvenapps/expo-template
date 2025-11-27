@@ -11,15 +11,33 @@ export type FormFieldProps = InputProps & {
   errorText?: string;
   required?: boolean;
   rightElement?: ReactNode;
+  testID?: string;
+  labelTestID?: string;
+  inputTestID?: string;
+  helperTestID?: string;
 };
 
 export const FormField = forwardRef<React.ComponentRef<typeof Input>, FormFieldProps>(
-  function FormField({ label, helperText, errorText, required, rightElement, ...inputProps }, ref) {
+  function FormField(
+    {
+      label,
+      helperText,
+      errorText,
+      required,
+      rightElement,
+      testID,
+      labelTestID,
+      inputTestID,
+      helperTestID,
+      ...inputProps
+    },
+    ref,
+  ) {
     const helperColor = errorText ? '$red10' : '$colorMuted';
 
     return (
-      <YStack gap="$2" width="100%">
-        <LabelText color="$color">
+      <YStack gap="$2" width="100%" testID={testID}>
+        <LabelText color="$color" testID={labelTestID}>
           {label}
           {required ? ' *' : ''}
         </LabelText>
@@ -33,6 +51,7 @@ export const FormField = forwardRef<React.ComponentRef<typeof Input>, FormFieldP
             borderRadius="$3"
             size="$2"
             height={56}
+            testID={inputTestID}
             {...inputProps}
           />
           {rightElement ? (
@@ -48,7 +67,7 @@ export const FormField = forwardRef<React.ComponentRef<typeof Input>, FormFieldP
           ) : null}
         </View>
         {(helperText || errorText) && (
-          <CaptionText color={helperColor} testID="form-field-helper">
+          <CaptionText color={helperColor} testID={helperTestID}>
             {errorText ?? helperText}
           </CaptionText>
         )}

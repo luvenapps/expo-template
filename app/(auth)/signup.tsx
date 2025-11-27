@@ -98,6 +98,8 @@ export default function SignUpScreen() {
 
             <Form onSubmit={handleSubmit} width="100%" gap="$4">
               <FormField
+                testID="email-field"
+                inputTestID="email-input"
                 label="Email"
                 placeholder="you@example.com"
                 placeholderTextColor="$colorMuted"
@@ -111,6 +113,8 @@ export default function SignUpScreen() {
 
               <FormField
                 ref={passwordInputRef}
+                testID="password-field"
+                inputTestID="password-input"
                 label="Password"
                 placeholder="At least 8 characters"
                 placeholderTextColor="$colorMuted"
@@ -124,6 +128,7 @@ export default function SignUpScreen() {
                     position="absolute"
                     right="$0"
                     padding="$1"
+                    testID="toggle-password-visibility"
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                     onPress={() => setShowPassword((prev) => !prev)}
                     hoverStyle={{ opacity: 0.7, cursor: 'pointer' }}
@@ -141,6 +146,8 @@ export default function SignUpScreen() {
 
               <FormField
                 ref={confirmInputRef}
+                testID="confirm-password-field"
+                inputTestID="confirm-password-input"
                 label="Confirm password"
                 placeholder="Re-enter your password"
                 placeholderTextColor="$colorMuted"
@@ -154,6 +161,7 @@ export default function SignUpScreen() {
                     position="absolute"
                     right="$0"
                     padding="$1"
+                    testID="toggle-confirm-password-visibility"
                     aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
                     onPress={() => setShowConfirmPassword((prev) => !prev)}
                     hoverStyle={{ opacity: 0.7, cursor: 'pointer' }}
@@ -170,7 +178,11 @@ export default function SignUpScreen() {
               />
 
               <Form.Trigger asChild>
-                <PrimaryButton disabled={!isFormValid || isSubmitting} onPress={handleSubmit}>
+                <PrimaryButton
+                  testID="create-account-button"
+                  disabled={!isFormValid || isSubmitting}
+                  onPress={handleSubmit}
+                >
                   {isSubmitting ? 'Creating account…' : 'Create account'}
                 </PrimaryButton>
               </Form.Trigger>
@@ -183,7 +195,11 @@ export default function SignUpScreen() {
               marginTop={Platform.OS === 'web' ? 0 : '$5'}
             >
               <CaptionText color="$colorMuted">Already have an account?</CaptionText>
-              <PrimaryButton width="100%" onPress={() => router.replace('/(auth)/login')}>
+              <PrimaryButton
+                testID="sign-in-button"
+                width="100%"
+                onPress={() => router.replace('/(auth)/login')}
+              >
                 Sign in
               </PrimaryButton>
             </YStack>

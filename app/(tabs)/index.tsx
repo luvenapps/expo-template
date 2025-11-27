@@ -16,7 +16,11 @@ export default function HomeScreen() {
           This is a fresh start. We&apos;ll grow the experience together as we add offline data,
           sync, and more polished visuals.
         </Paragraph>
-        <PrimaryButton width="100%" onPress={() => router.push('/(tabs)/settings')}>
+        <PrimaryButton
+          width="100%"
+          testID="get-started-button"
+          onPress={() => router.push('/(tabs)/settings')}
+        >
           Get Started
         </PrimaryButton>
       </ScreenContainer>
