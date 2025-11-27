@@ -1,6 +1,8 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import * as Localization from 'expo-localization';
+import { Platform } from 'react-native';
+import { DOMAIN } from '@/config/domain.config';
 
 import en from './locales/en.json';
 import es from './locales/es.json';
@@ -11,6 +13,7 @@ const resources = {
 };
 
 const fallbackLng = 'en';
+const LANGUAGE_STORAGE_KEY = `${DOMAIN.app.storageKey}-language`;
 
 function getDeviceLanguage() {
   const locales = Localization.getLocales?.();
@@ -19,14 +22,56 @@ function getDeviceLanguage() {
   return tag.split('-')[0];
 }
 
+function getNativeStore() {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { MMKV } = require('react-native-mmkv');
+    return new MMKV({ id: `${DOMAIN.app.cursorStorageId}-i18n` });
+  } catch {
+    return null;
+  }
+}
+
+function loadStoredLanguage(): string | null {
+  if (Platform.OS === 'web') {
+    try {
+      return globalThis?.localStorage?.getItem(LANGUAGE_STORAGE_KEY) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  try {
+    return getNativeStore()?.getString(LANGUAGE_STORAGE_KEY) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function persistLanguage(lng: string) {
+  if (Platform.OS === 'web') {
+    try {
+      globalThis?.localStorage?.setItem(LANGUAGE_STORAGE_KEY, lng);
+    } catch {
+      /* ignore */
+    }
+    return;
+  }
+
+  try {
+    getNativeStore()?.set(LANGUAGE_STORAGE_KEY, lng);
+  } catch {
+    /* ignore */
+  }
+}
+
 export function initializeI18n() {
   if (i18n.isInitialized) return i18n;
 
-  // eslint-disable-next-line import/no-named-as-default-member
   i18n.use(initReactI18next).init({
     compatibilityJSON: 'v3',
     resources,
-    lng: getDeviceLanguage(),
+    lng: loadStoredLanguage() ?? getDeviceLanguage(),
     fallbackLng,
     interpolation: {
       escapeValue: false,
@@ -41,7 +86,7 @@ export function setLanguage(lng: string) {
   if (!i18n.isInitialized) {
     initializeI18n();
   }
-  // eslint-disable-next-line import/no-named-as-default-member
+  persistLanguage(lng);
   void i18n.changeLanguage(lng);
 }
 
