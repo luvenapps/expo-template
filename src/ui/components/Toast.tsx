@@ -14,13 +14,15 @@ export type ToastMessage = {
   onAction?: () => void;
 };
 
+let toastIdCounter = 0;
+
 export function useToast() {
   const [messages, setMessages] = useState<ToastMessage[]>([]);
 
   const api = useMemo(
     () => ({
       show: (message: ToastMessage) => {
-        const id = message.id ?? `${Date.now()}`;
+        const id = message.id ?? `toast-${Date.now()}-${toastIdCounter++}`;
         setMessages((prev) => [...prev, { type: 'info', duration: 4000, ...message, id }]);
         return id;
       },
@@ -40,9 +42,10 @@ export type ToastController = ReturnType<typeof useToast>;
 type ToastContainerProps = {
   messages: ToastMessage[];
   dismiss: (id: string) => void;
+  testID?: string;
 };
 
-export function ToastContainer({ messages, dismiss }: ToastContainerProps) {
+export function ToastContainer({ messages, dismiss, testID }: ToastContainerProps) {
   useEffect(() => {
     const timers = messages.map((message) => {
       if (!message.duration) return undefined;
@@ -70,6 +73,7 @@ export function ToastContainer({ messages, dismiss }: ToastContainerProps) {
       gap="$2"
       pointerEvents="box-none"
       zIndex={1000}
+      testID={testID}
     >
       {messages.map((message) => (
         <ToastItem key={message.id} message={message} onDismiss={() => dismiss(message.id!)} />
@@ -84,7 +88,7 @@ type ToastItemProps = {
 };
 
 function ToastItem({ message, onDismiss }: ToastItemProps) {
-  const { type = 'info', title, description, actionLabel, onAction } = message;
+  const { type = 'info', title, description, actionLabel, onAction, id } = message;
   const colors: Record<ToastType, { background: string; text: string }> = {
     success: { background: '$backgroundStrong', text: '$color' },
     error: { background: '$dangerBackground', text: '$dangerColor' },
@@ -109,13 +113,22 @@ function ToastItem({ message, onDismiss }: ToastItemProps) {
       shadowRadius={4}
       borderWidth={1}
       borderColor="$borderColor"
+      testID={id ? `toast-${id}` : undefined}
     >
       <YStack flex={1} paddingRight="$3" gap="$1">
-        <Paragraph fontWeight="600" color={colors[type].text}>
+        <Paragraph
+          fontWeight="600"
+          color={colors[type].text}
+          testID={id ? `toast-${id}-title` : undefined}
+        >
           {title}
         </Paragraph>
         {description ? (
-          <Paragraph fontSize="$3" color="$colorMuted">
+          <Paragraph
+            fontSize="$3"
+            color="$colorMuted"
+            testID={id ? `toast-${id}-description` : undefined}
+          >
             {description}
           </Paragraph>
         ) : null}
@@ -126,6 +139,7 @@ function ToastItem({ message, onDismiss }: ToastItemProps) {
             color="$accentColor"
             onPress={handleAction}
             hoverStyle={{ opacity: 0.8, cursor: 'pointer' }}
+            testID={id ? `toast-${id}-action` : undefined}
           >
             {actionLabel}
           </Paragraph>
@@ -135,6 +149,7 @@ function ToastItem({ message, onDismiss }: ToastItemProps) {
         color="$colorMuted"
         onPress={onDismiss}
         hoverStyle={{ opacity: 0.8, cursor: 'pointer' }}
+        testID={id ? `toast-${id}-dismiss` : undefined}
       >
         ×
       </Paragraph>

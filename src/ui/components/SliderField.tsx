@@ -1,4 +1,3 @@
-/* istanbul ignore file */
 import type { ComponentProps } from 'react';
 import { Slider, YStack } from 'tamagui';
 import { CaptionText, LabelText } from './Text';
@@ -12,6 +11,9 @@ type SliderFieldProps = {
   step?: number;
   helperText?: string;
   sliderProps?: ComponentProps<typeof Slider>;
+  testID?: string;
+  labelTestID?: string;
+  helperTestID?: string;
 };
 
 export function SliderField({
@@ -23,10 +25,13 @@ export function SliderField({
   max = 100,
   step = 1,
   sliderProps,
+  testID,
+  labelTestID,
+  helperTestID,
 }: SliderFieldProps) {
   return (
-    <YStack gap="$2">
-      <LabelText>
+    <YStack gap="$2" testID={testID}>
+      <LabelText testID={labelTestID}>
         {label} • {value.map(Math.round).join(' – ')}
       </LabelText>
       <Slider
@@ -61,7 +66,7 @@ export function SliderField({
           />
         ) : null}
       </Slider>
-      {helperText ? <CaptionText>{helperText}</CaptionText> : null}
+      {helperText ? <CaptionText testID={helperTestID}>{helperText}</CaptionText> : null}
     </YStack>
   );
 }

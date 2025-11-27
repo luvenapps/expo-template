@@ -16,6 +16,10 @@ type CalendarHeatmapProps = {
   values: number[][];
   dayLabels?: string[];
   legend?: ReactNode;
+  testID?: string;
+  getCellTestID?: (weekIndex: number, dayIndex: number) => string;
+  dayLabelsTestID?: string;
+  legendTestID?: string;
 };
 
 export function CalendarHeatmap({
@@ -23,9 +27,13 @@ export function CalendarHeatmap({
   values,
   dayLabels = DEFAULT_DAY_LABELS,
   legend,
+  testID,
+  getCellTestID,
+  dayLabelsTestID,
+  legendTestID,
 }: CalendarHeatmapProps) {
   return (
-    <YStack gap="$3">
+    <YStack gap="$3" testID={testID}>
       <XStack gap="$2">
         {Array.from({ length: weeks }).map((_, weekIndex) => (
           <YStack key={`week-${weekIndex}`} gap="$1">
@@ -39,6 +47,7 @@ export function CalendarHeatmap({
                   height={16}
                   borderRadius={4}
                   backgroundColor={COLOR_TOKENS[colorIndex]}
+                  testID={getCellTestID?.(weekIndex, dayIndex)}
                 />
               );
             })}
@@ -46,9 +55,11 @@ export function CalendarHeatmap({
         ))}
       </XStack>
       <XStack justifyContent="space-between" alignItems="center">
-        <CaptionText color="$colorMuted">{dayLabels.join(' ')}</CaptionText>
+        <CaptionText color="$colorMuted" testID={dayLabelsTestID}>
+          {dayLabels.join(' ')}
+        </CaptionText>
         {legend ?? (
-          <XStack gap="$1" alignItems="center">
+          <XStack gap="$1" alignItems="center" testID={legendTestID}>
             {COLOR_TOKENS.map((color) => (
               <YStack key={color} width={16} height={8} borderRadius={2} backgroundColor={color} />
             ))}
