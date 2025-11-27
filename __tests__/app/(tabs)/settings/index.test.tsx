@@ -201,6 +201,13 @@ jest.mock('@tamagui/select', () => {
   };
 });
 
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => key,
+    i18n: { language: 'en', resolvedLanguage: 'en', languages: ['en'] },
+  }),
+}));
+
 // Mock Tamagui Lucide Icons
 jest.mock('@tamagui/lucide-icons', () => ({
   Monitor: ({ size, color }: any) => {

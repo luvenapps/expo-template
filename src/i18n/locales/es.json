@@ -1,0 +1,14 @@
+{
+  "common": {
+    "settings": "Configuración",
+    "developerUtilities": "Herramientas de desarrollo"
+  },
+  "dev": {
+    "registerPush": "Registrar token de push (Android)",
+    "languageSelectorLabel": "Idioma"
+  },
+  "settings": {
+    "languageTitle": "Idioma",
+    "languageDescription": "Elige tu idioma preferido."
+  }
+}

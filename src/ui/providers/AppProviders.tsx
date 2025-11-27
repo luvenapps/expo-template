@@ -23,6 +23,8 @@ import { ForegroundReminderToastHost } from '@/notifications/ForegroundReminderT
 import { cleanupSoftDeletedRecords } from '@/db/sqlite/cleanup';
 import { archiveOldEntries } from '@/db/sqlite/archive';
 import { optimizeDatabase } from '@/db/sqlite/maintenance';
+import i18n from '@/i18n';
+import { I18nextProvider } from 'react-i18next';
 
 const queryClient = getQueryClient();
 const persistOptions = getQueryClientPersistOptions();
@@ -161,22 +163,24 @@ export function AppProviders({ children }: PropsWithChildren) {
   }, [queueSize, syncStatus]);
 
   return (
-    <AnalyticsProvider>
-      <GestureHandlerRootView style={{ flex: 1, backgroundColor: palette.background }}>
-        <ForegroundReminderToastHost />
-        <SafeAreaProvider>
-          {isWeb && persistOptions ? (
-            <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
-              <AppContent resolvedTheme={resolvedTheme}>{children}</AppContent>
-            </PersistQueryClientProvider>
-          ) : (
-            <QueryClientProvider client={queryClient}>
-              <AppContent resolvedTheme={resolvedTheme}>{children}</AppContent>
-            </QueryClientProvider>
-          )}
-        </SafeAreaProvider>
-      </GestureHandlerRootView>
-    </AnalyticsProvider>
+    <I18nextProvider i18n={i18n}>
+      <AnalyticsProvider>
+        <GestureHandlerRootView style={{ flex: 1, backgroundColor: palette.background }}>
+          <ForegroundReminderToastHost />
+          <SafeAreaProvider>
+            {isWeb && persistOptions ? (
+              <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
+                <AppContent resolvedTheme={resolvedTheme}>{children}</AppContent>
+              </PersistQueryClientProvider>
+            ) : (
+              <QueryClientProvider client={queryClient}>
+                <AppContent resolvedTheme={resolvedTheme}>{children}</AppContent>
+              </QueryClientProvider>
+            )}
+          </SafeAreaProvider>
+        </GestureHandlerRootView>
+      </AnalyticsProvider>
+    </I18nextProvider>
   );
 }
 

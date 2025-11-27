@@ -7,6 +7,8 @@ module.exports = {
     '^@/(.*)$': '<rootDir>/src/$1',
     '^uuid$': '<rootDir>/__mocks__/uuid.ts',
     '^@react-native-firebase/messaging$': '<rootDir>/__mocks__/reactNativeFirebaseMessaging.js',
+    '^i18next$': '<rootDir>/__mocks__/i18next.js',
+    '^react-i18next$': '<rootDir>/__mocks__/reactI18next.js',
   },
   reporters: [
     'default',

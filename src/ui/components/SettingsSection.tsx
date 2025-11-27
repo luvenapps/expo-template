@@ -21,7 +21,7 @@ export function SettingsSection({
       <Card.Header padded gap="$2" alignItems="center">
         <XStack alignItems="center" gap="$2">
           {icon}
-          <Paragraph fontWeight="700" fontSize="$5" color="$color">
+          <Paragraph fontWeight="700" fontSize="$5" color="$color" paddingBottom="$1">
             {title}
           </Paragraph>
         </XStack>

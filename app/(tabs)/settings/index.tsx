@@ -12,10 +12,11 @@ import { onDatabaseReset } from '@/db/sqlite/events';
 import { optimizeDatabase } from '@/db/sqlite/maintenance';
 import { withDatabaseRetry } from '@/db/sqlite/retry';
 import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
+import { setLanguage, supportedLanguages } from '@/i18n';
+import { registerForPushNotifications } from '@/notifications/firebasePush';
 import { DEFAULT_NOTIFICATION_PREFERENCES } from '@/notifications/preferences';
 import { scheduleReminder } from '@/notifications/scheduler';
 import { useNotificationSettings } from '@/notifications/useNotificationSettings';
-import { registerForPushNotifications } from '@/notifications/firebasePush';
 import { useSyncStore } from '@/state';
 import { pullUpdates, pushOutbox, useSync } from '@/sync';
 import { resetCursors } from '@/sync/cursors';
@@ -36,6 +37,7 @@ import { Calendar, Flame, Monitor, Moon, RefreshCw, Sun } from '@tamagui/lucide-
 import { useRouter } from 'expo-router';
 import type { ComponentType } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Platform } from 'react-native';
 import { Button, Paragraph, Progress, Switch, Text, View, XStack, YStack } from 'tamagui';
 
@@ -83,6 +85,8 @@ export default function SettingsScreen() {
   const isSeedingRef = useRef(false); // Synchronous lock to prevent rapid-clicking (state updates are async)
   const isClearingRef = useRef(false); // Synchronous lock for clear operations
   const toast = useToast();
+  const { t, i18n } = useTranslation();
+  const currentLanguage = (i18n.resolvedLanguage || i18n.languages?.[0] || 'en').split('-')[0];
   const showFriendlyError = useFriendlyErrorHandler(toast);
   const syncDisabledMessage = !isNative
     ? 'Background sync requires the iOS or Android app to access the local database.'
@@ -513,6 +517,39 @@ export default function SettingsScreen() {
           </PrimaryButton>
         </SettingsSection>
 
+        <SettingsSection
+          title={t('settings.languageTitle')}
+          description={t('settings.languageDescription')}
+        >
+          <YStack gap="$2">
+            {supportedLanguages.map((lang) => {
+              const isActive = currentLanguage === lang.code;
+              return (
+                <Button
+                  key={lang.code}
+                  size="$5"
+                  height={48}
+                  borderRadius="$3"
+                  borderStyle="solid"
+                  borderColor="$borderColor"
+                  backgroundColor={isActive ? '$accentColor' : '$background'}
+                  color={isActive ? 'white' : '$color'}
+                  pressStyle={{
+                    backgroundColor: isActive ? '$accentColor' : '$backgroundPress',
+                  }}
+                  hoverStyle={{
+                    backgroundColor: isActive ? '$accentColor' : '$backgroundHover',
+                  }}
+                  disabled={isActive}
+                  onPress={() => setLanguage(lang.code)}
+                >
+                  {lang.label}
+                </Button>
+              );
+            })}
+          </YStack>
+        </SettingsSection>
+
         <SettingsSection title="Theme" description="Select a theme on this device.">
           <XStack gap="$2">
             {THEME_OPTIONS.map(({ value, label, Icon }) => {
@@ -538,7 +575,7 @@ export default function SettingsScreen() {
                   aria-label={label}
                   onPress={() => handleThemeSelection(value)}
                 >
-                  <Icon size={20} color={isActive ? 'white' : undefined} />
+                  <Icon size={20} color={isActive ? 'white' : '$color'} />
                 </Button>
               );
             })}
@@ -717,7 +754,7 @@ export default function SettingsScreen() {
                 </XStack>
                 <XStack>
                   <SecondaryButton disabled={!isNative} onPress={handleRegisterPush}>
-                    Register push token (Android)
+                    {t('dev.registerPush')}
                   </SecondaryButton>
                 </XStack>
                 <YStack gap="$2">

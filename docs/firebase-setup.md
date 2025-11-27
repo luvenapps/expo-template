@@ -49,6 +49,7 @@ Inside the same Firebase project, register each platform:
 
 1. After dropping the plist/json, run `npm start` for Metro and `npm run ios` / `npm run android` to rebuild dev clients so the Firebase config is embedded.
 2. Open the app (native + web) and trigger a few actions (e.g., toggles in Settings). In the Firebase Console → Analytics → DebugView you should see events like `notifications:reminders` and IAM lifecycle events (`iam:displayed`, `iam:clicked`, `iam:dismissed`) appear almost immediately.
+3. For Android push: tap **Settings → Developer Utilities → Register push token (Android)** to log the FCM token in Metro, then in Firebase Console → Cloud Messaging use “Send test message” with that token (notification message). Foreground and background delivery should work; iOS/web push are deferred to Stage 11.
 
 ## 5. Next steps
 
