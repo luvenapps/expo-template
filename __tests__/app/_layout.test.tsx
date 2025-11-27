@@ -158,9 +158,7 @@ describe('RootLayout', () => {
   test('registers all screens', () => {
     render(<RootLayout />);
 
-    expect(recordedScreens).toEqual(
-      expect.arrayContaining(['index', '(auth)', '(tabs)', 'details']),
-    );
+    expect(recordedScreens).toEqual(expect.arrayContaining(['index', '(auth)', '(tabs)']));
   });
 
   test('renders with dark theme when resolvedTheme is dark', () => {
@@ -181,8 +179,6 @@ describe('RootLayout', () => {
     render(<RootLayout />);
 
     // Verify it renders without errors
-    expect(recordedScreens).toEqual(
-      expect.arrayContaining(['index', '(auth)', '(tabs)', 'details']),
-    );
+    expect(recordedScreens).toEqual(expect.arrayContaining(['index', '(auth)', '(tabs)']));
   });
 });

@@ -139,7 +139,6 @@ and codebase conventions so agents can run reliably without human context.
     - `_layout.tsx` – Tab navigator (Home, Settings)
     - `index.tsx` – Home screen (Today view)
     - `settings/index.tsx` – Settings with auth controls and sync status
-  - `app/details.tsx` – Placeholder detail screen
 
 - `src/`
   - `auth/` – Supabase client, session store (Zustand), auth services
