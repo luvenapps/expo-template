@@ -68,6 +68,7 @@ function persistLanguage(lng: string) {
 export function initializeI18n() {
   if (i18n.isInitialized) return i18n;
 
+  // eslint-disable-next-line import/no-named-as-default-member
   i18n.use(initReactI18next).init({
     compatibilityJSON: 'v3',
     resources,
@@ -87,6 +88,7 @@ export function setLanguage(lng: string) {
     initializeI18n();
   }
   persistLanguage(lng);
+  // eslint-disable-next-line import/no-named-as-default-member
   void i18n.changeLanguage(lng);
 }
 

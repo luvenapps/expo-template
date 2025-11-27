@@ -7,6 +7,9 @@ type SettingsSectionProps = PropsWithChildren<{
   icon?: ReactNode;
   footer?: ReactNode | string;
   align?: 'start' | 'center';
+  testID?: string;
+  descriptionTestID?: string;
+  footerTestID?: string;
 }>;
 
 export function SettingsSection({
@@ -15,9 +18,12 @@ export function SettingsSection({
   icon,
   children,
   footer,
+  testID,
+  descriptionTestID,
+  footerTestID,
 }: SettingsSectionProps) {
   return (
-    <Card size="$4" bordered backgroundColor="$surface">
+    <Card size="$4" bordered backgroundColor="$surface" testID={testID}>
       <Card.Header padded gap="$2" alignItems="center">
         <XStack alignItems="center" gap="$2">
           {icon}
@@ -26,7 +32,12 @@ export function SettingsSection({
           </Paragraph>
         </XStack>
         {description ? (
-          <Paragraph color="$colorMuted" fontSize="$3" textAlign="center">
+          <Paragraph
+            color="$colorMuted"
+            fontSize="$3"
+            textAlign="center"
+            testID={descriptionTestID}
+          >
             {description}
           </Paragraph>
         ) : null}
@@ -37,7 +48,7 @@ export function SettingsSection({
       {footer ? (
         <Card.Footer padded>
           {typeof footer === 'string' ? (
-            <Paragraph color="$colorMuted" fontSize="$2" textAlign="center">
+            <Paragraph color="$colorMuted" fontSize="$2" textAlign="center" testID={footerTestID}>
               {footer}
             </Paragraph>
           ) : (

@@ -31,6 +31,13 @@
     "syncDisabled": "Inicia sesión en una build nativa para sincronizar.",
     "syncing": "Sincronizando…",
     "manualSyncSuccess": "Sincronización exitosa.",
-    "manualSyncFailed": "La sincronización falló. Inténtalo de nuevo."
+    "manualSyncFailed": "La sincronización falló. Inténtalo de nuevo.",
+    "notificationsTitle": "Notificaciones",
+    "notificationsDescription": "Controla los recordatorios y resúmenes diarios.",
+    "remindersTitle": "Recordatorios",
+    "remindersDescription": "Envía notificaciones push cuando sea hora de registrar progreso.",
+    "dailySummaryTitle": "Resumen diario",
+    "dailySummaryDescription": "Recibe un breve resumen de tus rachas.",
+    "upcomingFeatures": "Pronto llegarán más ajustes junto con controles de tema y exportación de datos."
   }
 }

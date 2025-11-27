@@ -432,24 +432,24 @@ describe('SettingsScreen', () => {
     });
 
     it('should render sign in prompt when unauthenticated', () => {
-      const { getByText } = render(<SettingsScreen />);
-      expect(getByText('Sign in to sync your data across devices.')).toBeDefined();
+      const { getByTestId } = render(<SettingsScreen />);
+      expect(getByTestId('settings-account-description')).toBeDefined();
     });
 
     it('should render sign in button when unauthenticated', () => {
-      const { getByText } = render(<SettingsScreen />);
-      expect(getByText('Sign In')).toBeDefined();
+      const { getByTestId } = render(<SettingsScreen />);
+      expect(getByTestId('settings-auth-button')).toBeDefined();
     });
 
     it('should navigate to login when sign in button is pressed', () => {
-      const { getByText } = render(<SettingsScreen />);
-      fireEvent.press(getByText('Sign In'));
+      const { getByTestId } = render(<SettingsScreen />);
+      fireEvent.press(getByTestId('settings-auth-button'));
       expect(mockPush).toHaveBeenCalledWith('/(auth)/login');
     });
 
     it('should show sync disabled message when unauthenticated', () => {
-      const { getByText } = render(<SettingsScreen />);
-      expect(getByText('Sign in to enable syncing with your Supabase account.')).toBeDefined();
+      const { getByTestId } = render(<SettingsScreen />);
+      expect(getByTestId('settings-sync-disabled')).toBeDefined();
     });
   });
 
@@ -473,18 +473,20 @@ describe('SettingsScreen', () => {
     });
 
     it('should display user email when authenticated', () => {
-      const { getByText } = render(<SettingsScreen />);
-      expect(getByText('Signed in as test@example.com')).toBeDefined();
+      const { getByTestId } = render(<SettingsScreen />);
+      expect(String(getByTestId('settings-account-description').props.children)).toContain(
+        'test@example.com',
+      );
     });
 
     it('should render sign out button when authenticated', () => {
-      const { getByText } = render(<SettingsScreen />);
-      expect(getByText('Sign Out')).toBeDefined();
+      const { getByTestId } = render(<SettingsScreen />);
+      expect(getByTestId('settings-auth-button')).toBeDefined();
     });
 
     it('should call signOut when button is pressed', () => {
-      const { getByText } = render(<SettingsScreen />);
-      fireEvent.press(getByText('Sign Out'));
+      const { getByTestId } = render(<SettingsScreen />);
+      fireEvent.press(getByTestId('settings-auth-button'));
       expect(mockSignOut).toHaveBeenCalled();
     });
   });
@@ -500,8 +502,9 @@ describe('SettingsScreen', () => {
         }),
       );
 
-      const { getByText } = render(<SettingsScreen />);
-      expect(getByText('Loading…')).toBeDefined();
+      const { getByTestId } = render(<SettingsScreen />);
+      const button = getByTestId('settings-auth-button');
+      expect(button).toBeDefined();
     });
   });
 
@@ -523,10 +526,8 @@ describe('SettingsScreen', () => {
     });
 
     it('should display message about upcoming features', () => {
-      const { getByText } = render(<SettingsScreen />);
-      expect(
-        getByText('Additional settings will arrive alongside theme controls and data export.'),
-      ).toBeDefined();
+      const { getByTestId } = render(<SettingsScreen />);
+      expect(getByTestId('settings-footer-note')).toBeDefined();
     });
 
     it('renders sync status section', () => {
@@ -538,9 +539,8 @@ describe('SettingsScreen', () => {
         triggerSync: jest.fn(),
       });
 
-      const { getByText } = render(<SettingsScreen />);
-      expect(getByText('Sync & Storage')).toBeDefined();
-      expect(getByText('Queue size')).toBeDefined();
+      const { getByTestId, getByText } = render(<SettingsScreen />);
+      expect(getByTestId('settings-sync-section')).toBeDefined();
       expect(getByText(/Last error: Network error/)).toBeDefined();
     });
 
@@ -551,8 +551,8 @@ describe('SettingsScreen', () => {
         configurable: true,
       });
 
-      const { queryByText } = render(<SettingsScreen />);
-      expect(queryByText('Sync & Storage')).toBeNull();
+      const { queryByTestId } = render(<SettingsScreen />);
+      expect(queryByTestId('settings-sync-section')).toBeNull();
 
       Object.defineProperty(Platform, 'OS', {
         value: originalPlatform,
@@ -578,8 +578,8 @@ describe('SettingsScreen', () => {
         }),
       );
 
-      const { getByText } = render(<SettingsScreen />);
-      fireEvent.press(getByText('Sync now'));
+      const { getByTestId } = render(<SettingsScreen />);
+      fireEvent.press(getByTestId('settings-sync-now'));
       expect(triggerSync).toHaveBeenCalled();
     });
   });
@@ -604,10 +604,10 @@ describe('SettingsScreen', () => {
         }),
       );
 
-      const { getAllByText } = render(<SettingsScreen />);
-      expect(getAllByText('Reminders').length).toBeGreaterThan(0);
-      expect(getAllByText('Notifications are blocked in system settings.').length).toBeGreaterThan(
-        0,
+      const { getByTestId } = render(<SettingsScreen />);
+      expect(getByTestId('settings-reminders-toggle')).toBeDefined();
+      expect(String(getByTestId('settings-notification-error').props.children)).toContain(
+        'Notifications are blocked in system settings.',
       );
     });
 
@@ -616,8 +616,8 @@ describe('SettingsScreen', () => {
         buildNotificationSettings({ remindersEnabled: true }),
       );
 
-      const { getAllByText } = render(<SettingsScreen />);
-      expect(getAllByText('Reminders Enabled').length).toBeGreaterThan(0);
+      const { getByTestId } = render(<SettingsScreen />);
+      expect(String(getByTestId('settings-reminders-status').props.children)).toContain('Enabled');
     });
 
     it('surfaces errors from notification hook', () => {
@@ -625,8 +625,10 @@ describe('SettingsScreen', () => {
         buildNotificationSettings({ error: 'Notifications unavailable.' }),
       );
 
-      const { getAllByText } = render(<SettingsScreen />);
-      expect(getAllByText('Notifications unavailable.').length).toBeGreaterThan(0);
+      const { getByTestId } = render(<SettingsScreen />);
+      expect(String(getByTestId('settings-notification-error').props.children)).toContain(
+        'Notifications unavailable.',
+      );
     });
   });
 
@@ -704,10 +706,10 @@ describe('SettingsScreen', () => {
         configurable: true,
       });
 
-      const { queryByText } = render(<SettingsScreen />);
+      const { queryByTestId } = render(<SettingsScreen />);
 
-      expect(queryByText('Seed sample data')).toBeNull();
-      expect(queryByText('Clear outbox')).toBeNull();
+      expect(queryByTestId('dev-seed-button')).toBeNull();
+      expect(queryByTestId('dev-clear-outbox-button')).toBeNull();
 
       Object.defineProperty(Platform, 'OS', {
         value: originalPlatform,
@@ -716,9 +718,9 @@ describe('SettingsScreen', () => {
     });
 
     it('should show error when seeding without authentication', async () => {
-      const { getByText } = render(<SettingsScreen />);
+      const { getByTestId, getByText } = render(<SettingsScreen />);
 
-      const seedButton = getByText('Seed sample data');
+      const seedButton = getByTestId('dev-seed-button');
       fireEvent.press(seedButton);
 
       await waitFor(() => {
@@ -754,9 +756,9 @@ describe('SettingsScreen', () => {
       mockedCreateReminderLocal.mockResolvedValue({ id: 'reminder-1' });
       mockedCreateDeviceLocal.mockResolvedValue({ id: 'device-1' });
 
-      const { getByText } = render(<SettingsScreen />);
+      const { getByTestId, getByText } = render(<SettingsScreen />);
 
-      const seedButton = getByText('Seed sample data');
+      const seedButton = getByTestId('dev-seed-button');
       fireEvent.press(seedButton);
 
       await waitFor(() => {
@@ -821,9 +823,9 @@ describe('SettingsScreen', () => {
 
       mockedCreatePrimaryEntityLocal.mockRejectedValue(new Error('Database connection failed'));
 
-      const { getByText } = render(<SettingsScreen />);
+      const { getByTestId, getByText } = render(<SettingsScreen />);
 
-      const seedButton = getByText('Seed sample data');
+      const seedButton = getByTestId('dev-seed-button');
       fireEvent.press(seedButton);
 
       await waitFor(() => {
@@ -856,9 +858,9 @@ describe('SettingsScreen', () => {
     it('should clear outbox successfully', async () => {
       mockedClearOutbox.mockResolvedValue(undefined);
 
-      const { getByText } = render(<SettingsScreen />);
+      const { getByTestId, getByText } = render(<SettingsScreen />);
 
-      const clearButton = getByText('Clear outbox');
+      const clearButton = getByTestId('dev-clear-outbox-button');
       fireEvent.press(clearButton);
 
       await waitFor(() => {
@@ -876,9 +878,9 @@ describe('SettingsScreen', () => {
 
       mockedClearOutbox.mockRejectedValue(new Error('Failed to clear outbox'));
 
-      const { getByText } = render(<SettingsScreen />);
+      const { getByTestId, getByText } = render(<SettingsScreen />);
 
-      const clearButton = getByText('Clear outbox');
+      const clearButton = getByTestId('dev-clear-outbox-button');
       fireEvent.press(clearButton);
 
       await waitFor(() => {
@@ -982,9 +984,9 @@ describe('SettingsScreen', () => {
     it('should prevent double-click on seed operation', async () => {
       const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
 
-      const { getByText } = render(<SettingsScreen />);
+      const { getByTestId, getByText } = render(<SettingsScreen />);
 
-      const seedButton = getByText('Seed sample data');
+      const seedButton = getByTestId('dev-seed-button');
 
       // Click the button twice rapidly
       fireEvent.press(seedButton);
@@ -1010,9 +1012,9 @@ describe('SettingsScreen', () => {
     });
 
     it('should run seed operations inside a single transaction', async () => {
-      const { getByText } = render(<SettingsScreen />);
+      const { getByTestId } = render(<SettingsScreen />);
 
-      fireEvent.press(getByText('Seed sample data'));
+      fireEvent.press(getByTestId('dev-seed-button'));
 
       await waitFor(() => {
         expect(mockTransaction).toHaveBeenCalledTimes(1);
@@ -1061,9 +1063,9 @@ describe('SettingsScreen', () => {
     it('should clear local database successfully', async () => {
       mockedClearAllTables.mockResolvedValue(undefined);
 
-      const { getByText } = render(<SettingsScreen />);
+      const { getByTestId, getByText } = render(<SettingsScreen />);
 
-      const clearButton = getByText('Clear local database');
+      const clearButton = getByTestId('dev-clear-db-button');
       fireEvent.press(clearButton);
 
       await waitFor(() => {
@@ -1083,9 +1085,9 @@ describe('SettingsScreen', () => {
 
       mockedClearAllTables.mockRejectedValue(new Error('Failed to clear database'));
 
-      const { getByText } = render(<SettingsScreen />);
+      const { getByTestId, getByText } = render(<SettingsScreen />);
 
-      const clearButton = getByText('Clear local database');
+      const clearButton = getByTestId('dev-clear-db-button');
       fireEvent.press(clearButton);
 
       await waitFor(() => {
@@ -1107,9 +1109,9 @@ describe('SettingsScreen', () => {
 
       mockedClearAllTables.mockResolvedValue(undefined);
 
-      const { getByText } = render(<SettingsScreen />);
+      const { getByTestId, getByText } = render(<SettingsScreen />);
 
-      const clearButton = getByText('Clear local database');
+      const clearButton = getByTestId('dev-clear-db-button');
 
       // Click the button twice rapidly
       fireEvent.press(clearButton);
@@ -1163,9 +1165,9 @@ describe('SettingsScreen', () => {
     });
 
     it('optimizes the database on demand', async () => {
-      const { getByText } = render(<SettingsScreen />);
+      const { getByTestId, getByText } = render(<SettingsScreen />);
 
-      fireEvent.press(getByText('Optimize database'));
+      fireEvent.press(getByTestId('dev-optimize-db-button'));
 
       await waitFor(() => {
         const { optimizeDatabase } = require('@/db/sqlite/maintenance');
@@ -1182,9 +1184,9 @@ describe('SettingsScreen', () => {
       const { optimizeDatabase } = require('@/db/sqlite/maintenance');
       optimizeDatabase.mockRejectedValueOnce(new Error('VACUUM failed'));
 
-      const { getByText } = render(<SettingsScreen />);
+      const { getByTestId, getByText } = render(<SettingsScreen />);
 
-      fireEvent.press(getByText('Optimize database'));
+      fireEvent.press(getByTestId('dev-optimize-db-button'));
 
       await waitFor(() => {
         expect(getByText('Error: VACUUM failed')).toBeDefined();

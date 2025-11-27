@@ -270,6 +270,15 @@ Jest config; prefer them over relative imports.
   - Extend `__tests__/setup.ts` mocks if module touches Expo native APIs
   - Avoid breaking Node test environment
 
+- **UI component testing best practices**:
+  - **Use `testID` props** for reliable component queries
+  - Avoid brittle assertions on translated text or dynamic content
+  - Add `testID="descriptive-name"` to components for test queries
+  - Use `getByTestId('descriptive-name')` instead of `getByText()` in tests
+  - Example: `<Button testID="submit-button">{t('common.submit')}</Button>`
+  - This prevents tests from breaking when copy changes or translations are updated
+  - For i18n testing: mock translations to return keys, assert on keys instead of text values
+
 ## Debugging & Troubleshooting
 
 ### Metro Bundler Issues

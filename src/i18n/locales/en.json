@@ -31,6 +31,13 @@
     "syncDisabled": "Sign in on a native build to sync.",
     "syncing": "Syncing…",
     "manualSyncSuccess": "Synced successfully.",
-    "manualSyncFailed": "Sync failed. Try again."
+    "manualSyncFailed": "Sync failed. Try again.",
+    "notificationsTitle": "Notifications",
+    "notificationsDescription": "Control reminder prompts and daily summaries.",
+    "remindersTitle": "Reminders",
+    "remindersDescription": "Send push notifications when it’s time to log progress.",
+    "dailySummaryTitle": "Daily summary",
+    "dailySummaryDescription": "Receive a brief recap of streaks.",
+    "upcomingFeatures": "Additional settings will arrive alongside theme controls and data export."
   }
 }

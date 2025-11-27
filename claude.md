@@ -81,6 +81,11 @@ Before implementing:
 - Look for existing test patterns before writing new tests
 - Match the testing framework and style already in use
 - Write tests for new functionality when appropriate
+- **Use `testID` for UI components** - Avoid brittle assertions on translated text or dynamic content
+  - Add `testID="descriptive-name"` to components for reliable test queries
+  - Use `getByTestId('descriptive-name')` in tests instead of `getByText()`
+  - Example: `<Button testID="submit-button">{t('common.submit')}</Button>`
+  - This prevents tests from breaking when copy changes or translations are updated
 
 ## Documentation
 

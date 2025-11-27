@@ -86,7 +86,7 @@ export default function SettingsScreen() {
   const isClearingRef = useRef(false); // Synchronous lock for clear operations
   const toast = useToast();
   const { t, i18n } = useTranslation();
-  const currentLanguage = (i18n.resolvedLanguage || i18n.languages?.[0] || 'en').split('-')[0];
+  const currentLanguage = (i18n.language ?? 'en').split('-')[0];
   const showFriendlyError = useFriendlyErrorHandler(toast);
   const syncDisabledMessage = !isNative
     ? 'Background sync requires the iOS or Android app to access the local database.'
@@ -117,13 +117,16 @@ export default function SettingsScreen() {
       checked,
       disabled,
       onChange,
+      testID,
     }: {
       checked: boolean;
       disabled: boolean;
       onChange: (checked: boolean) => void;
+      testID?: string;
     }) => (
       <View width={Platform.OS === 'web' ? 64 : 'auto'} alignItems="flex-end">
         <Switch
+          testID={testID}
           size="$7"
           disabled={disabled}
           checked={checked}
@@ -506,8 +509,13 @@ export default function SettingsScreen() {
               ? t('settings.accountSignedInDescription').replace('{{email}}', session.user.email)
               : t('settings.accountSignInDescription');
           return (
-            <SettingsSection title={t('settings.accountTitle')} description={accountDescription}>
+            <SettingsSection
+              title={t('settings.accountTitle')}
+              description={accountDescription}
+              descriptionTestID="settings-account-description"
+            >
               <PrimaryButton
+                testID="settings-auth-button"
                 marginBottom={isNative ? '$5' : ''}
                 disabled={isLoading}
                 onPress={handleAuthAction}
@@ -532,6 +540,7 @@ export default function SettingsScreen() {
               return (
                 <Button
                   key={lang.code}
+                  testID={`language-option-${lang.code}`}
                   size="$5"
                   height={48}
                   borderRadius="$3"
@@ -594,16 +603,16 @@ export default function SettingsScreen() {
         </SettingsSection>
 
         <SettingsSection
-          title="Notifications"
-          description="Control reminder prompts and daily summaries."
+          title={t('settings.notificationsTitle')}
+          description={t('settings.notificationsDescription')}
           footer={notificationError ?? undefined}
         >
           <YStack gap="$4">
             <XStack alignItems="center" justifyContent="space-between">
               <YStack gap="$1" flex={1} paddingRight="$3">
-                <Paragraph fontWeight="600">Reminders</Paragraph>
+                <Paragraph fontWeight="600">{t('settings.remindersTitle')}</Paragraph>
                 <Paragraph color="$colorMuted" fontSize="$3">
-                  Send push notifications when it’s time to log progress.
+                  {t('settings.remindersDescription')}
                 </Paragraph>
               </YStack>
               <View width={Platform.OS === 'web' ? 64 : 'auto'}>
@@ -611,33 +620,35 @@ export default function SettingsScreen() {
                   checked: remindersEnabled,
                   disabled: !notificationsSupported || isCheckingNotifications,
                   onChange: (checked) => toggleReminders(checked),
+                  testID: 'settings-reminders-toggle',
                 })}
               </View>
             </XStack>
 
             <XStack alignItems="center" justifyContent="space-between">
               <YStack gap="$1" flex={1} paddingRight="$3">
-                <Paragraph fontWeight="600">Daily summary</Paragraph>
+                <Paragraph fontWeight="600">{t('settings.dailySummaryTitle')}</Paragraph>
                 <Paragraph color="$colorMuted" fontSize="$3">
-                  Receive a brief recap of streaks.
+                  {t('settings.dailySummaryDescription')}
                 </Paragraph>
               </YStack>
               {renderToggle({
                 checked: dailySummaryEnabled,
                 disabled: !notificationsSupported || permissionStatus === 'blocked',
                 onChange: (checked) => toggleDailySummary(checked),
+                testID: 'settings-daily-summary-toggle',
               })}
             </XStack>
 
             <YStack gap="$1">
-              <Paragraph color="$colorMuted" fontSize="$3">
-                Reminders {remindersEnabled ? 'Enabled' : 'Disabled'}
+              <Paragraph color="$colorMuted" fontSize="$3" testID="settings-reminders-status">
+                {t('settings.remindersTitle')} {remindersEnabled ? 'Enabled' : 'Disabled'}
               </Paragraph>
-              <Paragraph color="$colorMuted" fontSize="$3">
-                Daily summary {dailySummaryEnabled ? 'Enabled' : 'Disabled'}
+              <Paragraph color="$colorMuted" fontSize="$3" testID="settings-dailysummary-status">
+                {t('settings.dailySummaryTitle')} {dailySummaryEnabled ? 'Enabled' : 'Disabled'}
               </Paragraph>
               {notificationError ? (
-                <Paragraph color="$dangerColor" fontSize="$3">
+                <Paragraph color="$dangerColor" fontSize="$3" testID="settings-notification-error">
                   {notificationError}
                 </Paragraph>
               ) : null}
@@ -665,6 +676,8 @@ export default function SettingsScreen() {
               title="Sync & Storage"
               description="Review local queue status and run a manual sync with Supabase."
               footer={syncDisabledMessage}
+              testID="settings-sync-section"
+              footerTestID={syncDisabledMessage ? 'settings-sync-disabled' : undefined}
             >
               <XStack gap="$2" flexWrap="wrap">
                 <StatCard
@@ -711,6 +724,7 @@ export default function SettingsScreen() {
                   size="$5"
                   disabled={!canSync || isSyncing}
                   onPress={handleManualSync}
+                  testID="settings-sync-now"
                 >
                   {isSyncing ? 'Syncing…' : 'Sync now'}
                 </PrimaryButton>
@@ -725,6 +739,7 @@ export default function SettingsScreen() {
               >
                 <XStack>
                   <PrimaryButton
+                    testID="dev-seed-button"
                     disabled={!hasSession || isSeeding || isSyncing}
                     onPress={handleSeedSampleData}
                   >
@@ -734,6 +749,7 @@ export default function SettingsScreen() {
 
                 <XStack>
                   <SecondaryButton
+                    testID="dev-clear-outbox-button"
                     disabled={!hasSession || !hasOutboxData}
                     onPress={handleClearOutbox}
                   >
@@ -741,12 +757,20 @@ export default function SettingsScreen() {
                   </SecondaryButton>
                 </XStack>
                 <XStack>
-                  <SecondaryButton disabled={isClearing} onPress={handleClearLocalDatabase}>
+                  <SecondaryButton
+                    testID="dev-clear-db-button"
+                    disabled={isClearing}
+                    onPress={handleClearLocalDatabase}
+                  >
                     {isClearing ? 'Clearing…' : 'Clear local database'}
                   </SecondaryButton>
                 </XStack>
                 <XStack>
-                  <SecondaryButton disabled={isOptimizingDb} onPress={handleOptimizeDatabase}>
+                  <SecondaryButton
+                    testID="dev-optimize-db-button"
+                    disabled={isOptimizingDb}
+                    onPress={handleOptimizeDatabase}
+                  >
                     {isOptimizingDb ? 'Optimizing…' : 'Optimize database'}
                   </SecondaryButton>
                 </XStack>
@@ -764,7 +788,11 @@ export default function SettingsScreen() {
                   </SecondaryButton>
                 </XStack>
                 <XStack>
-                  <SecondaryButton disabled={!isNative} onPress={handleRegisterPush}>
+                  <SecondaryButton
+                    testID="dev-register-push-button"
+                    disabled={!isNative}
+                    onPress={handleRegisterPush}
+                  >
                     {t('dev.registerPush')}
                   </SecondaryButton>
                 </XStack>
@@ -779,6 +807,7 @@ export default function SettingsScreen() {
                     </SecondaryButton>
                     <YStack gap="$2" alignItems="center">
                       <Switch
+                        testID="dev-archive-toggle"
                         size="$7"
                         disabled={isArchiving}
                         checked={archiveOffsetDays === -1}
@@ -806,7 +835,12 @@ export default function SettingsScreen() {
           </>
         )}
 
-        <Paragraph textAlign="center" color="$colorMuted" marginBottom="$4">
+        <Paragraph
+          textAlign="center"
+          color="$colorMuted"
+          marginBottom="$4"
+          testID="settings-footer-note"
+        >
           Additional settings will arrive alongside theme controls and data export.
         </Paragraph>
       </YStack>
