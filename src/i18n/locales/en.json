@@ -9,6 +9,28 @@
   },
   "settings": {
     "languageTitle": "Language",
-    "languageDescription": "Choose your preferred language."
+    "languageDescription": "Choose your preferred language.",
+    "accountTitle": "Account",
+    "accountSignInDescription": "Sign in to sync your data across devices.",
+    "accountSignedInDescription": "Signed in as {{email}}",
+    "signIn": "Sign In",
+    "signOut": "Sign Out",
+    "loading": "Loading…",
+    "themeTitle": "Theme",
+    "themeDescription": "Select a theme on this device.",
+    "themeSystem": "Follow System",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "todayCardTitle": "Today",
+    "todayCardSubtitle": "Progress across habits",
+    "streaksCardTitle": "Streaks",
+    "streaksCardSubtitle": "Keep your streak alive",
+    "progressCardTitle": "Sync status",
+    "progressCardSubtitle": "Outbox capacity: {{percent}}%",
+    "syncNow": "Sync now",
+    "syncDisabled": "Sign in on a native build to sync.",
+    "syncing": "Syncing…",
+    "manualSyncSuccess": "Synced successfully.",
+    "manualSyncFailed": "Sync failed. Try again."
   }
 }

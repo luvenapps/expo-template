@@ -500,22 +500,27 @@ export default function SettingsScreen() {
   const content = (
     <ScreenContainer contentContainerStyle={{ flexGrow: 1, paddingBottom: 96 }}>
       <YStack gap="$4">
-        <SettingsSection
-          title="Account"
-          description={
+        {(() => {
+          const accountDescription =
             status === 'authenticated' && session?.user?.email
-              ? `Signed in as ${session.user.email}`
-              : 'Sign in to sync your data across devices.'
-          }
-        >
-          <PrimaryButton
-            marginBottom={isNative ? '$5' : ''}
-            disabled={isLoading}
-            onPress={handleAuthAction}
-          >
-            {isLoading ? 'Loading…' : status === 'authenticated' ? 'Sign Out' : 'Sign In'}
-          </PrimaryButton>
-        </SettingsSection>
+              ? t('settings.accountSignedInDescription').replace('{{email}}', session.user.email)
+              : t('settings.accountSignInDescription');
+          return (
+            <SettingsSection title={t('settings.accountTitle')} description={accountDescription}>
+              <PrimaryButton
+                marginBottom={isNative ? '$5' : ''}
+                disabled={isLoading}
+                onPress={handleAuthAction}
+              >
+                {isLoading
+                  ? t('settings.loading')
+                  : status === 'authenticated'
+                    ? t('settings.signOut')
+                    : t('settings.signIn')}
+              </PrimaryButton>
+            </SettingsSection>
+          );
+        })()}
 
         <SettingsSection
           title={t('settings.languageTitle')}
@@ -550,7 +555,7 @@ export default function SettingsScreen() {
           </YStack>
         </SettingsSection>
 
-        <SettingsSection title="Theme" description="Select a theme on this device.">
+        <SettingsSection title={t('settings.themeTitle')}>
           <XStack gap="$2">
             {THEME_OPTIONS.map(({ value, label, Icon }) => {
               const isActive = themePreference === value;
@@ -572,7 +577,13 @@ export default function SettingsScreen() {
                     backgroundColor: isActive ? '$accentColor' : '$backgroundHover',
                   }}
                   disabled={isActive}
-                  aria-label={label}
+                  aria-label={
+                    value === 'system'
+                      ? t('settings.themeSystem')
+                      : value === 'light'
+                        ? t('settings.themeLight')
+                        : t('settings.themeDark')
+                  }
                   onPress={() => handleThemeSelection(value)}
                 >
                   <Icon size={20} color={isActive ? 'white' : '$color'} />

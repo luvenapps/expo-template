@@ -9,6 +9,28 @@
   },
   "settings": {
     "languageTitle": "Idioma",
-    "languageDescription": "Elige tu idioma preferido."
+    "languageDescription": "Elige tu idioma preferido.",
+    "accountTitle": "Cuenta",
+    "accountSignInDescription": "Inicia sesión para sincronizar tus datos en todos los dispositivos.",
+    "accountSignedInDescription": "Sesión iniciada como {{email}}",
+    "signIn": "Iniciar sesión",
+    "signOut": "Cerrar sesión",
+    "loading": "Cargando…",
+    "themeTitle": "Tema",
+    "themeDescription": "Selecciona un tema en este dispositivo.",
+    "themeSystem": "Seguir sistema",
+    "themeLight": "Claro",
+    "themeDark": "Oscuro",
+    "todayCardTitle": "Hoy",
+    "todayCardSubtitle": "Progreso en hábitos",
+    "streaksCardTitle": "Rachas",
+    "streaksCardSubtitle": "Mantén tu racha",
+    "progressCardTitle": "Estado de sincronización",
+    "progressCardSubtitle": "Capacidad de la bandeja: {{percent}}%",
+    "syncNow": "Sincronizar ahora",
+    "syncDisabled": "Inicia sesión en una build nativa para sincronizar.",
+    "syncing": "Sincronizando…",
+    "manualSyncSuccess": "Sincronización exitosa.",
+    "manualSyncFailed": "La sincronización falló. Inténtalo de nuevo."
   }
 }

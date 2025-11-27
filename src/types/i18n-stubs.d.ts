@@ -1,7 +1,7 @@
 declare module 'i18next' {
   export interface I18n {
     isInitialized: boolean;
-    t: (key: string) => string;
+    t: (key: string, options?: Record<string, any>) => string;
     changeLanguage: (lng: string) => Promise<void> | void;
     use: (plugin: any) => I18n;
     init: (config: any) => Promise<void> | void;

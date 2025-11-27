@@ -202,10 +202,32 @@ jest.mock('@tamagui/select', () => {
 });
 
 jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-    i18n: { language: 'en', resolvedLanguage: 'en', languages: ['en'] },
-  }),
+  useTranslation: () => {
+    const dictionary: Record<string, string> = {
+      'settings.accountTitle': 'Account',
+      'settings.accountSignInDescription': 'Sign in to sync your data across devices.',
+      'settings.accountSignedInDescription': 'Signed in as test@example.com',
+      'settings.signIn': 'Sign In',
+      'settings.signOut': 'Sign Out',
+      'settings.loading': 'Loading…',
+      'settings.languageTitle': 'Language',
+      'settings.languageDescription': 'Choose your preferred language.',
+      'settings.themeTitle': 'Theme',
+      'settings.themeDescription': 'Select a theme on this device.',
+      'settings.themeSystem': 'Follow System',
+      'settings.themeLight': 'Light',
+      'settings.themeDark': 'Dark',
+    };
+    return {
+      t: (key: string, opts?: Record<string, any>) => {
+        if (key === 'settings.accountSignedInDescription' && opts?.email) {
+          return `Signed in as ${opts.email}`;
+        }
+        return dictionary[key] ?? key;
+      },
+      i18n: { language: 'en', resolvedLanguage: 'en', languages: ['en'] },
+    };
+  },
 }));
 
 // Mock Tamagui Lucide Icons
