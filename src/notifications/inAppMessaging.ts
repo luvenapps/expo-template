@@ -12,12 +12,14 @@ export type InAppMessagingProvider = {
   initialize: () => void | Promise<void>;
   setMessageTriggers: (triggers: Record<string, string>) => void | Promise<void>;
   pauseMessages: (paused: boolean) => void | Promise<void>;
+  allowDisplay: () => void | Promise<void>;
 };
 
 const noopProvider: InAppMessagingProvider = {
   initialize: () => undefined,
   setMessageTriggers: () => undefined,
   pauseMessages: () => undefined,
+  allowDisplay: () => undefined,
 };
 
 let provider: InAppMessagingProvider | null | undefined;
@@ -55,7 +57,7 @@ function createFirebaseProvider(): InAppMessagingProvider | null {
 
   return {
     initialize: async () => {
-      // Enable IAM and allow display
+      // Enable IAM without suppression (only custom triggers like app_ready)
       await iam.setAutomaticDataCollectionEnabled(true);
       await iam.setMessagesDisplaySuppressed(false);
       if (typeof iam.onMessageDisplayed === 'function') {
@@ -73,6 +75,9 @@ function createFirebaseProvider(): InAppMessagingProvider | null {
           getAnalytics()?.trackEvent('iam:clicked');
         });
       }
+    },
+    allowDisplay: async () => {
+      await iam.setMessagesDisplaySuppressed(false);
     },
     setMessageTriggers: async (triggers) => {
       // Trigger Firebase IAM events for provided keys/values
@@ -111,6 +116,10 @@ export async function setMessageTriggers(triggers: Record<string, string>) {
 
 export async function pauseMessages(paused: boolean) {
   await getProvider().pauseMessages(paused);
+}
+
+export async function allowInAppMessages() {
+  await getProvider().allowDisplay();
 }
 
 /* istanbul ignore next */

@@ -15,6 +15,7 @@ import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
 import { DEFAULT_NOTIFICATION_PREFERENCES } from '@/notifications/preferences';
 import { scheduleReminder } from '@/notifications/scheduler';
 import { useNotificationSettings } from '@/notifications/useNotificationSettings';
+import { registerForPushNotifications } from '@/notifications/firebasePush';
 import { useSyncStore } from '@/state';
 import { pullUpdates, pushOutbox, useSync } from '@/sync';
 import { resetCursors } from '@/sync/cursors';
@@ -369,6 +370,47 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleRegisterPush = async () => {
+    if (Platform.OS !== 'android') {
+      setDevStatus('Push registration helper is Android-only in Stage 9.');
+      return;
+    }
+    setDevStatus('Requesting push permissions…');
+    const result = await registerForPushNotifications();
+    if (result.status === 'registered') {
+      setDevStatus(`Push token registered (printed to console).`);
+      console.log('[Push] FCM token:', result.token);
+      toast.show({
+        type: 'success',
+        title: 'Push token registered',
+        description: 'Token printed to console.',
+      });
+      return;
+    }
+
+    if (result.status === 'denied') {
+      setDevStatus('Push permission denied. Enable notifications in system settings.');
+      toast.show({
+        type: 'error',
+        title: 'Permission denied',
+        description: 'Enable notifications and retry.',
+      });
+      return;
+    }
+
+    if (result.status === 'unavailable') {
+      setDevStatus('Push not available on this platform.');
+      return;
+    }
+
+    setDevStatus(`Push registration failed: ${result.message}`);
+    toast.show({
+      type: 'error',
+      title: 'Push registration failed',
+      description: result.message,
+    });
+  };
+
   useEffect(() => {
     if (!remindersEnabled) {
       if (devStatus && devStatus.includes('Test reminder scheduled')) {
@@ -671,6 +713,11 @@ export default function SettingsScreen() {
                     onPress={handleTestReminder}
                   >
                     Schedule test reminder
+                  </SecondaryButton>
+                </XStack>
+                <XStack>
+                  <SecondaryButton disabled={!isNative} onPress={handleRegisterPush}>
+                    Register push token (Android)
                   </SecondaryButton>
                 </XStack>
                 <YStack gap="$2">

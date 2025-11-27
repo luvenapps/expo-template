@@ -111,6 +111,9 @@ jest.mock('@/notifications', () => ({
   configureNotificationHandler: jest.fn().mockResolvedValue(undefined),
   resetBadgeCount: jest.fn().mockResolvedValue(undefined),
   initializeInAppMessaging: jest.fn().mockResolvedValue(undefined),
+  allowInAppMessages: jest.fn().mockResolvedValue(undefined),
+  setMessageTriggers: jest.fn().mockResolvedValue(undefined),
+  initializeFCMListeners: jest.fn().mockReturnValue(undefined),
 }));
 
 jest.mock('@/notifications/ForegroundReminderToastHost', () => ({
@@ -126,6 +129,28 @@ jest.mock('@/state', () => ({
 }));
 
 describe('RootLayout', () => {
+  // Suppress console output during tests
+  const originalConsoleLog = console.log;
+  const originalConsoleError = console.error;
+
+  beforeAll(() => {
+    // Suppress console.log during tests for cleaner output
+    console.log = jest.fn();
+
+    // Suppress React act() warnings - these are expected for async state updates
+    console.error = jest.fn((message) => {
+      if (message?.toString().includes('not wrapped in act')) {
+        return;
+      }
+      originalConsoleError(message);
+    });
+  });
+
+  afterAll(() => {
+    console.log = originalConsoleLog;
+    console.error = originalConsoleError;
+  });
+
   beforeEach(() => {
     recordedScreens.length = 0;
   });

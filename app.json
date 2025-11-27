@@ -26,6 +26,7 @@
       "versionCode": 1,
       "softwareKeyboardLayoutMode": "pan",
       "googleServicesFile": "./credentials/google-services.json",
+      "permissions": ["POST_NOTIFICATIONS"],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -61,7 +62,8 @@
             "googleServicesFile": "./credentials/google-services.json"
           }
         }
-      ]
+      ],
+      "./plugins/withFirebaseModularHeaders.js"
     ],
     "experiments": {
       "typedRoutes": true

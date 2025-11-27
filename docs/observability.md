@@ -25,6 +25,9 @@ Stage 5 focuses on the instrumentation agents need to reason about runtime behav
 | `notifications:daily-summary`     | Daily summary toggle clicked                               | `{ enabled: boolean }`                    |
 | `notifications:quiet-hours`       | Quiet hours slider moved                                   | `{ start: number, end: number }`          |
 | `notifications:permissions`       | Permission refresh fails (via `trackError`)                | `{ source: 'notifications:permissions' }` |
+| `iam:displayed`                   | Firebase IAM message displayed                             | none                                      |
+| `iam:clicked`                     | Firebase IAM message clicked                               | none                                      |
+| `iam:dismissed`                   | Firebase IAM message dismissed                             | none                                      |
 
 Add new events in the relevant hooks/components and keep namespaced by feature (`sync:*`, `habits:*`, etc.).
 

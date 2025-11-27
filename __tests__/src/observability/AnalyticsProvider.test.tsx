@@ -25,6 +25,7 @@ describe('AnalyticsProvider', () => {
   beforeEach(() => {
     __resetAnalyticsStateForTests();
     (global as any).__DEV__ = true;
+    jest.spyOn(console, 'log').mockImplementation(() => {});
     jest.spyOn(console, 'info').mockImplementation(() => {});
     jest.spyOn(console, 'error').mockImplementation(() => {});
     jest.spyOn(console, 'warn').mockImplementation(() => {});
@@ -52,6 +53,7 @@ describe('AnalyticsProvider', () => {
 
   afterEach(() => {
     (global as any).__DEV__ = originalDev;
+    (console.log as jest.Mock).mockRestore();
     (console.info as jest.Mock).mockRestore();
     (console.error as jest.Mock).mockRestore();
     (console.warn as jest.Mock).mockRestore();

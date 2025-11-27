@@ -4,6 +4,8 @@ import {
   configureNotificationHandler,
   resetBadgeCount,
   initializeInAppMessaging,
+  setMessageTriggers,
+  initializeFCMListeners,
 } from '@/notifications';
 import { getQueryClient, getQueryClientPersistOptions } from '@/state';
 import { pullUpdates, pushOutbox, useSync } from '@/sync';
@@ -11,7 +13,7 @@ import { useThemeContext } from '@/ui/theme/ThemeProvider';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { StatusBar } from 'expo-status-bar';
-import { PropsWithChildren, useEffect, useRef } from 'react';
+import { PropsWithChildren, useEffect, useRef, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -31,13 +33,43 @@ export function AppProviders({ children }: PropsWithChildren) {
   const isAuthenticated = sessionStatus === 'authenticated';
   const syncEnabled = Platform.OS !== 'web' && isAuthenticated;
   const { resolvedTheme, palette } = useThemeContext();
+  const [isAppReady, setIsAppReady] = useState(false);
 
   useEffect(() => {
-    initSessionListener();
-    registerNotificationCategories().catch(() => undefined);
-    configureNotificationHandler().catch(() => undefined);
-    initializeInAppMessaging().catch(() => undefined);
+    const initialize = async () => {
+      initSessionListener();
+      await Promise.all([
+        registerNotificationCategories().catch(() => undefined),
+        configureNotificationHandler().catch(() => undefined),
+        initializeInAppMessaging().catch(() => undefined),
+      ]);
+      // Mark app as ready after core initialization completes
+      setIsAppReady(true);
+    };
+
+    initialize();
+
+    // Initialize FCM message listeners for push notifications
+    const unsubscribeFCM = initializeFCMListeners();
+    return () => {
+      unsubscribeFCM?.();
+    };
   }, []);
+
+  useEffect(() => {
+    // Trigger app_ready custom event when initialization completes
+    if (!isAppReady) return;
+
+    const triggerAppReady = async () => {
+      console.log('[IAM] App ready, triggering app_ready event');
+      await setMessageTriggers({ app_ready: 'app_ready' });
+      console.log('[IAM] app_ready event triggered');
+    };
+
+    triggerAppReady().catch((error) => {
+      console.error('[IAM] Failed to trigger app_ready event:', error);
+    });
+  }, [isAppReady]);
 
   useEffect(() => {
     if (Platform.OS !== 'ios') {

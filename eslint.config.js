@@ -44,4 +44,13 @@ module.exports = defineConfig([
       '@typescript-eslint/no-require-imports': 'off',
     },
   },
+  // Jest globals for mock files
+  {
+    files: ['**/__mocks__/**/*.{js,jsx,ts,tsx}'],
+    languageOptions: {
+      globals: {
+        jest: 'readonly',
+      },
+    },
+  },
 ]);

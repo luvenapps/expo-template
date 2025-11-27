@@ -32,6 +32,9 @@ jest.mock('@/notifications', () => ({
   configureNotificationHandler: jest.fn().mockResolvedValue(undefined),
   resetBadgeCount: jest.fn().mockResolvedValue(undefined),
   initializeInAppMessaging: jest.fn().mockResolvedValue(undefined),
+  allowInAppMessages: jest.fn().mockResolvedValue(undefined),
+  setMessageTriggers: jest.fn().mockResolvedValue(undefined),
+  initializeFCMListeners: jest.fn().mockReturnValue(undefined),
 }));
 
 jest.mock('@/db/sqlite/cleanup', () => ({

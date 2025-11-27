@@ -4,6 +4,7 @@ import {
   initializeInAppMessaging,
   pauseMessages,
   setMessageTriggers,
+  allowInAppMessages,
 } from '@/notifications/inAppMessaging';
 
 jest.mock('@react-native-firebase/in-app-messaging', () => {
@@ -96,5 +97,11 @@ describe('inAppMessaging', () => {
     expect(iamModule.__mock.mockSetAutomaticDataCollectionEnabled).not.toHaveBeenCalled();
     expect(iamModule.__mock.mockTriggerEvent).not.toHaveBeenCalled();
     expect(iamModule.__mock.mockOnMessageDisplayed).not.toHaveBeenCalled();
+  });
+
+  it('allows display when toggled on', async () => {
+    const iamModule = jest.requireMock('@react-native-firebase/in-app-messaging');
+    await allowInAppMessages();
+    expect(iamModule.__mock.mockSetMessagesDisplaySuppressed).toHaveBeenCalledWith(false);
   });
 });

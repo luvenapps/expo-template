@@ -48,7 +48,7 @@ Inside the same Firebase project, register each platform:
 ## 4. Verify locally
 
 1. After dropping the plist/json, run `npm start` for Metro and `npm run ios` / `npm run android` to rebuild dev clients so the Firebase config is embedded.
-2. Open the Expo app (native + web) and trigger a few actions (e.g., toggles in Settings). In the Firebase Console → Analytics → DebugView you should see events like `notifications:reminders` appear almost immediately.
+2. Open the app (native + web) and trigger a few actions (e.g., toggles in Settings). In the Firebase Console → Analytics → DebugView you should see events like `notifications:reminders` and IAM lifecycle events (`iam:displayed`, `iam:clicked`, `iam:dismissed`) appear almost immediately.
 
 ## 5. Next steps
 
