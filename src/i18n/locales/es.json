@@ -12,6 +12,10 @@
     "subtitle": "Este es un nuevo comienzo. Iremos mejorando la experiencia con datos sin conexión, sincronización y visuales más pulidos.",
     "cta": "Comenzar"
   },
+  "tabs": {
+    "home": "Inicio",
+    "settings": "Configuración"
+  },
   "auth": {
     "loginTitle": "Bienvenido de nuevo",
     "loginSubtitle": "Inicia sesión para continuar",
