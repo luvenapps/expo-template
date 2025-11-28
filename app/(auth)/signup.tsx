@@ -15,6 +15,7 @@ import { useRouter } from 'expo-router';
 import { useMemo, useRef, useState } from 'react';
 import { Platform, TextInput } from 'react-native';
 import { Card, Form, View, YStack } from 'tamagui';
+import { useTranslation } from 'react-i18next';
 
 export default function SignUpScreen() {
   const router = useRouter();
@@ -30,6 +31,7 @@ export default function SignUpScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { t } = useTranslation();
 
   const isFormValid = useMemo(() => {
     return email.trim() !== '' && password.trim().length >= 8 && confirmPassword.trim().length >= 8;
@@ -39,8 +41,8 @@ export default function SignUpScreen() {
     if (!isFormValid) {
       toast.show({
         type: 'error',
-        title: 'Missing information',
-        description: 'Enter a valid email and password.',
+        title: t('auth.signup.missingTitle'),
+        description: t('auth.signup.missingDescription'),
       });
       return;
     }
@@ -48,8 +50,8 @@ export default function SignUpScreen() {
     if (password !== confirmPassword) {
       toast.show({
         type: 'error',
-        title: 'Passwords do not match',
-        description: 'Make sure both password fields match.',
+        title: t('auth.signup.passwordMismatchTitle'),
+        description: t('auth.signup.passwordMismatchDescription'),
       });
       return;
     }
@@ -61,12 +63,12 @@ export default function SignUpScreen() {
     if (result.success) {
       toast.show({
         type: 'success',
-        title: 'Check your email',
-        description: 'Confirm your email to finish creating your account.',
+        title: t('auth.signup.checkEmailTitle'),
+        description: t('auth.signup.checkEmailDescription'),
       });
       router.replace('/(auth)/login');
     } else {
-      showFriendlyError(result.friendlyError ?? result.error ?? 'Unable to sign up', {
+      showFriendlyError(result.friendlyError ?? result.error ?? t('auth.signup.errorUnknown'), {
         surface: 'auth.signup.email',
       });
     }
@@ -92,16 +94,16 @@ export default function SignUpScreen() {
         >
           <YStack gap="$5" width="100%">
             <YStack gap="$2" alignItems="center">
-              <TitleText textAlign="center">Create your account</TitleText>
-              <SubtitleText textAlign="center">Sign up to sync habits across devices</SubtitleText>
+              <TitleText textAlign="center">{t('auth.signupTitle')}</TitleText>
+              <SubtitleText textAlign="center">{t('auth.signupSubtitle')}</SubtitleText>
             </YStack>
 
             <Form onSubmit={handleSubmit} width="100%" gap="$4">
               <FormField
                 testID="email-field"
                 inputTestID="email-input"
-                label="Email"
-                placeholder="you@example.com"
+                label={t('auth.emailLabel')}
+                placeholder={t('auth.emailPlaceholder')}
                 placeholderTextColor="$colorMuted"
                 keyboardType="email-address"
                 autoCapitalize="none"
@@ -115,8 +117,8 @@ export default function SignUpScreen() {
                 ref={passwordInputRef}
                 testID="password-field"
                 inputTestID="password-input"
-                label="Password"
-                placeholder="At least 8 characters"
+                label={t('auth.passwordLabel')}
+                placeholder={t('auth.signup.passwordPlaceholder')}
                 placeholderTextColor="$colorMuted"
                 secureTextEntry={!showPassword}
                 value={password}
@@ -129,7 +131,7 @@ export default function SignUpScreen() {
                     right="$0"
                     padding="$1"
                     testID="toggle-password-visibility"
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
                     onPress={() => setShowPassword((prev) => !prev)}
                     hoverStyle={{ opacity: 0.7, cursor: 'pointer' }}
                     pressStyle={{ opacity: 0.5 }}
@@ -148,8 +150,8 @@ export default function SignUpScreen() {
                 ref={confirmInputRef}
                 testID="confirm-password-field"
                 inputTestID="confirm-password-input"
-                label="Confirm password"
-                placeholder="Re-enter your password"
+                label={t('auth.signup.confirmPasswordLabel')}
+                placeholder={t('auth.signup.confirmPasswordPlaceholder')}
                 placeholderTextColor="$colorMuted"
                 secureTextEntry={!showConfirmPassword}
                 value={confirmPassword}
@@ -162,7 +164,9 @@ export default function SignUpScreen() {
                     right="$0"
                     padding="$1"
                     testID="toggle-confirm-password-visibility"
-                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                    aria-label={
+                      showConfirmPassword ? t('auth.hidePassword') : t('auth.showPassword')
+                    }
                     onPress={() => setShowConfirmPassword((prev) => !prev)}
                     hoverStyle={{ opacity: 0.7, cursor: 'pointer' }}
                     pressStyle={{ opacity: 0.5 }}
@@ -183,7 +187,7 @@ export default function SignUpScreen() {
                   disabled={!isFormValid || isSubmitting}
                   onPress={handleSubmit}
                 >
-                  {isSubmitting ? 'Creating account…' : 'Create account'}
+                  {isSubmitting ? t('auth.signup.creating') : t('auth.signup.submit')}
                 </PrimaryButton>
               </Form.Trigger>
             </Form>
@@ -194,13 +198,13 @@ export default function SignUpScreen() {
               gap="$2"
               marginTop={Platform.OS === 'web' ? 0 : '$5'}
             >
-              <CaptionText color="$colorMuted">Already have an account?</CaptionText>
+              <CaptionText color="$colorMuted">{t('auth.signup.hasAccountPrompt')}</CaptionText>
               <PrimaryButton
                 testID="sign-in-button"
                 width="100%"
                 onPress={() => router.replace('/(auth)/login')}
               >
-                Sign in
+                {t('auth.signIn')}
               </PrimaryButton>
             </YStack>
           </YStack>

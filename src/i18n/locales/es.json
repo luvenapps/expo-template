@@ -33,6 +33,33 @@
     },
     "errorUnknown": "Ocurrió un error"
   },
+  "auth.signup": {
+    "missingTitle": "Falta información",
+    "missingDescription": "Ingresa un correo y contraseña válidos.",
+    "passwordMismatchTitle": "Las contraseñas no coinciden",
+    "passwordMismatchDescription": "Asegúrate de que ambas contraseñas coincidan.",
+    "checkEmailTitle": "Revisa tu correo",
+    "checkEmailDescription": "Confirma tu correo para terminar de crear tu cuenta.",
+    "errorUnknown": "No se pudo crear la cuenta",
+    "passwordPlaceholder": "Al menos 8 caracteres",
+    "confirmPasswordLabel": "Confirmar contraseña",
+    "confirmPasswordPlaceholder": "Ingresa de nuevo tu contraseña",
+    "creating": "Creando cuenta…",
+    "submit": "Crear cuenta",
+    "hasAccountPrompt": "¿Ya tienes una cuenta?",
+    "loginCta": "Iniciar sesión"
+  },
+  "auth.reset": {
+    "missingEmailTitle": "Ingresa tu correo electrónico",
+    "missingEmailDescription": "Lo necesitamos para enviarte un enlace de restablecimiento.",
+    "successTitle": "Enlace enviado",
+    "successDescription": "Revisa tu correo para las instrucciones de restablecimiento.",
+    "errorUnknown": "No se pudo enviar el correo de restablecimiento",
+    "sending": "Enviando…",
+    "sendCta": "Enviar enlace de restablecimiento",
+    "remembered": "¿Recordaste tu contraseña?",
+    "backToSignIn": "Volver a iniciar sesión"
+  },
   "settings": {
     "syncUnavailableWeb": "La sincronización en segundo plano requiere la app de iOS o Android para acceder a la base de datos local.",
     "syncUnavailableAuth": "Inicia sesión para habilitar la sincronización con tu cuenta de Supabase.",

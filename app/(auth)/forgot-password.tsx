@@ -14,6 +14,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Platform } from 'react-native';
 import { Card, Form, YStack } from 'tamagui';
+import { useTranslation } from 'react-i18next';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
@@ -21,13 +22,14 @@ export default function ForgotPasswordScreen() {
   const showFriendlyError = useFriendlyErrorHandler(toast);
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { t } = useTranslation();
 
   const handleSubmit = async () => {
     if (!email.trim()) {
       toast.show({
         type: 'error',
-        title: 'Enter your email',
-        description: 'We need it to send a reset link.',
+        title: t('auth.reset.missingEmailTitle'),
+        description: t('auth.reset.missingEmailDescription'),
       });
       return;
     }
@@ -39,12 +41,12 @@ export default function ForgotPasswordScreen() {
     if (result.success) {
       toast.show({
         type: 'success',
-        title: 'Reset link sent',
-        description: 'Check your email for instructions to reset your password.',
+        title: t('auth.reset.successTitle'),
+        description: t('auth.reset.successDescription'),
       });
       router.replace('/(auth)/login');
     } else {
-      showFriendlyError(result.friendlyError ?? result.error ?? 'Unable to send reset email', {
+      showFriendlyError(result.friendlyError ?? result.error ?? t('auth.reset.errorUnknown'), {
         surface: 'auth.password.reset',
       });
     }
@@ -67,18 +69,16 @@ export default function ForgotPasswordScreen() {
         >
           <YStack gap="$5" width="100%">
             <YStack gap="$2" alignItems="center">
-              <TitleText textAlign="center">Reset your password</TitleText>
-              <SubtitleText textAlign="center">
-                Enter the email associated with your account
-              </SubtitleText>
+              <TitleText textAlign="center">{t('auth.resetTitle')}</TitleText>
+              <SubtitleText textAlign="center">{t('auth.resetSubtitle')}</SubtitleText>
             </YStack>
 
             <Form onSubmit={handleSubmit} width="100%" gap="$4">
               <FormField
                 testID="email-field"
                 inputTestID="email-input"
-                label="Email"
-                placeholder="you@example.com"
+                label={t('auth.emailLabel')}
+                placeholder={t('auth.emailPlaceholder')}
                 placeholderTextColor="$colorMuted"
                 keyboardType="email-address"
                 autoCapitalize="none"
@@ -94,7 +94,7 @@ export default function ForgotPasswordScreen() {
                   disabled={!email.trim() || isSubmitting}
                   onPress={handleSubmit}
                 >
-                  {isSubmitting ? 'Sending…' : 'Send reset link'}
+                  {isSubmitting ? t('auth.reset.sending') : t('auth.reset.sendCta')}
                 </PrimaryButton>
               </Form.Trigger>
             </Form>
@@ -105,13 +105,13 @@ export default function ForgotPasswordScreen() {
               gap="$2"
               marginTop={Platform.OS === 'web' ? 0 : '$5'}
             >
-              <CaptionText color="$colorMuted">Remembered your password?</CaptionText>
+              <CaptionText color="$colorMuted">{t('auth.reset.remembered')}</CaptionText>
               <PrimaryButton
                 testID="back-to-sign-in-button"
                 width="100%"
                 onPress={() => router.replace('/(auth)/login')}
               >
-                Back to sign in
+                {t('auth.reset.backToSignIn')}
               </PrimaryButton>
             </YStack>
           </YStack>
