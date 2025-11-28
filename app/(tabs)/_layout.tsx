@@ -1,4 +1,3 @@
-import { DOMAIN } from '@/config/domain.config';
 import { useThemeContext } from '@/ui/theme/ThemeProvider';
 import { Home, Settings } from '@tamagui/lucide-icons';
 import { Tabs } from 'expo-router';
@@ -22,7 +21,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: t('tabs.home', { app: DOMAIN.app.displayName }),
+          title: t('tabs.home'),
           tabBarIcon: ({ color }) => <TabIcon color={color} Icon={Home} />,
         }}
       />

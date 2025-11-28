@@ -24,7 +24,6 @@ jest.mock('@/ui/theme/ThemeProvider', () => ({
   useThemeContext: jest.fn(),
 }));
 
-import { DOMAIN } from '@/config/domain.config';
 import { useThemeContext } from '@/ui/theme/ThemeProvider';
 import { render } from '@testing-library/react-native';
 import TabsLayout from '../../../app/(tabs)/_layout';
@@ -95,7 +94,7 @@ describe('TabsLayout', () => {
       const indexScreen = screens.find((s: any) => s.props.name === 'index');
 
       expect(indexScreen).toBeDefined();
-      expect(indexScreen.props.options.title).toBe(DOMAIN.app.displayName);
+      expect(indexScreen.props.options.title).toBe('tabs.home');
       expect(indexScreen.props.options.tabBarIcon).toBeDefined();
     });
 
@@ -110,7 +109,7 @@ describe('TabsLayout', () => {
       const settingsScreen = screens.find((s: any) => s.props.name === 'settings');
 
       expect(settingsScreen).toBeDefined();
-      expect(settingsScreen.props.options.title).toBe('Settings');
+      expect(settingsScreen.props.options.title).toBe('common.settings');
       expect(settingsScreen.props.options.tabBarIcon).toBeDefined();
     });
 
