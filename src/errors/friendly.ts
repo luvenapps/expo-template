@@ -14,10 +14,13 @@ export type FriendlyErrorCode =
 
 export type FriendlyError = {
   code: FriendlyErrorCode;
-  title: string;
-  description?: string;
+  titleKey?: string;
+  descriptionKey?: string;
   type: ToastType;
   originalMessage?: string;
+  // Legacy fields for callers/tests that still pass raw strings
+  title?: string;
+  description?: string;
 };
 
 type NormalizedError = {
@@ -40,8 +43,8 @@ export function resolveFriendlyError(error: unknown): FriendlyError {
   if (NETWORK_PATTERNS.some((pattern) => pattern.test(message))) {
     return {
       code: 'network.offline',
-      title: 'Check your connection',
-      description: 'We could not reach the server. Please verify your connection and try again.',
+      titleKey: 'errors.network.offline.title',
+      descriptionKey: 'errors.network.offline.description',
       type: 'error',
       originalMessage: message,
     };
@@ -50,8 +53,8 @@ export function resolveFriendlyError(error: unknown): FriendlyError {
   if (SQLITE_CONSTRAINT.test(message)) {
     return {
       code: 'sqlite.constraint',
-      title: 'Already saved',
-      description: 'Looks like this entry already exists. Try renaming it or editing the original.',
+      titleKey: 'errors.sqlite.constraint.title',
+      descriptionKey: 'errors.sqlite.constraint.description',
       type: 'error',
       originalMessage: message,
     };
@@ -60,8 +63,8 @@ export function resolveFriendlyError(error: unknown): FriendlyError {
   if (SQLITE_FULL.test(message)) {
     return {
       code: 'sqlite.storage-full',
-      title: 'Device storage is full',
-      description: 'Free up space on your device, then try the action again.',
+      titleKey: 'errors.sqlite.storageFull.title',
+      descriptionKey: 'errors.sqlite.storageFull.description',
       type: 'error',
       originalMessage: message,
     };
@@ -70,8 +73,8 @@ export function resolveFriendlyError(error: unknown): FriendlyError {
   if (SQLITE_BUSY.test(message)) {
     return {
       code: 'sqlite.busy',
-      title: 'Database is busy',
-      description: 'Please wait a moment and try again.',
+      titleKey: 'errors.sqlite.busy.title',
+      descriptionKey: 'errors.sqlite.busy.description',
       type: 'info',
       originalMessage: message,
     };
@@ -80,8 +83,8 @@ export function resolveFriendlyError(error: unknown): FriendlyError {
   if (AUTH_INVALID.test(message)) {
     return {
       code: 'auth.invalid-credentials',
-      title: 'Invalid email or password',
-      description: 'Double-check your credentials and try again.',
+      titleKey: 'errors.auth.invalidCredentials.title',
+      descriptionKey: 'errors.auth.invalidCredentials.description',
       type: 'error',
       originalMessage: message,
     };
@@ -90,8 +93,8 @@ export function resolveFriendlyError(error: unknown): FriendlyError {
   if (AUTH_RATE_LIMIT.test(message)) {
     return {
       code: 'auth.rate-limit',
-      title: 'Too many attempts',
-      description: 'Please wait a moment before trying again.',
+      titleKey: 'errors.auth.rateLimit.title',
+      descriptionKey: 'errors.auth.rateLimit.description',
       type: 'info',
       originalMessage: message,
     };
@@ -100,9 +103,8 @@ export function resolveFriendlyError(error: unknown): FriendlyError {
   if (NOTIFICATION_PERMISSION.test(message)) {
     return {
       code: 'notifications.permission',
-      title: 'Notifications unavailable',
-      description:
-        'We could not reach the notification service. Check your connection or retry later.',
+      titleKey: 'errors.notifications.permission.title',
+      descriptionKey: 'errors.notifications.permission.description',
       type: 'error',
       originalMessage: message,
     };
@@ -110,8 +112,8 @@ export function resolveFriendlyError(error: unknown): FriendlyError {
 
   return {
     code: 'unknown',
-    title: 'Something went wrong',
-    description: message || 'Please try again.',
+    titleKey: 'errors.unknown.title',
+    descriptionKey: message ? undefined : 'errors.unknown.description',
     type: 'error',
     originalMessage: message,
   };

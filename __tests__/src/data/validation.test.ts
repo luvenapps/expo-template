@@ -32,6 +32,17 @@ describe('validation', () => {
       expect(() => assertNonEmptyString(undefined, 'field')).toThrow('field is required');
       expect(() => assertNonEmptyString(123, 'field')).toThrow('field is required');
     });
+
+    it('accepts Unicode characters', () => {
+      expect(() => assertNonEmptyString('こんにちは', 'field')).not.toThrow();
+      expect(() => assertNonEmptyString('🎉🎊', 'field')).not.toThrow();
+      expect(() => assertNonEmptyString('Ñoño', 'field')).not.toThrow();
+    });
+
+    it('accepts very long strings', () => {
+      const longString = 'a'.repeat(10000);
+      expect(() => assertNonEmptyString(longString, 'field')).not.toThrow();
+    });
   });
 
   describe('assertMaxLength', () => {
@@ -48,6 +59,21 @@ describe('validation', () => {
       expect(() => assertMaxLength('123456', 5, 'field')).toThrow(
         'field must be 5 characters or less',
       );
+    });
+
+    it('handles Unicode characters correctly', () => {
+      // Emoji can be multiple code units (length counts code units, not characters)
+      const emojiLength = '🎉'.length; // May be 2 code units
+      expect(() => assertMaxLength('🎉', emojiLength, 'field')).not.toThrow();
+      // Japanese characters
+      expect(() => assertMaxLength('こんにちは', 5, 'field')).not.toThrow();
+      // Accented characters
+      expect(() => assertMaxLength('Café', 4, 'field')).not.toThrow();
+    });
+
+    it('handles zero max length', () => {
+      expect(() => assertMaxLength('', 0, 'field')).not.toThrow();
+      expect(() => assertMaxLength('a', 0, 'field')).toThrow('field must be 0 characters or less');
     });
   });
 
@@ -122,6 +148,18 @@ describe('validation', () => {
     it('rejects empty strings', () => {
       expect(() => assertIsoDate('', 'date')).toThrow('date is required');
     });
+
+    it('handles edge case dates', () => {
+      // Century leap year
+      expect(() => assertIsoDate('2000-02-29', 'date')).not.toThrow();
+      // Far future date
+      expect(() => assertIsoDate('9999-12-31', 'date')).not.toThrow();
+      // Far past date
+      expect(() => assertIsoDate('1000-01-01', 'date')).not.toThrow();
+      // Invalid day of month
+      expect(() => assertIsoDate('2024-04-31', 'date')).toThrow('date must be a valid date');
+      expect(() => assertIsoDate('2024-11-31', 'date')).toThrow('date must be a valid date');
+    });
   });
 
   describe('assertIsoDateTime', () => {
@@ -140,6 +178,18 @@ describe('validation', () => {
 
     it('rejects empty strings', () => {
       expect(() => assertIsoDateTime('', 'datetime')).toThrow('datetime is required');
+    });
+
+    it('handles timezone offsets', () => {
+      expect(() => assertIsoDateTime('2024-01-01T12:00:00+05:30', 'datetime')).not.toThrow();
+      expect(() => assertIsoDateTime('2024-01-01T12:00:00-08:00', 'datetime')).not.toThrow();
+      expect(() => assertIsoDateTime('2024-01-01T12:00:00+00:00', 'datetime')).not.toThrow();
+    });
+
+    it('handles millisecond precision', () => {
+      expect(() => assertIsoDateTime('2024-01-01T12:00:00.000Z', 'datetime')).not.toThrow();
+      expect(() => assertIsoDateTime('2024-01-01T12:00:00.123Z', 'datetime')).not.toThrow();
+      expect(() => assertIsoDateTime('2024-01-01T12:00:00.999999Z', 'datetime')).not.toThrow();
     });
   });
 
@@ -268,6 +318,22 @@ describe('validation', () => {
       expect(isValidEmail('user @example.com')).toBe(false);
       expect(isValidEmail('user@example')).toBe(false);
       expect(isValidEmail('user@.com')).toBe(false);
+    });
+
+    it('handles edge case email addresses', () => {
+      // Very long local part
+      const longLocal = 'a'.repeat(100) + '@example.com';
+      expect(isValidEmail(longLocal)).toBe(true);
+      // Subdomain
+      expect(isValidEmail('user@mail.example.com')).toBe(true);
+      // Numeric domain
+      expect(isValidEmail('user@123.456.789.012')).toBe(true);
+      // Hyphen in domain
+      expect(isValidEmail('user@my-domain.com')).toBe(true);
+      // Underscore in local part
+      expect(isValidEmail('user_name@example.com')).toBe(true);
+      // Case sensitivity (emails are case-insensitive but valid)
+      expect(isValidEmail('User.Name@Example.COM')).toBe(true);
     });
   });
 

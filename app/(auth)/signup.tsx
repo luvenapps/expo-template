@@ -32,6 +32,7 @@ export default function SignUpScreen() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { t } = useTranslation();
+  const passwordMismatchToastId = useRef<string | null>(null);
 
   const isFormValid = useMemo(() => {
     return email.trim() !== '' && password.trim().length >= 8 && confirmPassword.trim().length >= 8;
@@ -48,11 +49,13 @@ export default function SignUpScreen() {
     }
 
     if (password !== confirmPassword) {
-      toast.show({
+      const toastId = toast.show({
         type: 'error',
         title: t('auth.signup.passwordMismatchTitle'),
         description: t('auth.signup.passwordMismatchDescription'),
+        id: passwordMismatchToastId.current ?? 'signup-password-mismatch',
       });
+      passwordMismatchToastId.current = toastId ?? passwordMismatchToastId.current;
       return;
     }
 
@@ -98,7 +101,7 @@ export default function SignUpScreen() {
               <SubtitleText textAlign="center">{t('auth.signupSubtitle')}</SubtitleText>
             </YStack>
 
-            <Form onSubmit={handleSubmit} width="100%" gap="$4">
+            <Form width="100%" gap="$4">
               <FormField
                 testID="email-field"
                 inputTestID="email-input"

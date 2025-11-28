@@ -73,6 +73,56 @@
       "loginCta": "Iniciar sesión"
     }
   },
+  "errors": {
+    "network": {
+      "offline": {
+        "title": "Verifica tu conexión",
+        "description": "No pudimos comunicarnos con el servidor. Verifica tu conexión e intenta de nuevo."
+      },
+      "timeout": {
+        "title": "Tiempo de espera agotado",
+        "description": "El servidor tardó demasiado en responder. Por favor intenta de nuevo."
+      }
+    },
+    "sqlite": {
+      "constraint": {
+        "title": "Ya guardado",
+        "description": "Parece que esta entrada ya existe. Intenta renombrarla o editar la original."
+      },
+      "storageFull": {
+        "title": "Almacenamiento del dispositivo lleno",
+        "description": "Libera espacio en tu dispositivo e intenta la acción de nuevo."
+      },
+      "busy": {
+        "title": "Base de datos ocupada",
+        "description": "Por favor espera un momento e intenta de nuevo."
+      }
+    },
+    "auth": {
+      "invalidCredentials": {
+        "title": "Correo o contraseña inválidos",
+        "description": "Verifica tus credenciales e intenta de nuevo."
+      },
+      "rateLimit": {
+        "title": "Demasiados intentos",
+        "description": "Por favor espera un momento antes de intentar de nuevo."
+      },
+      "oauthBrowser": {
+        "title": "OAuth no disponible",
+        "description": "Inicia sesión con correo y contraseña en su lugar."
+      }
+    },
+    "notifications": {
+      "permission": {
+        "title": "Notificaciones no disponibles",
+        "description": "No pudimos comunicarnos con el servicio de notificaciones. Verifica tu conexión o intenta más tarde."
+      }
+    },
+    "unknown": {
+      "title": "Algo salió mal",
+      "description": "Por favor intenta de nuevo."
+    }
+  },
   "settings": {
     "syncUnavailableWeb": "La sincronización en segundo plano requiere la app de iOS o Android para acceder a la base de datos local.",
     "syncUnavailableAuth": "Inicia sesión para habilitar la sincronización con tu cuenta de Supabase.",

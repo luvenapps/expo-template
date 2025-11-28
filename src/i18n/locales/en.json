@@ -73,6 +73,56 @@
       "loginCta": "Sign in"
     }
   },
+  "errors": {
+    "network": {
+      "offline": {
+        "title": "Check your connection",
+        "description": "We could not reach the server. Please verify your connection and try again."
+      },
+      "timeout": {
+        "title": "Request timed out",
+        "description": "The server took too long to respond. Please try again."
+      }
+    },
+    "sqlite": {
+      "constraint": {
+        "title": "Already saved",
+        "description": "Looks like this entry already exists. Try renaming it or editing the original."
+      },
+      "storageFull": {
+        "title": "Device storage is full",
+        "description": "Free up space on your device, then try the action again."
+      },
+      "busy": {
+        "title": "Database is busy",
+        "description": "Please wait a moment and try again."
+      }
+    },
+    "auth": {
+      "invalidCredentials": {
+        "title": "Invalid email or password",
+        "description": "Double-check your credentials and try again."
+      },
+      "rateLimit": {
+        "title": "Too many attempts",
+        "description": "Please wait a moment before trying again."
+      },
+      "oauthBrowser": {
+        "title": "OAuth unavailable",
+        "description": "Sign in with email and password instead."
+      }
+    },
+    "notifications": {
+      "permission": {
+        "title": "Notifications unavailable",
+        "description": "We could not reach the notification service. Check your connection or retry later."
+      }
+    },
+    "unknown": {
+      "title": "Something went wrong",
+      "description": "Please try again."
+    }
+  },
   "settings": {
     "syncUnavailableWeb": "Background sync requires the iOS or Android app to access the local database.",
     "syncUnavailableAuth": "Sign in to enable syncing with your Supabase account.",

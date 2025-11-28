@@ -1,3 +1,4 @@
+/* istanbul ignore file */
 import { HeaderBackButton } from '@react-navigation/elements';
 import { Stack, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';

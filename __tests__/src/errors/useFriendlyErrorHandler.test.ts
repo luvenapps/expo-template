@@ -40,8 +40,8 @@ describe('useFriendlyErrorHandler', () => {
     it('handles FriendlyError objects', () => {
       const friendlyError: FriendlyError = {
         code: 'unknown',
-        title: 'Test Error',
-        description: 'Test description',
+        titleKey: 'errors.test.title',
+        descriptionKey: 'errors.test.description',
         type: 'error',
       };
 
@@ -51,7 +51,7 @@ describe('useFriendlyErrorHandler', () => {
       handler(friendlyError, { surface: 'test-surface' });
 
       expect(mockResolveFriendlyError).not.toHaveBeenCalled();
-      expect(mockTrackError).toHaveBeenCalledWith('Test Error', {
+      expect(mockTrackError).toHaveBeenCalledWith('errors.test.title', {
         surface: 'test-surface',
         code: 'unknown',
         originalMessage: undefined,
@@ -62,8 +62,8 @@ describe('useFriendlyErrorHandler', () => {
       const genericError = new Error('Generic error');
       const resolvedError: FriendlyError = {
         code: 'unknown',
-        title: 'Something went wrong',
-        description: 'Generic error',
+        titleKey: 'errors.unknown.title',
+        descriptionKey: 'errors.unknown.description',
         type: 'error',
       };
 
@@ -75,7 +75,7 @@ describe('useFriendlyErrorHandler', () => {
       handler(genericError, { surface: 'test-surface' });
 
       expect(mockResolveFriendlyError).toHaveBeenCalledWith(genericError);
-      expect(mockTrackError).toHaveBeenCalledWith('Something went wrong', {
+      expect(mockTrackError).toHaveBeenCalledWith('errors.unknown.title', {
         surface: 'test-surface',
         code: 'unknown',
         originalMessage: undefined,
@@ -85,8 +85,8 @@ describe('useFriendlyErrorHandler', () => {
     it('handles null error', () => {
       const resolvedError: FriendlyError = {
         code: 'unknown',
-        title: 'Unknown error',
-        description: undefined,
+        titleKey: 'errors.unknown.title',
+        descriptionKey: undefined,
         type: 'error',
       };
 
@@ -103,8 +103,8 @@ describe('useFriendlyErrorHandler', () => {
     it('handles undefined error', () => {
       const resolvedError: FriendlyError = {
         code: 'unknown',
-        title: 'Unknown error',
-        description: undefined,
+        titleKey: 'errors.unknown.title',
+        descriptionKey: undefined,
         type: 'error',
       };
 

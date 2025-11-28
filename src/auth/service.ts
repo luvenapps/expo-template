@@ -16,9 +16,15 @@ export async function signInWithEmail(email: string, password: string): Promise<
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
     const friendly = resolveFriendlyError(error);
+    const errorMessage =
+      friendly.originalMessage ??
+      friendly.description ??
+      friendly.title ??
+      friendly.descriptionKey ??
+      friendly.titleKey;
     return {
       success: false,
-      error: friendly.description ?? friendly.title,
+      error: errorMessage,
       code: friendly.code,
       friendlyError: friendly,
     };
@@ -49,7 +55,12 @@ export async function signInWithOAuth(provider: Provider): Promise<AuthResult> {
     const friendly = resolveFriendlyError(error);
     return {
       success: false,
-      error: friendly.description ?? friendly.title,
+      error:
+        friendly.originalMessage ??
+        friendly.description ??
+        friendly.title ??
+        friendly.descriptionKey ??
+        friendly.titleKey,
       code: friendly.code,
       friendlyError: friendly,
     };
@@ -98,9 +109,15 @@ export async function signOut(): Promise<AuthResult> {
   const { error } = await supabase.auth.signOut();
   if (error) {
     const friendly = resolveFriendlyError(error);
+    const errorMessage =
+      friendly.originalMessage ??
+      friendly.description ??
+      friendly.title ??
+      friendly.descriptionKey ??
+      friendly.titleKey;
     return {
       success: false,
-      error: friendly.description ?? friendly.title,
+      error: errorMessage,
       code: friendly.code,
       friendlyError: friendly,
     };
@@ -112,9 +129,15 @@ export async function signUpWithEmail(email: string, password: string): Promise<
   const { error } = await supabase.auth.signUp({ email, password });
   if (error) {
     const friendly = resolveFriendlyError(error);
+    const errorMessage =
+      friendly.originalMessage ??
+      friendly.description ??
+      friendly.title ??
+      friendly.descriptionKey ??
+      friendly.titleKey;
     return {
       success: false,
-      error: friendly.description ?? friendly.title,
+      error: errorMessage,
       code: friendly.code,
       friendlyError: friendly,
     };
@@ -128,9 +151,15 @@ export async function sendPasswordReset(email: string): Promise<AuthResult> {
   });
   if (error) {
     const friendly = resolveFriendlyError(error);
+    const errorMessage =
+      friendly.originalMessage ??
+      friendly.description ??
+      friendly.title ??
+      friendly.descriptionKey ??
+      friendly.titleKey;
     return {
       success: false,
-      error: friendly.description ?? friendly.title,
+      error: errorMessage,
       code: friendly.code,
       friendlyError: friendly,
     };

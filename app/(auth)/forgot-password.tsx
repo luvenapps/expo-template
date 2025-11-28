@@ -1,4 +1,5 @@
 import { sendPasswordReset } from '@/auth/service';
+import { isValidEmail } from '@/data/validation';
 import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
 import {
   CaptionText,
@@ -11,7 +12,7 @@ import {
   useToast,
 } from '@/ui';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import { Card, Form, YStack } from 'tamagui';
 import { useTranslation } from 'react-i18next';
@@ -23,9 +24,13 @@ export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { t } = useTranslation();
+  const errorToastId = useRef<string | null>(null);
+
+  const trimmedEmail = email.trim();
+  const isEmailValid = trimmedEmail !== '' && isValidEmail(trimmedEmail);
 
   const handleSubmit = async () => {
-    if (!email.trim()) {
+    if (!isEmailValid) {
       toast.show({
         type: 'error',
         title: t('auth.reset.missingEmailTitle'),
@@ -35,7 +40,7 @@ export default function ForgotPasswordScreen() {
     }
 
     setIsSubmitting(true);
-    const result = await sendPasswordReset(email.trim());
+    const result = await sendPasswordReset(trimmedEmail);
     setIsSubmitting(false);
 
     if (result.success) {
@@ -46,9 +51,16 @@ export default function ForgotPasswordScreen() {
       });
       router.replace('/(auth)/login');
     } else {
-      showFriendlyError(result.friendlyError ?? result.error ?? t('auth.reset.errorUnknown'), {
-        surface: 'auth.password.reset',
-      });
+      const { toastId } = showFriendlyError(
+        result.friendlyError ?? result.error ?? t('auth.reset.errorUnknown'),
+        {
+          surface: 'auth.password.reset',
+          toast: {
+            id: errorToastId.current ?? undefined,
+          },
+        },
+      );
+      errorToastId.current = toastId ?? errorToastId.current;
     }
   };
 
@@ -91,7 +103,7 @@ export default function ForgotPasswordScreen() {
               <Form.Trigger asChild>
                 <PrimaryButton
                   testID="send-reset-link-button"
-                  disabled={!email.trim() || isSubmitting}
+                  disabled={!isEmailValid || isSubmitting}
                   onPress={handleSubmit}
                 >
                   {isSubmitting ? t('auth.reset.sending') : t('auth.reset.sendCta')}

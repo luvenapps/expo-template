@@ -1,6 +1,5 @@
 import { useSessionStore } from '@/auth/session';
 import { isValidEmail } from '@/data/validation';
-import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
 import {
   BodyText,
   CaptionText,
@@ -34,8 +33,6 @@ export default function LoginScreen() {
   const isLoading = useSessionStore((state) => state.isLoading);
   const error = useSessionStore((state) => state.error);
   const toast = useToast();
-  const showFriendlyError = useFriendlyErrorHandler(toast);
-  const errorToastId = useRef<string | null>(null);
   const { t } = useTranslation();
 
   const isFormValid = email.trim() !== '' && isValidEmail(email) && password.trim() !== '';
@@ -57,19 +54,21 @@ export default function LoginScreen() {
         return;
       }
 
-      const { toastId } = showFriendlyError(
-        result.friendlyError ?? result.error ?? t('auth.errorUnknown'),
-        {
-          surface,
-          suppressToast: true,
-          toast: {
-            id: errorToastId.current ?? undefined,
-          },
-        },
-      );
-      errorToastId.current = toastId ?? errorToastId.current;
+      const rawError = result.friendlyError ?? result.error ?? t('auth.errorUnknown');
+      const friendlyMessage =
+        typeof rawError === 'string'
+          ? rawError
+          : typeof rawError === 'object' && rawError !== null
+            ? t(
+                (rawError as { descriptionKey?: string; titleKey?: string }).descriptionKey ??
+                  (rawError as { titleKey?: string }).titleKey ??
+                  'auth.errorUnknown',
+              )
+            : t('auth.errorUnknown');
+
+      setError(friendlyMessage);
     },
-    [showFriendlyError, t],
+    [setError, t],
   );
 
   const handleSubmit = async () => {

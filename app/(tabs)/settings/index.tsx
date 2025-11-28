@@ -212,7 +212,11 @@ export default function SettingsScreen() {
     } catch (syncError) {
       console.error('[Settings] manual sync failed', syncError);
       const { friendly } = showFriendlyError(syncError, { surface: 'settings.sync' });
-      setDevStatus(friendly.description ?? friendly.title);
+      const message =
+        friendly.description ??
+        (friendly.descriptionKey ? t(friendly.descriptionKey) : friendly.originalMessage) ??
+        (friendly.titleKey ? t(friendly.titleKey) : t('errors.unknown.title'));
+      setDevStatus(message);
     }
   };
 
@@ -243,7 +247,11 @@ export default function SettingsScreen() {
     } catch (error) {
       console.error('[Settings] archive entries failed', error);
       const { friendly } = showFriendlyError(error, { surface: 'settings.archive' });
-      setDevStatus(friendly.description ?? friendly.title);
+      const message =
+        friendly.description ??
+        (friendly.descriptionKey ? t(friendly.descriptionKey) : friendly.originalMessage) ??
+        (friendly.titleKey ? t(friendly.titleKey) : t('errors.unknown.title'));
+      setDevStatus(message);
     } finally {
       setIsArchiving(false);
     }
@@ -329,7 +337,11 @@ export default function SettingsScreen() {
     } catch (error) {
       console.error('[Settings] Seed sample data failed:', error);
       const { friendly } = showFriendlyError(error, { surface: 'settings.seed' });
-      setDevStatus(`Error: ${friendly.description ?? friendly.title}`);
+      const message =
+        friendly.description ??
+        (friendly.descriptionKey ? t(friendly.descriptionKey) : friendly.originalMessage) ??
+        (friendly.titleKey ? t(friendly.titleKey) : t('errors.unknown.title'));
+      setDevStatus(`Error: ${message}`);
     } finally {
       setIsSeeding(false);
       isSeedingRef.current = false;
@@ -349,7 +361,11 @@ export default function SettingsScreen() {
       });
     } catch (error) {
       const { friendly } = showFriendlyError(error, { surface: 'settings.clear-outbox' });
-      setDevStatus(friendly.description ?? friendly.title);
+      const message =
+        friendly.description ??
+        (friendly.descriptionKey ? t(friendly.descriptionKey) : friendly.originalMessage) ??
+        (friendly.titleKey ? t(friendly.titleKey) : t('errors.unknown.title'));
+      setDevStatus(message);
     }
   };
 
@@ -386,7 +402,11 @@ export default function SettingsScreen() {
     } catch (reminderError) {
       console.error('[Settings] scheduleReminder failed', reminderError);
       const { friendly } = showFriendlyError(reminderError, { surface: 'settings.test-reminder' });
-      setDevStatus(`Reminder scheduling failed: ${friendly.description ?? friendly.title}`);
+      const message =
+        friendly.description ??
+        (friendly.descriptionKey ? t(friendly.descriptionKey) : friendly.originalMessage) ??
+        (friendly.titleKey ? t(friendly.titleKey) : t('errors.unknown.title'));
+      setDevStatus(`Reminder scheduling failed: ${message}`);
     }
   };
 
@@ -461,7 +481,11 @@ export default function SettingsScreen() {
     } catch (error) {
       console.error('[Settings] Clear local database failed:', error);
       const { friendly } = showFriendlyError(error, { surface: 'settings.clear-db' });
-      setDevStatus(`Error: ${friendly.description ?? friendly.title}`);
+      const message =
+        friendly.description ??
+        (friendly.descriptionKey ? t(friendly.descriptionKey) : friendly.originalMessage) ??
+        (friendly.titleKey ? t(friendly.titleKey) : t('errors.unknown.title'));
+      setDevStatus(`Error: ${message}`);
     } finally {
       setIsClearing(false);
       isClearingRef.current = false;
@@ -484,7 +508,11 @@ export default function SettingsScreen() {
     } catch (error) {
       console.error('[Settings] Optimize database failed:', error);
       const { friendly } = showFriendlyError(error, { surface: 'settings.optimize-db' });
-      setDevStatus(`Error: ${friendly.description ?? friendly.title}`);
+      const message =
+        friendly.description ??
+        (friendly.descriptionKey ? t(friendly.descriptionKey) : friendly.originalMessage) ??
+        (friendly.titleKey ? t(friendly.titleKey) : t('errors.unknown.title'));
+      setDevStatus(`Error: ${message}`);
     } finally {
       setIsOptimizingDb(false);
     }
