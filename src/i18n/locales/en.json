@@ -19,6 +19,10 @@
   "auth": {
     "loginTitle": "Welcome back",
     "loginSubtitle": "Sign in to your account to continue",
+    "signupTitle": "Create your account",
+    "signupSubtitle": "Start tracking your habits with synced data.",
+    "resetTitle": "Reset your password",
+    "resetSubtitle": "Enter your email to get a reset link.",
     "emailLabel": "Email",
     "emailPlaceholder": "you@example.com",
     "passwordLabel": "Password",
@@ -40,34 +44,34 @@
       "signIn": "Sign in",
       "createAccount": "Create account",
       "resetPassword": "Reset password"
+    },
+    "reset": {
+      "missingEmailTitle": "Enter your email",
+      "missingEmailDescription": "We need it to send a reset link.",
+      "successTitle": "Reset link sent",
+      "successDescription": "Check your email for instructions to reset your password.",
+      "errorUnknown": "Unable to send reset email",
+      "sending": "Sending…",
+      "sendCta": "Send reset link",
+      "remembered": "Remembered your password?",
+      "backToSignIn": "Back to sign in"
+    },
+    "signup": {
+      "missingTitle": "Missing information",
+      "missingDescription": "Enter a valid email and password.",
+      "passwordMismatchTitle": "Passwords do not match",
+      "passwordMismatchDescription": "Make sure both password fields match.",
+      "checkEmailTitle": "Check your email",
+      "checkEmailDescription": "Confirm your email to finish creating your account.",
+      "errorUnknown": "Unable to sign up",
+      "passwordPlaceholder": "At least 8 characters",
+      "confirmPasswordLabel": "Confirm password",
+      "confirmPasswordPlaceholder": "Re-enter your password",
+      "creating": "Creating account…",
+      "submit": "Create account",
+      "hasAccountPrompt": "Already have an account?",
+      "loginCta": "Sign in"
     }
-  },
-  "auth.reset": {
-    "missingEmailTitle": "Enter your email",
-    "missingEmailDescription": "We need it to send a reset link.",
-    "successTitle": "Reset link sent",
-    "successDescription": "Check your email for instructions to reset your password.",
-    "errorUnknown": "Unable to send reset email",
-    "sending": "Sending…",
-    "sendCta": "Send reset link",
-    "remembered": "Remembered your password?",
-    "backToSignIn": "Back to sign in"
-  },
-  "auth.signup": {
-    "missingTitle": "Missing information",
-    "missingDescription": "Enter a valid email and password.",
-    "passwordMismatchTitle": "Passwords do not match",
-    "passwordMismatchDescription": "Make sure both password fields match.",
-    "checkEmailTitle": "Check your email",
-    "checkEmailDescription": "Confirm your email to finish creating your account.",
-    "errorUnknown": "Unable to sign up",
-    "passwordPlaceholder": "At least 8 characters",
-    "confirmPasswordLabel": "Confirm password",
-    "confirmPasswordPlaceholder": "Re-enter your password",
-    "creating": "Creating account…",
-    "submit": "Create account",
-    "hasAccountPrompt": "Already have an account?",
-    "loginCta": "Sign in"
   },
   "settings": {
     "syncUnavailableWeb": "Background sync requires the iOS or Android app to access the local database.",
