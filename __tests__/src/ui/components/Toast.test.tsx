@@ -1,11 +1,11 @@
 import { act, fireEvent, render } from '@testing-library/react-native';
 import React from 'react';
-import { ToastContainer } from '../../../../src/ui/components/Toast';
-import { createToastStore } from '../../../../src/ui/components/toastStore';
+import { ToastContainer } from '@/ui/components/Toast';
+import { createToastStore } from '@/ui/components/toastStore';
 
 // Simplify ToastContainer rendering for determinism in tests
-jest.mock('../../../../src/ui/components/Toast', () => {
-  const actual = jest.requireActual('../../../../src/ui/components/Toast');
+jest.mock('@/ui/components/Toast', () => {
+  const actual = jest.requireActual('@/ui/components/Toast');
   const React = jest.requireActual('react');
   const { View, Text, TouchableOpacity } = jest.requireActual('react-native');
 

@@ -1,4 +1,4 @@
-import { createToastStore } from '../../../../src/ui/components/toastStore';
+import { createToastStore } from '@/ui/components/toastStore';
 
 describe('createToastStore', () => {
   it('initializes with empty messages', () => {

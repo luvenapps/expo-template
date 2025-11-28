@@ -9,7 +9,7 @@ jest.mock('tamagui', () => {
 });
 
 // Mock Text components
-jest.mock('../../../../src/ui/components/Text', () => {
+jest.mock('@/ui/components/Text', () => {
   const mockReact = jest.requireActual('react');
 
   return {
@@ -21,7 +21,7 @@ jest.mock('../../../../src/ui/components/Text', () => {
 import { render } from '@testing-library/react-native';
 import React from 'react';
 import { View, Text } from 'react-native';
-import { StreakChart } from '../../../../src/ui/components/StreakChart';
+import { StreakChart } from '@/ui/components/StreakChart';
 
 describe('StreakChart', () => {
   it('renders with basic data', () => {

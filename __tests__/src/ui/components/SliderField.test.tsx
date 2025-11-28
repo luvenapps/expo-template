@@ -32,7 +32,7 @@ jest.mock('tamagui', () => {
 });
 
 // Mock Text components
-jest.mock('../../../../src/ui/components/Text', () => {
+jest.mock('@/ui/components/Text', () => {
   const mockReact = jest.requireActual('react');
 
   return {
@@ -43,7 +43,7 @@ jest.mock('../../../../src/ui/components/Text', () => {
 
 import { render } from '@testing-library/react-native';
 import React from 'react';
-import { SliderField } from '../../../../src/ui/components/SliderField';
+import { SliderField } from '@/ui/components/SliderField';
 
 describe('SliderField', () => {
   const mockOnValueChange = jest.fn();

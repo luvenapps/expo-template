@@ -11,7 +11,7 @@ jest.mock('tamagui', () => {
 });
 
 // Mock Text components
-jest.mock('../../../../src/ui/components/Text', () => {
+jest.mock('@/ui/components/Text', () => {
   const mockReact = jest.requireActual('react');
 
   return {
@@ -22,7 +22,7 @@ jest.mock('../../../../src/ui/components/Text', () => {
 
 import { render } from '@testing-library/react-native';
 import React from 'react';
-import { FormField } from '../../../../src/ui/components/FormField';
+import { FormField } from '@/ui/components/FormField';
 
 describe('FormField', () => {
   it('renders with label and input', () => {

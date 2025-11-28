@@ -9,7 +9,7 @@ jest.mock('tamagui', () => {
 });
 
 // Mock Text components
-jest.mock('../../../../src/ui/components/Text', () => {
+jest.mock('@/ui/components/Text', () => {
   const mockReact = jest.requireActual('react');
 
   return {
@@ -21,7 +21,7 @@ jest.mock('../../../../src/ui/components/Text', () => {
 import { render } from '@testing-library/react-native';
 import React from 'react';
 import { View, Text } from 'react-native';
-import { CalendarHeatmap } from '../../../../src/ui/components/CalendarHeatmap';
+import { CalendarHeatmap } from '@/ui/components/CalendarHeatmap';
 
 describe('CalendarHeatmap', () => {
   it('renders correct number of cells', () => {
