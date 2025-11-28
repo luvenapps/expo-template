@@ -83,6 +83,13 @@ jest.mock('expo-router', () => ({
   useNavigation: () => ({ canGoBack: jest.fn(() => true) }),
 }));
 
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => key,
+    i18n: { language: 'en', resolvedLanguage: 'en', languages: ['en'] },
+  }),
+}));
+
 const mockedSignUp = signUpWithEmail as jest.Mock;
 const mockedPasswordReset = sendPasswordReset as jest.Mock;
 

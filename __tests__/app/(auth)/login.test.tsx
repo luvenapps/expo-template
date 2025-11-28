@@ -84,6 +84,13 @@ jest.mock('tamagui', () => {
   };
 });
 
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => key,
+    i18n: { language: 'en', resolvedLanguage: 'en', languages: ['en'] },
+  }),
+}));
+
 import { fireEvent, render, waitFor, act } from '@testing-library/react-native';
 import React from 'react';
 import LoginScreen from '../../../app/(auth)/login';
