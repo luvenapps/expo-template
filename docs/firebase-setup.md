@@ -1,5 +1,16 @@
 # Firebase Setup
 
+## 0. Toggle gating (EXPO_PUBLIC_TURN_ON_FIREBASE)
+
+Firebase native config (plist/json + plugins) is gated by the `EXPO_PUBLIC_TURN_ON_FIREBASE` env var. It defaults to **disabled**. Set it to `true` in the relevant `.env` when you want Firebase wired and rebuild native apps:
+
+```
+EXPO_PUBLIC_TURN_ON_FIREBASE=true
+```
+
+Local: set in `.env.local` and rebuild (prebuild/run or EAS).  
+CI/EAS: set as an env/secret before the build.
+
 ## 1. Create the project
 
 1. Visit the [Firebase Console](https://console.firebase.google.com/), click **Add project**, and create a project (e.g., `better-habits`).
@@ -44,6 +55,7 @@ Inside the same Firebase project, register each platform:
 - The `credentials/` directory is part of the workspace but should remain in `.gitignore`.
 - Expo’s config plugin (`@react-native-firebase/app`) reads from that directory during native builds.
 - For CI/EAS builds, upload the plist/json files as “Build Credentials” or inject them through secure environment variables before build time.
+- With gating: provide the files via secrets (base64 is easiest) and set `EXPO_PUBLIC_TURN_ON_FIREBASE=true` for build jobs that need Firebase; leave it unset/false for test-only jobs.
 
 ## 4. Verify locally
 

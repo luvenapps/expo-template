@@ -48,13 +48,16 @@ jest.mock('@/observability/AnalyticsProvider', () => {
 });
 describe('inAppMessaging', () => {
   const originalPlatform = Platform.OS;
+  const originalEnv = process.env.EXPO_PUBLIC_TURN_ON_FIREBASE;
 
   beforeEach(() => {
+    process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = 'true';
     __resetInAppMessagingProviderForTests();
     Object.defineProperty(Platform, 'OS', { value: 'ios', configurable: true });
   });
 
   afterEach(() => {
+    process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = originalEnv;
     Object.defineProperty(Platform, 'OS', { value: originalPlatform, configurable: true });
   });
 

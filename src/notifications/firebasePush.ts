@@ -7,6 +7,13 @@ export type PushRegistrationResult =
   | { status: 'error'; message: string };
 
 export async function registerForPushNotifications(): Promise<PushRegistrationResult> {
+  const turnOnFirebase =
+    process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === 'true' ||
+    process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === '1';
+  if (!turnOnFirebase) {
+    return { status: 'unavailable' };
+  }
+
   if (Platform.OS === 'web') {
     return { status: 'unavailable' };
   }
@@ -65,6 +72,11 @@ export async function registerForPushNotifications(): Promise<PushRegistrationRe
  * Must be called early in the app lifecycle
  */
 export function initializeFCMListeners() {
+  const turnOnFirebase =
+    process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === 'true' ||
+    process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === '1';
+  if (!turnOnFirebase) return;
+
   if (Platform.OS === 'web') {
     return;
   }
@@ -116,6 +128,11 @@ export function initializeFCMListeners() {
  * MUST be called OUTSIDE of the React component lifecycle (at the top level)
  */
 export function setupBackgroundMessageHandler() {
+  const turnOnFirebase =
+    process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === 'true' ||
+    process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === '1';
+  if (!turnOnFirebase) return;
+
   if (Platform.OS === 'web') {
     return;
   }

@@ -65,6 +65,7 @@ describe('firebasePush', () => {
   const originalPlatform = Platform.OS;
   const originalConsoleLog = console.log;
   const originalConsoleWarn = console.warn;
+  const originalEnvFlag = process.env.EXPO_PUBLIC_TURN_ON_FIREBASE;
 
   beforeAll(() => {
     console.log = jest.fn();
@@ -77,6 +78,7 @@ describe('firebasePush', () => {
   });
 
   beforeEach(() => {
+    process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = 'true';
     Object.defineProperty(Platform, 'OS', { value: 'android', configurable: true });
     const messaging = jest.requireMock('@react-native-firebase/messaging');
     messaging.__mock.reset();
@@ -86,6 +88,7 @@ describe('firebasePush', () => {
   });
 
   afterEach(() => {
+    process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = originalEnvFlag;
     Object.defineProperty(Platform, 'OS', { value: originalPlatform, configurable: true });
   });
 

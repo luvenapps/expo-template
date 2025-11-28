@@ -16,6 +16,10 @@ const PARAM_LIMIT = 24;
 
 let cachedBackend: AnalyticsBackend | null | undefined;
 
+const turnOnFirebase =
+  process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === 'true' ||
+  process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === '1';
+
 const webConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -27,6 +31,14 @@ const webConfig = {
 };
 
 export function getFirebaseAnalyticsBackend(): AnalyticsBackend | null {
+  if (!turnOnFirebase) {
+    if (__DEV__) {
+      console.log('[Firebase] TURN_ON_FIREBASE is false; analytics disabled.');
+    }
+    cachedBackend = null;
+    return null;
+  }
+
   if (cachedBackend !== undefined) {
     return cachedBackend;
   }

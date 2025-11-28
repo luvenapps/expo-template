@@ -456,6 +456,15 @@ This ID links your local or CI builds to your Expo project so that features like
 
 ---
 
+## 📊 Analytics & Messaging
+
+- Firebase Analytics + Firebase In-App Messaging (IAM) power observability; Supabase remains the backend for auth/sync and `expo-notifications` handles local reminders.
+- Native builds include Firebase only when `TURN_ON_FIREBASE=true` (see `plugins/withFirebaseConfig.js`); provide `credentials/GoogleService-Info.plist` and `credentials/google-services.json` (or base64 secrets in CI) when enabled.
+- Web requires the Firebase web keys in `.env.local` (`EXPO_PUBLIC_FIREBASE_*`).
+- Details and steps: see [`docs/firebase-setup.md`](docs/firebase-setup.md).
+
+---
+
 ## ⚙️ Continuous Integration (GitHub Actions)
 
 This project includes a comprehensive GitHub Actions workflow to automate testing, linting, and building for multiple platforms. The CI pipeline runs unit tests with Jest, linting checks with ESLint, and end-to-end tests using Maestro on both iOS and Android environments. It also supports building the app for production to ensure the build process remains stable.

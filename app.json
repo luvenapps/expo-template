@@ -17,7 +17,6 @@
       "supportsTablet": true,
       "bundleIdentifier": "__APP_ID__",
       "buildNumber": "1",
-      "googleServicesFile": "./credentials/GoogleService-Info.plist",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -25,7 +24,6 @@
     "android": {
       "versionCode": 1,
       "softwareKeyboardLayoutMode": "pan",
-      "googleServicesFile": "./credentials/google-services.json",
       "permissions": ["POST_NOTIFICATIONS"],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -52,18 +50,7 @@
       "expo-background-task",
       "expo-localization",
       "expo-web-browser",
-      [
-        "@react-native-firebase/app",
-        {
-          "ios": {
-            "googleServicesFile": "./credentials/GoogleService-Info.plist"
-          },
-          "android": {
-            "googleServicesFile": "./credentials/google-services.json"
-          }
-        }
-      ],
-      "./plugins/withFirebaseModularHeaders.js"
+      "./plugins/withFirebaseConfig.js"
     ],
     "experiments": {
       "typedRoutes": true

@@ -25,6 +25,13 @@ const noopProvider: InAppMessagingProvider = {
 let provider: InAppMessagingProvider | null | undefined;
 let analytics: ReturnType<typeof useAnalytics> | null = null;
 
+function isFirebaseEnabled() {
+  return (
+    process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === 'true' ||
+    process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === '1'
+  );
+}
+
 function getAnalytics() {
   if (analytics) return analytics;
   try {
@@ -97,7 +104,7 @@ function getProvider(): InAppMessagingProvider {
     return provider ?? noopProvider;
   }
 
-  if (Platform.OS === 'web') {
+  if (!isFirebaseEnabled() || Platform.OS === 'web') {
     provider = noopProvider;
     return provider;
   }

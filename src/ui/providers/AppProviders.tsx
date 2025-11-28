@@ -13,7 +13,7 @@ import { useThemeContext } from '@/ui/theme/ThemeProvider';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { StatusBar } from 'expo-status-bar';
-import { PropsWithChildren, useEffect, useRef, useState } from 'react';
+import { PropsWithChildren, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -36,6 +36,12 @@ export function AppProviders({ children }: PropsWithChildren) {
   const syncEnabled = Platform.OS !== 'web' && isAuthenticated;
   const { resolvedTheme, palette } = useThemeContext();
   const [isAppReady, setIsAppReady] = useState(false);
+  const turnOnFirebase = useMemo(
+    () =>
+      process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === 'true' ||
+      process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === '1',
+    [],
+  );
 
   useEffect(() => {
     const initialize = async () => {
@@ -43,24 +49,27 @@ export function AppProviders({ children }: PropsWithChildren) {
       await Promise.all([
         registerNotificationCategories().catch(() => undefined),
         configureNotificationHandler().catch(() => undefined),
-        initializeInAppMessaging().catch(() => undefined),
+        turnOnFirebase ? initializeInAppMessaging().catch(() => undefined) : undefined,
       ]);
       // Mark app as ready after core initialization completes
       setIsAppReady(true);
     };
 
-    initialize();
+    initialize().catch(() => undefined);
 
     // Initialize FCM message listeners for push notifications
-    const unsubscribeFCM = initializeFCMListeners();
+    let unsubscribeFCM: (() => void) | undefined;
+    if (turnOnFirebase) {
+      unsubscribeFCM = initializeFCMListeners();
+    }
     return () => {
       unsubscribeFCM?.();
     };
-  }, []);
+  }, [turnOnFirebase]);
 
   useEffect(() => {
-    // Trigger app_ready custom event when initialization completes
-    if (!isAppReady) return;
+    // Trigger app_ready custom event when initialization completes (Firebase only)
+    if (!isAppReady || !turnOnFirebase) return;
 
     const triggerAppReady = async () => {
       console.log('[IAM] App ready, triggering app_ready event');
@@ -71,7 +80,7 @@ export function AppProviders({ children }: PropsWithChildren) {
     triggerAppReady().catch((error) => {
       console.error('[IAM] Failed to trigger app_ready event:', error);
     });
-  }, [isAppReady]);
+  }, [isAppReady, turnOnFirebase]);
 
   useEffect(() => {
     if (Platform.OS !== 'ios') {
