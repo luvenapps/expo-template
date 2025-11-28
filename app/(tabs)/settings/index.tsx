@@ -36,7 +36,7 @@ import { useThemeContext, type ThemeName } from '@/ui/theme/ThemeProvider';
 import { Calendar, Flame, Monitor, Moon, RefreshCw, Sun } from '@tamagui/lucide-icons';
 import { useRouter } from 'expo-router';
 import type { ComponentType } from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Platform } from 'react-native';
 import { Button, Paragraph, Progress, Switch, Text, View, XStack, YStack } from 'tamagui';
@@ -112,6 +112,19 @@ export default function SettingsScreen() {
   const { theme: themePreference, setTheme, palette } = useThemeContext();
   const accentHex = palette.accent;
   const hasSession = Boolean(session?.user?.id);
+  const streakSample = useMemo(
+    () => [
+      {
+        label: t('settings.streakSampleDailyReview'),
+        value: 4,
+        max: 7,
+        icon: <Flame size={16} color="$accentColor" />,
+      },
+      { label: t('settings.streakSampleFocus'), value: 3, max: 5 },
+      { label: t('settings.streakSampleWindDown'), value: 2, max: 4 },
+    ],
+    [t],
+  );
   const renderToggle = useCallback(
     ({
       checked,
@@ -488,11 +501,24 @@ export default function SettingsScreen() {
   ];
   const QUEUE_CAPACITY = 10;
   const queuePercent = Math.min(1, queueSize / QUEUE_CAPACITY);
-  const STREAK_SAMPLE = [
-    { label: 'Daily review', value: 4, max: 7, icon: <Flame size={16} color="$accentColor" /> },
-    { label: 'Focus block', value: 3, max: 5 },
-    { label: 'Wind-down', value: 2, max: 4 },
-  ];
+  const formatStreakDay = useCallback(
+    (value: number) =>
+      (t as unknown as (k: string, opts?: Record<string, any>) => string)('settings.streakDays', {
+        count: value,
+        suffix: value === 1 ? '' : 's',
+      }),
+    [t],
+  );
+
+  const formatStreakPercent = useCallback(
+    (percent: number) =>
+      (t as unknown as (k: string, opts?: Record<string, any>) => string)(
+        'settings.streakPercentComplete',
+        { percent: Math.round(percent * 100) },
+      ),
+    [t],
+  );
+
   const HEATMAP_SAMPLE = [
     [0, 1, 2, 3, 1, 0, 2],
     [1, 2, 3, 4, 2, 1, 0],
@@ -664,7 +690,11 @@ export default function SettingsScreen() {
           title={t('settings.streakPreviewTitle')}
           description={t('settings.streakPreviewDescription')}
         >
-          <StreakChart data={STREAK_SAMPLE} />
+          <StreakChart
+            data={streakSample}
+            formatDayLabel={formatStreakDay}
+            formatPercentLabel={formatStreakPercent}
+          />
         </SettingsSection>
 
         <SettingsSection

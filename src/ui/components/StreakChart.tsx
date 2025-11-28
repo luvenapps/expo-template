@@ -13,9 +13,17 @@ type StreakChartProps = {
   data: StreakDatum[];
   testID?: string;
   getItemTestID?: (label: string, index: number) => string;
+  formatDayLabel?: (value: number) => string;
+  formatPercentLabel?: (percent: number) => string;
 };
 
-export function StreakChart({ data, testID, getItemTestID }: StreakChartProps) {
+export function StreakChart({
+  data,
+  testID,
+  getItemTestID,
+  formatDayLabel = (value) => `${value} day${value === 1 ? '' : 's'}`,
+  formatPercentLabel = (percent) => `${Math.round(percent * 100)}% complete`,
+}: StreakChartProps) {
   return (
     <YStack gap="$3" testID={testID}>
       {data.map(({ label, value, max = 1, icon }, index) => {
@@ -26,7 +34,7 @@ export function StreakChart({ data, testID, getItemTestID }: StreakChartProps) {
             <XStack alignItems="center" gap="$2">
               {icon}
               <LabelText testID={itemTestID ? `${itemTestID}-label` : undefined}>
-                {label} • {value} day{value === 1 ? '' : 's'}
+                {label} • {formatDayLabel(value)}
               </LabelText>
             </XStack>
             <XStack
@@ -41,7 +49,7 @@ export function StreakChart({ data, testID, getItemTestID }: StreakChartProps) {
               color="$colorMuted"
               testID={itemTestID ? `${itemTestID}-percent` : undefined}
             >
-              {Math.round(percent * 100)}% complete
+              {formatPercentLabel(percent)}
             </CaptionText>
           </YStack>
         );
