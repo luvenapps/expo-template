@@ -19,6 +19,7 @@ import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Platform, TextInput } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { Button, Card, Form, View, YStack, useThemeName } from 'tamagui';
+import { useTranslation } from 'react-i18next';
 
 export default function LoginScreen() {
   const navigation = useNavigation<NavigationProp<ParamListBase>>();
@@ -35,6 +36,7 @@ export default function LoginScreen() {
   const toast = useToast();
   const showFriendlyError = useFriendlyErrorHandler(toast);
   const errorToastId = useRef<string | null>(null);
+  const { t } = useTranslation();
 
   const isFormValid = email.trim() !== '' && isValidEmail(email) && password.trim() !== '';
 
@@ -56,7 +58,7 @@ export default function LoginScreen() {
       }
 
       const { toastId } = showFriendlyError(
-        result.friendlyError ?? result.error ?? 'An error occurred',
+        result.friendlyError ?? result.error ?? t('auth.errorUnknown'),
         {
           surface,
           suppressToast: true,
@@ -67,7 +69,7 @@ export default function LoginScreen() {
       );
       errorToastId.current = toastId ?? errorToastId.current;
     },
-    [showFriendlyError],
+    [showFriendlyError, t],
   );
 
   const handleSubmit = async () => {
@@ -155,7 +157,7 @@ export default function LoginScreen() {
 
       buttons.push({
         provider: 'apple',
-        label: 'Continue with Apple',
+        label: t('auth.oauth.apple'),
         icon: (
           <Svg width={18} height={18} viewBox="0 0 18 18" role="img">
             <Path
@@ -201,7 +203,7 @@ export default function LoginScreen() {
 
     buttons.push({
       provider: 'google',
-      label: 'Continue with Google',
+      label: t('auth.oauth.google'),
       icon: (
         <Svg width={18} height={18} viewBox="0 0 18 18" role="img">
           <Path
@@ -236,7 +238,7 @@ export default function LoginScreen() {
     });
 
     return buttons;
-  }, [isDarkMode]);
+  }, [isDarkMode, t]);
 
   const content = (
     <ScreenContainer
@@ -257,8 +259,8 @@ export default function LoginScreen() {
       >
         <YStack gap="$5" width="100%">
           <YStack gap="$2" alignItems="center">
-            <TitleText textAlign="center">Welcome back</TitleText>
-            <SubtitleText textAlign="center">Sign in to your account to continue</SubtitleText>
+            <TitleText textAlign="center">{t('auth.loginTitle')}</TitleText>
+            <SubtitleText textAlign="center">{t('auth.loginSubtitle')}</SubtitleText>
           </YStack>
 
           <Form onSubmit={handleSubmit} width="100%" gap="$4">
@@ -266,8 +268,8 @@ export default function LoginScreen() {
               testID="email-field"
               labelTestID="email-label"
               inputTestID="email-input"
-              label="Email"
-              placeholder="you@example.com"
+              label={t('auth.emailLabel')}
+              placeholder={t('auth.emailPlaceholder')}
               placeholderTextColor="$colorMuted"
               keyboardType="email-address"
               autoCapitalize="none"
@@ -282,8 +284,8 @@ export default function LoginScreen() {
               testID="password-field"
               labelTestID="password-label"
               inputTestID="password-input"
-              label="Password"
-              placeholder="Enter your password"
+              label={t('auth.passwordLabel')}
+              placeholder={t('auth.passwordPlaceholder')}
               placeholderTextColor="$colorMuted"
               secureTextEntry={!showPassword}
               value={password}
@@ -297,7 +299,7 @@ export default function LoginScreen() {
                   right="$0"
                   padding="$1"
                   testID="toggle-password-visibility"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
                   onPress={() => setShowPassword((prev) => !prev)}
                   hoverStyle={{ opacity: 0.7, cursor: 'pointer' }}
                   pressStyle={{ opacity: 0.5 }}
@@ -320,7 +322,7 @@ export default function LoginScreen() {
               onPress={() => router.push('/(auth)/forgot-password')}
               hoverStyle={{ opacity: 0.8, cursor: 'pointer' }}
             >
-              Forgot your password?
+              {t('auth.forgotPasswordLink')}
             </CaptionText>
 
             {error ? (
@@ -344,7 +346,7 @@ export default function LoginScreen() {
                 disabled={!isFormValid || isLoading}
                 onPress={handleSubmit}
               >
-                {isLoading ? 'Signing in…' : 'Sign In'}
+                {isLoading ? t('auth.signingIn') : t('auth.signIn')}
               </PrimaryButton>
             </Form.Trigger>
           </Form>
@@ -355,19 +357,19 @@ export default function LoginScreen() {
             alignItems="center"
             marginTop={Platform.OS === 'web' ? '$4' : '$5'}
           >
-            <CaptionText color="$colorMuted">Don&apos;t have an account?</CaptionText>
+            <CaptionText color="$colorMuted">{t('auth.noAccountPrompt')}</CaptionText>
             <PrimaryButton
               testID="create-account-button"
               width="100%"
               onPress={() => router.push('/(auth)/signup')}
             >
-              Create account
+              {t('auth.createAccountCta')}
             </PrimaryButton>
           </YStack>
 
           <YStack gap="$3" width="100%" alignItems="center">
             <View marginTop={Platform.OS === 'web' ? 0 : 10}>
-              <CaptionText color="$colorMuted">Or</CaptionText>
+              <CaptionText color="$colorMuted">{t('auth.oauthDivider')}</CaptionText>
             </View>
             {oauthButtons.map(
               ({

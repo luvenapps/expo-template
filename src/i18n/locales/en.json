@@ -12,6 +12,27 @@
     "subtitle": "This is a fresh start. We’ll grow the experience together as we add offline data, sync, and more polished visuals.",
     "cta": "Get Started"
   },
+  "auth": {
+    "loginTitle": "Welcome back",
+    "loginSubtitle": "Sign in to your account to continue",
+    "emailLabel": "Email",
+    "emailPlaceholder": "you@example.com",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "hidePassword": "Hide password",
+    "showPassword": "Show password",
+    "forgotPasswordLink": "Forgot your password?",
+    "signIn": "Sign In",
+    "signingIn": "Signing in…",
+    "noAccountPrompt": "Don't have an account?",
+    "createAccountCta": "Create account",
+    "oauthDivider": "Or",
+    "oauth": {
+      "apple": "Continue with Apple",
+      "google": "Continue with Google"
+    },
+    "errorUnknown": "An error occurred"
+  },
   "settings": {
     "syncUnavailableWeb": "Background sync requires the iOS or Android app to access the local database.",
     "syncUnavailableAuth": "Sign in to enable syncing with your Supabase account.",

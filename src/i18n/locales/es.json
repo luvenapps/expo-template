@@ -12,6 +12,27 @@
     "subtitle": "Este es un nuevo comienzo. Iremos mejorando la experiencia con datos sin conexión, sincronización y visuales más pulidos.",
     "cta": "Comenzar"
   },
+  "auth": {
+    "loginTitle": "Bienvenido de nuevo",
+    "loginSubtitle": "Inicia sesión para continuar",
+    "emailLabel": "Correo electrónico",
+    "emailPlaceholder": "tú@ejemplo.com",
+    "passwordLabel": "Contraseña",
+    "passwordPlaceholder": "Ingresa tu contraseña",
+    "hidePassword": "Ocultar contraseña",
+    "showPassword": "Mostrar contraseña",
+    "forgotPasswordLink": "¿Olvidaste tu contraseña?",
+    "signIn": "Iniciar sesión",
+    "signingIn": "Iniciando sesión…",
+    "noAccountPrompt": "¿No tienes una cuenta?",
+    "createAccountCta": "Crear cuenta",
+    "oauthDivider": "O",
+    "oauth": {
+      "apple": "Continuar con Apple",
+      "google": "Continuar con Google"
+    },
+    "errorUnknown": "Ocurrió un error"
+  },
   "settings": {
     "syncUnavailableWeb": "La sincronización en segundo plano requiere la app de iOS o Android para acceder a la base de datos local.",
     "syncUnavailableAuth": "Inicia sesión para habilitar la sincronización con tu cuenta de Supabase.",
