@@ -31,7 +31,12 @@
       "apple": "Continuar con Apple",
       "google": "Continuar con Google"
     },
-    "errorUnknown": "Ocurrió un error"
+    "errorUnknown": "Ocurrió un error",
+    "header": {
+      "signIn": "Iniciar sesión",
+      "createAccount": "Crear cuenta",
+      "resetPassword": "Restablecer contraseña"
+    }
   },
   "auth.signup": {
     "missingTitle": "Falta información",

@@ -31,7 +31,12 @@
       "apple": "Continue with Apple",
       "google": "Continue with Google"
     },
-    "errorUnknown": "An error occurred"
+    "errorUnknown": "An error occurred",
+    "header": {
+      "signIn": "Sign in",
+      "createAccount": "Create account",
+      "resetPassword": "Reset password"
+    }
   },
   "auth.reset": {
     "missingEmailTitle": "Enter your email",

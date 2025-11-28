@@ -1,8 +1,10 @@
 import { HeaderBackButton } from '@react-navigation/elements';
 import { Stack, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 
 export default function AuthLayout() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   const goBack = () => {
     if (router.canGoBack()) {
@@ -21,9 +23,9 @@ export default function AuthLayout() {
         headerLeft: (props) => <HeaderBackButton {...props} label="" onPress={goBack} />,
       }}
     >
-      <Stack.Screen name="login" options={{ title: 'Sign in' }} />
-      <Stack.Screen name="signup" options={{ title: 'Create account' }} />
-      <Stack.Screen name="forgot-password" options={{ title: 'Reset password' }} />
+      <Stack.Screen name="login" options={{ title: t('auth.header.signIn') }} />
+      <Stack.Screen name="signup" options={{ title: t('auth.header.createAccount') }} />
+      <Stack.Screen name="forgot-password" options={{ title: t('auth.header.resetPassword') }} />
     </Stack>
   );
 }
