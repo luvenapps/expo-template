@@ -7,6 +7,11 @@
     "registerPush": "Register push token (Android)",
     "languageSelectorLabel": "Language"
   },
+  "home": {
+    "title": "Welcome to {{app}}",
+    "subtitle": "This is a fresh start. We’ll grow the experience together as we add offline data, sync, and more polished visuals.",
+    "cta": "Get Started"
+  },
   "settings": {
     "syncUnavailableWeb": "Background sync requires the iOS or Android app to access the local database.",
     "syncUnavailableAuth": "Sign in to enable syncing with your Supabase account.",

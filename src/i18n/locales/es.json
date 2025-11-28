@@ -7,6 +7,11 @@
     "registerPush": "Registrar token de push (Android)",
     "languageSelectorLabel": "Idioma"
   },
+  "home": {
+    "title": "Bienvenido a {{app}}",
+    "subtitle": "Este es un nuevo comienzo. Iremos mejorando la experiencia con datos sin conexión, sincronización y visuales más pulidos.",
+    "cta": "Comenzar"
+  },
   "settings": {
     "syncUnavailableWeb": "La sincronización en segundo plano requiere la app de iOS o Android para acceder a la base de datos local.",
     "syncUnavailableAuth": "Inicia sesión para habilitar la sincronización con tu cuenta de Supabase.",
