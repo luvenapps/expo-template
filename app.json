@@ -50,7 +50,8 @@
       "expo-background-task",
       "expo-localization",
       "expo-web-browser",
-      "./plugins/withFirebaseConfig.js"
+      "./plugins/withFirebaseConfig.js",
+      "./plugins/withFirebaseModularHeaders.js"
     ],
     "experiments": {
       "typedRoutes": true

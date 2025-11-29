@@ -28,7 +28,6 @@ module.exports = function withFirebaseConfig(config) {
         android: { googleServicesFile: './credentials/google-services.json' },
       },
     ],
-    './plugins/withFirebaseModularHeaders.js',
   ]);
 
   // Also set the googleServicesFile fields directly so Expo prebuild sees them.
