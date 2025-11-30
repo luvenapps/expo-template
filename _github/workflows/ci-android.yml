@@ -131,7 +131,8 @@ jobs:
           GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
         run: |
           set -euo pipefail
-          echo "$GOOGLE_SERVICES_JSON_B64" | base64 --decode > google-services.json
+          mkdir -p credentials
+          echo "$GOOGLE_SERVICES_JSON_B64" | base64 --decode > credentials/google-services.json
 
       # Lean caching: only Gradle to stay under 10GB org-wide cache budget
       - name: Cache Gradle (caches + wrapper + project .gradle)
@@ -395,7 +396,8 @@ jobs:
           GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
         run: |
           set -euo pipefail
-          echo "$GOOGLE_SERVICES_JSON_B64" | base64 --decode > google-services.json
+          mkdir -p credentials
+          echo "$GOOGLE_SERVICES_JSON_B64" | base64 --decode > credentials/google-services.json
 
       # Lean caching: only Gradle to stay under 10GB org-wide cache budget
       - name: Cache Gradle (caches + wrapper + project .gradle)

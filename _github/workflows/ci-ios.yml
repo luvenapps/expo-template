@@ -139,7 +139,6 @@ jobs:
           set -euo pipefail
 
           FIREBASE_FLAG="${EXPO_PUBLIC_TURN_ON_FIREBASE:-false}"
-          FIREBASE_FLAG="${EXPO_PUBLIC_TURN_ON_FIREBASE:-false}"
           # Use Expo's native fingerprint tool to detect changes that require a rebuild
           HASH=$(npx @expo/fingerprint fingerprint:generate --platform ios | node -e "console.log(JSON.parse(require('fs').readFileSync(0, 'utf-8')).hash)")
 
@@ -351,6 +350,7 @@ jobs:
         run: |
           set -euo pipefail
 
+          FIREBASE_FLAG="${EXPO_PUBLIC_TURN_ON_FIREBASE:-false}"
           # Use Expo's native fingerprint tool to detect changes that require a rebuild
           HASH=$(npx @expo/fingerprint fingerprint:generate --platform ios | node -e "console.log(JSON.parse(require('fs').readFileSync(0, 'utf-8')).hash)")
 
