@@ -182,7 +182,7 @@ jobs:
           console.log('Updated app.json with extra.eas.projectId, slug and owner.');
           NODE
 
-      # Lean caching: only Gradle + Maestro to stay under 10GB org-wide cache budget
+      # Lean caching: only Gradle to stay under 10GB org-wide cache budget
       - name: Cache Gradle (caches + wrapper + project .gradle)
         id: gradle-cache
         uses: actions/cache@v4

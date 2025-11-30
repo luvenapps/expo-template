@@ -284,7 +284,7 @@ jobs:
           include-hidden-files: true
 
       - name: Clean workspace
-        if: ${{ always() }}
+        if: always()
         shell: bash
         run: |
           echo "🧹 Cleaning hosted workspace (removing iOS build artifacts and E2E outputs)..."

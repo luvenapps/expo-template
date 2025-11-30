@@ -50,12 +50,15 @@ Inside the same Firebase project, register each platform:
    EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID=...
    ```
 
-## 3. Keep credentials out of git
+## 3. Keep credentials out of git (and provide them in CI/EAS)
 
 - The `credentials/` directory is part of the workspace but should remain in `.gitignore`.
 - Expo’s config plugin (`@react-native-firebase/app`) reads from that directory during native builds.
-- For CI/EAS builds, upload the plist/json files as “Build Credentials” or inject them through secure environment variables before build time.
-- With gating: provide the files via secrets (base64 is easiest) and set `EXPO_PUBLIC_TURN_ON_FIREBASE=true` for build jobs that need Firebase; leave it unset/false for test-only jobs.
+- For CI/EAS builds (including store deploys), provide the config files via secrets and decode them before the build:
+  - `GOOGLE_SERVICE_INFO_PLIST_B64` — base64 of `credentials/GoogleService-Info.plist`
+  - `GOOGLE_SERVICES_JSON_B64` — base64 of `credentials/google-services.json`
+  - Decode them in your workflow (already wired) so native builds have the files.
+- With gating: set `EXPO_PUBLIC_TURN_ON_FIREBASE=true` for build jobs that need Firebase; leave it unset/false for test-only jobs.
 
 ## 4. Verify locally
 
