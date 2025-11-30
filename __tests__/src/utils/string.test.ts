@@ -79,7 +79,7 @@ describe('singularize', () => {
 
   it('converts words ending in "s" by removing "s"', () => {
     expect(singularize('papers')).toBe('paper');
-    expect(singularize('habits')).toBe('habit');
+    expect(singularize('tasks')).toBe('task');
     expect(singularize('reminders')).toBe('reminder');
   });
 
@@ -143,7 +143,7 @@ describe('pluralize', () => {
 
   it('adds "s" to regular words', () => {
     expect(pluralize('paper')).toBe('papers');
-    expect(pluralize('habit')).toBe('habits');
+    expect(pluralize('task')).toBe('tasks');
     expect(pluralize('reminder')).toBe('reminders');
   });
 });

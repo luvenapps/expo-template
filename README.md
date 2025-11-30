@@ -597,11 +597,11 @@ Before shipping preview/production builds, follow [`docs/build-size.md`](docs/bu
 
 ### Social authentication setup
 
-We implement Supabase’s [Expo React Native social auth quickstart](https://supabase.com/docs/guides/auth/quickstarts/with-expo-react-native-social-auth), which uses Expo Linking + AuthSession to drive Supabase’s hosted OAuth flows. Use that guide as your source of truth; the notes below capture BetterHabits-specific details.
+We implement Supabase’s [Expo React Native social auth quickstart](https://supabase.com/docs/guides/auth/quickstarts/with-expo-react-native-social-auth), which uses Expo Linking + AuthSession to drive Supabase’s hosted OAuth flows. Use that guide as your source of truth; the notes below capture __APP_NAME__-specific details.
 
 1. **Register callback URLs**
-   - In Supabase Studio’s _Authentication → URL Configuration_, add both `betterhabits://auth/callback` and your deployed web URL (e.g., `https://yourdomain.com/auth/callback`).
-   - The native scheme `betterhabits` is already declared in `app.json`; don’t change it unless you update every OAuth redirect.
+   - In Supabase Studio’s _Authentication → URL Configuration_, add both `__APP_NAME__://auth/callback` and your deployed web URL (e.g., `https://yourdomain.com/auth/callback`).
+   - The native scheme `__APP_NAME__` is already declared in `app.json`; don’t change it unless you update every OAuth redirect.
 2. **Enable providers (Studio)**
    - Go to _Authentication → Providers_ and toggle Apple + Google on.
    - Paste the client IDs/secrets from Apple Developer/Google Cloud. Supabase stores them securely and the Expo app reuses the same anon key.
@@ -610,13 +610,13 @@ We implement Supabase’s [Expo React Native social auth quickstart](https://sup
    - If you run Supabase locally (`npm run supabase:dev`), restart it so the provider config takes effect.
    - Restart Metro (`npm start`) and rebuild native dev clients after flipping providers on/off.
 4. **Test the flows**
-   - Native: tapping “Continue with …” opens the system browser overlay (Chrome Custom Tabs or ASWebAuthenticationSession). Once the Supabase redirect hits `betterhabits://auth/callback`, the session listener updates Zustand.
+   - Native: tapping “Continue with …” opens the system browser overlay (Chrome Custom Tabs or ASWebAuthenticationSession). Once the Supabase redirect hits `__APP_NAME__://auth/callback`, the session listener updates Zustand.
    - Web: the login page redirects in the same tab; after sign-in, Supabase sends the browser back to `https://<project>.supabase.co/auth/v1/callback` which returns to your app.
 
 **Provider-specific tips**:
 
 - **Apple** – You need an Apple Developer Program membership. Create a Services ID + Sign in with Apple key, set the callback to `https://<project>.supabase.co/auth/v1/callback`, and paste the credentials into Supabase.
-- **Google** – Create OAuth client IDs for iOS, Android, and Web. Use the bundle id/package `com.luvenapps.betterhabits` for native clients, and the Supabase callback URL for web.
+- **Google** – Create OAuth client IDs for iOS, Android, and Web. Use the bundle id/package `__APP_ID__` for native clients, and the Supabase callback URL for web.
 - **CLI-only setups** – If you prefer not to open the hosted Studio, you can configure providers through SQL per the quickstart doc (insert rows in `auth.external_providers`). Either way, the Expo client doesn’t need additional env vars beyond `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY`.
 
 After following the quickstart, the “Continue with Apple/Google” buttons in `app/(auth)/login.tsx` should launch the appropriate flows on iOS, Android, and web without additional code changes.
@@ -819,14 +819,14 @@ During development, you may need to clear your local databases to start with a c
 
 #### Clearing Local SQLite Database (Mobile App Data)
 
-**Option 1: Delete the SQLite file** (Nuclear option)
+**Option 1: Delete the SQLite file**
 
 ```bash
 # iOS Simulator
-rm ~/Library/Developer/CoreSimulator/Devices/*/data/Containers/Data/Application/*/Library/LocalDatabase/betterhabits.db
+rm ~/Library/Developer/CoreSimulator/Devices/*/data/Containers/Data/Application/*/Library/LocalDatabase/__APP_NAME__.db
 
 # Android Emulator
-adb shell run-as com.luvenapps.betterhabits rm /data/data/com.luvenapps.betterhabits/databases/betterhabits.db
+adb shell run-as __APP_ID__ rm /data/data/__APP_ID__/databases/__APP_NAME__.db
 
 # Or just uninstall/reinstall the app
 ```
