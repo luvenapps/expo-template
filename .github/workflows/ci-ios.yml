@@ -180,6 +180,24 @@ jobs:
           console.log('Updated app.json with extra.eas.projectId, slug and owner.');
           NODE
 
+      - name: Copy Firebase plist into build workdir
+        if: ${{ env.EXPO_PUBLIC_TURN_ON_FIREBASE == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TARGET_DIR="${EAS_LOCAL_BUILD_WORKDIR:-$PWD}"
+          mkdir -p "${TARGET_DIR}/credentials"
+          cp credentials/GoogleService-Info.plist "${TARGET_DIR}/credentials/GoogleService-Info.plist"
+
+      - name: Copy Firebase plist into build workdir
+        if: ${{ env.EXPO_PUBLIC_TURN_ON_FIREBASE == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TARGET_DIR="${EAS_LOCAL_BUILD_WORKDIR:-$PWD}"
+          mkdir -p "${TARGET_DIR}/credentials"
+          cp credentials/GoogleService-Info.plist "${TARGET_DIR}/credentials/GoogleService-Info.plist"
+
       - name: Compute iOS build fingerprint
         id: ios_fp
         shell: bash
