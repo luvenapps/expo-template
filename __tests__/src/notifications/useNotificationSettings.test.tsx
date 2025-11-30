@@ -10,11 +10,6 @@ jest.mock('@/notifications/preferences', () => ({
 jest.mock('@/notifications/notifications', () => ({
   ensureNotificationPermission: jest.fn(),
   cancelAllScheduledNotifications: jest.fn(),
-  cancelScheduledNotification: jest.fn(),
-}));
-
-jest.mock('@/notifications/scheduler', () => ({
-  scheduleReminder: jest.fn(),
 }));
 
 jest.mock('@/observability/AnalyticsProvider', () => ({
@@ -35,7 +30,6 @@ jest.mock('expo-notifications', () => ({
 
 const preferenceModule = require('@/notifications/preferences');
 const notificationModule = require('@/notifications/notifications');
-const schedulerModule = require('@/notifications/scheduler');
 const analyticsModule = require('@/observability/AnalyticsProvider');
 const expoNotifications = require('expo-notifications');
 
@@ -55,13 +49,6 @@ const cancelAllScheduledNotifications =
   notificationModule.cancelAllScheduledNotifications as jest.MockedFunction<
     typeof notificationModule.cancelAllScheduledNotifications
   >;
-const cancelScheduledNotification =
-  notificationModule.cancelScheduledNotification as jest.MockedFunction<
-    typeof notificationModule.cancelScheduledNotification
-  >;
-const scheduleReminder = schedulerModule.scheduleReminder as jest.MockedFunction<
-  typeof schedulerModule.scheduleReminder
->;
 const useAnalytics = analyticsModule.useAnalytics as jest.MockedFunction<
   typeof analyticsModule.useAnalytics
 >;
@@ -94,7 +81,6 @@ describe('useNotificationSettings', () => {
       status: expoNotifications.PermissionStatus.DENIED,
       canAskAgain: true,
     });
-    scheduleReminder.mockResolvedValue('reminder-id');
   });
 
   afterEach(() => {
@@ -358,46 +344,5 @@ describe('useNotificationSettings', () => {
     expect(persistNotificationPreferences).toHaveBeenCalledWith(
       expect.objectContaining({ remindersEnabled: false }),
     );
-  });
-
-  it('schedules per-habit reminders with quiet hours applied', async () => {
-    const { result } = renderHook(() => useNotificationSettings());
-    const fireDate = new Date('2025-01-01T12:00:00Z');
-
-    await act(async () => {
-      await result.current.scheduleHabitReminder('habit-1', fireDate, {
-        title: 'Hydrate',
-        body: 'Drink water now',
-        data: { custom: 'value' },
-      });
-    });
-
-    expect(scheduleReminder).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: expect.stringContaining('habit-1'),
-        title: 'Hydrate',
-        body: 'Drink water now',
-        data: expect.objectContaining({ habitId: 'habit-1', custom: 'value' }),
-        fireDate,
-      }),
-      { quietHours: [20, 23] },
-    );
-    expect(trackEvent).toHaveBeenCalledWith(
-      'notifications:habit-scheduled',
-      expect.objectContaining({ habitId: 'habit-1' }),
-    );
-  });
-
-  it('cancels habit reminders', async () => {
-    const { result } = renderHook(() => useNotificationSettings());
-
-    await act(async () => {
-      await result.current.cancelHabitReminder('reminder-123');
-    });
-
-    expect(cancelScheduledNotification).toHaveBeenCalledWith('reminder-123');
-    expect(trackEvent).toHaveBeenCalledWith('notifications:habit-cancelled', {
-      reminderId: 'reminder-123',
-    });
   });
 });

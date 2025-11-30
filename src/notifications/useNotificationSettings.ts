@@ -1,6 +1,5 @@
 import {
   cancelAllScheduledNotifications,
-  cancelScheduledNotification,
   ensureNotificationPermission,
 } from '@/notifications/notifications';
 import {
@@ -8,7 +7,6 @@ import {
   loadNotificationPreferences,
   persistNotificationPreferences,
 } from '@/notifications/preferences';
-import { scheduleReminder } from '@/notifications/scheduler';
 import { useAnalytics } from '@/observability/AnalyticsProvider';
 import * as Notifications from 'expo-notifications';
 import { useCallback, useEffect, useState } from 'react';
@@ -157,43 +155,6 @@ export function useNotificationSettings() {
     [analytics, updatePreferences],
   );
 
-  const scheduleHabitReminder = useCallback(
-    async (
-      habitId: string,
-      fireDate: Date,
-      overrides?: { title?: string; body?: string; data?: Record<string, unknown> },
-    ) => {
-      const reminderId = `habit-${habitId}-${fireDate.getTime()}`;
-      const title = overrides?.title ?? 'Habit reminder';
-      const body = overrides?.body ?? 'Time to check in on your habit.';
-      const data = { ...(overrides?.data ?? {}), habitId };
-      const result = await scheduleReminder(
-        {
-          id: reminderId,
-          title,
-          body,
-          data,
-          fireDate,
-        },
-        { quietHours: preferences.quietHours },
-      );
-      analytics.trackEvent('notifications:habit-scheduled', {
-        habitId,
-        reminderId,
-      });
-      return result;
-    },
-    [analytics, preferences.quietHours],
-  );
-
-  const cancelHabitReminder = useCallback(
-    async (reminderId: string) => {
-      await cancelScheduledNotification(reminderId);
-      analytics.trackEvent('notifications:habit-cancelled', { reminderId });
-    },
-    [analytics],
-  );
-
   return {
     ...preferences,
     permissionStatus,
@@ -205,7 +166,5 @@ export function useNotificationSettings() {
     toggleDailySummary: handleDailySummaryToggle,
     updateQuietHours: handleQuietHoursChange,
     refreshPermissionStatus,
-    scheduleHabitReminder,
-    cancelHabitReminder,
   };
 }

@@ -232,8 +232,7 @@ jest.mock('react-i18next', () => {
       'settings.streakPreviewDescription':
         'Quick look at upcoming streaks (placeholder until main UI lands).',
       'settings.calendarPreviewTitle': 'Calendar preview',
-      'settings.calendarPreviewDescription':
-        'Consistency heatmap placeholder for upcoming habit flows.',
+      'settings.calendarPreviewDescription': 'Consistency heatmap placeholder for upcoming flows.',
       'settings.remindersTitle': 'Reminders',
       'settings.dailySummaryTitle': 'Daily summary',
       'settings.remindersDescription': 'Send push notifications when it’s time to log progress.',
@@ -281,8 +280,7 @@ jest.mock('react-i18next', () => {
       'settings.streakPreviewDescription':
         'Vista rápida de rachas próximas (interfaz provisional).',
       'settings.calendarPreviewTitle': 'Vista previa del calendario',
-      'settings.calendarPreviewDescription':
-        'Mapa de calor provisional para futuras vistas de hábitos.',
+      'settings.calendarPreviewDescription': 'Mapa de calor provisional para futuras vistas.',
       'settings.remindersTitle': 'Recordatorios',
       'settings.dailySummaryTitle': 'Resumen diario',
       'settings.remindersDescription':
@@ -454,10 +452,10 @@ import {
 } from '@/data';
 import { clearAllTables, getDb, hasData } from '@/db/sqlite';
 import { withDatabaseRetry } from '@/db/sqlite/retry';
-import { useSync } from '@/sync';
-import { clearAll as clearOutbox } from '@/sync/outbox';
-import { resetCursors } from '@/sync/cursors';
 import { useNotificationSettings } from '@/notifications/useNotificationSettings';
+import { useSync } from '@/sync';
+import { resetCursors } from '@/sync/cursors';
+import { clearAll as clearOutbox } from '@/sync/outbox';
 import { useThemeContext } from '@/ui/theme/ThemeProvider';
 import { themePalettes } from '@/ui/theme/palette';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
@@ -497,8 +495,6 @@ const buildNotificationSettings = (
   toggleDailySummary: mockToggleDailySummary,
   updateQuietHours: mockUpdateQuietHours,
   refreshPermissionStatus: jest.fn(),
-  scheduleHabitReminder: jest.fn(),
-  cancelHabitReminder: jest.fn(),
   ...overrides,
 });
 
