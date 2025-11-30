@@ -74,12 +74,6 @@ npm run supabase:dev
 npm run supabase:deploy
 ```
 
-## Example Migration
-
-See `0000_example.sql.example` for a reference of what a generated migration looks like (using "habits" as an example domain).
-
-**Note:** This example file should be deleted when you're ready to generate your actual migrations.
-
 ## Subsequent Migrations
 
 When you change your database schema:

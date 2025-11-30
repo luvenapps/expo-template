@@ -47,6 +47,7 @@ env:
   IOS_DEVICE: 'iPhone 17'
   MAESTRO_VERSION: '2.0.6'
   FASTLANE_VERSION: '2.228.0'
+  EXPO_PUBLIC_TURN_ON_FIREBASE: ${{ vars.TURN_ON_FIREBASE }}
   RETRIES: ${{ vars.RETRIES }}
   RETRY_DELAY: ${{ vars.RETRY_DELAY }}
   MAESTRO_DRIVER_STARTUP_TIMEOUT: 60000
@@ -122,7 +123,7 @@ jobs:
         run: .github/scripts/setup_maestro.sh "${{ env.MAESTRO_VERSION }}"
 
       - name: Create Firebase plist from secret
-        if: ${{ vars.TURN_ON_FIREBASE == 'true' }}
+        if: ${{ env.EXPO_PUBLIC_TURN_ON_FIREBASE == 'true' }}
         shell: bash
         env:
           GOOGLE_SERVICE_INFO_PLIST_B64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_B64 }}
@@ -137,11 +138,13 @@ jobs:
         run: |
           set -euo pipefail
 
+          FIREBASE_FLAG="${EXPO_PUBLIC_TURN_ON_FIREBASE:-false}"
+          FIREBASE_FLAG="${EXPO_PUBLIC_TURN_ON_FIREBASE:-false}"
           # Use Expo's native fingerprint tool to detect changes that require a rebuild
           HASH=$(npx @expo/fingerprint fingerprint:generate --platform ios | node -e "console.log(JSON.parse(require('fs').readFileSync(0, 'utf-8')).hash)")
 
-          echo "key=ios-app-${HASH}" >> "$GITHUB_OUTPUT"
-          echo "🔑 iOS_FINGERPRINT=$HASH"
+          echo "key=ios-app-${HASH}-${FIREBASE_FLAG}" >> "$GITHUB_OUTPUT"
+          echo "🔑 iOS_FINGERPRINT=${HASH} (firebase=${FIREBASE_FLAG})"
 
       - name: Restore the tar.gz iOS app
         id: ios_cache
@@ -155,7 +158,6 @@ jobs:
         shell: bash
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          EXPO_PUBLIC_TURN_ON_FIREBASE: ${{ vars.TURN_ON_FIREBASE }}
           EXPO_PUBLIC_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
           EXPO_PUBLIC_FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
           EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
@@ -334,7 +336,7 @@ jobs:
         continue-on-error: true
 
       - name: Create Firebase plist from secret
-        if: ${{ vars.TURN_ON_FIREBASE == 'true' }}
+        if: ${{ env.EXPO_PUBLIC_TURN_ON_FIREBASE == 'true' }}
         shell: bash
         env:
           GOOGLE_SERVICE_INFO_PLIST_B64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_B64 }}
@@ -352,8 +354,8 @@ jobs:
           # Use Expo's native fingerprint tool to detect changes that require a rebuild
           HASH=$(npx @expo/fingerprint fingerprint:generate --platform ios | node -e "console.log(JSON.parse(require('fs').readFileSync(0, 'utf-8')).hash)")
 
-          echo "key=ios-app-${HASH}" >> "$GITHUB_OUTPUT"
-          echo "🔑 iOS_FINGERPRINT=$HASH"
+          echo "key=ios-app-${HASH}-${FIREBASE_FLAG}" >> "$GITHUB_OUTPUT"
+          echo "🔑 iOS_FINGERPRINT=${HASH} (firebase=${FIREBASE_FLAG})"
 
       - name: Restore the tar.gz iOS app
         id: ios_cache
@@ -367,7 +369,6 @@ jobs:
         shell: bash
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          EXPO_PUBLIC_TURN_ON_FIREBASE: ${{ vars.TURN_ON_FIREBASE }}
           EXPO_PUBLIC_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
           EXPO_PUBLIC_FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
           EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
