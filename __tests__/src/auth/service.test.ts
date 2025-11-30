@@ -27,17 +27,17 @@ const ExpoModulesCore = require('expo-modules-core');
 const mockRequireOptionalNativeModule = ExpoModulesCore.requireOptionalNativeModule as jest.Mock;
 const mockOpenAuthSessionAsync = ExpoModulesCore.__openAuthSessionAsyncMock as jest.Mock;
 
-import { Platform } from 'react-native';
 import {
+  sendPasswordReset,
   signInWithEmail,
   signInWithOAuth,
   signOut,
   signUpWithEmail,
-  sendPasswordReset,
 } from '@/auth/service';
+import { Platform } from 'react-native';
 
 jest.mock('expo-linking', () => ({
-  createURL: jest.fn(() => 'betterhabits://auth/callback'),
+  createURL: jest.fn(() => 'appName://auth/callback'),
   openURL: jest.fn(() => Promise.resolve()),
 }));
 
@@ -130,7 +130,7 @@ describe('auth/service', () => {
     });
     expect(mockOpenAuthSessionAsync).toHaveBeenCalledWith(
       'https://example.com',
-      'betterhabits://auth/callback',
+      'appName://auth/callback',
       {},
     );
   });
@@ -233,7 +233,7 @@ describe('auth/service', () => {
     const result = await sendPasswordReset('user@example.com');
     expect(result).toEqual({ success: true });
     expect(auth.resetPasswordForEmail).toHaveBeenCalledWith('user@example.com', {
-      redirectTo: 'betterhabits://auth/callback',
+      redirectTo: 'appName://auth/callback',
     });
   });
 

@@ -1,7 +1,5 @@
 # Observability & Notifications
 
-Stage 5 focuses on the instrumentation agents need to reason about runtime behaviour (analytics, logging, notifications) before we layer on habit-specific UX.
-
 ## Analytics Provider
 
 - `src/observability/AnalyticsProvider.tsx` exposes `useAnalytics()` with `trackEvent`, `trackError`, and `trackPerformance`.
@@ -29,7 +27,7 @@ Stage 5 focuses on the instrumentation agents need to reason about runtime behav
 | `iam:clicked`                     | Firebase IAM message clicked                               | none                                      |
 | `iam:dismissed`                   | Firebase IAM message dismissed                             | none                                      |
 
-Add new events in the relevant hooks/components and keep namespaced by feature (`sync:*`, `habits:*`, etc.).
+Add new events in the relevant hooks/components and keep namespaced by feature (`sync:*`, `items:*`, etc.).
 
 ### Friendly error catalog
 
@@ -98,9 +96,3 @@ const {
 - `__tests__/src/notifications/useNotificationSettings.test.tsx` covers the hook (permission flows, state persistence, cancellations).
 - Settings screen tests mock the hook to validate copy rendering for `statusMessage`, `error`, and permission guidance.
 - Expo Notifications + MMKV are mocked in the hook tests; refer to those stubs when adding new behaviour.
-
-## Next steps
-
-- Wire analytics outputs to your preferred backend (Segment, PostHog, Datadog, etc.).
-- Extend notification scheduling to queue actual reminders once Stage 8 habit flows ship.
-- Add dashboards/alerts (Sentry, Logflare, Datadog) using the analytics/logging primitives as the integration point.

@@ -1,4 +1,5 @@
 /* istanbul ignore file */
+import { DOMAIN } from '@/config/domain.config';
 import { getDb } from '@/db/sqlite';
 import {
   deviceEntity,
@@ -8,19 +9,41 @@ import {
   reminderEntity,
 } from '@/db/sqlite/schema';
 import { ScreenContainer, SecondaryButton } from '@/ui';
+import { pluralize } from '@/utils';
 import { ChevronLeft, ChevronRight, Database } from '@tamagui/lucide-icons';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Platform, ScrollView } from 'react-native';
 import { Button, Card, Paragraph, Text, XStack, YStack } from 'tamagui';
 
-type TableName = 'habits' | 'habit_entries' | 'reminders' | 'devices' | 'outbox';
+type TableName =
+  | typeof DOMAIN.entities.primary.tableName
+  | typeof DOMAIN.entities.entries.tableName
+  | typeof DOMAIN.entities.reminders.tableName
+  | typeof DOMAIN.entities.devices.tableName
+  | 'outbox';
 
 const TABLE_CONFIGS = {
-  habits: { entity: primaryEntity, label: 'Habits', icon: '📋' },
-  habit_entries: { entity: entryEntity, label: 'Habit Entries', icon: '✅' },
-  reminders: { entity: reminderEntity, label: 'Reminders', icon: '⏰' },
-  devices: { entity: deviceEntity, label: 'Devices', icon: '📱' },
+  [DOMAIN.entities.primary.tableName]: {
+    entity: primaryEntity,
+    label: pluralize(DOMAIN.entities.primary.displayName),
+    icon: '📋',
+  },
+  [DOMAIN.entities.entries.tableName]: {
+    entity: entryEntity,
+    label: `${DOMAIN.entities.primary.displayName} ${pluralize(DOMAIN.entities.entries.displayName.toLowerCase())}`,
+    icon: '✅',
+  },
+  [DOMAIN.entities.reminders.tableName]: {
+    entity: reminderEntity,
+    label: pluralize(DOMAIN.entities.reminders.displayName),
+    icon: '⏰',
+  },
+  [DOMAIN.entities.devices.tableName]: {
+    entity: deviceEntity,
+    label: pluralize(DOMAIN.entities.devices.displayName),
+    icon: '📱',
+  },
   outbox: { entity: outbox, label: 'Outbox', icon: '📤' },
 } as const;
 
@@ -28,7 +51,7 @@ const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 export default function DatabaseViewerScreen() {
   const router = useRouter();
-  const [selectedTable, setSelectedTable] = useState<TableName>('habits');
+  const [selectedTable, setSelectedTable] = useState<TableName>(DOMAIN.entities.primary.tableName);
   const [data, setData] = useState<any[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);

@@ -13,7 +13,7 @@ CI/EAS: set as an env/secret before the build.
 
 ## 1. Create the project
 
-1. Visit the [Firebase Console](https://console.firebase.google.com/), click **Add project**, and create a project (e.g., `better-habits`).
+1. Visit the [Firebase Console](https://console.firebase.google.com/), click **Add project**, and create a project.
 2. Enable **Google Analytics** and **Firebase In-App Messaging** for the project.
 
 ## 2. Register app targets
@@ -23,14 +23,14 @@ Inside the same Firebase project, register each platform:
 ### iOS
 
 1. Click **Add app → iOS**.
-2. Use the bundle identifier `com.luvenapps.betterhabits`.
+2. Use your bundle identifier.
 3. Download the generated `GoogleService-Info.plist`.
 4. Place the file at `credentials/GoogleService-Info.plist` (this path is gitignored and referenced by `app.json`).
 
 ### Android
 
 1. Click **Add app → Android**.
-2. Use the package name `com.luvenapps.betterhabits`.
+2. Use the bundle identifier as the package name.
 3. Download the generated `google-services.json`.
 4. Place the file at `credentials/google-services.json`.
 

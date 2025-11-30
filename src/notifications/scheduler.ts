@@ -7,6 +7,7 @@ import {
 import * as Notifications from 'expo-notifications';
 import dayjs from 'dayjs';
 import { Platform } from 'react-native';
+import { DOMAIN } from '@/config/domain.config';
 
 export type ReminderPayload = {
   id: string;
@@ -16,7 +17,7 @@ export type ReminderPayload = {
   fireDate: Date;
 };
 
-const SCHEDULER_NAMESPACE = 'betterhabits-reminders';
+const SCHEDULER_NAMESPACE = `${DOMAIN.app.name}-reminders`;
 const QUIET_HOURS_BUFFER_MINUTES = 5;
 const REMINDER_CHANNEL_ID = 'REMINDERS';
 

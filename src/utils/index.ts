@@ -1,2 +1,2 @@
 /* istanbul ignore file */
-export { toSnakeCase } from './string';
+export { toSnakeCase, singularize, pluralize } from './string';

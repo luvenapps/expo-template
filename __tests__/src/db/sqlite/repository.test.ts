@@ -243,7 +243,7 @@ describe('createRepository', () => {
 
     test('insert surfaces friendly unique constraint message', async () => {
       const errorDb = createDbMocks();
-      const error = new Error('UNIQUE constraint failed: habits.id');
+      const error = new Error('UNIQUE constraint failed: items.id');
       errorDb.insert.mockImplementationOnce(() => ({
         values: jest.fn(() => {
           throw error;
@@ -257,14 +257,14 @@ describe('createRepository', () => {
       });
 
       await expect(errorRepo.insert({ id: '1' } as any)).rejects.toThrow(
-        'A record with these values already exists (habits.id).',
+        'A record with these values already exists (items.id).',
       );
       expect(consoleErrorSpy).toHaveBeenCalledWith('[Repository] Insert failed:', error);
     });
 
     test('insert surfaces friendly not-null message', async () => {
       const errorDb = createDbMocks();
-      const error = new Error('NOT NULL constraint failed: habits.name');
+      const error = new Error('NOT NULL constraint failed: items.name');
       errorDb.insert.mockImplementationOnce(() => ({
         values: jest.fn(() => {
           throw error;

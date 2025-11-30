@@ -819,14 +819,7 @@ During development, you may need to clear your local databases to start with a c
 
 #### Clearing Local SQLite Database (Mobile App Data)
 
-**Option 1: Use Developer Tools UI** (Recommended)
-
-1. Open the app on a **native build** (iOS/Android)
-2. Go to **Settings → Developer Tools**
-3. Tap **"Clear local database"**
-4. This deletes all local records (habits, entries, reminders, devices, outbox)
-
-**Option 2: Delete the SQLite file** (Nuclear option)
+**Option 1: Delete the SQLite file** (Nuclear option)
 
 ```bash
 # iOS Simulator

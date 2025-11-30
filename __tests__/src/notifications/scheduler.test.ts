@@ -14,6 +14,7 @@ import {
   scheduleLocalNotification,
   incrementBadgeCount,
 } from '@/notifications/notifications';
+import { DOMAIN } from '@/config/domain.config';
 
 jest.mock('expo-notifications', () => ({
   setNotificationCategoryAsync: jest.fn(),
@@ -165,7 +166,7 @@ describe('scheduler', () => {
       id: 'reminder-123',
       title: 'Test Reminder',
       body: 'This is a test',
-      data: { habitId: 'habit-1' },
+      data: { itemId: 'item-1' },
       fireDate: dayjs().add(1, 'hour').toDate(),
     };
 
@@ -205,8 +206,8 @@ describe('scheduler', () => {
         title: 'Test Reminder',
         body: 'This is a test',
         data: {
-          habitId: 'habit-1',
-          namespace: 'betterhabits-reminders',
+          itemId: 'item-1',
+          namespace: `${DOMAIN.app.name}-reminders`,
           reminderId: 'reminder-123',
         },
         trigger: expect.objectContaining({
@@ -230,8 +231,8 @@ describe('scheduler', () => {
         title: 'Test Reminder',
         body: 'This is a test',
         data: {
-          habitId: 'habit-1',
-          namespace: 'betterhabits-reminders',
+          itemId: 'item-1',
+          namespace: `${DOMAIN.app.name}-reminders`,
           reminderId: 'reminder-123',
         },
         trigger: expect.objectContaining({
@@ -396,7 +397,7 @@ describe('scheduler', () => {
       const customPayload = {
         ...mockPayload,
         data: {
-          habitId: 'habit-123',
+          itemId: 'item-123',
           customField: 'customValue',
           count: 42,
         },
@@ -407,10 +408,10 @@ describe('scheduler', () => {
       expect(scheduleLocalNotification).toHaveBeenCalledWith(
         expect.objectContaining({
           data: {
-            habitId: 'habit-123',
+            itemId: 'item-123',
             customField: 'customValue',
             count: 42,
-            namespace: 'betterhabits-reminders',
+            namespace: `${DOMAIN.app.name}-reminders`,
             reminderId: 'reminder-123',
           },
         }),
@@ -434,7 +435,7 @@ describe('scheduler', () => {
       expect(scheduleLocalNotification).toHaveBeenCalledWith(
         expect.objectContaining({
           data: {
-            namespace: 'betterhabits-reminders',
+            namespace: `${DOMAIN.app.name}-reminders`,
             reminderId: 'reminder-456',
           },
         }),

@@ -167,7 +167,7 @@ When you update [src/config/domain.config.ts](../src/config/domain.config.ts):
 
 ## Example: Renaming a Table
 
-Let's say you want to rename `habits` to `goals`:
+Let's say you want to rename your table to `goals`:
 
 1. Update [src/config/domain.config.ts](../src/config/domain.config.ts):
 

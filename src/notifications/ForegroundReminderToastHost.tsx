@@ -8,6 +8,7 @@ import * as Notifications from 'expo-notifications';
 
 import { useAnalytics } from '@/observability/AnalyticsProvider';
 import { ToastContainer, useToast, type ToastController } from '@/ui/components/Toast';
+import { DOMAIN } from '@/config/domain.config';
 
 export function ForegroundReminderToastHost() {
   const toast = useToast();
@@ -25,7 +26,7 @@ function useForegroundReminderToasts(toast: ToastController) {
 
     const subscription = Notifications.addNotificationReceivedListener((notification) => {
       const data = notification.request.content.data ?? {};
-      if (data?.namespace !== 'betterhabits-reminders') {
+      if (data?.namespace !== `${DOMAIN.app.name}-reminders`) {
         return;
       }
 
@@ -42,7 +43,7 @@ function useForegroundReminderToasts(toast: ToastController) {
 
       analytics.trackEvent('notifications:foreground-fired', {
         reminderId: data.reminderId,
-        habitId: data.habitId,
+        itemId: data.itemId,
         platform: Platform.OS,
       });
     });

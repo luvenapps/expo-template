@@ -383,7 +383,7 @@ export default function SettingsScreen() {
       const id = await scheduleReminder(
         {
           id: `dev-test-${Date.now()}`,
-          title: 'Better Habits Reminder',
+          title: `${DOMAIN.app.displayName} Reminder`,
           body: 'This is a test reminder (arrives in ~1 minute).',
           fireDate,
         },
