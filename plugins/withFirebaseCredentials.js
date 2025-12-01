@@ -51,15 +51,16 @@ function generateCredentials(projectRoot) {
 
   // Generate iOS plist (if platform is iOS or unknown)
   if (!platform || platform === 'ios') {
-    const plistBase64 = process.env.GOOGLE_SERVICE_INFO_PLIST_B64;
     const plistPath = path.join(credentialsDir, 'GoogleService-Info.plist');
+    const plistBase64 = process.env.GOOGLE_SERVICE_INFO_PLIST_B64;
 
-    if (plistBase64) {
+    if (fs.existsSync(plistPath)) {
+      // File already exists, skip generation to avoid duplicate logs
+      console.log('ℹ️  Using existing GoogleService-Info.plist from credentials/');
+    } else if (plistBase64) {
       const plistContent = Buffer.from(plistBase64, 'base64').toString('utf-8');
       fs.writeFileSync(plistPath, plistContent, 'utf-8');
       console.log('✅ Generated GoogleService-Info.plist from environment variable');
-    } else if (fs.existsSync(plistPath)) {
-      console.log('ℹ️  Using existing GoogleService-Info.plist from credentials/');
     } else if (platform === 'ios') {
       // Only warn if we're definitely building for iOS
       console.warn('⚠️  GOOGLE_SERVICE_INFO_PLIST_B64 not set and no local credentials file found');
@@ -69,15 +70,16 @@ function generateCredentials(projectRoot) {
 
   // Generate Android JSON (if platform is Android or unknown)
   if (!platform || platform === 'android') {
-    const jsonBase64 = process.env.GOOGLE_SERVICES_JSON_B64;
     const jsonPath = path.join(credentialsDir, 'google-services.json');
+    const jsonBase64 = process.env.GOOGLE_SERVICES_JSON_B64;
 
-    if (jsonBase64) {
+    if (fs.existsSync(jsonPath)) {
+      // File already exists, skip generation to avoid duplicate logs
+      console.log('ℹ️  Using existing google-services.json from credentials/');
+    } else if (jsonBase64) {
       const jsonContent = Buffer.from(jsonBase64, 'base64').toString('utf-8');
       fs.writeFileSync(jsonPath, jsonContent, 'utf-8');
       console.log('✅ Generated google-services.json from environment variable');
-    } else if (fs.existsSync(jsonPath)) {
-      console.log('ℹ️  Using existing google-services.json from credentials/');
     } else if (platform === 'android') {
       // Only warn if we're definitely building for Android
       console.warn('⚠️  GOOGLE_SERVICES_JSON_B64 not set and no local credentials file found');
@@ -100,7 +102,8 @@ module.exports = function withFirebaseCredentials(config) {
 
   // Generate credentials immediately when this plugin is evaluated
   // This happens BEFORE other plugins (like @react-native-firebase/app) try to copy them
-  const projectRoot = config._internal?.projectRoot || process.cwd();
+  // Use process.cwd() directly as config._internal.projectRoot can be incorrect in self-hosted runners
+  const projectRoot = process.cwd();
   generateCredentials(projectRoot);
 
   // Mark as generated to prevent duplicate execution
