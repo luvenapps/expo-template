@@ -1,18 +1,14 @@
 /* istanbul ignore file */
+import { ANALYTICS } from '@/config/constants';
 import { Platform } from 'react-native';
+type WebFirebaseApp = import('firebase/app').FirebaseApp;
+type WebAnalytics = import('firebase/analytics').Analytics;
 import type {
   AnalyticsBackend,
   AnalyticsErrorEnvelope,
   AnalyticsEventEnvelope,
   AnalyticsPerformanceEnvelope,
 } from './AnalyticsProvider';
-
-type WebFirebaseApp = import('firebase/app').FirebaseApp;
-type WebAnalytics = import('firebase/analytics').Analytics;
-
-const EVENT_NAME_MAX_LENGTH = 40;
-const PARAM_NAME_MAX_LENGTH = 24;
-const PARAM_LIMIT = 24;
 
 let cachedBackend: AnalyticsBackend | null | undefined;
 
@@ -217,7 +213,7 @@ function hasCompleteWebConfig() {
 
 function sanitizeEventName(name: string) {
   const normalized = name.trim().replace(/[^a-zA-Z0-9_]/g, '_');
-  const trimmed = normalized.slice(0, EVENT_NAME_MAX_LENGTH);
+  const trimmed = normalized.slice(0, ANALYTICS.eventNameMaxLength);
   if (!trimmed) return 'custom_event';
   if (!/^[a-zA-Z]/.test(trimmed)) {
     return `event_${trimmed}`;
@@ -227,7 +223,7 @@ function sanitizeEventName(name: string) {
 
 function sanitizeParamName(name: string) {
   const normalized = name.trim().replace(/[^a-zA-Z0-9_]/g, '_');
-  const trimmed = normalized.slice(0, PARAM_NAME_MAX_LENGTH);
+  const trimmed = normalized.slice(0, ANALYTICS.paramNameMaxLength);
   if (!trimmed) return 'param';
   if (!/^[a-zA-Z]/.test(trimmed)) {
     return `param_${trimmed}`;
@@ -247,7 +243,7 @@ function buildPayload(
 
   const sanitized: Record<string, string | number | boolean> = {};
   for (const [key, value] of mergedEntries) {
-    if (Object.keys(sanitized).length >= PARAM_LIMIT) break;
+    if (Object.keys(sanitized).length >= ANALYTICS.paramLimit) break;
     if (value === null || value === undefined) continue;
 
     if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {

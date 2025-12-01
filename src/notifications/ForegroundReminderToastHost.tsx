@@ -6,6 +6,7 @@ import { useEffect } from 'react';
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 
+import { NOTIFICATIONS } from '@/config/constants';
 import { useAnalytics } from '@/observability/AnalyticsProvider';
 import { ToastContainer, useToast, type ToastController } from '@/ui/components/Toast';
 import { DOMAIN } from '@/config/domain.config';
@@ -38,7 +39,7 @@ function useForegroundReminderToasts(toast: ToastController) {
         type: 'info',
         title,
         description,
-        duration: 5000,
+        duration: NOTIFICATIONS.toastDurationMs.foregroundReminder,
       });
 
       analytics.trackEvent('notifications:foreground-fired', {

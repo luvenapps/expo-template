@@ -1,10 +1,9 @@
 import { QueryClient } from '@tanstack/react-query';
 import type { PersistQueryClientProviderProps } from '@tanstack/react-query-persist-client';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
-import { Platform } from 'react-native';
 import { get as idbGet, set as idbSet, del as idbDelete } from 'idb-keyval';
-
-const TWENTY_FOUR_HOURS = 1000 * 60 * 60 * 24;
+import { Platform } from 'react-native';
+import { QUERY_CACHE } from '@/config/constants';
 
 let queryClient: QueryClient | null = null;
 let persistOptions: PersistQueryClientProviderProps['persistOptions'] | null | undefined;
@@ -48,7 +47,7 @@ export function getQueryClientPersistOptions():
 
   persistOptions = {
     persister,
-    maxAge: TWENTY_FOUR_HOURS,
+    maxAge: QUERY_CACHE.twentyFourHoursMs,
     dehydrateOptions: {
       shouldDehydrateQuery: () => true,
     },

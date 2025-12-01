@@ -1,16 +1,15 @@
+import { DATABASE } from '@/config/constants';
 import { getDb } from '@/db/sqlite/client';
 import { entryEntity } from '@/db/sqlite/schema';
 import { and, isNull, lt } from 'drizzle-orm';
 import { Platform } from 'react-native';
-
-const DEFAULT_ARCHIVE_DAYS = 365 * 2; // 2 years
 
 export async function archiveOldEntries(options: { olderThanDays?: number } = {}) {
   if (Platform.OS === 'web') {
     return 0;
   }
 
-  const days = options.olderThanDays !== undefined ? options.olderThanDays : DEFAULT_ARCHIVE_DAYS;
+  const days = options.olderThanDays !== undefined ? options.olderThanDays : DATABASE.archiveDays;
   const cutoffDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
   const db = await getDb();

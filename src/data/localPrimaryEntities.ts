@@ -14,6 +14,7 @@ import {
   assertNonEmptyString,
   assertOneOf,
 } from '@/data/validation';
+import { VALIDATION } from '@/config/constants';
 import { mapPayloadToRemote, normalizePayload } from '@/supabase/mappers';
 import type { PrimaryEntityRecord } from '@/supabase/types';
 import { enqueueWithDatabase } from '@/sync/outbox';
@@ -183,18 +184,23 @@ function guardNative() {
 function validatePrimaryCreateInput(input: CreatePrimaryEntityInput) {
   assertNonEmptyString(input.userId, 'User ID');
   assertNonEmptyString(input.name, 'Name');
-  assertMaxLength(input.name, 200, 'Name');
+  assertMaxLength(input.name, VALIDATION.nameMaxLength, 'Name');
   assertHexColor(input.color, 'Color');
   assertOneOf(input.cadence, VALID_CADENCES, 'Cadence');
   if (input.sortOrder !== undefined) {
-    assertIntegerInRange(input.sortOrder, 0, 10000, 'Sort order');
+    assertIntegerInRange(
+      input.sortOrder,
+      VALIDATION.sortOrderMin,
+      VALIDATION.sortOrderMax,
+      'Sort order',
+    );
   }
 }
 
 function validatePrimaryUpdateInput(input: UpdatePrimaryEntityInput) {
   if (input.name !== undefined) {
     assertNonEmptyString(input.name, 'Name');
-    assertMaxLength(input.name, 200, 'Name');
+    assertMaxLength(input.name, VALIDATION.nameMaxLength, 'Name');
   }
   if (input.color !== undefined) {
     assertHexColor(input.color, 'Color');
@@ -203,7 +209,12 @@ function validatePrimaryUpdateInput(input: UpdatePrimaryEntityInput) {
     assertOneOf(input.cadence, VALID_CADENCES, 'Cadence');
   }
   if (input.sortOrder !== undefined) {
-    assertIntegerInRange(input.sortOrder, 0, 10000, 'Sort order');
+    assertIntegerInRange(
+      input.sortOrder,
+      VALIDATION.sortOrderMin,
+      VALIDATION.sortOrderMax,
+      'Sort order',
+    );
   }
   if (input.deletedAt && typeof input.deletedAt === 'string') {
     assertIsoDateTime(input.deletedAt, 'Deleted at');

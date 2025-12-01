@@ -1,5 +1,6 @@
+import { SYNC } from '@/config/constants';
 import type { OutboxRecord } from './outbox';
-import { getPending, markProcessed, incrementAttempt } from './outbox';
+import { getPending, incrementAttempt, markProcessed } from './outbox';
 import { useSyncStore } from '@/state';
 
 type PushFn = (records: OutboxRecord[]) => Promise<void>;
@@ -11,12 +12,10 @@ type SyncEngineOptions = {
   batchSize?: number;
 };
 
-const DEFAULT_BATCH_SIZE = 50;
-
 export function createSyncEngine({
   push,
   pull,
-  batchSize = DEFAULT_BATCH_SIZE,
+  batchSize = SYNC.defaultBatchSize,
 }: SyncEngineOptions) {
   const store = useSyncStore;
 

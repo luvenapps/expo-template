@@ -4,14 +4,11 @@ import * as TaskManager from 'expo-task-manager';
 import * as BackgroundTask from 'expo-background-task';
 import type { createSyncEngine } from './engine';
 import { DOMAIN } from '@/config/domain.config';
+import { SYNC } from '@/config/constants';
 
 type SyncEngine = ReturnType<typeof createSyncEngine>;
 
 const BACKGROUND_TASK_NAME = DOMAIN.app.syncTask;
-const DEFAULT_INTERVAL = 60000;
-const DEFAULT_FETCH_INTERVAL = 15 * 60; // 15 minutes
-const BASE_BACKOFF_MS = 2000;
-const MAX_BACKOFF_MS = 5 * 60 * 1000;
 const backgroundTaskHandlers = new Map<string, () => Promise<void>>();
 
 type UseSyncTaskOptions = {
@@ -24,10 +21,10 @@ type UseSyncTaskOptions = {
 
 export function useSyncTask({
   engine,
-  intervalMs = DEFAULT_INTERVAL,
+  intervalMs = SYNC.defaultIntervalMs,
   enabled = true,
   autoStart = true,
-  backgroundInterval = DEFAULT_FETCH_INTERVAL,
+  backgroundInterval = SYNC.defaultFetchIntervalSec,
 }: UseSyncTaskOptions) {
   const mountedRef = useRef(true);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -91,8 +88,8 @@ export function useSyncTask({
       } catch (error) {
         failureCountRef.current += 1;
         const backoff = Math.min(
-          MAX_BACKOFF_MS,
-          BASE_BACKOFF_MS * 2 ** (failureCountRef.current - 1),
+          SYNC.maxBackoffMs,
+          SYNC.baseBackoffMs * 2 ** (failureCountRef.current - 1),
         );
         cooldownUntilRef.current = Date.now() + backoff;
         throw error;

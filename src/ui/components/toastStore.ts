@@ -1,3 +1,4 @@
+import { NOTIFICATIONS } from '@/config/constants';
 import type { ToastMessage, ToastType } from './Toast';
 
 export function createToastStore(initialMessages: ToastMessage[] = []) {
@@ -6,7 +7,12 @@ export function createToastStore(initialMessages: ToastMessage[] = []) {
 
   const buildMessage = (message: ToastMessage) => {
     const id = message.id ?? `toast-${Date.now()}-${localCounter++}`;
-    return { type: (message.type ?? 'info') as ToastType, duration: 4000, ...message, id };
+    return {
+      type: (message.type ?? 'info') as ToastType,
+      duration: NOTIFICATIONS.toastDurationMs.default,
+      ...message,
+      id,
+    };
   };
 
   return {

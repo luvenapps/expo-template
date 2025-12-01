@@ -1,6 +1,7 @@
 /* istanbul ignore file */
 import { useEffect, useMemo, useState } from 'react';
 import { XStack, YStack, Paragraph } from 'tamagui';
+import { NOTIFICATIONS } from '@/config/constants';
 
 export type ToastType = 'success' | 'error' | 'info';
 
@@ -23,7 +24,10 @@ export function useToast() {
     () => ({
       show: (message: ToastMessage) => {
         const id = message.id ?? `toast-${Date.now()}-${toastIdCounter++}`;
-        setMessages((prev) => [...prev, { type: 'info', duration: 4000, ...message, id }]);
+        setMessages((prev) => [
+          ...prev,
+          { type: 'info', duration: NOTIFICATIONS.toastDurationMs.default, ...message, id },
+        ]);
         return id;
       },
       dismiss: (id: string) => {

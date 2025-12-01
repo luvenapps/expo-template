@@ -1,7 +1,9 @@
 import type { PostgrestError } from '@supabase/supabase-js';
 
-export const DEFAULT_STALE_TIME = 5 * 60 * 1000; // 5 minutes
-export const DEFAULT_GC_TIME = 10 * 60 * 1000; // 10 minutes
+import { QUERY_CACHE } from '@/config/constants';
+
+export const DEFAULT_STALE_TIME = QUERY_CACHE.staleTimeMs;
+export const DEFAULT_GC_TIME = QUERY_CACHE.gcTimeMs;
 
 export function requireUserId(userId: string | null | undefined) {
   if (!userId) {

@@ -1,3 +1,4 @@
+import { NOTIFICATIONS } from '@/config/constants';
 import { NotificationPreferences } from '@/notifications/preferences';
 import {
   ensureNotificationPermission,
@@ -18,7 +19,6 @@ export type ReminderPayload = {
 };
 
 const SCHEDULER_NAMESPACE = `${DOMAIN.app.name}-reminders`;
-const QUIET_HOURS_BUFFER_MINUTES = 5;
 const REMINDER_CHANNEL_ID = 'REMINDERS';
 
 export async function registerNotificationCategories() {
@@ -103,8 +103,8 @@ function buildTrigger(fireDate: Date, quietHours: NotificationPreferences['quiet
   const [quietStart, quietEnd] = quietHours;
   const nextAllowed =
     quietEnd > quietStart
-      ? date.hour(quietEnd).minute(QUIET_HOURS_BUFFER_MINUTES)
-      : date.add(1, 'day').hour(quietEnd).minute(QUIET_HOURS_BUFFER_MINUTES);
+      ? date.hour(quietEnd).minute(NOTIFICATIONS.quietHoursBufferMinutes)
+      : date.add(1, 'day').hour(quietEnd).minute(NOTIFICATIONS.quietHoursBufferMinutes);
 
   return nextAllowed.toDate();
 }
