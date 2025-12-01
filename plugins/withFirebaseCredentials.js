@@ -1,7 +1,6 @@
-// Generate Firebase credentials from environment variables during prebuild
-// This ensures the credentials exist in the EAS build directory
+// Generate Firebase credentials from environment variables during config evaluation
+// This ensures the credentials exist BEFORE other plugins try to use them
 
-const { withDangerousMod } = require('@expo/config-plugins');
 const { Buffer } = require('buffer');
 const fs = require('fs');
 const path = require('path');
@@ -10,68 +9,79 @@ const TURN_ON_FIREBASE =
   process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === 'true' ||
   process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === '1';
 
-module.exports = function withFirebaseCredentials(config) {
-  if (!TURN_ON_FIREBASE) {
-    return config;
+function detectPlatform() {
+  // Try to detect platform from environment or CLI args
+  // EAS sets EAS_BUILD_PLATFORM, also check process.argv for --platform
+  const easPlatform = process.env.EAS_BUILD_PLATFORM;
+  if (easPlatform) {
+    return easPlatform.toLowerCase();
   }
 
-  // Create iOS plist from base64 secret
-  config = withDangerousMod(config, [
-    'ios',
-    async (modConfig) => {
-      const plistBase64 = process.env.GOOGLE_SERVICE_INFO_PLIST_B64;
+  // Check command line arguments for --platform ios/android
+  const platformArgIndex = process.argv.indexOf('--platform');
+  if (platformArgIndex !== -1 && process.argv[platformArgIndex + 1]) {
+    return process.argv[platformArgIndex + 1].toLowerCase();
+  }
 
-      if (plistBase64) {
-        const credentialsDir = path.join(modConfig.modRequest.projectRoot, 'credentials');
-        const plistPath = path.join(credentialsDir, 'GoogleService-Info.plist');
+  // Unable to detect - return null to generate both
+  return null;
+}
 
-        // Create credentials directory if it doesn't exist
-        if (!fs.existsSync(credentialsDir)) {
-          fs.mkdirSync(credentialsDir, { recursive: true });
-        }
+function generateCredentials(projectRoot) {
+  if (!TURN_ON_FIREBASE) {
+    return;
+  }
 
-        // Write plist file from base64
-        const plistContent = Buffer.from(plistBase64, 'base64').toString('utf-8');
-        fs.writeFileSync(plistPath, plistContent, 'utf-8');
+  const platform = detectPlatform();
+  const credentialsDir = path.join(projectRoot, 'credentials');
 
-        console.log('✅ Generated GoogleService-Info.plist from environment variable');
-      } else {
-        console.warn(
-          '⚠️  GOOGLE_SERVICE_INFO_PLIST_B64 not set, skipping iOS Firebase credentials',
-        );
-      }
+  // Create credentials directory if it doesn't exist
+  if (!fs.existsSync(credentialsDir)) {
+    fs.mkdirSync(credentialsDir, { recursive: true });
+  }
 
-      return modConfig;
-    },
-  ]);
+  // Generate iOS plist (if platform is iOS or unknown)
+  if (!platform || platform === 'ios') {
+    const plistBase64 = process.env.GOOGLE_SERVICE_INFO_PLIST_B64;
+    const plistPath = path.join(credentialsDir, 'GoogleService-Info.plist');
 
-  // Create Android JSON from base64 secret
-  config = withDangerousMod(config, [
-    'android',
-    async (modConfig) => {
-      const jsonBase64 = process.env.GOOGLE_SERVICES_JSON_B64;
+    if (plistBase64) {
+      const plistContent = Buffer.from(plistBase64, 'base64').toString('utf-8');
+      fs.writeFileSync(plistPath, plistContent, 'utf-8');
+      console.log('✅ Generated GoogleService-Info.plist from environment variable');
+    } else if (fs.existsSync(plistPath)) {
+      console.log('ℹ️  Using existing GoogleService-Info.plist from credentials/');
+    } else if (platform === 'ios') {
+      // Only warn if we're definitely building for iOS
+      console.warn('⚠️  GOOGLE_SERVICE_INFO_PLIST_B64 not set and no local credentials file found');
+      console.warn('   Add credentials/GoogleService-Info.plist for iOS builds');
+    }
+  }
 
-      if (jsonBase64) {
-        const credentialsDir = path.join(modConfig.modRequest.projectRoot, 'credentials');
-        const jsonPath = path.join(credentialsDir, 'google-services.json');
+  // Generate Android JSON (if platform is Android or unknown)
+  if (!platform || platform === 'android') {
+    const jsonBase64 = process.env.GOOGLE_SERVICES_JSON_B64;
+    const jsonPath = path.join(credentialsDir, 'google-services.json');
 
-        // Create credentials directory if it doesn't exist
-        if (!fs.existsSync(credentialsDir)) {
-          fs.mkdirSync(credentialsDir, { recursive: true });
-        }
+    if (jsonBase64) {
+      const jsonContent = Buffer.from(jsonBase64, 'base64').toString('utf-8');
+      fs.writeFileSync(jsonPath, jsonContent, 'utf-8');
+      console.log('✅ Generated google-services.json from environment variable');
+    } else if (fs.existsSync(jsonPath)) {
+      console.log('ℹ️  Using existing google-services.json from credentials/');
+    } else if (platform === 'android') {
+      // Only warn if we're definitely building for Android
+      console.warn('⚠️  GOOGLE_SERVICES_JSON_B64 not set and no local credentials file found');
+      console.warn('   Add credentials/google-services.json for Android builds');
+    }
+  }
+}
 
-        // Write JSON file from base64
-        const jsonContent = Buffer.from(jsonBase64, 'base64').toString('utf-8');
-        fs.writeFileSync(jsonPath, jsonContent, 'utf-8');
-
-        console.log('✅ Generated google-services.json from environment variable');
-      } else {
-        console.warn('⚠️  GOOGLE_SERVICES_JSON_B64 not set, skipping Android Firebase credentials');
-      }
-
-      return modConfig;
-    },
-  ]);
+module.exports = function withFirebaseCredentials(config) {
+  // Generate credentials immediately when this plugin is evaluated
+  // This happens BEFORE other plugins (like @react-native-firebase/app) try to copy them
+  const projectRoot = config._internal?.projectRoot || process.cwd();
+  generateCredentials(projectRoot);
 
   return config;
 };
