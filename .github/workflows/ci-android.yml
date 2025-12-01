@@ -214,14 +214,7 @@ jobs:
       - name: Compute Android build fingerprint
         id: android_fingerprint
         shell: bash
-        run: |
-          set -euo pipefail
-
-          # Use Expo's native fingerprint tool to detect changes that require a rebuild
-          HASH=$(npx @expo/fingerprint fingerprint:generate --platform android | node -e "console.log(JSON.parse(require('fs').readFileSync(0, 'utf-8')).hash)")
-
-          echo "key=android-apk-${HASH}" >> "$GITHUB_OUTPUT"
-          echo "🔑 ANDROID_FINGERPRINT=$HASH"
+        run: ./.github/scripts/compute_fingerprint.sh android >> "$GITHUB_OUTPUT"
 
       - name: Restore cached APK
         id: apk-cache

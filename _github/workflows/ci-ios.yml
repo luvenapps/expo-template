@@ -125,15 +125,10 @@ jobs:
       - name: Compute iOS build fingerprint
         id: ios_fp
         shell: bash
-        run: |
-          set -euo pipefail
-
-          FIREBASE_FLAG="${EXPO_PUBLIC_TURN_ON_FIREBASE:-false}"
-          # Use Expo's native fingerprint tool to detect changes that require a rebuild
-          HASH=$(npx @expo/fingerprint fingerprint:generate --platform ios | node -e "console.log(JSON.parse(require('fs').readFileSync(0, 'utf-8')).hash)")
-
-          echo "key=ios-app-${HASH}-${FIREBASE_FLAG}" >> "$GITHUB_OUTPUT"
-          echo "🔑 iOS_FINGERPRINT=${HASH} (firebase=${FIREBASE_FLAG})"
+        env:
+          GOOGLE_SERVICE_INFO_PLIST_B64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_B64 }}
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
+        run: ./.github/scripts/compute_fingerprint.sh ios >> "$GITHUB_OUTPUT"
 
       - name: Restore the tar.gz iOS app
         id: ios_cache
@@ -329,15 +324,10 @@ jobs:
       - name: Compute iOS build fingerprint
         id: ios_fp
         shell: bash
-        run: |
-          set -euo pipefail
-
-          FIREBASE_FLAG="${EXPO_PUBLIC_TURN_ON_FIREBASE:-false}"
-          # Use Expo's native fingerprint tool to detect changes that require a rebuild
-          HASH=$(npx @expo/fingerprint fingerprint:generate --platform ios | node -e "console.log(JSON.parse(require('fs').readFileSync(0, 'utf-8')).hash)")
-
-          echo "key=ios-app-${HASH}-${FIREBASE_FLAG}" >> "$GITHUB_OUTPUT"
-          echo "🔑 iOS_FINGERPRINT=${HASH} (firebase=${FIREBASE_FLAG})"
+        env:
+          GOOGLE_SERVICE_INFO_PLIST_B64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_B64 }}
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
+        run: ./.github/scripts/compute_fingerprint.sh ios >> "$GITHUB_OUTPUT"
 
       - name: Restore the tar.gz iOS app
         id: ios_cache

@@ -9,6 +9,15 @@ const TURN_ON_FIREBASE =
   process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === 'true' ||
   process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === '1';
 
+function isActualBuild() {
+  // Check if we're in an actual build context (not expo doctor, expo config, etc.)
+  const buildCommands = ['prebuild', 'run:ios', 'run:android'];
+  return (
+    process.argv.some((arg) => buildCommands.some((cmd) => arg.includes(cmd))) ||
+    process.env.EAS_BUILD_PLATFORM // EAS sets this during builds
+  );
+}
+
 function detectPlatform() {
   // Try to detect platform from environment or CLI args
   // EAS sets EAS_BUILD_PLATFORM, also check process.argv for --platform
@@ -78,10 +87,24 @@ function generateCredentials(projectRoot) {
 }
 
 module.exports = function withFirebaseCredentials(config) {
+  // Skip if credentials have already been generated in this process
+  // This prevents duplicate generation when config is evaluated multiple times
+  if (global.__FIREBASE_CREDENTIALS_GENERATED__) {
+    return config;
+  }
+
+  // Only generate during actual builds (not expo doctor, expo config, etc.)
+  if (!isActualBuild()) {
+    return config;
+  }
+
   // Generate credentials immediately when this plugin is evaluated
   // This happens BEFORE other plugins (like @react-native-firebase/app) try to copy them
   const projectRoot = config._internal?.projectRoot || process.cwd();
   generateCredentials(projectRoot);
+
+  // Mark as generated to prevent duplicate execution
+  global.__FIREBASE_CREDENTIALS_GENERATED__ = true;
 
   return config;
 };

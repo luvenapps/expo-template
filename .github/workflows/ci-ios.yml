@@ -183,14 +183,7 @@ jobs:
       - name: Compute iOS build fingerprint
         id: ios_fp
         shell: bash
-        run: |
-          set -euo pipefail
-
-          # Use Expo's native fingerprint tool to detect changes that require a rebuild
-          HASH=$(npx @expo/fingerprint fingerprint:generate --platform ios | node -e "console.log(JSON.parse(require('fs').readFileSync(0, 'utf-8')).hash)")
-
-          echo "key=ios-app-${HASH}" >> "$GITHUB_OUTPUT"
-          echo "🔑 iOS_FINGERPRINT=$HASH"
+        run: ./.github/scripts/compute_fingerprint.sh ios >> "$GITHUB_OUTPUT"
 
       - name: Restore the tar.gz iOS app
         id: ios_cache
