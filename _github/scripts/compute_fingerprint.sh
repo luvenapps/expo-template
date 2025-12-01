@@ -42,4 +42,4 @@ else
   CACHE_KEY="android-apk-${HASH}-${FIREBASE_FLAG}-${CREDS_HASH}"
 fi
 echo "key=${CACHE_KEY}"
-echo "🔑 ${PLATFORM^^}_FINGERPRINT=${HASH} (firebase=${FIREBASE_FLAG}, creds=${CREDS_HASH})"
+echo "🔑 $(echo "$PLATFORM" | tr '[:lower:]' '[:upper:]')_FINGERPRINT=${HASH} (firebase=${FIREBASE_FLAG}, creds=${CREDS_HASH})"
