@@ -7,10 +7,12 @@ import {
   loadNotificationPreferences,
   persistNotificationPreferences,
 } from '@/notifications/preferences';
+import { registerForPushNotifications } from '@/notifications/firebasePush';
 import { useAnalytics } from '@/observability/AnalyticsProvider';
 import * as Notifications from 'expo-notifications';
 import { useCallback, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
+import { NOTIFICATIONS } from '@/config/constants';
 
 export type NotificationPermissionState =
   | 'granted'
@@ -155,6 +157,54 @@ export function useNotificationSettings() {
     [analytics, updatePreferences],
   );
 
+  const canPromptForPush = useCallback(() => {
+    const now = Date.now();
+    const attempts = preferences.pushPromptAttempts ?? 0;
+    const lastPromptAt = preferences.pushLastPromptAt ?? 0;
+    if (attempts >= NOTIFICATIONS.pushPromptMaxAttempts) return false;
+    if (lastPromptAt === 0) return true;
+    return now - lastPromptAt >= NOTIFICATIONS.pushPromptCooldownMs;
+  }, [preferences.pushPromptAttempts, preferences.pushLastPromptAt]);
+
+  const promptForPushPermissions = useCallback(async () => {
+    if (!canPromptForPush()) {
+      return { status: 'cooldown' as const };
+    }
+
+    const now = Date.now();
+    updatePreferences((prev) => ({
+      ...prev,
+      pushPromptAttempts: (prev.pushPromptAttempts ?? 0) + 1,
+      pushLastPromptAt: now,
+    }));
+
+    const result = await registerForPushNotifications();
+
+    if (result.status === 'registered') {
+      updatePreferences((prev) => ({ ...prev, pushOptInStatus: 'enabled' }));
+      setStatusMessage('Notifications enabled.');
+      analytics.trackEvent('notifications:push-enabled');
+      return { status: 'registered', token: result.token };
+    }
+
+    if (result.status === 'denied') {
+      updatePreferences((prev) => ({ ...prev, pushOptInStatus: 'denied' }));
+      setError('Enable notifications in system settings to turn on push notifications.');
+      analytics.trackEvent('notifications:push-denied');
+      return { status: 'denied' as const };
+    }
+
+    if (result.status === 'unavailable') {
+      updatePreferences((prev) => ({ ...prev, pushOptInStatus: 'unavailable' }));
+      analytics.trackEvent('notifications:push-unavailable');
+      return { status: 'unavailable' as const };
+    }
+
+    setError('Unable to enable notifications right now.');
+    analytics.trackEvent('notifications:push-error', { message: result.message });
+    return { status: 'error' as const, message: result.message };
+  }, [analytics, canPromptForPush, updatePreferences]);
+
   return {
     ...preferences,
     permissionStatus,
@@ -166,5 +216,7 @@ export function useNotificationSettings() {
     toggleDailySummary: handleDailySummaryToggle,
     updateQuietHours: handleQuietHoursChange,
     refreshPermissionStatus,
+    canPromptForPush: canPromptForPush(),
+    promptForPushPermissions,
   };
 }

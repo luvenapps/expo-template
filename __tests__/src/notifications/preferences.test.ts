@@ -79,6 +79,9 @@ describe('preferences', () => {
         remindersEnabled: true,
         dailySummaryEnabled: true,
         quietHours: [22, 6],
+        pushOptInStatus: 'unknown',
+        pushPromptAttempts: 0,
+        pushLastPromptAt: 0,
       };
       (mockLocalStorage.getItem as jest.Mock).mockReturnValue(JSON.stringify(stored));
 
@@ -93,6 +96,9 @@ describe('preferences', () => {
         remindersEnabled: true,
         dailySummaryEnabled: false,
         quietHours: [21, 7],
+        pushOptInStatus: 'unknown',
+        pushPromptAttempts: 0,
+        pushLastPromptAt: 0,
       };
       mockMMKV.getString.mockReturnValue(JSON.stringify(stored));
 
@@ -167,6 +173,7 @@ describe('preferences', () => {
     it('persists to localStorage on web', () => {
       Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
       const preferences = {
+        ...DEFAULT_NOTIFICATION_PREFERENCES,
         remindersEnabled: true,
         dailySummaryEnabled: true,
         quietHours: [22, 6] as [number, number],
@@ -183,6 +190,7 @@ describe('preferences', () => {
     it('persists to MMKV on native', () => {
       Object.defineProperty(Platform, 'OS', { value: 'ios', configurable: true });
       const preferences = {
+        ...DEFAULT_NOTIFICATION_PREFERENCES,
         remindersEnabled: false,
         dailySummaryEnabled: true,
         quietHours: [20, 23] as [number, number],
@@ -200,6 +208,7 @@ describe('preferences', () => {
       delete (globalThis as any).localStorage;
 
       const preferences = {
+        ...DEFAULT_NOTIFICATION_PREFERENCES,
         remindersEnabled: true,
         dailySummaryEnabled: false,
         quietHours: [20, 23] as [number, number],
@@ -222,6 +231,7 @@ describe('preferences', () => {
         throw new Error('MMKV init failed');
       });
       const preferences = {
+        ...DEFAULT_NOTIFICATION_PREFERENCES,
         remindersEnabled: true,
         dailySummaryEnabled: false,
         quietHours: [20, 23] as [number, number],

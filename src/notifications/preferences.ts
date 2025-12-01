@@ -5,12 +5,18 @@ export type NotificationPreferences = {
   remindersEnabled: boolean;
   dailySummaryEnabled: boolean;
   quietHours: [number, number];
+  pushOptInStatus: 'unknown' | 'enabled' | 'denied' | 'unavailable';
+  pushPromptAttempts: number;
+  pushLastPromptAt: number; // epoch ms
 };
 
 export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   remindersEnabled: false,
   dailySummaryEnabled: false,
   quietHours: [0, 0],
+  pushOptInStatus: 'unknown',
+  pushPromptAttempts: 0,
+  pushLastPromptAt: 0,
 };
 
 const STORAGE_KEY = `${DOMAIN.app.storageKey}-notification-preferences`;
@@ -44,11 +50,23 @@ export function loadNotificationPreferences(): NotificationPreferences {
       parsed.quietHours = DEFAULT_NOTIFICATION_PREFERENCES.quietHours;
     }
 
-    return {
+    const normalized = {
       ...DEFAULT_NOTIFICATION_PREFERENCES,
       ...parsed,
       quietHours: parsed.quietHours as [number, number],
     };
+
+    if (typeof normalized.pushPromptAttempts !== 'number') {
+      normalized.pushPromptAttempts = DEFAULT_NOTIFICATION_PREFERENCES.pushPromptAttempts;
+    }
+    if (typeof normalized.pushLastPromptAt !== 'number') {
+      normalized.pushLastPromptAt = DEFAULT_NOTIFICATION_PREFERENCES.pushLastPromptAt;
+    }
+    if (!normalized.pushOptInStatus) {
+      normalized.pushOptInStatus = DEFAULT_NOTIFICATION_PREFERENCES.pushOptInStatus;
+    }
+
+    return normalized;
   } catch {
     return DEFAULT_NOTIFICATION_PREFERENCES;
   }

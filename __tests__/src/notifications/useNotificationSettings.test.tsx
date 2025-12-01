@@ -12,6 +12,10 @@ jest.mock('@/notifications/notifications', () => ({
   cancelAllScheduledNotifications: jest.fn(),
 }));
 
+jest.mock('@/notifications/firebasePush', () => ({
+  registerForPushNotifications: jest.fn(),
+}));
+
 jest.mock('@/observability/AnalyticsProvider', () => ({
   useAnalytics: jest.fn(() => ({
     trackEvent: jest.fn(),
@@ -30,6 +34,7 @@ jest.mock('expo-notifications', () => ({
 
 const preferenceModule = require('@/notifications/preferences');
 const notificationModule = require('@/notifications/notifications');
+const firebasePushModule = require('@/notifications/firebasePush');
 const analyticsModule = require('@/observability/AnalyticsProvider');
 const expoNotifications = require('expo-notifications');
 
@@ -48,6 +53,10 @@ const ensureNotificationPermission =
 const cancelAllScheduledNotifications =
   notificationModule.cancelAllScheduledNotifications as jest.MockedFunction<
     typeof notificationModule.cancelAllScheduledNotifications
+  >;
+const registerForPushNotifications =
+  firebasePushModule.registerForPushNotifications as jest.MockedFunction<
+    typeof firebasePushModule.registerForPushNotifications
   >;
 const useAnalytics = analyticsModule.useAnalytics as jest.MockedFunction<
   typeof analyticsModule.useAnalytics
@@ -75,6 +84,9 @@ describe('useNotificationSettings', () => {
       remindersEnabled: false,
       dailySummaryEnabled: false,
       quietHours: [20, 23],
+      pushOptInStatus: 'unknown',
+      pushPromptAttempts: 0,
+      pushLastPromptAt: 0,
     });
     getPermissionsAsync.mockResolvedValue({
       granted: false,
@@ -140,6 +152,9 @@ describe('useNotificationSettings', () => {
       remindersEnabled: true,
       dailySummaryEnabled: false,
       quietHours: [20, 23],
+      pushOptInStatus: 'unknown',
+      pushPromptAttempts: 0,
+      pushLastPromptAt: 0,
     });
 
     const { result } = renderHook(() => useNotificationSettings());
@@ -201,6 +216,9 @@ describe('useNotificationSettings', () => {
       remindersEnabled: false,
       dailySummaryEnabled: true,
       quietHours: [20, 23],
+      pushOptInStatus: 'unknown',
+      pushPromptAttempts: 0,
+      pushLastPromptAt: 0,
     });
 
     const { result } = renderHook(() => useNotificationSettings());
@@ -323,6 +341,66 @@ describe('useNotificationSettings', () => {
     expect(result.current.permissionStatus).toBe('prompt');
   });
 
+  it('allows prompting for push when under limits', async () => {
+    registerForPushNotifications.mockResolvedValue({ status: 'registered', token: 'tok' });
+
+    const { result } = renderHook(() => useNotificationSettings());
+
+    expect(result.current.canPromptForPush).toBe(true);
+
+    await act(async () => {
+      await result.current.promptForPushPermissions();
+    });
+
+    expect(registerForPushNotifications).toHaveBeenCalled();
+    expect(persistNotificationPreferences).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pushOptInStatus: 'enabled',
+        pushPromptAttempts: 1,
+      }),
+    );
+    expect(trackEvent).toHaveBeenCalledWith('notifications:push-enabled');
+  });
+
+  it('respects cooldown and max attempts for push prompt', async () => {
+    const now = Date.now();
+    loadNotificationPreferences.mockReturnValue({
+      remindersEnabled: false,
+      dailySummaryEnabled: false,
+      quietHours: [20, 23],
+      pushOptInStatus: 'unknown',
+      pushPromptAttempts: 3,
+      pushLastPromptAt: now,
+    });
+
+    const { result } = renderHook(() => useNotificationSettings());
+
+    expect(result.current.canPromptForPush).toBe(false);
+    await act(async () => {
+      await result.current.promptForPushPermissions();
+    });
+
+    expect(registerForPushNotifications).not.toHaveBeenCalled();
+  });
+
+  it('handles push denial', async () => {
+    registerForPushNotifications.mockResolvedValue({ status: 'denied' });
+
+    const { result } = renderHook(() => useNotificationSettings());
+
+    await act(async () => {
+      await result.current.promptForPushPermissions();
+    });
+
+    expect(persistNotificationPreferences).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pushOptInStatus: 'denied',
+        pushPromptAttempts: 1,
+      }),
+    );
+    expect(trackEvent).toHaveBeenCalledWith('notifications:push-denied');
+  });
+
   it('does not call cancelAll on web when disabling reminders', async () => {
     // Note: Platform.OS is checked statically in the module, so we test the native behavior
     // where isNative is true. The actual web behavior is covered implicitly since
@@ -331,6 +409,9 @@ describe('useNotificationSettings', () => {
       remindersEnabled: true,
       dailySummaryEnabled: false,
       quietHours: [20, 23],
+      pushOptInStatus: 'unknown',
+      pushPromptAttempts: 0,
+      pushLastPromptAt: 0,
     });
 
     const { result } = renderHook(() => useNotificationSettings());
