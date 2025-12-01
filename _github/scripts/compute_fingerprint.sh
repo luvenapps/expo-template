@@ -25,13 +25,20 @@ HASH=$(npx @expo/fingerprint fingerprint:generate --platform "$PLATFORM" | node 
 # Hash Firebase credentials to bust cache when they change
 CREDS_HASH=""
 if [ "$FIREBASE_FLAG" = "true" ]; then
+  # Only hash the credential relevant to this platform
+  if [ "$PLATFORM" = "ios" ]; then
+    CRED_TO_HASH="${GOOGLE_SERVICE_INFO_PLIST_B64}"
+  else
+    CRED_TO_HASH="${GOOGLE_SERVICES_JSON_B64}"
+  fi
+
   # Use appropriate hash command based on platform (macOS vs Linux)
   if command -v shasum >/dev/null 2>&1; then
     # macOS
-    CREDS_HASH=$(echo -n "${GOOGLE_SERVICE_INFO_PLIST_B64}${GOOGLE_SERVICES_JSON_B64}" | shasum -a 256 | cut -d' ' -f1 | cut -c1-8)
+    CREDS_HASH=$(echo -n "${CRED_TO_HASH}" | shasum -a 256 | cut -d' ' -f1 | cut -c1-8)
   else
     # Linux
-    CREDS_HASH=$(echo -n "${GOOGLE_SERVICE_INFO_PLIST_B64}${GOOGLE_SERVICES_JSON_B64}" | sha256sum | cut -d' ' -f1 | cut -c1-8)
+    CREDS_HASH=$(echo -n "${CRED_TO_HASH}" | sha256sum | cut -d' ' -f1 | cut -c1-8)
   fi
 fi
 
