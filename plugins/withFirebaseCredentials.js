@@ -10,11 +10,15 @@ const TURN_ON_FIREBASE =
   process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === '1';
 
 function isActualBuild() {
-  // Check if we're in an actual build context (not expo doctor, expo config, etc.)
+  // Check if we're in a build context
+  // In CI: EXPO_TOKEN is set as a secret throughout the entire EAS build
+  // Locally: Developers typically don't have EXPO_TOKEN set, so plugin won't run during expo doctor
+  // Also check for explicit build commands for local development builds
   const buildCommands = ['prebuild', 'run:ios', 'run:android'];
   return (
+    Boolean(process.env.EXPO_TOKEN) || // CI builds (EAS always sets this)
     process.argv.some((arg) => buildCommands.some((cmd) => arg.includes(cmd))) ||
-    process.env.EAS_BUILD_PLATFORM // EAS sets this during builds
+    process.env.EAS_BUILD_PLATFORM
   );
 }
 
