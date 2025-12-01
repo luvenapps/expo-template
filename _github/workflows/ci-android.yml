@@ -124,16 +124,6 @@ jobs:
         shell: bash
         run: .github/scripts/setup_maestro.sh "${{ env.MAESTRO_VERSION }}"
 
-      - name: Create Firebase google-services.json from secret
-        if: ${{ env.EXPO_PUBLIC_TURN_ON_FIREBASE == 'true' }}
-        shell: bash
-        env:
-          GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
-        run: |
-          set -euo pipefail
-          mkdir -p credentials
-          echo "$GOOGLE_SERVICES_JSON_B64" | base64 --decode > credentials/google-services.json
-
       # Lean caching: only Gradle to stay under 10GB org-wide cache budget
       - name: Cache Gradle (caches + wrapper + project .gradle)
         id: gradle-cache
@@ -187,7 +177,8 @@ jobs:
         if: steps.apk-cache.outputs.cache-hit != 'true'
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          EAS_LOCAL_BUILD_WORKDIR: ${{ github.workspace }}
+          GOOGLE_SERVICE_INFO_PLIST_B64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_B64 }}
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
           EXPO_PUBLIC_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
           EXPO_PUBLIC_FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
           EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
@@ -390,16 +381,6 @@ jobs:
         run: npm run doctor
         continue-on-error: true
 
-      - name: Create Firebase google-services.json from secret
-        if: ${{ env.EXPO_PUBLIC_TURN_ON_FIREBASE == 'true' }}
-        shell: bash
-        env:
-          GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
-        run: |
-          set -euo pipefail
-          mkdir -p credentials
-          echo "$GOOGLE_SERVICES_JSON_B64" | base64 --decode > credentials/google-services.json
-
       # Lean caching: only Gradle to stay under 10GB org-wide cache budget
       - name: Cache Gradle (caches + wrapper + project .gradle)
         id: gradle-cache
@@ -453,7 +434,8 @@ jobs:
         if: steps.apk-cache.outputs.cache-hit != 'true'
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          EAS_LOCAL_BUILD_WORKDIR: ${{ github.workspace }}
+          GOOGLE_SERVICE_INFO_PLIST_B64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_B64 }}
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
           EXPO_PUBLIC_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
           EXPO_PUBLIC_FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
           EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}

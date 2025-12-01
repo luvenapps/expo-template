@@ -50,6 +50,7 @@
       "expo-background-task",
       "expo-localization",
       "expo-web-browser",
+      "./plugins/withFirebaseCredentials.js",
       "./plugins/withFirebaseConfig.js",
       "./plugins/withFirebaseModularHeaders.js"
     ],
