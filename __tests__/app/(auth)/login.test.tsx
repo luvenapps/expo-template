@@ -95,6 +95,7 @@ import { fireEvent, render, waitFor, act } from '@testing-library/react-native';
 import React from 'react';
 import LoginScreen from '../../../app/(auth)/login';
 import { useSessionStore } from '@/auth/session';
+import { Platform } from 'react-native';
 
 jest.mock('@/auth/session', () => ({
   useSessionStore: jest.fn(),
@@ -104,6 +105,7 @@ const mockReplace = jest.fn();
 const mockPush = jest.fn();
 const mockBack = jest.fn();
 const mockCanGoBack = jest.fn(() => true);
+let focusEffectCallback: (() => void) | null = null;
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({
@@ -114,8 +116,9 @@ jest.mock('expo-router', () => ({
   useNavigation: () => ({
     canGoBack: mockCanGoBack,
   }),
-  // Mock useFocusEffect to do nothing in tests
-  useFocusEffect: jest.fn(),
+  useFocusEffect: jest.fn((cb: any) => {
+    focusEffectCallback = cb;
+  }),
 }));
 
 const mockedUseSessionStore = useSessionStore as unknown as jest.Mock;
@@ -145,6 +148,7 @@ describe('LoginScreen', () => {
     mockBack.mockClear();
     mockCanGoBack.mockClear();
     mockCanGoBack.mockReturnValue(true);
+    focusEffectCallback = null;
     mockedUseSessionStore.mockImplementation((selector: any) =>
       selector({
         signInWithEmail: jest.fn().mockResolvedValue({ success: true }),
@@ -251,10 +255,11 @@ describe('LoginScreen', () => {
     const signInMock = jest
       .fn()
       .mockResolvedValue({ success: false, error: 'Authentication failed' });
+    const setErrorMock = jest.fn();
     mockedUseSessionStore.mockImplementation((selector: any) =>
       selector({
         signInWithEmail: signInMock,
-        setError: jest.fn(),
+        setError: setErrorMock,
         isLoading: false,
         error: null,
       }),
@@ -272,6 +277,63 @@ describe('LoginScreen', () => {
     });
 
     expect(mockBack).not.toHaveBeenCalled();
+    expect(setErrorMock).toHaveBeenCalled();
+  });
+
+  test('sets friendly error description when provided', async () => {
+    const signInMock = jest.fn().mockResolvedValue({
+      success: false,
+      friendlyError: { descriptionKey: 'auth.login.invalidCredentials' },
+    });
+    const setErrorMock = jest.fn();
+    mockedUseSessionStore.mockImplementation((selector: any) =>
+      selector({
+        signInWithEmail: signInMock,
+        signInWithOAuth: jest.fn().mockResolvedValue({ success: true }),
+        setError: setErrorMock,
+        isLoading: false,
+        error: null,
+      }),
+    );
+
+    const { getByTestId } = render(<LoginScreen />);
+    fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
+    fireEvent.changeText(getByTestId('password-input'), 'password');
+
+    await act(async () => {
+      fireEvent.press(getByTestId('sign-in-button'));
+      await waitFor(() => expect(signInMock).toHaveBeenCalled());
+    });
+
+    expect(setErrorMock).toHaveBeenCalledWith('auth.login.invalidCredentials');
+  });
+
+  test('sets raw error string when no friendly error is provided', async () => {
+    const signInMock = jest.fn().mockResolvedValue({
+      success: false,
+      error: 'plain-error',
+    });
+    const setErrorMock = jest.fn();
+    mockedUseSessionStore.mockImplementation((selector: any) =>
+      selector({
+        signInWithEmail: signInMock,
+        signInWithOAuth: jest.fn().mockResolvedValue({ success: true }),
+        setError: setErrorMock,
+        isLoading: false,
+        error: null,
+      }),
+    );
+
+    const { getByTestId } = render(<LoginScreen />);
+    fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
+    fireEvent.changeText(getByTestId('password-input'), 'password');
+
+    await act(async () => {
+      fireEvent.press(getByTestId('sign-in-button'));
+      await waitFor(() => expect(signInMock).toHaveBeenCalled());
+    });
+
+    expect(setErrorMock).toHaveBeenCalledWith('plain-error');
   });
 
   test('toggles password visibility when eye icon is pressed', () => {
@@ -321,12 +383,100 @@ describe('LoginScreen', () => {
 
     expect(mockBack).not.toHaveBeenCalled();
   });
+
+  test('navigates to signup when create account button is pressed', () => {
+    const { getByTestId } = render(<LoginScreen />);
+    fireEvent.press(getByTestId('create-account-button'));
+    expect(mockPush).toHaveBeenCalledWith('/(auth)/signup');
+  });
+
+  test('disables submit button when email is invalid', () => {
+    const { getByTestId } = render(<LoginScreen />);
+
+    const emailInput = getByTestId('email-input');
+    const passwordInput = getByTestId('password-input');
+    const submitButton = getByTestId('sign-in-button');
+
+    fireEvent.changeText(emailInput, 'invalid-email');
+    fireEvent.changeText(passwordInput, 'password123');
+
+    expect(submitButton.props.accessibilityState?.disabled).toBe(true);
+  });
+
+  test('handles friendly error messages from auth service', async () => {
+    const signInMock = jest.fn().mockResolvedValue({
+      success: false,
+      error: 'auth/invalid-credential',
+      friendlyError: 'auth.login.invalidCredentials',
+    });
+    const setErrorMock = jest.fn();
+    mockedUseSessionStore.mockImplementation((selector: any) =>
+      selector({
+        signInWithEmail: signInMock,
+        signInWithOAuth: jest.fn().mockResolvedValue({ success: true }),
+        setError: setErrorMock,
+        isLoading: false,
+        error: null,
+      }),
+    );
+
+    const { getByTestId } = render(<LoginScreen />);
+
+    fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
+    fireEvent.changeText(getByTestId('password-input'), 'wrongpassword');
+
+    await act(async () => {
+      fireEvent.press(getByTestId('sign-in-button'));
+      await waitFor(() => {
+        expect(signInMock).toHaveBeenCalled();
+      });
+    });
+
+    expect(mockBack).not.toHaveBeenCalled();
+    expect(setErrorMock).toHaveBeenCalledWith('auth.login.invalidCredentials');
+  });
+
+  test('resets form on focus', async () => {
+    const setErrorMock = jest.fn();
+    mockedUseSessionStore.mockImplementation((selector: any) =>
+      selector({
+        signInWithEmail: jest.fn().mockResolvedValue({ success: true }),
+        signInWithOAuth: jest.fn().mockResolvedValue({ success: true }),
+        setError: setErrorMock,
+        isLoading: false,
+        error: 'Existing error',
+      }),
+    );
+
+    const { getByTestId } = render(<LoginScreen />);
+    fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
+    fireEvent.changeText(getByTestId('password-input'), 'password');
+    // simulate screen focus
+    act(() => {
+      focusEffectCallback?.();
+    });
+
+    await waitFor(() => {
+      expect(getByTestId('email-input').props.value).toBe('');
+      expect(getByTestId('password-input').props.value).toBe('');
+      expect(setErrorMock).toHaveBeenCalledWith(null);
+    });
+  });
 });
 describe('OAuth authentication', () => {
   beforeEach(() => {
     mockReplace.mockClear();
     mockBack.mockClear();
     mockCanGoBack.mockClear();
+  });
+
+  test('hides Apple button on Android', () => {
+    const originalOS = Platform.OS;
+    Object.defineProperty(Platform, 'OS', { value: 'android' });
+    const { queryByTestId, getByTestId } = render(<LoginScreen />);
+    expect(queryByTestId('oauth-apple-button')).toBeNull();
+    expect(getByTestId('oauth-google-button')).toBeTruthy();
+    Object.defineProperty(Platform, 'OS', { value: originalOS });
   });
 
   test('handles OAuth sign in', async () => {

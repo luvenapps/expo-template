@@ -379,6 +379,38 @@ describe('ThemeProvider', () => {
     });
   });
 
+  describe('web persistence (localStorage)', () => {
+    const STORAGE_KEY = `${DOMAIN.app.storageKey}-theme-preference`;
+
+    beforeEach(() => {
+      // Already set to web in the main beforeEach, but ensuring it's clear
+      Object.defineProperty(Platform, 'OS', {
+        configurable: true,
+        value: 'web',
+      });
+      storage = {};
+    });
+
+    it('hydrates preference from localStorage', () => {
+      storage[STORAGE_KEY] = 'dark';
+
+      const { result } = renderHook(() => useThemeContext(), { wrapper });
+
+      expect(result.current.preference).toBe('dark');
+      expect(result.current.resolvedTheme).toBe('dark');
+    });
+
+    it('persists preference via localStorage', () => {
+      const { result } = renderHook(() => useThemeContext(), { wrapper });
+
+      act(() => {
+        result.current.setPreference('light');
+      });
+
+      expect(storage[STORAGE_KEY]).toBe('light');
+    });
+  });
+
   describe('native persistence (MMKV)', () => {
     const STORAGE_KEY = `${DOMAIN.app.storageKey}-theme-preference`;
     const platformWebDescriptor = Object.getOwnPropertyDescriptor(Platform, 'OS');

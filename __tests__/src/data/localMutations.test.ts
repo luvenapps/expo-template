@@ -1630,6 +1630,374 @@ describe('error handling and edge cases', () => {
       }),
     );
   });
+
+  it('creates reminder using provided database without calling getDb', async () => {
+    const repository = mockReminderRepository({
+      id: 'reminder-1',
+      userId: 'user-1',
+      [DOMAIN.entities.reminders.foreignKey]: 'primary-1',
+      timeLocal: '09:00',
+      daysOfWeek: '1,2,3',
+      timezone: 'America/New_York',
+      isEnabled: true,
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-01-01T00:00:00.000Z',
+      version: 1,
+      deletedAt: null,
+    });
+
+    (getReminderRepository as jest.Mock).mockReturnValue(repository);
+
+    const customDb = { __db: 'custom' };
+
+    await createReminderLocal(
+      {
+        userId: 'user-1',
+        [DOMAIN.entities.reminders.foreignKey]: 'primary-1',
+        timeLocal: '09:00',
+        daysOfWeek: '1,2,3',
+        timezone: 'America/New_York',
+        isEnabled: true,
+      },
+      { database: customDb as any },
+    );
+
+    expect(getDbMock).not.toHaveBeenCalled();
+    expect(enqueueMock).toHaveBeenCalledWith(
+      customDb,
+      expect.objectContaining({
+        operation: 'insert',
+        tableName: DOMAIN.entities.reminders.tableName,
+      }),
+    );
+  });
+
+  it('creates device using provided database without calling getDb', async () => {
+    const repository = mockDeviceRepository({
+      id: 'device-1',
+      userId: 'user-1',
+      platform: 'ios',
+      pushToken: null,
+      lastSyncAt: null,
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-01-01T00:00:00.000Z',
+      version: 1,
+      deletedAt: null,
+    });
+
+    (getDeviceRepository as jest.Mock).mockReturnValue(repository);
+
+    const customDb = { __db: 'custom' };
+
+    await createDeviceLocal(
+      {
+        userId: 'user-1',
+        platform: 'ios',
+      },
+      { database: customDb as any },
+    );
+
+    expect(getDbMock).not.toHaveBeenCalled();
+    expect(enqueueMock).toHaveBeenCalledWith(
+      customDb,
+      expect.objectContaining({
+        operation: 'insert',
+        tableName: DOMAIN.entities.devices.tableName,
+      }),
+    );
+  });
+
+  it('creates entry using provided database without calling getDb', async () => {
+    const repository = mockEntryRepository({
+      id: 'entry-1',
+      userId: 'user-1',
+      [DOMAIN.entities.entries.foreignKey]: 'primary-1',
+      date: '2025-01-01',
+      amount: 1,
+      source: 'local',
+      version: 1,
+      deletedAt: null,
+    });
+
+    (getEntryRepository as jest.Mock).mockReturnValue(repository);
+
+    const customDb = { __db: 'custom' };
+
+    await createEntryLocal(
+      {
+        userId: 'user-1',
+        [DOMAIN.entities.entries.foreignKey]: 'primary-1',
+        date: '2025-01-01',
+      },
+      { database: customDb as any },
+    );
+
+    expect(getDbMock).not.toHaveBeenCalled();
+    expect(enqueueMock).toHaveBeenCalledWith(
+      customDb,
+      expect.objectContaining({
+        operation: 'insert',
+        tableName: DOMAIN.entities.entries.tableName,
+      }),
+    );
+  });
+
+  it('validates timezone when explicitly provided on create', async () => {
+    await expect(
+      createReminderLocal({
+        userId: 'user-1',
+        [DOMAIN.entities.reminders.foreignKey]: 'primary-1',
+        timeLocal: '09:00',
+        daysOfWeek: '1,2,3',
+        timezone: '',
+        isEnabled: true,
+      }),
+    ).rejects.toThrow('Timezone is required');
+
+    expect(getDbMock).not.toHaveBeenCalled();
+  });
+
+  it('validates deletedAt format when updating reminder', async () => {
+    await expect(
+      updateReminderLocal({
+        id: 'reminder-1',
+        deletedAt: 'invalid-date',
+      }),
+    ).rejects.toThrow('Deleted at must be a valid ISO 8601 timestamp');
+
+    expect(getDbMock).not.toHaveBeenCalled();
+  });
+
+  it('validates color format when updating primary entity', async () => {
+    await expect(
+      updatePrimaryEntityLocal({
+        id: 'primary-1',
+        color: 'not-a-hex-color',
+      }),
+    ).rejects.toThrow('Color must be a valid hex code');
+
+    expect(getDbMock).not.toHaveBeenCalled();
+  });
+
+  it('validates cadence when updating primary entity', async () => {
+    await expect(
+      updatePrimaryEntityLocal({
+        id: 'primary-1',
+        cadence: 'invalid-cadence',
+      }),
+    ).rejects.toThrow('Cadence must be one of: daily, weekly, monthly');
+
+    expect(getDbMock).not.toHaveBeenCalled();
+  });
+
+  it('validates sortOrder range when updating primary entity', async () => {
+    await expect(
+      updatePrimaryEntityLocal({
+        id: 'primary-1',
+        sortOrder: 99999,
+      }),
+    ).rejects.toThrow('Sort order must be between 0 and 10000');
+
+    expect(getDbMock).not.toHaveBeenCalled();
+  });
+
+  it('updates primary entity with only cadence', async () => {
+    const repository = mockPrimaryRepository(
+      { id: 'primary-1', userId: 'user-1', name: 'Test', cadence: 'daily', version: 1 },
+      { id: 'primary-1', userId: 'user-1', name: 'Test', cadence: 'weekly', version: 2 },
+    );
+    (getPrimaryEntityRepository as jest.Mock).mockReturnValue(repository);
+
+    const result = await updatePrimaryEntityLocal({ id: 'primary-1', cadence: 'weekly' });
+
+    expect(result.cadence).toBe('weekly');
+  });
+
+  it('updates primary entity with only color', async () => {
+    const repository = mockPrimaryRepository(
+      { id: 'primary-1', userId: 'user-1', name: 'Test', color: '#000000', version: 1 },
+      { id: 'primary-1', userId: 'user-1', name: 'Test', color: '#ff0000', version: 2 },
+    );
+    (getPrimaryEntityRepository as jest.Mock).mockReturnValue(repository);
+
+    const result = await updatePrimaryEntityLocal({ id: 'primary-1', color: '#ff0000' });
+
+    expect(result.color).toBe('#ff0000');
+  });
+
+  it('updates primary entity with only sortOrder', async () => {
+    const repository = mockPrimaryRepository(
+      { id: 'primary-1', userId: 'user-1', name: 'Test', sortOrder: 0, version: 1 },
+      { id: 'primary-1', userId: 'user-1', name: 'Test', sortOrder: 5, version: 2 },
+    );
+    (getPrimaryEntityRepository as jest.Mock).mockReturnValue(repository);
+
+    const result = await updatePrimaryEntityLocal({ id: 'primary-1', sortOrder: 5 });
+
+    expect(result.sortOrder).toBe(5);
+  });
+
+  it('updates primary entity with only isArchived', async () => {
+    const repository = mockPrimaryRepository(
+      { id: 'primary-1', userId: 'user-1', name: 'Test', isArchived: false, version: 1 },
+      { id: 'primary-1', userId: 'user-1', name: 'Test', isArchived: true, version: 2 },
+    );
+    (getPrimaryEntityRepository as jest.Mock).mockReturnValue(repository);
+
+    const result = await updatePrimaryEntityLocal({ id: 'primary-1', isArchived: true });
+
+    expect(result.isArchived).toBe(true);
+  });
+
+  it('updates reminder with only timeLocal', async () => {
+    const repository = mockReminderRepository(
+      {
+        id: 'reminder-1',
+        userId: 'user-1',
+        [DOMAIN.entities.reminders.foreignKey]: 'primary-1',
+        timeLocal: '09:00',
+        daysOfWeek: '1,2,3',
+        version: 1,
+      },
+      {
+        id: 'reminder-1',
+        userId: 'user-1',
+        [DOMAIN.entities.reminders.foreignKey]: 'primary-1',
+        timeLocal: '10:00',
+        daysOfWeek: '1,2,3',
+        version: 2,
+      },
+    );
+    (getReminderRepository as jest.Mock).mockReturnValue(repository);
+
+    const result = await updateReminderLocal({ id: 'reminder-1', timeLocal: '10:00' });
+
+    expect(result.timeLocal).toBe('10:00');
+  });
+
+  it('updates reminder with only daysOfWeek', async () => {
+    const repository = mockReminderRepository(
+      {
+        id: 'reminder-1',
+        userId: 'user-1',
+        [DOMAIN.entities.reminders.foreignKey]: 'primary-1',
+        timeLocal: '09:00',
+        daysOfWeek: '1,2,3',
+        version: 1,
+      },
+      {
+        id: 'reminder-1',
+        userId: 'user-1',
+        [DOMAIN.entities.reminders.foreignKey]: 'primary-1',
+        timeLocal: '09:00',
+        daysOfWeek: '5,6',
+        version: 2,
+      },
+    );
+    (getReminderRepository as jest.Mock).mockReturnValue(repository);
+
+    const result = await updateReminderLocal({ id: 'reminder-1', daysOfWeek: '5,6' });
+
+    expect(result.daysOfWeek).toBe('5,6');
+  });
+
+  it('updates reminder with only timezone', async () => {
+    const repository = mockReminderRepository(
+      {
+        id: 'reminder-1',
+        userId: 'user-1',
+        [DOMAIN.entities.reminders.foreignKey]: 'primary-1',
+        timeLocal: '09:00',
+        timezone: 'UTC',
+        version: 1,
+      },
+      {
+        id: 'reminder-1',
+        userId: 'user-1',
+        [DOMAIN.entities.reminders.foreignKey]: 'primary-1',
+        timeLocal: '09:00',
+        timezone: 'America/New_York',
+        version: 2,
+      },
+    );
+    (getReminderRepository as jest.Mock).mockReturnValue(repository);
+
+    const result = await updateReminderLocal({ id: 'reminder-1', timezone: 'America/New_York' });
+
+    expect(result.timezone).toBe('America/New_York');
+  });
+
+  it('updates reminder with only isEnabled', async () => {
+    const repository = mockReminderRepository(
+      {
+        id: 'reminder-1',
+        userId: 'user-1',
+        [DOMAIN.entities.reminders.foreignKey]: 'primary-1',
+        timeLocal: '09:00',
+        isEnabled: true,
+        version: 1,
+      },
+      {
+        id: 'reminder-1',
+        userId: 'user-1',
+        [DOMAIN.entities.reminders.foreignKey]: 'primary-1',
+        timeLocal: '09:00',
+        isEnabled: false,
+        version: 2,
+      },
+    );
+    (getReminderRepository as jest.Mock).mockReturnValue(repository);
+
+    const result = await updateReminderLocal({ id: 'reminder-1', isEnabled: false });
+
+    expect(result.isEnabled).toBe(false);
+  });
+
+  it('updates reminder with only foreign key', async () => {
+    const repository = mockReminderRepository(
+      {
+        id: 'reminder-1',
+        userId: 'user-1',
+        [DOMAIN.entities.reminders.foreignKey]: 'primary-1',
+        timeLocal: '09:00',
+        version: 1,
+      },
+      {
+        id: 'reminder-1',
+        userId: 'user-1',
+        [DOMAIN.entities.reminders.foreignKey]: 'primary-2',
+        timeLocal: '09:00',
+        version: 2,
+      },
+    );
+    (getReminderRepository as jest.Mock).mockReturnValue(repository);
+
+    const result = await updateReminderLocal({
+      id: 'reminder-1',
+      [DOMAIN.entities.reminders.foreignKey]: 'primary-2',
+    });
+
+    expect(result[DOMAIN.entities.reminders.foreignKey]).toBe('primary-2');
+  });
+
+  it('deletes primary entity with version increment', async () => {
+    const repository = mockPrimaryRepository(
+      { id: 'primary-1', userId: 'user-1', name: 'Test', version: 1, deletedAt: null },
+      {
+        id: 'primary-1',
+        userId: 'user-1',
+        name: 'Test',
+        version: 2,
+        deletedAt: expect.any(String),
+      },
+    );
+    (getPrimaryEntityRepository as jest.Mock).mockReturnValue(repository);
+
+    const result = await deletePrimaryEntityLocal('primary-1');
+
+    expect(result?.version).toBe(2);
+    expect(result?.deletedAt).toBeDefined();
+  });
 });
 
 function mockPrimaryRepository(firstRecord: any, secondRecord: any = firstRecord): Repository<any> {
@@ -1648,11 +2016,14 @@ function mockEntryRepository(record: any): Repository<any> {
   };
 }
 
-function mockReminderRepository(record: any): Repository<any> {
+function mockReminderRepository(
+  firstRecord: any,
+  secondRecord: any = firstRecord,
+): Repository<any> {
   return {
     insert: jest.fn().mockResolvedValue(undefined),
     update: jest.fn().mockResolvedValue(undefined),
-    findById: jest.fn().mockResolvedValue(record),
+    findById: jest.fn().mockResolvedValueOnce(firstRecord).mockResolvedValue(secondRecord),
   };
 }
 

@@ -49,12 +49,7 @@ export default function LoginScreen() {
   );
 
   const handleAuthError = useCallback(
-    (result: Awaited<ReturnType<typeof signInWithEmail>>, surface: string) => {
-      if (result.success) {
-        return;
-      }
-
-      const rawError = result.friendlyError ?? result.error ?? t('auth.errorUnknown');
+    (rawError: unknown) => {
       const friendlyMessage =
         typeof rawError === 'string'
           ? rawError
@@ -89,7 +84,7 @@ export default function LoginScreen() {
         router.replace('/(tabs)');
       }
     } else {
-      handleAuthError(result, 'auth.login.email');
+      handleAuthError(result.friendlyError ?? result.error ?? t('auth.errorUnknown'));
     }
   };
 
@@ -103,7 +98,7 @@ export default function LoginScreen() {
         router.replace('/(tabs)');
       }
     } else {
-      handleAuthError(result, `auth.login.oauth.${provider}`);
+      handleAuthError(result.friendlyError ?? result.error ?? t('auth.errorUnknown'));
     }
   };
 
