@@ -7,7 +7,7 @@ import {
   loadNotificationPreferences,
   persistNotificationPreferences,
 } from '@/notifications/preferences';
-import { registerForPushNotifications } from '@/notifications/firebasePush';
+import { registerForPushNotifications, revokePushToken } from '@/notifications/firebasePush';
 import { useAnalytics } from '@/observability/AnalyticsProvider';
 import * as Notifications from 'expo-notifications';
 import { useCallback, useEffect, useState } from 'react';
@@ -54,6 +54,7 @@ export function useNotificationSettings() {
     useState<NotificationPermissionState>('unavailable');
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pushError, setPushError] = useState<string | null>(null);
   const [isChecking, setIsChecking] = useState(false);
 
   const updatePreferences = useCallback(
@@ -178,18 +179,18 @@ export function useNotificationSettings() {
       pushLastPromptAt: now,
     }));
 
+    setPushError(null);
     const result = await registerForPushNotifications();
 
     if (result.status === 'registered') {
       updatePreferences((prev) => ({ ...prev, pushOptInStatus: 'enabled' }));
-      setStatusMessage('Notifications enabled.');
       analytics.trackEvent('notifications:push-enabled');
       return { status: 'registered', token: result.token };
     }
 
     if (result.status === 'denied') {
       updatePreferences((prev) => ({ ...prev, pushOptInStatus: 'denied' }));
-      setError('Enable notifications in system settings to turn on push notifications.');
+      setPushError('Enable notifications in system settings to turn on push notifications.');
       analytics.trackEvent('notifications:push-denied');
       return { status: 'denied' as const };
     }
@@ -200,20 +201,34 @@ export function useNotificationSettings() {
       return { status: 'unavailable' as const };
     }
 
-    setError('Unable to enable notifications right now.');
+    // Roll back attempt increment on error
+    updatePreferences((prev) => ({
+      ...prev,
+      pushPromptAttempts: Math.max(0, (prev.pushPromptAttempts ?? 1) - 1),
+    }));
+    setPushError('Unable to enable notifications right now.');
     analytics.trackEvent('notifications:push-error', { message: result.message });
     return { status: 'error' as const, message: result.message };
   }, [analytics, canPromptForPush, updatePreferences]);
 
-  const disablePushNotifications = useCallback(() => {
+  const disablePushNotifications = useCallback(async () => {
+    setPushError(null);
+    const result = await revokePushToken();
+
     updatePreferences((prev) => ({
       ...prev,
       pushOptInStatus: 'unknown',
       pushPromptAttempts: 0,
       pushLastPromptAt: 0,
     }));
-    analytics.trackEvent('notifications:push-disabled');
-    setStatusMessage('Push notifications disabled for this device.');
+
+    if (result.status === 'revoked' || result.status === 'unavailable') {
+      analytics.trackEvent('notifications:push-disabled', { status: result.status });
+      return;
+    }
+
+    analytics.trackEvent('notifications:push-error', { message: result.message });
+    setPushError('Unable to disable push notifications right now.');
   }, [analytics, updatePreferences]);
 
   return {
@@ -223,6 +238,7 @@ export function useNotificationSettings() {
     isSupported: isNative,
     isChecking,
     error,
+    pushError,
     toggleReminders: handleRemindersToggle,
     toggleDailySummary: handleDailySummaryToggle,
     updateQuietHours: handleQuietHoursChange,

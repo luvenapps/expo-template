@@ -78,7 +78,15 @@ jest.mock('@/notifications/useNotificationSettings', () => ({
     quietHours: [20, 23],
     permissionStatus: 'prompt',
     statusMessage: null,
+    pushStatusMessage: null,
     error: null,
+    pushError: null,
+    pushOptInStatus: 'unknown',
+    pushPromptAttempts: 0,
+    pushLastPromptAt: 0,
+    canPromptForPush: true,
+    promptForPushPermissions: jest.fn(),
+    disablePushNotifications: jest.fn(),
     isSupported: true,
     isChecking: false,
     toggleReminders: mockToggleReminders,
@@ -554,6 +562,7 @@ const buildNotificationSettings = (
   permissionStatus: 'prompt',
   statusMessage: null,
   error: null,
+  pushError: null,
   isSupported: true,
   isChecking: false,
   pushOptInStatus: 'unknown',
@@ -938,7 +947,7 @@ describe('SettingsScreen', () => {
       );
       let { getByTestId, rerender } = render(<SettingsScreen />);
       expect(String(getByTestId('settings-push-status').props.children)).toContain(
-        'Push notifications are enabled.',
+        'pushStatusEnabled',
       );
 
       // Test denied status
@@ -947,7 +956,7 @@ describe('SettingsScreen', () => {
       );
       rerender(<SettingsScreen />);
       expect(String(getByTestId('settings-push-status').props.children)).toContain(
-        'Push notifications are blocked in system settings.',
+        'pushStatusDisabled',
       );
 
       // Test unavailable status
@@ -956,7 +965,7 @@ describe('SettingsScreen', () => {
       );
       rerender(<SettingsScreen />);
       expect(String(getByTestId('settings-push-status').props.children)).toContain(
-        'Push notifications are unavailable on this platform.',
+        'pushStatusDisabled',
       );
 
       // Test unknown status
@@ -965,7 +974,7 @@ describe('SettingsScreen', () => {
       );
       rerender(<SettingsScreen />);
       expect(String(getByTestId('settings-push-status').props.children)).toContain(
-        'Push notifications are not configured yet.',
+        'pushStatusDisabled',
       );
     });
   });

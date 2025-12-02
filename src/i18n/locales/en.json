@@ -200,6 +200,8 @@
     "pushCooldownDescription": "We’ve paused prompts to avoid spamming you.",
     "pushErrorTitle": "Push unavailable",
     "pushErrorDescription": "Unable to enable push notifications right now.",
+    "pushStatusEnabledSimple": "Push notifications enabled.",
+    "pushStatusDisabledSimple": "Push notifications disabled.",
     "pushEnableDone": "Push enabled",
     "pushDisable": "Disable push notifications",
     "localNotificationsTitle": "Local notifications",

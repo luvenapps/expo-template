@@ -6,6 +6,11 @@ export type PushRegistrationResult =
   | { status: 'denied' }
   | { status: 'error'; message: string };
 
+export type PushRevokeResult =
+  | { status: 'revoked' }
+  | { status: 'unavailable' }
+  | { status: 'error'; message: string };
+
 export async function registerForPushNotifications(): Promise<PushRegistrationResult> {
   const turnOnFirebase =
     process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === 'true' ||
@@ -24,6 +29,11 @@ export async function registerForPushNotifications(): Promise<PushRegistrationRe
     const messaging = messagingModule.default;
     const AuthorizationStatus = messagingModule.AuthorizationStatus;
     const instance = messaging();
+
+    // Ensure the device is registered for remote messages before requesting a token
+    if (instance.registerDeviceForRemoteMessages) {
+      await instance.registerDeviceForRemoteMessages();
+    }
 
     // For Android 13+, we need to request POST_NOTIFICATIONS permission first
     if (Platform.OS === 'android') {
@@ -61,7 +71,11 @@ export async function registerForPushNotifications(): Promise<PushRegistrationRe
     }
 
     const token = await instance.getToken();
-    return token ? { status: 'registered', token } : { status: 'error', message: 'No token' };
+    if (token) {
+      console.log('[FCM] Token registered:', token);
+      return { status: 'registered', token };
+    }
+    return { status: 'error', message: 'No token' };
   } catch (error) {
     return { status: 'error', message: (error as Error).message };
   }
@@ -157,6 +171,26 @@ export function setupBackgroundMessageHandler() {
 export async function savePushTokenToBackend(_token: string) {
   // TODO: implement Supabase persistence in Stage 11 (Android-only for now)
   return;
+}
+
+export async function revokePushToken(): Promise<PushRevokeResult> {
+  const turnOnFirebase =
+    process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === 'true' ||
+    process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === '1';
+  if (!turnOnFirebase || Platform.OS === 'web') {
+    return { status: 'unavailable' };
+  }
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const messagingModule = require('@react-native-firebase/messaging');
+    const messaging = messagingModule.default;
+    const instance = messaging();
+    await instance.deleteToken();
+    return { status: 'revoked' };
+  } catch (error) {
+    return { status: 'error', message: (error as Error).message };
+  }
 }
 
 export async function sendTestPushViaFcm(_token: string, _payload: object) {

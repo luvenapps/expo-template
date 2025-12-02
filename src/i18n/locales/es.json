@@ -200,6 +200,8 @@
     "pushCooldownDescription": "Pausamos los avisos para no enviarte spam.",
     "pushErrorTitle": "Push no disponible",
     "pushErrorDescription": "No se pueden activar las notificaciones push en este momento.",
+    "pushStatusEnabledSimple": "Notificaciones push activadas.",
+    "pushStatusDisabledSimple": "Notificaciones push desactivadas.",
     "pushEnableDone": "Push activado",
     "pushDisable": "Desactivar notificaciones push",
     "localNotificationsTitle": "Notificaciones locales",

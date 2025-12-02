@@ -80,6 +80,7 @@ export default function SettingsScreen() {
     promptForPushPermissions,
     disablePushNotifications,
     error: notificationError,
+    pushError,
     isSupported: notificationsSupported,
     isChecking: isCheckingNotifications,
     toggleReminders,
@@ -117,18 +118,12 @@ export default function SettingsScreen() {
   const accentHex = palette.accent;
   const hasSession = Boolean(session?.user?.id);
   const pushEnabled = pushOptInStatus === 'enabled';
-  const pushStatusLabel = useMemo(() => {
-    switch (pushOptInStatus as 'unknown' | 'enabled' | 'denied' | 'unavailable') {
-      case 'enabled':
-        return t('settings.pushStatusEnabled');
-      case 'denied':
-        return t('settings.pushStatusDenied');
-      case 'unavailable':
-        return t('settings.pushStatusUnavailable');
-      default:
-        return t('settings.pushStatusUnknown');
-    }
-  }, [pushOptInStatus, t]);
+  const pushStatusDisplay = useMemo(() => {
+    if (pushError) return pushError;
+    return pushEnabled
+      ? t('settings.pushStatusEnabledSimple')
+      : t('settings.pushStatusDisabledSimple');
+  }, [pushEnabled, pushError, t]);
 
   const pushCooldownCopy = useMemo(() => {
     if (pushOptInStatus === 'enabled') return null;
@@ -807,38 +802,38 @@ export default function SettingsScreen() {
               ) : null}
             </YStack>
 
-            <YStack gap="$2" paddingTop="$2">
-              <Paragraph fontWeight="700">{t('settings.remotePushTitle')}</Paragraph>
-              <Paragraph color="$colorMuted" fontSize="$3">
-                {t('settings.remotePushDescription')}
-              </Paragraph>
-              <Paragraph fontWeight="600">{t('settings.pushTitle')}</Paragraph>
-              <Paragraph color="$colorMuted" fontSize="$3">
-                {t('settings.pushDescription')}
-              </Paragraph>
+            <YStack gap="$3" paddingTop="$2">
+              <XStack alignItems="center" justifyContent="space-between">
+                <YStack gap="$1" flex={1} paddingRight="$3">
+                  <Paragraph fontWeight="700">{t('settings.remotePushTitle')}</Paragraph>
+                  <Paragraph color="$colorMuted" fontSize="$3">
+                    {t('settings.remotePushDescription')}
+                  </Paragraph>
+                </YStack>
+                {renderToggle({
+                  checked: pushEnabled,
+                  disabled:
+                    !notificationsSupported ||
+                    permissionStatus === 'blocked' ||
+                    permissionStatus === 'unavailable',
+                  onChange: async (checked) => {
+                    if (checked) {
+                      await handlePromptPush();
+                    } else {
+                      disablePushNotifications();
+                    }
+                  },
+                  testID: 'settings-push-toggle',
+                })}
+              </XStack>
               <Paragraph color="$colorMuted" fontSize="$3" testID="settings-push-status">
-                {pushStatusLabel}
+                {pushStatusDisplay}
               </Paragraph>
               {pushCooldownCopy ? (
                 <Paragraph color="$colorMuted" fontSize="$3">
                   {pushCooldownCopy}
                 </Paragraph>
               ) : null}
-              {renderToggle({
-                checked: pushEnabled,
-                disabled:
-                  !notificationsSupported ||
-                  permissionStatus === 'blocked' ||
-                  permissionStatus === 'unavailable',
-                onChange: async (checked) => {
-                  if (checked) {
-                    await handlePromptPush();
-                  } else {
-                    disablePushNotifications();
-                  }
-                },
-                testID: 'settings-push-toggle',
-              })}
             </YStack>
           </YStack>
         </SettingsSection>

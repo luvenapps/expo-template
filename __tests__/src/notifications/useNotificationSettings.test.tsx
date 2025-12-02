@@ -14,6 +14,7 @@ jest.mock('@/notifications/notifications', () => ({
 
 jest.mock('@/notifications/firebasePush', () => ({
   registerForPushNotifications: jest.fn(),
+  revokePushToken: jest.fn(),
 }));
 
 jest.mock('@/observability/AnalyticsProvider', () => ({
@@ -58,6 +59,9 @@ const registerForPushNotifications =
   firebasePushModule.registerForPushNotifications as jest.MockedFunction<
     typeof firebasePushModule.registerForPushNotifications
   >;
+const revokePushToken = firebasePushModule.revokePushToken as jest.MockedFunction<
+  typeof firebasePushModule.revokePushToken
+>;
 const useAnalytics = analyticsModule.useAnalytics as jest.MockedFunction<
   typeof analyticsModule.useAnalytics
 >;
@@ -425,5 +429,34 @@ describe('useNotificationSettings', () => {
     expect(persistNotificationPreferences).toHaveBeenCalledWith(
       expect.objectContaining({ remindersEnabled: false }),
     );
+  });
+
+  it('disables push notifications and revokes token', async () => {
+    revokePushToken.mockResolvedValue({ status: 'revoked' });
+    const { result } = renderHook(() => useNotificationSettings());
+
+    await act(async () => {
+      await result.current.disablePushNotifications();
+    });
+
+    expect(revokePushToken).toHaveBeenCalled();
+    expect(persistNotificationPreferences).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pushOptInStatus: 'unknown',
+        pushPromptAttempts: 0,
+        pushLastPromptAt: 0,
+      }),
+    );
+  });
+
+  it('handles revoke errors gracefully', async () => {
+    revokePushToken.mockResolvedValue({ status: 'error', message: 'fail' });
+    const { result } = renderHook(() => useNotificationSettings());
+
+    await act(async () => {
+      await result.current.disablePushNotifications();
+    });
+
+    expect(result.current.pushError).toBe('Unable to disable push notifications right now.');
   });
 });
