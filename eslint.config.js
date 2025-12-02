@@ -2,6 +2,7 @@
 const { defineConfig } = require('eslint/config');
 const expoConfig = require('eslint-config-expo/flat');
 const fs = require('fs');
+const requireFriendlyErrorHandler = require('./eslint-rules/require-friendly-error-handler');
 
 // Dynamically load .gitignore patterns
 const gitignorePatterns = fs
@@ -24,6 +25,20 @@ module.exports = defineConfig([
   {
     rules: {
       'import/no-unresolved': ['error', { ignore: ['expo-sqlite/next', '@supabase/supabase-js'] }],
+    },
+  },
+  // Project-specific plugin for error handling/toast usage
+  {
+    files: ['app/**/*.{ts,tsx}', 'src/**/*.{ts,tsx}'],
+    plugins: {
+      betterhabits: {
+        rules: {
+          'require-friendly-error-handler': requireFriendlyErrorHandler,
+        },
+      },
+    },
+    rules: {
+      'betterhabits/require-friendly-error-handler': 'warn',
     },
   },
   // Jest globals for test files
