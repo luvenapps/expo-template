@@ -1,14 +1,15 @@
 /* istanbul ignore file */
 import { ANALYTICS } from '@/config/constants';
 import { Platform } from 'react-native';
-type WebFirebaseApp = import('firebase/app').FirebaseApp;
-type WebAnalytics = import('firebase/analytics').Analytics;
 import type {
   AnalyticsBackend,
   AnalyticsErrorEnvelope,
   AnalyticsEventEnvelope,
   AnalyticsPerformanceEnvelope,
 } from './AnalyticsProvider';
+
+type WebFirebaseApp = import('firebase/app').FirebaseApp;
+type WebAnalytics = import('firebase/analytics').Analytics;
 
 let cachedBackend: AnalyticsBackend | null | undefined;
 

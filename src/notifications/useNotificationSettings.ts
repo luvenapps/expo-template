@@ -205,6 +205,17 @@ export function useNotificationSettings() {
     return { status: 'error' as const, message: result.message };
   }, [analytics, canPromptForPush, updatePreferences]);
 
+  const disablePushNotifications = useCallback(() => {
+    updatePreferences((prev) => ({
+      ...prev,
+      pushOptInStatus: 'unknown',
+      pushPromptAttempts: 0,
+      pushLastPromptAt: 0,
+    }));
+    analytics.trackEvent('notifications:push-disabled');
+    setStatusMessage('Push notifications disabled for this device.');
+  }, [analytics, updatePreferences]);
+
   return {
     ...preferences,
     permissionStatus,
@@ -218,5 +229,6 @@ export function useNotificationSettings() {
     refreshPermissionStatus,
     canPromptForPush: canPromptForPush(),
     promptForPushPermissions,
+    disablePushNotifications,
   };
 }

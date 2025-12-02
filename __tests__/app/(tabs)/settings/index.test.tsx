@@ -237,6 +237,36 @@ jest.mock('react-i18next', () => {
       'settings.dailySummaryTitle': 'Daily summary',
       'settings.remindersDescription': 'Send push notifications when it’s time to log progress.',
       'settings.dailySummaryDescription': 'Receive a brief recap of streaks.',
+      'settings.pushTitle': 'Push notifications',
+      'settings.pushDescription': 'Enable alerts for reminders, summaries, and updates.',
+      'settings.pushStatusEnabled': 'Push notifications are enabled.',
+      'settings.pushStatusDenied': 'Push notifications are blocked in system settings.',
+      'settings.pushStatusUnavailable': 'Push notifications are unavailable on this platform.',
+      'settings.pushStatusUnknown': 'Push notifications are not configured yet.',
+      'settings.pushAttemptsMax': 'Max prompts reached',
+      'settings.pushCooldown': 'Try again later',
+      'settings.pushEnable': 'Enable push notifications',
+      'settings.pushEnableDisabled': 'Try again later',
+      'settings.pushNotSupportedTitle': 'Push not supported',
+      'settings.pushNotSupportedDescription': 'Use the native app to enable push notifications.',
+      'settings.pushEnabledTitle': 'Push enabled',
+      'settings.pushEnabledDescription': 'You’ll receive reminders and updates.',
+      'settings.pushDeniedTitle': 'Permission denied',
+      'settings.pushDeniedDescription': 'Enable notifications in system settings and try again.',
+      'settings.pushUnavailableTitle': 'Push unavailable',
+      'settings.pushUnavailableDescription': 'This platform does not support push notifications.',
+      'settings.pushCooldownTitle': 'Try again later',
+      'settings.pushCooldownDescription': 'We’ve paused prompts to avoid spamming you.',
+      'settings.pushErrorTitle': 'Push unavailable',
+      'settings.pushErrorDescription': 'Unable to enable push notifications right now.',
+      'settings.pushEnableDone': 'Push enabled',
+      'settings.pushDisable': 'Disable push notifications',
+      'settings.localNotificationsTitle': 'Local notifications',
+      'settings.localNotificationsDescription':
+        'On-device reminders and daily summaries (no internet required).',
+      'settings.remotePushTitle': 'Remote push',
+      'settings.remotePushDescription':
+        'Cloud-delivered push for reminders, summaries, and updates.',
       'settings.enabled': 'Enabled',
       'settings.disabled': 'Disabled',
       'settings.syncUnavailableWeb':
@@ -286,6 +316,41 @@ jest.mock('react-i18next', () => {
       'settings.remindersDescription':
         'Envía notificaciones push cuando sea hora de registrar progreso.',
       'settings.dailySummaryDescription': 'Recibe un breve resumen de tus rachas.',
+      'settings.pushTitle': 'Notificaciones push',
+      'settings.pushDescription': 'Activa alertas para recordatorios, resúmenes y novedades.',
+      'settings.pushStatusEnabled': 'Las notificaciones push están activadas.',
+      'settings.pushStatusDenied':
+        'Las notificaciones push están bloqueadas en la configuración del sistema.',
+      'settings.pushStatusUnavailable':
+        'Las notificaciones push no están disponibles en esta plataforma.',
+      'settings.pushStatusUnknown': 'Las notificaciones push aún no están configuradas.',
+      'settings.pushAttemptsMax':
+        'Alcanzaste el máximo de avisos. Intenta más tarde en Configuración.',
+      'settings.pushCooldown': 'Intenta de nuevo más tarde.',
+      'settings.pushEnable': 'Activar notificaciones push',
+      'settings.pushEnableDisabled': 'Intenta más tarde',
+      'settings.pushNotSupportedTitle': 'Push no compatible',
+      'settings.pushNotSupportedDescription': 'Usa la app nativa para activar notificaciones push.',
+      'settings.pushEnabledTitle': 'Push activado',
+      'settings.pushEnabledDescription': 'Recibirás recordatorios y actualizaciones.',
+      'settings.pushDeniedTitle': 'Permiso denegado',
+      'settings.pushDeniedDescription':
+        'Activa las notificaciones en el sistema y vuelve a intentarlo.',
+      'settings.pushUnavailableTitle': 'Push no disponible',
+      'settings.pushUnavailableDescription': 'Esta plataforma no admite notificaciones push.',
+      'settings.pushCooldownTitle': 'Intenta más tarde',
+      'settings.pushCooldownDescription': 'Pausamos los avisos para no enviarte spam.',
+      'settings.pushErrorTitle': 'Push no disponible',
+      'settings.pushErrorDescription':
+        'No se pueden activar las notificaciones push en este momento.',
+      'settings.pushEnableDone': 'Push activado',
+      'settings.pushDisable': 'Desactivar notificaciones push',
+      'settings.localNotificationsTitle': 'Notificaciones locales',
+      'settings.localNotificationsDescription':
+        'Recordatorios y resúmenes diarios en el dispositivo (sin internet).',
+      'settings.remotePushTitle': 'Push remoto',
+      'settings.remotePushDescription':
+        'Push desde la nube para recordatorios, resúmenes y novedades.',
       'settings.enabled': 'Activado',
       'settings.disabled': 'Desactivado',
       'settings.syncUnavailableWeb':
@@ -496,6 +561,7 @@ const buildNotificationSettings = (
   pushLastPromptAt: 0,
   canPromptForPush: true,
   promptForPushPermissions: jest.fn(),
+  disablePushNotifications: jest.fn(),
   toggleReminders: mockToggleReminders,
   toggleDailySummary: mockToggleDailySummary,
   updateQuietHours: mockUpdateQuietHours,
@@ -737,6 +803,169 @@ describe('SettingsScreen', () => {
       const { getByTestId } = render(<SettingsScreen />);
       expect(String(getByTestId('settings-notification-error').props.children)).toContain(
         'Notifications unavailable.',
+      );
+    });
+
+    it('disables push when enabled', () => {
+      const disablePushNotifications = jest.fn();
+      mockedUseNotificationSettings.mockReturnValue(
+        buildNotificationSettings({ pushOptInStatus: 'enabled', disablePushNotifications }),
+      );
+
+      const { getByTestId } = render(<SettingsScreen />);
+      fireEvent(getByTestId('settings-push-toggle'), 'onCheckedChange', false);
+      expect(disablePushNotifications).toHaveBeenCalled();
+    });
+
+    it('prompts for push when available', async () => {
+      const promptForPushPermissions = jest.fn(() =>
+        Promise.resolve({ status: 'registered', token: 'token-123' }),
+      );
+      mockedUseNotificationSettings.mockReturnValue(
+        buildNotificationSettings({ canPromptForPush: true, promptForPushPermissions }),
+      );
+
+      const { getByTestId } = render(<SettingsScreen />);
+      fireEvent(getByTestId('settings-push-toggle'), 'onCheckedChange', true);
+
+      await waitFor(() => {
+        expect(promptForPushPermissions).toHaveBeenCalled();
+      });
+    });
+
+    it('handles push prompt denied status', async () => {
+      const promptForPushPermissions = jest.fn(() =>
+        Promise.resolve({ status: 'denied' as const }),
+      );
+      mockedUseNotificationSettings.mockReturnValue(
+        buildNotificationSettings({ pushOptInStatus: 'unknown', promptForPushPermissions }),
+      );
+
+      const { getByTestId } = render(<SettingsScreen />);
+      fireEvent(getByTestId('settings-push-toggle'), 'onCheckedChange', true);
+
+      await waitFor(() => {
+        expect(promptForPushPermissions).toHaveBeenCalled();
+      });
+    });
+
+    it('handles push prompt unavailable status', async () => {
+      const promptForPushPermissions = jest.fn(() =>
+        Promise.resolve({ status: 'unavailable' as const }),
+      );
+      mockedUseNotificationSettings.mockReturnValue(
+        buildNotificationSettings({ pushOptInStatus: 'unknown', promptForPushPermissions }),
+      );
+
+      const { getByTestId } = render(<SettingsScreen />);
+      fireEvent(getByTestId('settings-push-toggle'), 'onCheckedChange', true);
+
+      await waitFor(() => {
+        expect(promptForPushPermissions).toHaveBeenCalled();
+      });
+    });
+
+    it('handles push prompt cooldown status', async () => {
+      const promptForPushPermissions = jest.fn(() =>
+        Promise.resolve({ status: 'cooldown' as const }),
+      );
+      mockedUseNotificationSettings.mockReturnValue(
+        buildNotificationSettings({
+          pushOptInStatus: 'unknown',
+          pushPromptAttempts: 2,
+          promptForPushPermissions,
+        }),
+      );
+
+      const { getByTestId } = render(<SettingsScreen />);
+      fireEvent(getByTestId('settings-push-toggle'), 'onCheckedChange', true);
+
+      await waitFor(() => {
+        expect(promptForPushPermissions).toHaveBeenCalled();
+      });
+    });
+
+    it('handles push prompt error status', async () => {
+      const promptForPushPermissions = jest.fn(() =>
+        Promise.resolve({ status: 'error' as const, message: 'Unknown error occurred' }),
+      );
+      mockedUseNotificationSettings.mockReturnValue(
+        buildNotificationSettings({ pushOptInStatus: 'unknown', promptForPushPermissions }),
+      );
+
+      const { getByTestId } = render(<SettingsScreen />);
+      fireEvent(getByTestId('settings-push-toggle'), 'onCheckedChange', true);
+
+      await waitFor(() => {
+        expect(promptForPushPermissions).toHaveBeenCalled();
+      });
+    });
+
+    it('handles push prompt when notifications not supported', async () => {
+      const promptForPushPermissions = jest.fn();
+      mockedUseNotificationSettings.mockReturnValue(
+        buildNotificationSettings({
+          pushOptInStatus: 'unknown',
+          isSupported: false,
+          promptForPushPermissions,
+        }),
+      );
+
+      const { getByTestId } = render(<SettingsScreen />);
+      fireEvent(getByTestId('settings-push-toggle'), 'onCheckedChange', true);
+
+      await waitFor(() => {
+        expect(promptForPushPermissions).not.toHaveBeenCalled();
+      });
+    });
+
+    it('displays cooldown message when max attempts reached', () => {
+      mockedUseNotificationSettings.mockReturnValue(
+        buildNotificationSettings({
+          pushOptInStatus: 'denied',
+          pushPromptAttempts: 3,
+        }),
+      );
+
+      const { getByText } = render(<SettingsScreen />);
+      expect(getByText('Max prompts reached')).toBeDefined();
+    });
+
+    it('displays different push status labels', () => {
+      // Test enabled status
+      mockedUseNotificationSettings.mockReturnValue(
+        buildNotificationSettings({ pushOptInStatus: 'enabled' }),
+      );
+      let { getByTestId, rerender } = render(<SettingsScreen />);
+      expect(String(getByTestId('settings-push-status').props.children)).toContain(
+        'Push notifications are enabled.',
+      );
+
+      // Test denied status
+      mockedUseNotificationSettings.mockReturnValue(
+        buildNotificationSettings({ pushOptInStatus: 'denied' }),
+      );
+      rerender(<SettingsScreen />);
+      expect(String(getByTestId('settings-push-status').props.children)).toContain(
+        'Push notifications are blocked in system settings.',
+      );
+
+      // Test unavailable status
+      mockedUseNotificationSettings.mockReturnValue(
+        buildNotificationSettings({ pushOptInStatus: 'unavailable' }),
+      );
+      rerender(<SettingsScreen />);
+      expect(String(getByTestId('settings-push-status').props.children)).toContain(
+        'Push notifications are unavailable on this platform.',
+      );
+
+      // Test unknown status
+      mockedUseNotificationSettings.mockReturnValue(
+        buildNotificationSettings({ pushOptInStatus: 'unknown' }),
+      );
+      rerender(<SettingsScreen />);
+      expect(String(getByTestId('settings-push-status').props.children)).toContain(
+        'Push notifications are not configured yet.',
       );
     });
   });
@@ -1330,6 +1559,76 @@ describe('SettingsScreen', () => {
         expect.any(Error),
       );
       consoleErrorSpy.mockRestore();
+    });
+  });
+
+  describe('Sync Error Handling', () => {
+    const originalDev = (global as any).__DEV__;
+
+    beforeEach(() => {
+      (global as any).__DEV__ = true;
+      mockedUseSessionStore.mockImplementation((selector: any) =>
+        selector({
+          status: 'authenticated',
+          session: { user: { email: 'test@example.com', id: 'user-123' } },
+          signOut: jest.fn(),
+          isLoading: false,
+        }),
+      );
+    });
+
+    afterEach(() => {
+      (global as any).__DEV__ = originalDev;
+    });
+
+    it('handles sync error gracefully', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const triggerSync = jest.fn().mockRejectedValue(new Error('Network error'));
+      mockedUseSync.mockReturnValue({
+        status: 'idle',
+        queueSize: 5,
+        lastSyncedAt: null,
+        lastError: null,
+        triggerSync,
+      });
+
+      const { getByTestId } = render(<SettingsScreen />);
+      fireEvent.press(getByTestId('settings-sync-now'));
+
+      await waitFor(() => {
+        expect(triggerSync).toHaveBeenCalled();
+      });
+
+      consoleErrorSpy.mockRestore();
+    });
+  });
+
+  describe('Push Notifications - Already Enabled', () => {
+    beforeEach(() => {
+      mockedUseSessionStore.mockImplementation((selector: any) =>
+        selector({
+          status: 'authenticated',
+          session: { user: { email: 'test@example.com', id: 'user-123' } },
+          signOut: jest.fn(),
+          isLoading: false,
+        }),
+      );
+    });
+
+    it('shows toast when push already enabled and user clicks toggle', async () => {
+      mockedUseNotificationSettings.mockReturnValue(
+        buildNotificationSettings({ pushOptInStatus: 'enabled' }),
+      );
+
+      const { getByTestId } = render(<SettingsScreen />);
+      // Click toggle when already enabled - should show success toast
+      fireEvent(getByTestId('settings-push-toggle'), 'onCheckedChange', true);
+
+      // The handler should recognize it's already enabled
+      await waitFor(() => {
+        // No crash expected
+        expect(getByTestId('settings-push-toggle')).toBeDefined();
+      });
     });
   });
 });

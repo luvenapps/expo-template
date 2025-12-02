@@ -75,6 +75,10 @@ export default function SettingsScreen() {
     dailySummaryEnabled,
     quietHours = DEFAULT_NOTIFICATION_PREFERENCES.quietHours,
     permissionStatus,
+    pushOptInStatus,
+    pushPromptAttempts,
+    promptForPushPermissions,
+    disablePushNotifications,
     error: notificationError,
     isSupported: notificationsSupported,
     isChecking: isCheckingNotifications,
@@ -112,6 +116,27 @@ export default function SettingsScreen() {
   const { theme: themePreference, setTheme, palette } = useThemeContext();
   const accentHex = palette.accent;
   const hasSession = Boolean(session?.user?.id);
+  const pushEnabled = pushOptInStatus === 'enabled';
+  const pushStatusLabel = useMemo(() => {
+    switch (pushOptInStatus as 'unknown' | 'enabled' | 'denied' | 'unavailable') {
+      case 'enabled':
+        return t('settings.pushStatusEnabled');
+      case 'denied':
+        return t('settings.pushStatusDenied');
+      case 'unavailable':
+        return t('settings.pushStatusUnavailable');
+      default:
+        return t('settings.pushStatusUnknown');
+    }
+  }, [pushOptInStatus, t]);
+
+  const pushCooldownCopy = useMemo(() => {
+    if (pushOptInStatus === 'enabled') return null;
+    if (pushPromptAttempts >= 3) {
+      return t('settings.pushAttemptsMax');
+    }
+    return null;
+  }, [pushOptInStatus, pushPromptAttempts, t]);
   const streakSample = useMemo(
     () => [
       {
@@ -222,6 +247,69 @@ export default function SettingsScreen() {
 
   const handleThemeSelection = (value: ThemeName) => {
     setTheme(value);
+  };
+
+  const handlePromptPush = async () => {
+    if (pushOptInStatus === 'enabled') {
+      toast.show({
+        type: 'success',
+        title: t('settings.pushEnabledTitle'),
+        description: t('settings.pushEnabledDescription'),
+      });
+      return;
+    }
+
+    if (!notificationsSupported) {
+      toast.show({
+        type: 'info',
+        title: t('settings.pushNotSupportedTitle'),
+        description: t('settings.pushNotSupportedDescription'),
+      });
+      return;
+    }
+
+    const result = await promptForPushPermissions();
+    if (result.status === 'registered') {
+      toast.show({
+        type: 'success',
+        title: t('settings.pushEnabledTitle'),
+        description: t('settings.pushEnabledDescription'),
+      });
+      return;
+    }
+
+    if (result.status === 'denied') {
+      toast.show({
+        type: 'error',
+        title: t('settings.pushDeniedTitle'),
+        description: t('settings.pushDeniedDescription'),
+      });
+      return;
+    }
+
+    if (result.status === 'unavailable') {
+      toast.show({
+        type: 'info',
+        title: t('settings.pushUnavailableTitle'),
+        description: t('settings.pushUnavailableDescription'),
+      });
+      return;
+    }
+
+    if (result.status === 'cooldown') {
+      toast.show({
+        type: 'info',
+        title: t('settings.pushCooldownTitle'),
+        description: t('settings.pushCooldownDescription'),
+      });
+      return;
+    }
+
+    toast.show({
+      type: 'error',
+      title: t('settings.pushErrorTitle'),
+      description: result.message ?? t('settings.pushErrorDescription'),
+    });
   };
 
   const handleArchiveOldEntries = async () => {
@@ -664,37 +752,44 @@ export default function SettingsScreen() {
           footer={notificationError ?? undefined}
         >
           <YStack gap="$4">
-            <XStack alignItems="center" justifyContent="space-between">
-              <YStack gap="$1" flex={1} paddingRight="$3">
-                <Paragraph fontWeight="600">{t('settings.remindersTitle')}</Paragraph>
-                <Paragraph color="$colorMuted" fontSize="$3">
-                  {t('settings.remindersDescription')}
-                </Paragraph>
-              </YStack>
-              <View width={Platform.OS === 'web' ? 64 : 'auto'}>
-                {renderToggle({
-                  checked: remindersEnabled,
-                  disabled: !notificationsSupported || isCheckingNotifications,
-                  onChange: (checked) => toggleReminders(checked),
-                  testID: 'settings-reminders-toggle',
-                })}
-              </View>
-            </XStack>
+            <YStack gap="$3">
+              <Paragraph fontWeight="700">{t('settings.localNotificationsTitle')}</Paragraph>
+              <Paragraph color="$colorMuted" fontSize="$3">
+                {t('settings.localNotificationsDescription')}
+              </Paragraph>
 
-            <XStack alignItems="center" justifyContent="space-between">
-              <YStack gap="$1" flex={1} paddingRight="$3">
-                <Paragraph fontWeight="600">{t('settings.dailySummaryTitle')}</Paragraph>
-                <Paragraph color="$colorMuted" fontSize="$3">
-                  {t('settings.dailySummaryDescription')}
-                </Paragraph>
-              </YStack>
-              {renderToggle({
-                checked: dailySummaryEnabled,
-                disabled: !notificationsSupported || permissionStatus === 'blocked',
-                onChange: (checked) => toggleDailySummary(checked),
-                testID: 'settings-daily-summary-toggle',
-              })}
-            </XStack>
+              <XStack alignItems="center" justifyContent="space-between">
+                <YStack gap="$1" flex={1} paddingRight="$3">
+                  <Paragraph fontWeight="600">{t('settings.remindersTitle')}</Paragraph>
+                  <Paragraph color="$colorMuted" fontSize="$3">
+                    {t('settings.remindersDescription')}
+                  </Paragraph>
+                </YStack>
+                <View width={Platform.OS === 'web' ? 64 : 'auto'}>
+                  {renderToggle({
+                    checked: remindersEnabled,
+                    disabled: !notificationsSupported || isCheckingNotifications,
+                    onChange: (checked) => toggleReminders(checked),
+                    testID: 'settings-reminders-toggle',
+                  })}
+                </View>
+              </XStack>
+
+              <XStack alignItems="center" justifyContent="space-between">
+                <YStack gap="$1" flex={1} paddingRight="$3">
+                  <Paragraph fontWeight="600">{t('settings.dailySummaryTitle')}</Paragraph>
+                  <Paragraph color="$colorMuted" fontSize="$3">
+                    {t('settings.dailySummaryDescription')}
+                  </Paragraph>
+                </YStack>
+                {renderToggle({
+                  checked: dailySummaryEnabled,
+                  disabled: !notificationsSupported || permissionStatus === 'blocked',
+                  onChange: (checked) => toggleDailySummary(checked),
+                  testID: 'settings-daily-summary-toggle',
+                })}
+              </XStack>
+            </YStack>
 
             <YStack gap="$1">
               <Paragraph color="$colorMuted" fontSize="$3" testID="settings-reminders-status">
@@ -710,6 +805,40 @@ export default function SettingsScreen() {
                   {notificationError}
                 </Paragraph>
               ) : null}
+            </YStack>
+
+            <YStack gap="$2" paddingTop="$2">
+              <Paragraph fontWeight="700">{t('settings.remotePushTitle')}</Paragraph>
+              <Paragraph color="$colorMuted" fontSize="$3">
+                {t('settings.remotePushDescription')}
+              </Paragraph>
+              <Paragraph fontWeight="600">{t('settings.pushTitle')}</Paragraph>
+              <Paragraph color="$colorMuted" fontSize="$3">
+                {t('settings.pushDescription')}
+              </Paragraph>
+              <Paragraph color="$colorMuted" fontSize="$3" testID="settings-push-status">
+                {pushStatusLabel}
+              </Paragraph>
+              {pushCooldownCopy ? (
+                <Paragraph color="$colorMuted" fontSize="$3">
+                  {pushCooldownCopy}
+                </Paragraph>
+              ) : null}
+              {renderToggle({
+                checked: pushEnabled,
+                disabled:
+                  !notificationsSupported ||
+                  permissionStatus === 'blocked' ||
+                  permissionStatus === 'unavailable',
+                onChange: async (checked) => {
+                  if (checked) {
+                    await handlePromptPush();
+                  } else {
+                    disablePushNotifications();
+                  }
+                },
+                testID: 'settings-push-toggle',
+              })}
             </YStack>
           </YStack>
         </SettingsSection>
