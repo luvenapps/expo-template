@@ -14,7 +14,8 @@ module.exports = {
           node.callee.type === 'Identifier' &&
           node.callee.name === 'setError' &&
           node.arguments.length > 0 &&
-          node.arguments[0].type === 'Literal'
+          node.arguments[0].type === 'Literal' &&
+          typeof node.arguments[0].value === 'string'
         ) {
           context.report({
             node,

@@ -106,7 +106,6 @@ export default function SignUpScreen() {
                 {statusMessage}
               </CaptionText>
             ) : null}
-            <InlineError message={errorMessage} testID="signup-error" />
 
             <Form width="100%" gap="$4">
               <FormField
@@ -190,6 +189,8 @@ export default function SignUpScreen() {
                   </View>
                 }
               />
+
+              <InlineError message={errorMessage} testID="signup-error" />
 
               <Form.Trigger asChild>
                 <PrimaryButton

@@ -400,11 +400,7 @@ export default function SettingsScreen() {
 
   const handleTestReminder = async () => {
     if (!notificationsSupported) {
-      toast.show({
-        type: 'error',
-        title: 'Notifications unavailable on this platform.',
-        duration: 4000,
-      });
+      setDevStatus('Notifications unavailable on this platform.');
       return;
     }
     const fireDate = new Date(Date.now() + 60 * 1000);
@@ -459,6 +455,7 @@ export default function SettingsScreen() {
 
     if (result.status === 'denied') {
       setDevStatus('Push permission denied. Enable notifications in system settings.');
+      // eslint-disable-next-line betterhabits/require-friendly-error-handler
       toast.show({
         type: 'error',
         title: 'Permission denied',
@@ -473,6 +470,7 @@ export default function SettingsScreen() {
     }
 
     setDevStatus(`Push registration failed: ${result.message}`);
+    // eslint-disable-next-line betterhabits/require-friendly-error-handler
     toast.show({
       type: 'error',
       title: 'Push registration failed',

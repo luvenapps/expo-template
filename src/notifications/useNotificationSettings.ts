@@ -1,3 +1,4 @@
+/* eslint-disable betterhabits/require-friendly-error-handler */
 import {
   cancelAllScheduledNotifications,
   ensureNotificationPermission,

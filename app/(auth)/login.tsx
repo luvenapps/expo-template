@@ -1,9 +1,11 @@
 import { useSessionStore } from '@/auth/session';
 import { isValidEmail } from '@/data/validation';
+import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
 import {
   BodyText,
   CaptionText,
   FormField,
+  InlineError,
   PrimaryButton,
   ScreenContainer,
   SubtitleText,
@@ -33,6 +35,7 @@ export default function LoginScreen() {
   const isLoading = useSessionStore((state) => state.isLoading);
   const error = useSessionStore((state) => state.error);
   const toast = useToast();
+  const handleFriendlyError = useFriendlyErrorHandler();
   const { t } = useTranslation();
 
   const isFormValid = email.trim() !== '' && isValidEmail(email) && password.trim() !== '';
@@ -50,20 +53,44 @@ export default function LoginScreen() {
 
   const handleAuthError = useCallback(
     (rawError: unknown) => {
+      // Fast-path for string or partial objects we get back from auth service/tests
+      if (typeof rawError === 'string') {
+        setError(rawError);
+        return;
+      }
+
+      if (
+        rawError &&
+        typeof rawError === 'object' &&
+        ('descriptionKey' in rawError || 'titleKey' in rawError || 'description' in rawError)
+      ) {
+        const descriptionKey = (rawError as { descriptionKey?: string }).descriptionKey;
+        const titleKey = (rawError as { titleKey?: string }).titleKey;
+        const description = (rawError as { description?: string }).description;
+
+        const friendlyMessage =
+          description ??
+          (descriptionKey ? t(descriptionKey) : undefined) ??
+          (titleKey ? t(titleKey) : undefined) ??
+          t('auth.errorUnknown');
+        setError(friendlyMessage);
+        return;
+      }
+
+      const { friendly } = handleFriendlyError(rawError, {
+        surface: 'auth.login',
+        suppressToast: true,
+      });
+
       const friendlyMessage =
-        typeof rawError === 'string'
-          ? rawError
-          : typeof rawError === 'object' && rawError !== null
-            ? t(
-                (rawError as { descriptionKey?: string; titleKey?: string }).descriptionKey ??
-                  (rawError as { titleKey?: string }).titleKey ??
-                  'auth.errorUnknown',
-              )
-            : t('auth.errorUnknown');
+        friendly.description ??
+        (friendly.descriptionKey ? t(friendly.descriptionKey) : undefined) ??
+        friendly.title ??
+        (friendly.titleKey ? t(friendly.titleKey) : t('auth.errorUnknown'));
 
       setError(friendlyMessage);
     },
-    [setError, t],
+    [handleFriendlyError, setError, t],
   );
 
   const handleSubmit = async () => {
@@ -319,20 +346,7 @@ export default function LoginScreen() {
               {t('auth.forgotPasswordLink')}
             </CaptionText>
 
-            {error ? (
-              <YStack
-                testID="error-message"
-                padding="$3"
-                backgroundColor="$dangerBackground"
-                borderRadius="$3"
-                borderWidth={1}
-                borderColor="$dangerColor"
-              >
-                <BodyText color="$dangerColor" textAlign="center" fontSize="$3">
-                  {error}
-                </BodyText>
-              </YStack>
-            ) : null}
+            <InlineError message={error ?? undefined} testID="error-message" />
 
             <Form.Trigger asChild>
               <PrimaryButton
