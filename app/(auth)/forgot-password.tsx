@@ -4,63 +4,58 @@ import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
 import {
   CaptionText,
   FormField,
+  InlineError,
   PrimaryButton,
   ScreenContainer,
   SubtitleText,
   TitleText,
-  ToastContainer,
-  useToast,
 } from '@/ui';
 import { useRouter } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Platform } from 'react-native';
 import { Card, Form, YStack } from 'tamagui';
-import { useTranslation } from 'react-i18next';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
-  const toast = useToast();
-  const showFriendlyError = useFriendlyErrorHandler(toast);
+  const showFriendlyError = useFriendlyErrorHandler();
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const { t } = useTranslation();
-  const errorToastId = useRef<string | null>(null);
-
   const trimmedEmail = email.trim();
   const isEmailValid = trimmedEmail !== '' && isValidEmail(trimmedEmail);
 
   const handleSubmit = async () => {
     if (!isEmailValid) {
-      toast.show({
-        type: 'error',
-        title: t('auth.reset.missingEmailTitle'),
-        description: t('auth.reset.missingEmailDescription'),
-      });
+      setErrorMessage(t('auth.reset.missingEmailDescription'));
+      setStatusMessage(null);
       return;
     }
 
     setIsSubmitting(true);
+    setErrorMessage(null);
+    setStatusMessage(null);
     const result = await sendPasswordReset(trimmedEmail);
     setIsSubmitting(false);
 
     if (result.success) {
-      toast.show({
-        type: 'success',
-        title: t('auth.reset.successTitle'),
-        description: t('auth.reset.successDescription'),
-      });
+      setStatusMessage(t('auth.reset.successDescription'));
       router.replace('/(auth)/login');
     } else {
-      const { toastId } = showFriendlyError(
+      const { friendly } = showFriendlyError(
         result.friendlyError ?? result.error ?? t('auth.reset.errorUnknown'),
-        {
-          surface: 'auth.password.reset',
-          toast: {
-            id: errorToastId.current ?? undefined,
-          },
-        },
+        { surface: 'auth.password.reset' },
       );
-      errorToastId.current = toastId ?? errorToastId.current;
+      const friendlyMessage =
+        friendly?.description ??
+        (friendly?.descriptionKey ? t(friendly.descriptionKey) : undefined) ??
+        friendly?.title ??
+        (friendly?.titleKey ? t(friendly.titleKey) : undefined) ??
+        result.error?.toString() ??
+        t('auth.reset.errorUnknown');
+      setErrorMessage(friendlyMessage);
     }
   };
 
@@ -84,6 +79,13 @@ export default function ForgotPasswordScreen() {
               <TitleText textAlign="center">{t('auth.resetTitle')}</TitleText>
               <SubtitleText textAlign="center">{t('auth.resetSubtitle')}</SubtitleText>
             </YStack>
+
+            {statusMessage ? (
+              <CaptionText color="$accentColor" textAlign="center">
+                {statusMessage}
+              </CaptionText>
+            ) : null}
+            <InlineError message={errorMessage} testID="reset-error" />
 
             <Form onSubmit={handleSubmit} width="100%" gap="$4">
               <FormField
@@ -129,7 +131,6 @@ export default function ForgotPasswordScreen() {
           </YStack>
         </Card>
       </ScreenContainer>
-      <ToastContainer messages={toast.messages} dismiss={toast.dismiss} />
     </>
   );
 }

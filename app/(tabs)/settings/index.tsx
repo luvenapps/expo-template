@@ -239,65 +239,18 @@ export default function SettingsScreen() {
 
   const handlePromptPush = async () => {
     if (pushOptInStatus === 'enabled') {
-      toast.show({
-        type: 'success',
-        title: t('settings.pushEnabledTitle'),
-        description: t('settings.pushEnabledDescription'),
-      });
       return;
     }
 
     if (!notificationsSupported) {
-      toast.show({
-        type: 'info',
-        title: t('settings.pushNotSupportedTitle'),
-        description: t('settings.pushNotSupportedDescription'),
-      });
       return;
     }
 
     const result = await promptForPushPermissions();
-    if (result.status === 'registered') {
-      toast.show({
-        type: 'success',
-        title: t('settings.pushEnabledTitle'),
-        description: t('settings.pushEnabledDescription'),
-      });
-      return;
-    }
-
-    if (result.status === 'denied') {
-      toast.show({
-        type: 'error',
-        title: t('settings.pushDeniedTitle'),
-        description: t('settings.pushDeniedDescription'),
-      });
-      return;
-    }
-
-    if (result.status === 'unavailable') {
-      toast.show({
-        type: 'info',
-        title: t('settings.pushUnavailableTitle'),
-        description: t('settings.pushUnavailableDescription'),
-      });
-      return;
-    }
-
-    if (result.status === 'cooldown') {
-      toast.show({
-        type: 'info',
-        title: t('settings.pushCooldownTitle'),
-        description: t('settings.pushCooldownDescription'),
-      });
-      return;
-    }
-
-    toast.show({
-      type: 'error',
-      title: t('settings.pushErrorTitle'),
-      description: result.message ?? t('settings.pushErrorDescription'),
-    });
+    if (result.status === 'registered') return;
+    if (result.status === 'denied') return;
+    if (result.status === 'unavailable') return;
+    if (result.status === 'cooldown') return;
   };
 
   const handleArchiveOldEntries = async () => {

@@ -10,6 +10,7 @@ and codebase conventions so agents can run reliably without human context.
 - **Automatic commit summaries**: After you finish any coding task, proactively provide the commit message (title + body) in separate fenced code blocks without waiting for the user to ask.
 - **Manual test notes**: After each implementation, include how to manually test the change (or state that nothing is testable yet).
 - **Stay scoped**: Only modify files directly related to the user’s request. If a change seems adjacent but wasn’t explicitly approved, ask before touching it.
+- **Error handling**: For any user-visible error, run it through `useFriendlyErrorHandler` so we get translated copy + analytics. Pass a toast controller only when you actually need a toast; otherwise call it without a toast and render the returned friendly message inline.
 - **Toast usage**: Use the existing Tamagui toast only for low-priority, non-blocking messages (quick confirmations, minor warnings). Don’t double-surface the same message with inline errors; keep critical/long messages inline or in banners/modals instead.
 
 ## Environment Baseline

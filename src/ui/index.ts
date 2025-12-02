@@ -10,5 +10,6 @@ export * from './components/SliderField';
 export * from './components/StreakChart';
 export * from './components/CalendarHeatmap';
 export * from './components/Toast';
+export * from './components/InlineError';
 export * from './providers/AppProviders';
 

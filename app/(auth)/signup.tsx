@@ -3,19 +3,19 @@ import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
 import {
   CaptionText,
   FormField,
+  InlineError,
   PrimaryButton,
   ScreenContainer,
   SubtitleText,
   TitleText,
-  ToastContainer,
   useToast,
 } from '@/ui';
 import { Eye, EyeOff } from '@tamagui/lucide-icons';
 import { useRouter } from 'expo-router';
 import { useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Platform, TextInput } from 'react-native';
 import { Card, Form, View, YStack } from 'tamagui';
-import { useTranslation } from 'react-i18next';
 
 export default function SignUpScreen() {
   const router = useRouter();
@@ -31,8 +31,9 @@ export default function SignUpScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const { t } = useTranslation();
-  const passwordMismatchToastId = useRef<string | null>(null);
 
   const isFormValid = useMemo(() => {
     return email.trim() !== '' && password.trim().length >= 8 && confirmPassword.trim().length >= 8;
@@ -40,40 +41,39 @@ export default function SignUpScreen() {
 
   const handleSubmit = async () => {
     if (!isFormValid) {
-      toast.show({
-        type: 'error',
-        title: t('auth.signup.missingTitle'),
-        description: t('auth.signup.missingDescription'),
-      });
+      setErrorMessage(t('auth.signup.missingDescription'));
+      setStatusMessage(null);
       return;
     }
 
     if (password !== confirmPassword) {
-      const toastId = toast.show({
-        type: 'error',
-        title: t('auth.signup.passwordMismatchTitle'),
-        description: t('auth.signup.passwordMismatchDescription'),
-        id: passwordMismatchToastId.current ?? 'signup-password-mismatch',
-      });
-      passwordMismatchToastId.current = toastId ?? passwordMismatchToastId.current;
+      setErrorMessage(t('auth.signup.passwordMismatchDescription'));
+      setStatusMessage(null);
       return;
     }
 
     setIsSubmitting(true);
+    setErrorMessage(null);
+    setStatusMessage(null);
     const result = await signUpWithEmail(email.trim(), password);
     setIsSubmitting(false);
 
     if (result.success) {
-      toast.show({
-        type: 'success',
-        title: t('auth.signup.checkEmailTitle'),
-        description: t('auth.signup.checkEmailDescription'),
-      });
+      setStatusMessage(t('auth.signup.checkEmailDescription'));
       router.replace('/(auth)/login');
     } else {
-      showFriendlyError(result.friendlyError ?? result.error ?? t('auth.signup.errorUnknown'), {
-        surface: 'auth.signup.email',
-      });
+      const { friendly } = showFriendlyError(
+        result.friendlyError ?? result.error ?? t('auth.signup.errorUnknown'),
+        { surface: 'auth.signup.email' },
+      );
+      const friendlyMessage =
+        friendly?.description ??
+        (friendly?.descriptionKey ? t(friendly.descriptionKey) : undefined) ??
+        friendly?.title ??
+        (friendly?.titleKey ? t(friendly.titleKey) : undefined) ??
+        result.error?.toString() ??
+        t('auth.signup.errorUnknown');
+      setErrorMessage(friendlyMessage);
     }
   };
 
@@ -100,6 +100,13 @@ export default function SignUpScreen() {
               <TitleText textAlign="center">{t('auth.signupTitle')}</TitleText>
               <SubtitleText textAlign="center">{t('auth.signupSubtitle')}</SubtitleText>
             </YStack>
+
+            {statusMessage ? (
+              <CaptionText color="$accentColor" textAlign="center">
+                {statusMessage}
+              </CaptionText>
+            ) : null}
+            <InlineError message={errorMessage} testID="signup-error" />
 
             <Form width="100%" gap="$4">
               <FormField
@@ -213,7 +220,6 @@ export default function SignUpScreen() {
           </YStack>
         </Card>
       </ScreenContainer>
-      <ToastContainer messages={toast.messages} dismiss={toast.dismiss} />
     </>
   );
 }

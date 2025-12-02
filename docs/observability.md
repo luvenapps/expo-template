@@ -46,7 +46,14 @@ Stage 8 introduces a shared resolver (`src/errors/friendly.ts`) so low-level err
 
 When adding new errors, extend `resolveFriendlyError` and update this table so UX + support stay in sync.
 
-Use `useFriendlyErrorHandler(toastController)` to show consistent toasts (with optional retry actions) and automatically emit `trackError` analytics whenever you catch/handle an error.
+### Error handling pattern
+
+- Use `useFriendlyErrorHandler(toastController?)` for any user-facing error. It:
+  - Resolves an error to friendly/translated copy via `resolveFriendlyError`.
+  - Logs `trackError` with code + surface.
+  - Optionally shows a toast when a toast controller is provided (skip for inline-only flows).
+- Inline errors: call the hook without a toast controller, and render `handlerResult.friendly` copy in the UI.
+- Toasts: only for low-priority confirmations or minor warnings; don’t duplicate inline messaging and toasts for the same error.
 
 ## Notification Settings
 

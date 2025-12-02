@@ -138,6 +138,22 @@ describe('useFriendlyErrorHandler', () => {
     });
   });
 
+  it('does not attempt to show toast when none provided', () => {
+    const resolvedError: FriendlyError = {
+      code: 'unknown',
+      titleKey: 'errors.unknown.title',
+      descriptionKey: 'errors.unknown.description',
+      type: 'error',
+    };
+
+    mockResolveFriendlyError.mockReturnValue(resolvedError);
+
+    const { result } = renderHook(() => useFriendlyErrorHandler());
+    const handler = result.current;
+
+    expect(() => handler(new Error('boom'), { surface: 'test-surface' })).not.toThrow();
+  });
+
   describe('toast display', () => {
     it('shows toast by default', () => {
       const friendlyError: FriendlyError = {

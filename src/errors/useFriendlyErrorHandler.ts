@@ -28,7 +28,7 @@ type HandlerResult = {
   toastId?: string;
 };
 
-export function useFriendlyErrorHandler(toast: ToastController) {
+export function useFriendlyErrorHandler(toast?: ToastController) {
   const analytics = useAnalytics();
   const { t } = useTranslation();
 
@@ -51,7 +51,7 @@ export function useFriendlyErrorHandler(toast: ToastController) {
     });
 
     let toastId: string | undefined;
-    if (!options.suppressToast) {
+    if (!options.suppressToast && toast) {
       const existingId = options.toast?.id;
       if (existingId) {
         toast.dismiss(existingId);
