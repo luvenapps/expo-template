@@ -928,16 +928,18 @@ describe('SettingsScreen', () => {
       });
     });
 
-    it('displays cooldown message when max attempts reached', () => {
+    it('does not render cooldown copy inline', () => {
       mockedUseNotificationSettings.mockReturnValue(
         buildNotificationSettings({
-          pushOptInStatus: 'denied',
+          pushOptInStatus: 'unknown',
           pushPromptAttempts: 3,
+          canPromptForPush: false,
         }),
       );
 
-      const { getByText } = render(<SettingsScreen />);
-      expect(getByText('Max prompts reached')).toBeDefined();
+      const { queryByText } = render(<SettingsScreen />);
+      expect(queryByText('Max prompts reached')).toBeNull();
+      expect(queryByText('Try again later')).toBeNull();
     });
 
     it('displays different push status labels', () => {

@@ -76,7 +76,6 @@ export default function SettingsScreen() {
     quietHours = DEFAULT_NOTIFICATION_PREFERENCES.quietHours,
     permissionStatus,
     pushOptInStatus,
-    pushPromptAttempts,
     promptForPushPermissions,
     disablePushNotifications,
     error: notificationError,
@@ -125,13 +124,7 @@ export default function SettingsScreen() {
       : t('settings.pushStatusDisabledSimple');
   }, [pushEnabled, pushError, t]);
 
-  const pushCooldownCopy = useMemo(() => {
-    if (pushOptInStatus === 'enabled') return null;
-    if (pushPromptAttempts >= 3) {
-      return t('settings.pushAttemptsMax');
-    }
-    return null;
-  }, [pushOptInStatus, pushPromptAttempts, t]);
+  // cooldown info is handled internally; no inline display to avoid noise
   const streakSample = useMemo(
     () => [
       {
@@ -829,11 +822,6 @@ export default function SettingsScreen() {
               <Paragraph color="$colorMuted" fontSize="$3" testID="settings-push-status">
                 {pushStatusDisplay}
               </Paragraph>
-              {pushCooldownCopy ? (
-                <Paragraph color="$colorMuted" fontSize="$3">
-                  {pushCooldownCopy}
-                </Paragraph>
-              ) : null}
             </YStack>
           </YStack>
         </SettingsSection>

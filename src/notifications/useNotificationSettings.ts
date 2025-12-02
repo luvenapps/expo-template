@@ -52,6 +52,7 @@ export function useNotificationSettings() {
   );
   const [permissionStatus, setPermissionStatus] =
     useState<NotificationPermissionState>('unavailable');
+  const [nowTick, setNowTick] = useState(() => Date.now());
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pushError, setPushError] = useState<string | null>(null);
@@ -159,12 +160,27 @@ export function useNotificationSettings() {
   );
 
   const canPromptForPush = useCallback(() => {
-    const now = Date.now();
+    const now = nowTick;
     const attempts = preferences.pushPromptAttempts ?? 0;
     const lastPromptAt = preferences.pushLastPromptAt ?? 0;
     if (attempts >= NOTIFICATIONS.pushPromptMaxAttempts) return false;
     if (lastPromptAt === 0) return true;
     return now - lastPromptAt >= NOTIFICATIONS.pushPromptCooldownMs;
+  }, [nowTick, preferences.pushPromptAttempts, preferences.pushLastPromptAt]);
+
+  useEffect(() => {
+    const attempts = preferences.pushPromptAttempts ?? 0;
+    const lastPromptAt = preferences.pushLastPromptAt ?? 0;
+    if (attempts >= NOTIFICATIONS.pushPromptMaxAttempts) return;
+    if (lastPromptAt === 0) return;
+    const nextPromptAt = lastPromptAt + NOTIFICATIONS.pushPromptCooldownMs;
+    const delay = nextPromptAt - Date.now();
+    if (delay <= 0) {
+      setNowTick(Date.now());
+      return;
+    }
+    const timer = setTimeout(() => setNowTick(Date.now()), delay + 10);
+    return () => clearTimeout(timer);
   }, [preferences.pushPromptAttempts, preferences.pushLastPromptAt]);
 
   const promptForPushPermissions = useCallback(async () => {

@@ -1,6 +1,7 @@
 import { act, renderHook } from '@testing-library/react-native';
 import { Platform } from 'react-native';
 import { useNotificationSettings } from '@/notifications/useNotificationSettings';
+import { NOTIFICATIONS } from '@/config/constants';
 
 jest.mock('@/notifications/preferences', () => ({
   loadNotificationPreferences: jest.fn(),
@@ -73,7 +74,6 @@ describe('useNotificationSettings', () => {
   const originalPlatform = Platform.OS;
   const trackEvent = jest.fn();
   const trackError = jest.fn();
-
   beforeEach(() => {
     jest.clearAllMocks();
     trackEvent.mockClear();
@@ -101,6 +101,8 @@ describe('useNotificationSettings', () => {
 
   afterEach(() => {
     Object.defineProperty(Platform, 'OS', { value: originalPlatform });
+    jest.useRealTimers();
+    (Date.now as unknown as jest.Mock)?.mockRestore?.();
   });
 
   it('loads preferences and evaluates permission status on mount', async () => {
@@ -385,6 +387,32 @@ describe('useNotificationSettings', () => {
     });
 
     expect(registerForPushNotifications).not.toHaveBeenCalled();
+  });
+
+  it('allows prompting again after cooldown elapses', async () => {
+    jest.useFakeTimers();
+    const base = Date.now();
+    const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(base);
+    loadNotificationPreferences.mockReturnValue({
+      remindersEnabled: false,
+      dailySummaryEnabled: false,
+      quietHours: [20, 23],
+      pushOptInStatus: 'unknown',
+      pushPromptAttempts: 1,
+      pushLastPromptAt: base,
+    });
+
+    const { result } = renderHook(() => useNotificationSettings());
+    expect(result.current.canPromptForPush).toBe(false);
+
+    nowSpy.mockReturnValue(base + NOTIFICATIONS.pushPromptCooldownMs + 50);
+
+    await act(async () => {
+      jest.advanceTimersByTime(NOTIFICATIONS.pushPromptCooldownMs + 100);
+    });
+
+    expect(result.current.canPromptForPush).toBe(true);
+    nowSpy.mockRestore();
   });
 
   it('handles push denial', async () => {
