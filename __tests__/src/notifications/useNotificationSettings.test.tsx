@@ -34,11 +34,25 @@ jest.mock('expo-notifications', () => ({
   getPermissionsAsync: jest.fn(),
 }));
 
+// Create a stable t function for mocking
+const mockT = jest.fn((key: string) => key);
+
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: mockT,
+    i18n: {
+      language: 'en',
+      changeLanguage: jest.fn(),
+    },
+  }),
+}));
+
 const preferenceModule = require('@/notifications/preferences');
 const notificationModule = require('@/notifications/notifications');
 const firebasePushModule = require('@/notifications/firebasePush');
 const analyticsModule = require('@/observability/AnalyticsProvider');
 const expoNotifications = require('expo-notifications');
+const translate = (key: string) => key;
 
 const loadNotificationPreferences =
   preferenceModule.loadNotificationPreferences as jest.MockedFunction<
@@ -76,6 +90,7 @@ describe('useNotificationSettings', () => {
   const trackError = jest.fn();
   beforeEach(() => {
     jest.clearAllMocks();
+    mockT.mockClear();
     trackEvent.mockClear();
     trackError.mockClear();
     Object.defineProperty(Platform, 'OS', { value: 'ios' });
@@ -147,9 +162,7 @@ describe('useNotificationSettings', () => {
     });
 
     expect(result.current.remindersEnabled).toBe(false);
-    expect(result.current.error).toBe(
-      'Enable notifications in system settings to turn on reminders.',
-    );
+    expect(result.current.error).toBe(translate(NOTIFICATIONS.copyKeys.remindersBlocked));
     expect(trackEvent).toHaveBeenCalledWith('notifications:reminders-blocked');
   });
 
@@ -214,7 +227,9 @@ describe('useNotificationSettings', () => {
       expect.objectContaining({ dailySummaryEnabled: true }),
     );
     expect(trackEvent).toHaveBeenCalledWith('notifications:daily-summary', { enabled: true });
-    expect(result.current.statusMessage).toBe('Daily summary enabled.');
+    expect(result.current.statusMessage).toBe(
+      translate(NOTIFICATIONS.copyKeys.dailySummaryEnabled),
+    );
   });
 
   it('disables daily summary and updates status message', async () => {
@@ -236,7 +251,9 @@ describe('useNotificationSettings', () => {
     expect(persistNotificationPreferences).toHaveBeenCalledWith(
       expect.objectContaining({ dailySummaryEnabled: false }),
     );
-    expect(result.current.statusMessage).toBe('Daily summary disabled.');
+    expect(result.current.statusMessage).toBe(
+      translate(NOTIFICATIONS.copyKeys.dailySummaryDisabled),
+    );
   });
 
   it('refreshes permission status when enabling daily summary without permissions', async () => {

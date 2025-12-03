@@ -13,6 +13,7 @@ import * as Notifications from 'expo-notifications';
 import { useCallback, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import { NOTIFICATIONS } from '@/config/constants';
+import { useTranslation } from 'react-i18next';
 
 export type NotificationPermissionState =
   | 'granted'
@@ -47,6 +48,7 @@ function mapPermission(
 
 export function useNotificationSettings() {
   const analytics = useAnalytics();
+  const { t } = useTranslation();
   const [preferences, setPreferences] = useState<NotificationPreferences>(() =>
     loadNotificationPreferences(),
   );
@@ -87,14 +89,14 @@ export function useNotificationSettings() {
       setPermissionStatus(mapped);
       return mapped;
     } catch (permissionError) {
-      setError(NOTIFICATIONS.copy.permissionReadError);
+      setError(t(NOTIFICATIONS.copyKeys.permissionReadError));
       analytics.trackError(permissionError as Error, { source: 'notifications:permissions' });
       setPermissionStatus('unavailable');
       return 'unavailable';
     } finally {
       setIsChecking(false);
     }
-  }, [analytics]);
+  }, [analytics, t]);
 
   useEffect(() => {
     refreshPermissionStatus().catch(() => undefined);
@@ -111,7 +113,7 @@ export function useNotificationSettings() {
         if (isNative) {
           await cancelAllScheduledNotifications();
         }
-        setStatusMessage(NOTIFICATIONS.copy.remindersDisabled);
+        setStatusMessage(t(NOTIFICATIONS.copyKeys.remindersDisabled));
         return;
       }
 
@@ -119,30 +121,32 @@ export function useNotificationSettings() {
       if (!granted) {
         await refreshPermissionStatus();
         updatePreferences((prev) => ({ ...prev, remindersEnabled: false }));
-        setError(NOTIFICATIONS.copy.remindersBlocked);
+        setError(t(NOTIFICATIONS.copyKeys.remindersBlocked));
         analytics.trackEvent('notifications:reminders-blocked');
         return;
       }
 
       setPermissionStatus('granted');
       updatePreferences((prev) => ({ ...prev, remindersEnabled: true }));
-      setStatusMessage(NOTIFICATIONS.copy.remindersEnabled);
+      setStatusMessage(t(NOTIFICATIONS.copyKeys.remindersEnabled));
     },
-    [analytics, refreshPermissionStatus, updatePreferences],
+    [analytics, refreshPermissionStatus, t, updatePreferences],
   );
 
   const handleDailySummaryToggle = useCallback(
     async (enabled: boolean) => {
       analytics.trackEvent('notifications:daily-summary', { enabled });
       setStatusMessage(
-        enabled ? NOTIFICATIONS.copy.dailySummaryEnabled : NOTIFICATIONS.copy.dailySummaryDisabled,
+        enabled
+          ? t(NOTIFICATIONS.copyKeys.dailySummaryEnabled)
+          : t(NOTIFICATIONS.copyKeys.dailySummaryDisabled),
       );
       updatePreferences((prev) => ({ ...prev, dailySummaryEnabled: enabled }));
       if (enabled && permissionStatus !== 'granted') {
         await refreshPermissionStatus();
       }
     },
-    [analytics, permissionStatus, refreshPermissionStatus, updatePreferences],
+    [analytics, permissionStatus, refreshPermissionStatus, t, updatePreferences],
   );
 
   const handleQuietHoursChange = useCallback(
