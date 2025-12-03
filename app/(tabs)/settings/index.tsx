@@ -445,22 +445,11 @@ export default function SettingsScreen() {
     if (result.status === 'registered') {
       setDevStatus(`Push token registered (printed to console).`);
       console.log('[Push] FCM token:', result.token);
-      toast.show({
-        type: 'success',
-        title: 'Push token registered',
-        description: 'Token printed to console.',
-      });
       return;
     }
 
     if (result.status === 'denied') {
       setDevStatus('Push permission denied. Enable notifications in system settings.');
-      // eslint-disable-next-line betterhabits/require-friendly-error-handler
-      toast.show({
-        type: 'error',
-        title: 'Permission denied',
-        description: 'Enable notifications and retry.',
-      });
       return;
     }
 
@@ -470,12 +459,6 @@ export default function SettingsScreen() {
     }
 
     setDevStatus(`Push registration failed: ${result.message}`);
-    // eslint-disable-next-line betterhabits/require-friendly-error-handler
-    toast.show({
-      type: 'error',
-      title: 'Push registration failed',
-      description: result.message,
-    });
   };
 
   useEffect(() => {
