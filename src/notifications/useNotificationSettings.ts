@@ -1,4 +1,3 @@
-/* eslint-disable betterhabits/require-friendly-error-handler */
 import {
   cancelAllScheduledNotifications,
   ensureNotificationPermission,
@@ -88,7 +87,7 @@ export function useNotificationSettings() {
       setPermissionStatus(mapped);
       return mapped;
     } catch (permissionError) {
-      setError('Unable to read notification permissions.');
+      setError(NOTIFICATIONS.copy.permissionReadError);
       analytics.trackError(permissionError as Error, { source: 'notifications:permissions' });
       setPermissionStatus('unavailable');
       return 'unavailable';
@@ -112,7 +111,7 @@ export function useNotificationSettings() {
         if (isNative) {
           await cancelAllScheduledNotifications();
         }
-        setStatusMessage('Reminders disabled.');
+        setStatusMessage(NOTIFICATIONS.copy.remindersDisabled);
         return;
       }
 
@@ -120,14 +119,14 @@ export function useNotificationSettings() {
       if (!granted) {
         await refreshPermissionStatus();
         updatePreferences((prev) => ({ ...prev, remindersEnabled: false }));
-        setError('Enable notifications in system settings to turn on reminders.');
+        setError(NOTIFICATIONS.copy.remindersBlocked);
         analytics.trackEvent('notifications:reminders-blocked');
         return;
       }
 
       setPermissionStatus('granted');
       updatePreferences((prev) => ({ ...prev, remindersEnabled: true }));
-      setStatusMessage('Reminders enabled.');
+      setStatusMessage(NOTIFICATIONS.copy.remindersEnabled);
     },
     [analytics, refreshPermissionStatus, updatePreferences],
   );
@@ -135,7 +134,9 @@ export function useNotificationSettings() {
   const handleDailySummaryToggle = useCallback(
     async (enabled: boolean) => {
       analytics.trackEvent('notifications:daily-summary', { enabled });
-      setStatusMessage(enabled ? 'Daily summary enabled.' : 'Daily summary disabled.');
+      setStatusMessage(
+        enabled ? NOTIFICATIONS.copy.dailySummaryEnabled : NOTIFICATIONS.copy.dailySummaryDisabled,
+      );
       updatePreferences((prev) => ({ ...prev, dailySummaryEnabled: enabled }));
       if (enabled && permissionStatus !== 'granted') {
         await refreshPermissionStatus();

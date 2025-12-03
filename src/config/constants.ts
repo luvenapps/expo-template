@@ -7,6 +7,14 @@ export const NOTIFICATIONS = {
     foregroundReminder: 5000,
     default: 4000,
   },
+  copy: {
+    permissionReadError: 'Unable to read notification permissions.',
+    remindersEnabled: 'Reminders enabled.',
+    remindersDisabled: 'Reminders disabled.',
+    remindersBlocked: 'Enable notifications in system settings to turn on reminders.',
+    dailySummaryEnabled: 'Daily summary enabled.',
+    dailySummaryDisabled: 'Daily summary disabled.',
+  },
 };
 
 // Sync + background task cadence
