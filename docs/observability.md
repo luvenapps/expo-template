@@ -103,3 +103,11 @@ const {
 - `__tests__/src/notifications/useNotificationSettings.test.tsx` covers the hook (permission flows, state persistence, cancellations).
 - Settings screen tests mock the hook to validate copy rendering for `statusMessage`, `error`, and permission guidance.
 - Expo Notifications + MMKV are mocked in the hook tests; refer to those stubs when adding new behaviour.
+
+### Push prompt cadence (remote push)
+
+- Defaults live in `src/config/constants.ts` under `NOTIFICATIONS`:
+  - `pushMaxAttempts`: 3 attempts before we stop prompting.
+  - `pushPromptCooldownMs`: 7 days between prompts after a decline.
+- Enforcement happens in `useNotificationSettings` (`canPromptForPush` and `pushOptInStatus`).
+- Successful opt-in resets attempts; revoke/disable resets attempts to 0; cooldown expiry re-allows prompting without auto-resetting attempts until a success/disable.
