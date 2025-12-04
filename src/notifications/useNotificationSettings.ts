@@ -11,7 +11,7 @@ import { registerForPushNotifications, revokePushToken } from '@/notifications/f
 import { useAnalytics } from '@/observability/AnalyticsProvider';
 import * as Notifications from 'expo-notifications';
 import { useCallback, useEffect, useState } from 'react';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { NOTIFICATIONS } from '@/config/constants';
 import { useTranslation } from 'react-i18next';
 
@@ -102,6 +102,18 @@ export function useNotificationSettings() {
     refreshPermissionStatus().catch(() => undefined);
   }, [refreshPermissionStatus]);
 
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        refreshPermissionStatus().catch(() => undefined);
+      }
+    });
+    return () => {
+      subscription?.remove?.();
+    };
+  }, [refreshPermissionStatus]);
+
   const handleRemindersToggle = useCallback(
     async (enabled: boolean) => {
       analytics.trackEvent('notifications:reminders', { enabled });
@@ -121,7 +133,8 @@ export function useNotificationSettings() {
       if (!granted) {
         await refreshPermissionStatus();
         updatePreferences((prev) => ({ ...prev, remindersEnabled: false }));
-        setError(t(NOTIFICATIONS.copyKeys.remindersBlocked));
+        setError(null);
+        setStatusMessage(null);
         analytics.trackEvent('notifications:reminders-blocked');
         return;
       }
@@ -212,7 +225,7 @@ export function useNotificationSettings() {
 
     if (result.status === 'denied') {
       updatePreferences((prev) => ({ ...prev, pushOptInStatus: 'denied' }));
-      setPushError('Enable notifications in system settings to turn on push notifications.');
+      setPushError(t('notifications.pushDeniedDescription'));
       analytics.trackEvent('notifications:push-denied');
       return { status: 'denied' as const };
     }
@@ -228,10 +241,10 @@ export function useNotificationSettings() {
       ...prev,
       pushPromptAttempts: Math.max(0, (prev.pushPromptAttempts ?? 1) - 1),
     }));
-    setPushError('Unable to enable notifications right now.');
+    setPushError(t('notifications.pushErrorDescription'));
     analytics.trackEvent('notifications:push-error', { message: result.message });
     return { status: 'error' as const, message: result.message };
-  }, [analytics, canPromptForPush, updatePreferences]);
+  }, [analytics, canPromptForPush, t, updatePreferences]);
 
   const disablePushNotifications = useCallback(async () => {
     setPushError(null);
@@ -250,8 +263,18 @@ export function useNotificationSettings() {
     }
 
     analytics.trackEvent('notifications:push-error', { message: result.message });
-    setPushError('Unable to disable push notifications right now.');
-  }, [analytics, updatePreferences]);
+    setPushError(t('notifications.pushErrorDescription'));
+  }, [analytics, t, updatePreferences]);
+
+  useEffect(() => {
+    if (
+      permissionStatus === 'blocked' ||
+      permissionStatus === 'denied' ||
+      permissionStatus === 'unavailable'
+    ) {
+      setPushError(null);
+    }
+  }, [permissionStatus]);
 
   return {
     ...preferences,

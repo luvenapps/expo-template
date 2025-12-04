@@ -248,6 +248,8 @@ jest.mock('react-i18next', () => {
       'settings.pushTitle': 'Push notifications',
       'settings.pushDescription': 'Enable alerts for reminders, summaries, and updates.',
       'settings.pushStatusEnabled': 'Push notifications are enabled.',
+      'settings.pushStatusEnabledSimple': 'Enabled',
+      'settings.pushStatusDisabledSimple': 'Disabled',
       'settings.pushStatusDenied': 'Push notifications are blocked in system settings.',
       'settings.pushStatusUnavailable': 'Push notifications are unavailable on this platform.',
       'settings.pushStatusUnknown': 'Push notifications are not configured yet.',
@@ -277,6 +279,11 @@ jest.mock('react-i18next', () => {
         'Cloud-delivered push for reminders, summaries, and updates.',
       'settings.enabled': 'Enabled',
       'settings.disabled': 'Disabled',
+      'settings.notificationsTitle': 'Notifications',
+      'settings.notificationsDescription': 'Manage reminders and push notifications.',
+      'settings.remindersBlocked':
+        'Notifications are blocked in system settings. Tap "Open Settings" to enable them.',
+      'settings.openSettings': 'Open Settings',
       'settings.syncUnavailableWeb':
         'Background sync requires the iOS or Android app to access the local database.',
       'settings.syncUnavailableAuth': 'Sign in to enable syncing with your Supabase account.',
@@ -784,14 +791,15 @@ describe('SettingsScreen', () => {
       mockedUseNotificationSettings.mockReturnValue(
         buildNotificationSettings({
           permissionStatus: 'blocked',
-          error: 'Notifications are blocked in system settings.',
         }),
       );
 
-      const { getByTestId } = render(<SettingsScreen />);
-      expect(getByTestId('settings-reminders-toggle')).toBeDefined();
-      expect(String(getByTestId('settings-notification-error').props.children)).toContain(
-        'Notifications are blocked in system settings.',
+      const { getByTestId, queryByTestId } = render(<SettingsScreen />);
+      // When blocked, toggles are hidden and blocked message is shown
+      expect(queryByTestId('settings-reminders-toggle')).toBeNull();
+      expect(getByTestId('settings-notification-blocked')).toBeDefined();
+      expect(String(getByTestId('settings-notification-blocked').props.children)).toContain(
+        'Notifications are blocked in system settings',
       );
     });
 
@@ -948,36 +956,28 @@ describe('SettingsScreen', () => {
         buildNotificationSettings({ pushOptInStatus: 'enabled' }),
       );
       let { getByTestId, rerender } = render(<SettingsScreen />);
-      expect(String(getByTestId('settings-push-status').props.children)).toContain(
-        'pushStatusEnabled',
-      );
+      expect(String(getByTestId('settings-push-status').props.children)).toContain('Enabled');
 
       // Test denied status
       mockedUseNotificationSettings.mockReturnValue(
         buildNotificationSettings({ pushOptInStatus: 'denied' }),
       );
       rerender(<SettingsScreen />);
-      expect(String(getByTestId('settings-push-status').props.children)).toContain(
-        'pushStatusDisabled',
-      );
+      expect(String(getByTestId('settings-push-status').props.children)).toContain('Disabled');
 
       // Test unavailable status
       mockedUseNotificationSettings.mockReturnValue(
         buildNotificationSettings({ pushOptInStatus: 'unavailable' }),
       );
       rerender(<SettingsScreen />);
-      expect(String(getByTestId('settings-push-status').props.children)).toContain(
-        'pushStatusDisabled',
-      );
+      expect(String(getByTestId('settings-push-status').props.children)).toContain('Disabled');
 
       // Test unknown status
       mockedUseNotificationSettings.mockReturnValue(
         buildNotificationSettings({ pushOptInStatus: 'unknown' }),
       );
       rerender(<SettingsScreen />);
-      expect(String(getByTestId('settings-push-status').props.children)).toContain(
-        'pushStatusDisabled',
-      );
+      expect(String(getByTestId('settings-push-status').props.children)).toContain('Disabled');
     });
   });
 

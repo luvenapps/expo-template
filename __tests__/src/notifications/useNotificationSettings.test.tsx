@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react-native';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { useNotificationSettings } from '@/notifications/useNotificationSettings';
 import { NOTIFICATIONS } from '@/config/constants';
 
@@ -88,11 +88,15 @@ describe('useNotificationSettings', () => {
   const originalPlatform = Platform.OS;
   const trackEvent = jest.fn();
   const trackError = jest.fn();
+  let appStateSpy: jest.SpyInstance;
   beforeEach(() => {
     jest.clearAllMocks();
     mockT.mockClear();
     trackEvent.mockClear();
     trackError.mockClear();
+    appStateSpy = jest
+      .spyOn(AppState, 'addEventListener')
+      .mockReturnValue({ remove: jest.fn() } as any);
     Object.defineProperty(Platform, 'OS', { value: 'ios' });
     useAnalytics.mockReturnValue({
       trackEvent,
@@ -115,6 +119,7 @@ describe('useNotificationSettings', () => {
   });
 
   afterEach(() => {
+    appStateSpy?.mockRestore();
     Object.defineProperty(Platform, 'OS', { value: originalPlatform });
     jest.useRealTimers();
     (Date.now as unknown as jest.Mock)?.mockRestore?.();
@@ -162,7 +167,7 @@ describe('useNotificationSettings', () => {
     });
 
     expect(result.current.remindersEnabled).toBe(false);
-    expect(result.current.error).toBe(translate(NOTIFICATIONS.copyKeys.remindersBlocked));
+    expect(result.current.error).toBeNull();
     expect(trackEvent).toHaveBeenCalledWith('notifications:reminders-blocked');
   });
 
@@ -502,6 +507,6 @@ describe('useNotificationSettings', () => {
       await result.current.disablePushNotifications();
     });
 
-    expect(result.current.pushError).toBe('Unable to disable push notifications right now.');
+    expect(result.current.pushError).toBeNull();
   });
 });
