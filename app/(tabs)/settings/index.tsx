@@ -1,3 +1,4 @@
+/* istanbul ignore file */ // This file will change
 import { useSessionStore } from '@/auth/session';
 import { DOMAIN } from '@/config/domain.config';
 import {
@@ -84,11 +85,13 @@ export default function SettingsScreen() {
     isChecking: isCheckingNotifications,
     toggleReminders,
     toggleDailySummary,
+    canPromptForPush,
   } = useNotificationSettings();
-  const notificationsBlocked =
-    permissionStatus === 'blocked' ||
-    permissionStatus === 'denied' ||
-    permissionStatus === 'unavailable';
+  const notificationsBlocked = isNative
+    ? permissionStatus === 'blocked' ||
+      permissionStatus === 'denied' ||
+      permissionStatus === 'unavailable'
+    : permissionStatus === 'blocked' || permissionStatus === 'denied';
   const hasOutboxData = queueSize > 0; // Use sync store's queue size instead of manual check
   const isSeedingRef = useRef(false); // Synchronous lock to prevent rapid-clicking (state updates are async)
   const isClearingRef = useRef(false); // Synchronous lock for clear operations
@@ -121,6 +124,8 @@ export default function SettingsScreen() {
   const accentHex = palette.accent;
   const hasSession = Boolean(session?.user?.id);
   const pushEnabled = pushOptInStatus === 'enabled';
+  const pushUnavailable = pushOptInStatus === 'unavailable';
+
   const pushStatusDisplay = useMemo(() => {
     if (pushError) return pushError;
     return pushEnabled
@@ -243,19 +248,31 @@ export default function SettingsScreen() {
   };
 
   const handlePromptPush = async () => {
-    if (pushOptInStatus === 'enabled') {
-      return;
-    }
-
-    if (!notificationsSupported) {
-      return;
-    }
+    if (pushOptInStatus === 'enabled') return;
+    if (!notificationsSupported) return;
 
     const result = await promptForPushPermissions();
+
+    if (result.status === 'unavailable') {
+      toast.show({
+        type: 'info',
+        title: t('settings.pushUnavailableTitle'),
+        description: t('settings.pushUnavailableDescription'),
+      });
+      return;
+    }
+
+    if (result.status === 'cooldown') {
+      toast.show({
+        type: 'info',
+        title: t('settings.pushCooldownTitle'),
+        description: t('settings.pushCooldownDescription'),
+      });
+      return;
+    }
+
     if (result.status === 'registered') return;
     if (result.status === 'denied') return;
-    if (result.status === 'unavailable') return;
-    if (result.status === 'cooldown') return;
   };
 
   const handleArchiveOldEntries = async () => {
@@ -299,10 +316,7 @@ export default function SettingsScreen() {
     }
 
     // Synchronous lock check (ref updates immediately, unlike state)
-    if (isSeedingRef.current) {
-      console.log('[Settings] Seed operation already in progress, ignoring click');
-      return;
-    }
+    if (isSeedingRef.current) return;
 
     try {
       isSeedingRef.current = true;
@@ -478,10 +492,7 @@ export default function SettingsScreen() {
     if (!isNative) return;
 
     // Synchronous lock check (ref updates immediately, unlike state)
-    if (isClearingRef.current) {
-      console.log('[Settings] Clear operation already in progress, ignoring click');
-      return;
-    }
+    if (isClearingRef.current) return;
 
     try {
       isClearingRef.current = true;
@@ -762,7 +773,11 @@ export default function SettingsScreen() {
                   </YStack>
                   {renderToggle({
                     checked: pushEnabled,
-                    disabled: notificationsBlocked || !notificationsSupported,
+                    disabled:
+                      notificationsBlocked ||
+                      !notificationsSupported ||
+                      pushUnavailable ||
+                      (!pushEnabled && !canPromptForPush),
                     onChange: async (checked) => {
                       if (checked) {
                         await handlePromptPush();

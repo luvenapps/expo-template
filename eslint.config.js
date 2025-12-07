@@ -68,4 +68,26 @@ module.exports = defineConfig([
       },
     },
   },
+  // Service worker globals
+  {
+    files: ['public/**/*-sw.js'],
+    languageOptions: {
+      globals: {
+        self: 'readonly',
+        importScripts: 'readonly',
+        firebase: 'readonly',
+        clients: 'readonly',
+        ServiceWorkerRegistration: 'readonly',
+        PushEvent: 'readonly',
+        NotificationEvent: 'readonly',
+      },
+    },
+  },
+  // Firebase push notifications - needs require() for lazy loading web modules
+  {
+    files: ['src/notifications/firebasePush.ts'],
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
 ]);

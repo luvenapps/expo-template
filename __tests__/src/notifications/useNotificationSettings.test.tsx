@@ -1,7 +1,7 @@
+import { NOTIFICATIONS } from '@/config/constants';
+import { useNotificationSettings } from '@/notifications/useNotificationSettings';
 import { act, renderHook } from '@testing-library/react-native';
 import { AppState, Platform } from 'react-native';
-import { useNotificationSettings } from '@/notifications/useNotificationSettings';
-import { NOTIFICATIONS } from '@/config/constants';
 
 jest.mock('@/notifications/preferences', () => ({
   loadNotificationPreferences: jest.fn(),
@@ -86,10 +86,13 @@ const getPermissionsAsync = expoNotifications.getPermissionsAsync as jest.Mocked
 
 describe('useNotificationSettings', () => {
   const originalPlatform = Platform.OS;
+  const originalConsoleLog = console.log;
   const trackEvent = jest.fn();
   const trackError = jest.fn();
   let appStateSpy: jest.SpyInstance;
+
   beforeEach(() => {
+    console.log = jest.fn();
     jest.clearAllMocks();
     mockT.mockClear();
     trackEvent.mockClear();
@@ -123,6 +126,7 @@ describe('useNotificationSettings', () => {
     Object.defineProperty(Platform, 'OS', { value: originalPlatform });
     jest.useRealTimers();
     (Date.now as unknown as jest.Mock)?.mockRestore?.();
+    console.log = originalConsoleLog;
   });
 
   it('loads preferences and evaluates permission status on mount', async () => {

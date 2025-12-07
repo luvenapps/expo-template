@@ -148,4 +148,64 @@ describe('AnalyticsProvider', () => {
       );
     }).not.toThrow();
   });
+
+  it('dispatches events to backend when backend is available', async () => {
+    const mockBackend = {
+      trackEvent: jest.fn(),
+      trackError: jest.fn(),
+      trackPerformance: jest.fn(),
+    };
+
+    // Mock the backend getter
+    jest.doMock('@/observability/firebaseBackend', () => ({
+      getFirebaseAnalyticsBackend: () => mockBackend,
+    }));
+
+    const TestComponent = () => {
+      const analytics = useAnalytics();
+      useEffect(() => {
+        analytics.trackEvent('test-event', { platform: 'test' });
+        analytics.trackError(new Error('test-error'), { context: 'test' });
+        analytics.trackPerformance({ name: 'test-perf', durationMs: 50 });
+      }, [analytics]);
+      return null;
+    };
+
+    render(
+      <AnalyticsProvider>
+        <TestComponent />
+      </AnalyticsProvider>,
+    );
+
+    // Wait for effects to run
+    await waitFor(() => {
+      expect(console.info).toHaveBeenCalled();
+    });
+  });
+
+  it('handles null backend gracefully', async () => {
+    (global as any).__DEV__ = false;
+
+    // Re-initialize with null backend scenario
+    __resetAnalyticsStateForTests();
+
+    const TestComponent = () => {
+      const analytics = useAnalytics();
+      useEffect(() => {
+        // These should not crash even with null backend
+        analytics.trackEvent('test', {});
+        analytics.trackError(new Error('test'), {});
+        analytics.trackPerformance({ name: 'test', durationMs: 10 });
+      }, [analytics]);
+      return null;
+    };
+
+    expect(() => {
+      render(
+        <AnalyticsProvider>
+          <TestComponent />
+        </AnalyticsProvider>,
+      );
+    }).not.toThrow();
+  });
 });

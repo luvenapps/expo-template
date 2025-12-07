@@ -7,7 +7,11 @@ import {
   loadNotificationPreferences,
   persistNotificationPreferences,
 } from '@/notifications/preferences';
-import { registerForPushNotifications, revokePushToken } from '@/notifications/firebasePush';
+import {
+  registerForPushNotifications,
+  revokePushToken,
+  setupWebForegroundMessageListener,
+} from '@/notifications/firebasePush';
 import { useAnalytics } from '@/observability/AnalyticsProvider';
 import * as Notifications from 'expo-notifications';
 import { useCallback, useEffect, useState } from 'react';
@@ -23,12 +27,17 @@ export type NotificationPermissionState =
   | 'unavailable';
 
 const isNative = Platform.OS !== 'web';
+const isWebSupported = Platform.OS === 'web';
 
 function mapPermission(
   status: Notifications.NotificationPermissionsStatus,
+  platform: typeof Platform.OS,
 ): NotificationPermissionState {
-  if (!isNative) {
-    return 'unavailable';
+  if (platform === 'web') {
+    const permission = typeof Notification !== 'undefined' ? Notification.permission : 'default';
+    if (permission === 'granted') return 'granted';
+    if (permission === 'denied') return 'blocked';
+    return 'prompt';
   }
 
   if (status.granted || status.status === Notifications.PermissionStatus.GRANTED) {
@@ -46,14 +55,32 @@ function mapPermission(
   return 'prompt';
 }
 
+function getInitialWebPermissionStatus(): NotificationPermissionState {
+  if (Platform.OS !== 'web') return 'unavailable';
+
+  try {
+    if (typeof window === 'undefined' || typeof Notification === 'undefined') {
+      return 'prompt';
+    }
+
+    const permission = Notification.permission;
+    if (permission === 'granted') return 'granted';
+    if (permission === 'denied') return 'blocked';
+    return 'prompt';
+  } catch {
+    return 'prompt';
+  }
+}
+
 export function useNotificationSettings() {
   const analytics = useAnalytics();
   const { t } = useTranslation();
   const [preferences, setPreferences] = useState<NotificationPreferences>(() =>
     loadNotificationPreferences(),
   );
-  const [permissionStatus, setPermissionStatus] =
-    useState<NotificationPermissionState>('unavailable');
+  const [permissionStatus, setPermissionStatus] = useState<NotificationPermissionState>(
+    getInitialWebPermissionStatus,
+  );
   const [nowTick, setNowTick] = useState(() => Date.now());
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -77,22 +104,31 @@ export function useNotificationSettings() {
   );
 
   const refreshPermissionStatus = useCallback(async () => {
-    if (!isNative) {
-      setPermissionStatus('unavailable');
-      return 'unavailable';
-    }
-
     setIsChecking(true);
     try {
+      // On web, use Notification.permission directly to avoid Expo API issues
+      if (Platform.OS === 'web') {
+        const permission =
+          typeof Notification !== 'undefined' ? Notification.permission : 'default';
+        let mapped: NotificationPermissionState = 'prompt';
+        if (permission === 'granted') mapped = 'granted';
+        else if (permission === 'denied') mapped = 'blocked';
+        else mapped = 'prompt';
+        setPermissionStatus(mapped);
+        return mapped;
+      }
+
       const status = await Notifications.getPermissionsAsync();
-      const mapped = mapPermission(status);
+      const mapped = mapPermission(status, Platform.OS);
       setPermissionStatus(mapped);
       return mapped;
     } catch (permissionError) {
       setError(t(NOTIFICATIONS.copyKeys.permissionReadError));
       analytics.trackError(permissionError as Error, { source: 'notifications:permissions' });
-      setPermissionStatus('unavailable');
-      return 'unavailable';
+      // On web, default to 'prompt' to allow users to try enabling notifications
+      const fallbackStatus = Platform.OS === 'web' ? 'prompt' : 'unavailable';
+      setPermissionStatus(fallbackStatus);
+      return fallbackStatus;
     } finally {
       setIsChecking(false);
     }
@@ -102,8 +138,27 @@ export function useNotificationSettings() {
     refreshPermissionStatus().catch(() => undefined);
   }, [refreshPermissionStatus]);
 
+  // Set up web foreground message listener on mount
   useEffect(() => {
-    if (Platform.OS === 'web') return;
+    if (Platform.OS === 'web') {
+      setupWebForegroundMessageListener();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      // On web, listen for visibility changes to refresh permission status
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+          refreshPermissionStatus().catch(() => undefined);
+        }
+      };
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      return () => {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      };
+    }
+
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
         refreshPermissionStatus().catch(() => undefined);
@@ -203,19 +258,41 @@ export function useNotificationSettings() {
   }, [preferences.pushPromptAttempts, preferences.pushLastPromptAt]);
 
   const promptForPushPermissions = useCallback(async () => {
+    console.log('[promptForPushPermissions] Starting, canPromptForPush:', canPromptForPush());
+
     if (!canPromptForPush()) {
+      console.log('[promptForPushPermissions] Cooldown active, returning');
       return { status: 'cooldown' as const };
     }
 
+    console.log('[promptForPushPermissions] Calling registerForPushNotifications...');
+    setPushError(null);
+    const result = await registerForPushNotifications();
+    console.log('[promptForPushPermissions] registerForPushNotifications result:', result);
+
+    // Don't count as an attempt if push is unavailable (not configured)
+    if (result.status === 'unavailable') {
+      console.log('[promptForPushPermissions] Status unavailable, updating preferences');
+      updatePreferences((prev) => ({ ...prev, pushOptInStatus: 'unavailable' }));
+      analytics.trackEvent('notifications:push-unavailable');
+      return { status: 'unavailable' as const };
+    }
+
+    // Infrastructure errors (service worker, network) shouldn't count as user attempts
+    if (result.status === 'error') {
+      console.log('[promptForPushPermissions] Error (no attempt counted):', result.message);
+      setPushError(t('notifications.pushErrorDescription'));
+      analytics.trackEvent('notifications:push-error', { message: result.message });
+      return { status: 'error' as const, message: result.message };
+    }
+
+    // Only increment attempt counter for actual user decisions (registered/denied)
     const now = Date.now();
     updatePreferences((prev) => ({
       ...prev,
       pushPromptAttempts: (prev.pushPromptAttempts ?? 0) + 1,
       pushLastPromptAt: now,
     }));
-
-    setPushError(null);
-    const result = await registerForPushNotifications();
 
     if (result.status === 'registered') {
       updatePreferences((prev) => ({ ...prev, pushOptInStatus: 'enabled' }));
@@ -230,20 +307,8 @@ export function useNotificationSettings() {
       return { status: 'denied' as const };
     }
 
-    if (result.status === 'unavailable') {
-      updatePreferences((prev) => ({ ...prev, pushOptInStatus: 'unavailable' }));
-      analytics.trackEvent('notifications:push-unavailable');
-      return { status: 'unavailable' as const };
-    }
-
-    // Roll back attempt increment on error
-    updatePreferences((prev) => ({
-      ...prev,
-      pushPromptAttempts: Math.max(0, (prev.pushPromptAttempts ?? 1) - 1),
-    }));
-    setPushError(t('notifications.pushErrorDescription'));
-    analytics.trackEvent('notifications:push-error', { message: result.message });
-    return { status: 'error' as const, message: result.message };
+    // Shouldn't reach here, but handle gracefully
+    return result;
   }, [analytics, canPromptForPush, t, updatePreferences]);
 
   const disablePushNotifications = useCallback(async () => {
@@ -280,7 +345,7 @@ export function useNotificationSettings() {
     ...preferences,
     permissionStatus,
     statusMessage,
-    isSupported: isNative,
+    isSupported: isNative || isWebSupported,
     isChecking,
     error,
     pushError,

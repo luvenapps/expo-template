@@ -1,10 +1,10 @@
-import { Platform } from 'react-native';
 import {
   initializeFCMListeners,
   registerForPushNotifications,
   revokePushToken,
   setupBackgroundMessageHandler,
 } from '@/notifications/firebasePush';
+import { Platform } from 'react-native';
 
 jest.mock('@react-native-firebase/messaging', () => {
   const AuthorizationStatus = {
@@ -76,16 +76,25 @@ describe('firebasePush', () => {
   const originalPlatform = Platform.OS;
   const originalConsoleLog = console.log;
   const originalConsoleWarn = console.warn;
+  const originalConsoleDebug = console.debug;
+  const originalConsoleError = console.error;
+  const originalConsoleInfo = console.info;
   const originalEnvFlag = process.env.EXPO_PUBLIC_TURN_ON_FIREBASE;
 
   beforeAll(() => {
     console.log = jest.fn();
     console.warn = jest.fn();
+    console.debug = jest.fn();
+    console.error = jest.fn();
+    console.info = jest.fn();
   });
 
   afterAll(() => {
     console.log = originalConsoleLog;
     console.warn = originalConsoleWarn;
+    console.debug = originalConsoleDebug;
+    console.error = originalConsoleError;
+    console.info = originalConsoleInfo;
   });
 
   beforeEach(() => {
@@ -181,5 +190,65 @@ describe('firebasePush', () => {
     Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
     expect(initializeFCMListeners()).toBeUndefined();
     expect(setupBackgroundMessageHandler()).toBeUndefined();
+  });
+
+  describe('when Firebase is disabled', () => {
+    beforeEach(() => {
+      process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = 'false';
+    });
+
+    it('returns unavailable when registering for push', async () => {
+      const result = await registerForPushNotifications();
+      expect(result).toEqual({ status: 'unavailable' });
+    });
+
+    it('returns unavailable when revoking token', async () => {
+      const result = await revokePushToken();
+      expect(result).toEqual({ status: 'unavailable' });
+    });
+
+    it('skips foreground listener setup', () => {
+      const unsubscribe = initializeFCMListeners();
+      expect(unsubscribe).toBeUndefined();
+    });
+
+    it('skips background handler setup', () => {
+      const result = setupBackgroundMessageHandler();
+      expect(result).toBeUndefined();
+    });
+  });
+
+  describe('error handling', () => {
+    beforeEach(() => {
+      process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = 'true';
+    });
+
+    it('handles token retrieval failure', async () => {
+      const messaging = jest.requireMock('@react-native-firebase/messaging');
+      messaging.__mock.getToken.mockRejectedValue(new Error('Token retrieval failed'));
+
+      const result = await registerForPushNotifications();
+      expect(result.status).toBe('error');
+    });
+
+    it('handles provisional authorization status', async () => {
+      const messaging = jest.requireMock('@react-native-firebase/messaging');
+      messaging.__mock.requestPermission.mockResolvedValue(
+        messaging.AuthorizationStatus.PROVISIONAL,
+      );
+
+      const result = await registerForPushNotifications();
+      expect(result).toEqual({ status: 'registered', token: 'mock-token' });
+    });
+
+    it('handles register device failure', async () => {
+      const messaging = jest.requireMock('@react-native-firebase/messaging');
+      messaging.__mock.registerDeviceForRemoteMessages.mockRejectedValue(
+        new Error('Registration failed'),
+      );
+
+      const result = await registerForPushNotifications();
+      expect(result.status).toBe('error');
+    });
   });
 });

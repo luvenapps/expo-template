@@ -1376,11 +1376,6 @@ describe('SettingsScreen', () => {
       // Verify createPrimaryEntityLocal was only called once (not twice)
       expect(mockedCreatePrimaryEntityLocal).toHaveBeenCalledTimes(1);
 
-      // Verify the console.log was called for the second click
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        '[Settings] Seed operation already in progress, ignoring click',
-      );
-
       consoleLogSpy.mockRestore();
     });
 
@@ -1501,11 +1496,6 @@ describe('SettingsScreen', () => {
       // Verify clearAllTables was only called once (not twice)
       expect(mockedClearAllTables).toHaveBeenCalledTimes(1);
       expect(mockedResetCursors).toHaveBeenCalledTimes(1);
-
-      // Verify the console.log was called for the second click
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        '[Settings] Clear operation already in progress, ignoring click',
-      );
 
       consoleLogSpy.mockRestore();
     });
