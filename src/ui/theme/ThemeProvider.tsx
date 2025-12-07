@@ -29,6 +29,17 @@ function resolveSystemTheme(colorScheme: 'light' | 'dark' | null | undefined): R
   return colorScheme === 'dark' ? 'dark' : 'light';
 }
 
+function resolveWebSystemTheme(): ResolvedTheme {
+  if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+    try {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    } catch {
+      // fall through
+    }
+  }
+  return 'light';
+}
+
 function loadStoredPreference(): ThemePreference {
   try {
     if (Platform.OS !== 'web') {
@@ -68,11 +79,34 @@ function persistPreference(preference: ThemePreference) {
 
 export function ThemeProvider({ children }: PropsWithChildren) {
   const [preference, setPreferenceState] = useState<ThemePreference>(loadStoredPreference);
-  const [systemTheme, setSystemTheme] = useState<ResolvedTheme>(
-    resolveSystemTheme(Appearance.getColorScheme()),
-  );
+  const [systemTheme, setSystemTheme] = useState<ResolvedTheme>(() => {
+    if (Platform.OS === 'web') {
+      return resolveWebSystemTheme();
+    }
+    return resolveSystemTheme(Appearance.getColorScheme());
+  });
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
+    // mark hydrated after first mount so SSR/first paint can be suppressed if desired
+    setHydrated(true);
+
+    if (Platform.OS === 'web') {
+      const mql =
+        typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+          ? window.matchMedia('(prefers-color-scheme: dark)')
+          : null;
+      if (!mql) return;
+      const handler = (event: MediaQueryListEvent) => {
+        setSystemTheme(event.matches ? 'dark' : 'light');
+      };
+      setSystemTheme(mql.matches ? 'dark' : 'light');
+      mql.addEventListener?.('change', handler);
+      return () => {
+        mql.removeEventListener?.('change', handler);
+      };
+    }
+
     const subscription = Appearance.addChangeListener(({ colorScheme }) => {
       if (!colorScheme) return;
       setSystemTheme(resolveSystemTheme(colorScheme));
@@ -98,6 +132,8 @@ export function ThemeProvider({ children }: PropsWithChildren) {
       theme: preference,
     };
   }, [preference, systemTheme]);
+
+  if (!hydrated) return null;
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

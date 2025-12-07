@@ -1,7 +1,7 @@
 import { DOMAIN } from '@/config/domain.config';
 import { themePalettes } from '@/ui/theme/palette';
 import { getThemePalette, ThemeProvider, useThemeContext } from '@/ui/theme/ThemeProvider';
-import { act, renderHook } from '@testing-library/react-native';
+import { act, renderHook, waitFor } from '@testing-library/react-native';
 import React, { PropsWithChildren } from 'react';
 import { Appearance, Platform } from 'react-native';
 
@@ -38,7 +38,7 @@ describe('ThemeProvider', () => {
 
     Object.defineProperty(Platform, 'OS', {
       configurable: true,
-      value: 'web',
+      value: 'ios',
     });
 
     const localStorageMock: Storage = {
@@ -470,18 +470,16 @@ describe('ThemeProvider', () => {
       expect(firstValue).toBe(secondValue);
     });
 
-    it('should update context value when theme changes', () => {
+    it('should update context value when theme changes', async () => {
       const { result } = renderHook(() => useThemeContext(), { wrapper });
-
-      const firstValue = result.current;
 
       act(() => {
         result.current.setPreference('light');
       });
 
-      const secondValue = result.current;
-
-      expect(firstValue).not.toBe(secondValue);
+      await waitFor(() => expect(result.current.preference).toBe('light'));
+      expect(result.current.resolvedTheme).toBe('light');
+      expect(result.current.palette).toEqual(expectedLightPalette);
     });
 
     it('should update context value when system theme changes and user theme is system', () => {

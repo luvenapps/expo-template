@@ -34,9 +34,7 @@ console.warn = (...args) => {
 export default function RootLayout() {
   return (
     <ThemeProvider>
-      <TamaguiProvider config={tamaguiConfig}>
-        <ThemedApp />
-      </TamaguiProvider>
+      <ThemedApp />
     </ThemeProvider>
   );
 }
@@ -45,17 +43,19 @@ function ThemedApp() {
   const { resolvedTheme } = useThemeContext();
 
   return (
-    <NavigationThemeProvider value={resolvedTheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Theme name={resolvedTheme}>
-        <AppProviders>
-          <Stack>
-            <Stack.Screen name="index" options={{ headerShown: false }} />
-            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          </Stack>
-          <StatusBar style={resolvedTheme === 'dark' ? 'light' : 'dark'} />
-        </AppProviders>
-      </Theme>
-    </NavigationThemeProvider>
+    <TamaguiProvider config={tamaguiConfig} defaultTheme={resolvedTheme}>
+      <NavigationThemeProvider value={resolvedTheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <Theme name={resolvedTheme}>
+          <AppProviders>
+            <Stack>
+              <Stack.Screen name="index" options={{ headerShown: false }} />
+              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            </Stack>
+            <StatusBar style={resolvedTheme === 'dark' ? 'light' : 'dark'} />
+          </AppProviders>
+        </Theme>
+      </NavigationThemeProvider>
+    </TamaguiProvider>
   );
 }
