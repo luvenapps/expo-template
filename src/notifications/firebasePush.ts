@@ -11,6 +11,10 @@ export type PushRevokeResult =
   | { status: 'unavailable' }
   | { status: 'error'; message: string };
 
+// Module-level flag to prevent double listener registration on web
+let webForegroundListenerRegistered = false;
+let webForegroundListenerRegistrationCount = 0;
+
 export async function registerForPushNotifications(): Promise<PushRegistrationResult> {
   const turnOnFirebase =
     process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === 'true' ||
@@ -174,6 +178,12 @@ export function setupWebForegroundMessageListener() {
     return;
   }
 
+  webForegroundListenerRegistrationCount += 1;
+  if (webForegroundListenerRegistrationCount > 1) {
+    console.debug('[FCM:web] Foreground listener already registered, skipping');
+    return;
+  }
+
   const turnOnFirebase =
     process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === 'true' ||
     process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === '1';
@@ -181,6 +191,15 @@ export function setupWebForegroundMessageListener() {
     console.info('[FCM:web] Firebase not enabled, skipping foreground listener');
     return;
   }
+
+  // Prevent double registration - onMessage handlers stack, causing duplicate notifications
+  if (webForegroundListenerRegistered) {
+    console.debug('[FCM:web] Foreground listener already registered, skipping');
+    return;
+  }
+
+  // Mark as registered up front so repeated calls short-circuit even if initialization later fails.
+  webForegroundListenerRegistered = true;
 
   console.debug('[FCM:web] Setting up foreground message listener...');
 
@@ -204,56 +223,45 @@ export function setupWebForegroundMessageListener() {
     console.debug('[FCM:web] Got messaging instance, registering onMessage handler');
 
     // Handle foreground messages
+    // NOTE: onMessage fires for ALL messages when app is in foreground (both notification and data-only).
+    // Firebase does NOT auto-display notifications in foreground - we must handle them manually.
     onMessage(messaging, (payload) => {
-      console.debug('[FCM:web] 🔔 Foreground message received!');
-      console.debug('[FCM:web] Full payload:', JSON.stringify(payload, null, 2));
+      console.debug('[FCM:web] 🔔 Foreground message received');
+      console.debug('[FCM:web] Payload:', JSON.stringify(payload, null, 2));
 
-      // Display notification even when app is in foreground
-      // Handle both notification and data-only messages
-      const notificationData = payload.notification || payload.data;
+      // Extract notification content from either notification or data payload
+      const title = payload.notification?.title || payload.data?.title || 'Better Habits';
+      const body = payload.notification?.body || payload.data?.body || '';
 
-      if (notificationData) {
-        const title = payload.notification?.title || payload.data?.title || 'Better Habits';
-        const body = payload.notification?.body || payload.data?.body || '';
+      console.debug('[FCM:web] Displaying notification:', { title, body });
 
-        console.debug('[FCM:web] Attempting to display notification:', { title, body });
+      // Always display in foreground (Firebase doesn't auto-display)
+      if ('Notification' in window && Notification.permission === 'granted') {
+        try {
+          const notification = new Notification(title, {
+            body,
+            icon: '/icon.png',
+            badge: '/icon.png',
+            data: payload.data || {},
+            tag: payload.data?.tag || 'default',
+          });
 
-        // Use the Notification API to show the notification
-        if ('Notification' in window && Notification.permission === 'granted') {
-          try {
-            const notification = new Notification(title, {
-              body,
-              icon: '/icon.png',
-              badge: '/icon.png',
-              data: payload.data || {},
-              tag: payload.data?.tag || 'default',
-            });
+          notification.onclick = () => {
+            console.debug('[FCM:web] Notification clicked');
+            window.focus();
+            notification.close();
+          };
 
-            // Handle notification click
-            notification.onclick = () => {
-              console.debug('[FCM:web] Notification clicked');
-              window.focus();
-              notification.close();
-            };
-
-            console.debug('[FCM:web] ✅ Foreground notification displayed successfully');
-          } catch (error) {
-            console.error('[FCM:web] ❌ Error displaying notification:', error);
-          }
-        } else {
-          console.warn(
-            '[FCM:web] ⚠️  Notification permission not granted or Notification API not available',
-          );
-          console.warn(
-            '[FCM:web] Notification.permission:',
-            typeof Notification !== 'undefined' ? Notification.permission : 'undefined',
-          );
+          console.debug('[FCM:web] ✅ Notification displayed successfully');
+        } catch (error) {
+          console.error('[FCM:web] ❌ Error displaying notification:', error);
         }
       } else {
-        console.warn('[FCM:web] ⚠️  No notification data in payload:', payload);
+        console.warn('[FCM:web] ⚠️  Cannot display notification - permission not granted');
       }
     });
 
+    webForegroundListenerRegistered = true;
     console.debug('[FCM:web] ✅ Foreground message listener successfully set up');
   } catch (error) {
     console.error('[FCM:web] ❌ Failed to setup foreground message listener:', error);

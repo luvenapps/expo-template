@@ -28,20 +28,54 @@ self.addEventListener('message', (event) => {
       });
 
       // Set up background message handler immediately after initialization
-      messaging.onBackgroundMessage((payload) => {
+      // NOTE: This handler fires for messages when the app is in background.
+      // Firebase SDK behavior:
+      // - Messages with "notification" payload: Auto-displayed by Firebase (we skip them to prevent duplicates)
+      // - Data-only messages: We must display manually (handled below)
+      messaging.onBackgroundMessage(async (payload) => {
         console.log('[FCM SW] Background message received:', payload);
+        console.log(
+          '[FCM SW] Payload type:',
+          payload.notification ? 'notification payload' : 'data-only',
+        );
 
-        const notificationTitle = payload.notification?.title || 'Better Habits';
-        const notificationOptions = {
-          body: payload.notification?.body || '',
-          icon: payload.notification?.icon || '/icon.png',
-          badge: '/icon.png',
-          data: payload.data || {},
-          tag: payload.data?.tag || 'default',
-          requireInteraction: false,
-        };
+        // Skip notification payloads - Firebase SDK auto-displays them
+        // This prevents duplicate notifications when using Firebase Console campaigns
+        if (payload.notification) {
+          console.log(
+            '[FCM SW] Notification payload detected - Firebase will display automatically',
+          );
+          console.log('[FCM SW] Skipping manual display to prevent duplicates');
+          return;
+        }
 
-        return self.registration.showNotification(notificationTitle, notificationOptions);
+        // Only display data-only messages manually
+        try {
+          console.log('[FCM SW] Data-only message - displaying manually');
+          const notificationTitle = payload.data?.title || 'Better Habits';
+          const notificationBody = payload.data?.body || '';
+
+          const notificationOptions = {
+            body: notificationBody,
+            icon: '/icon.png',
+            badge: '/icon.png',
+            data: payload.data || {},
+            tag: payload.data?.tag || 'default',
+            requireInteraction: false,
+          };
+
+          console.log('[FCM SW] Attempting to display notification:', {
+            title: notificationTitle,
+            body: notificationBody,
+          });
+
+          await self.registration.showNotification(notificationTitle, notificationOptions);
+
+          console.log('[FCM SW] ✅ Notification displayed successfully');
+        } catch (error) {
+          console.error('[FCM SW] ❌ Failed to display notification:', error);
+          console.error('[FCM SW] Error details:', error.message, error.stack);
+        }
       });
 
       console.log('[FCM SW] Background message handler registered');

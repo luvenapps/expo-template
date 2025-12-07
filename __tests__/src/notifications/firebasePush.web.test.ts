@@ -1,5 +1,8 @@
 import { Platform } from 'react-native';
-import { __registerForWebPush } from '@/notifications/firebasePush';
+import {
+  __registerForWebPush,
+  setupWebForegroundMessageListener,
+} from '@/notifications/firebasePush';
 
 jest.mock('firebase/app', () => {
   const apps: any[] = [];
@@ -108,5 +111,58 @@ describe('__registerForWebPush', () => {
 
     const result = await __registerForWebPush();
     expect(result.status).toBe('unavailable');
+  });
+
+  it('prevents duplicate listener registration when called multiple times', async () => {
+    // Enable Firebase for this test
+    process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = 'true';
+
+    const { onMessage } = require('firebase/messaging');
+    const { initializeApp, getApps } = require('firebase/app');
+
+    // Initialize Firebase app first if not already initialized
+    if (getApps().length === 0) {
+      initializeApp({
+        apiKey: 'api',
+        authDomain: 'auth',
+        projectId: 'project',
+        storageBucket: 'bucket',
+        messagingSenderId: 'sender',
+        appId: 'app',
+      });
+    }
+
+    // Clear debug spy to start fresh
+    debugSpy.mockClear();
+
+    // Call setup function four times
+    setupWebForegroundMessageListener();
+    const firstCallLogs = [...debugSpy.mock.calls];
+
+    setupWebForegroundMessageListener();
+    setupWebForegroundMessageListener();
+    setupWebForegroundMessageListener();
+
+    // Check if the listener was registered or already registered on first call
+    const wasAlreadyRegistered = firstCallLogs.some(
+      (call) => call[0] === '[FCM:web] Foreground listener already registered, skipping',
+    );
+
+    if (wasAlreadyRegistered) {
+      // If it was already registered, all 4 calls should log "already registered"
+      const alreadyRegisteredCalls = debugSpy.mock.calls.filter(
+        (call) => call[0] === '[FCM:web] Foreground listener already registered, skipping',
+      );
+      expect(alreadyRegisteredCalls.length).toBe(4);
+    } else {
+      // If it wasn't registered, first call should succeed, next 3 should skip
+      const alreadyRegisteredCalls = debugSpy.mock.calls.filter(
+        (call) => call[0] === '[FCM:web] Foreground listener already registered, skipping',
+      );
+      expect(alreadyRegisteredCalls.length).toBe(3);
+
+      // Verify onMessage was called exactly once
+      expect(onMessage).toHaveBeenCalledTimes(1);
+    }
   });
 });
