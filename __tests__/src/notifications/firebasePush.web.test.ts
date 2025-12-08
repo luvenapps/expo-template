@@ -1,8 +1,9 @@
-import { Platform } from 'react-native';
 import {
   __registerForWebPush,
+  revokePushToken,
   setupWebForegroundMessageListener,
 } from '@/notifications/firebasePush';
+import { Platform } from 'react-native';
 
 jest.mock('firebase/app', () => {
   const apps: any[] = [];
@@ -22,10 +23,11 @@ jest.mock('firebase/messaging', () => ({
   getMessaging: jest.fn(() => ({ __messaging: true })),
   getToken: jest.fn(async () => 'web-token'),
   isSupported: jest.fn(async () => true),
+  deleteToken: jest.fn(async () => true),
   onMessage: jest.fn(),
 }));
 
-describe('__registerForWebPush', () => {
+describe('firebasePush Web', () => {
   const originalPlatform = Platform.OS;
   const originalNotification = global.Notification;
   const originalNavigator = global.navigator;
@@ -47,6 +49,7 @@ describe('__registerForWebPush', () => {
     process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET = 'bucket';
     process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID = 'sender';
     process.env.EXPO_PUBLIC_FIREBASE_APP_ID = 'app';
+    process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = 'true';
 
     const notificationMock = {
       permission: 'granted',
@@ -164,5 +167,29 @@ describe('__registerForWebPush', () => {
       // Verify onMessage was called exactly once
       expect(onMessage).toHaveBeenCalledTimes(1);
     }
+  });
+
+  it('revokes successfully on web by unsubscribing from push subscription', async () => {
+    (Platform as any).OS = 'web';
+
+    const mockUnsubscribe = jest.fn().mockResolvedValue(true);
+    const mockGetSubscription = jest.fn().mockResolvedValue({
+      unsubscribe: mockUnsubscribe,
+    });
+    const mockRegistration = {
+      pushManager: {
+        getSubscription: mockGetSubscription,
+      },
+      unregister: jest.fn(),
+    } as any;
+
+    (global as any).navigator.serviceWorker.getRegistration = jest
+      .fn()
+      .mockResolvedValue(mockRegistration);
+
+    const result = await revokePushToken();
+    expect(result.status).toBe('revoked');
+    expect(mockGetSubscription).toHaveBeenCalled();
+    expect(mockUnsubscribe).toHaveBeenCalled();
   });
 });

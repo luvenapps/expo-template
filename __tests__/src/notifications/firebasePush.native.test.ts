@@ -17,8 +17,13 @@ jest.mock('@react-native-firebase/messaging', () => {
   const deleteToken = jest.fn().mockResolvedValue(undefined);
   const registerDeviceForRemoteMessages = jest.fn().mockResolvedValue(undefined);
   let onMessageCallback: ((msg: any) => void) | null = null;
+  let onTokenRefreshCallback: ((token: string) => void) | null = null;
   const onMessage = jest.fn((cb: (msg: any) => void) => {
     onMessageCallback = cb;
+    return jest.fn();
+  });
+  const onTokenRefresh = jest.fn((cb: (token: string) => void) => {
+    onTokenRefreshCallback = cb;
     return jest.fn();
   });
   const setBackgroundMessageHandler = jest.fn((cb: (msg: any) => void) => {
@@ -33,6 +38,7 @@ jest.mock('@react-native-firebase/messaging', () => {
       deleteToken,
       registerDeviceForRemoteMessages,
       onMessage,
+      onTokenRefresh,
       setBackgroundMessageHandler,
     })),
     __mock: {
@@ -41,15 +47,19 @@ jest.mock('@react-native-firebase/messaging', () => {
       deleteToken,
       registerDeviceForRemoteMessages,
       onMessage,
+      onTokenRefresh,
       setBackgroundMessageHandler,
       getOnMessageCallback: () => onMessageCallback,
+      getOnTokenRefreshCallback: () => onTokenRefreshCallback,
       reset: () => {
         onMessageCallback = null;
+        onTokenRefreshCallback = null;
         requestPermission.mockReset();
         getToken.mockReset();
         deleteToken.mockReset();
         registerDeviceForRemoteMessages.mockReset();
         onMessage.mockReset();
+        onTokenRefresh.mockReset();
         setBackgroundMessageHandler.mockReset();
         requestPermission.mockResolvedValue(AuthorizationStatus.AUTHORIZED);
         getToken.mockResolvedValue('mock-token');
@@ -57,6 +67,10 @@ jest.mock('@react-native-firebase/messaging', () => {
         registerDeviceForRemoteMessages.mockResolvedValue(undefined);
         onMessage.mockImplementation((cb: (msg: any) => void) => {
           onMessageCallback = cb;
+          return jest.fn();
+        });
+        onTokenRefresh.mockImplementation((cb: (token: string) => void) => {
+          onTokenRefreshCallback = cb;
           return jest.fn();
         });
         setBackgroundMessageHandler.mockImplementation((cb: (msg: any) => void) => {
@@ -72,7 +86,7 @@ jest.mock('expo-notifications', () => ({
   scheduleNotificationAsync: jest.fn(),
 }));
 
-describe('firebasePush', () => {
+describe('firebasePush Native', () => {
   const originalPlatform = Platform.OS;
   const originalConsoleLog = console.log;
   const originalConsoleWarn = console.warn;
@@ -146,12 +160,6 @@ describe('firebasePush', () => {
     expect(messaging.__mock.deleteToken).toHaveBeenCalled();
   });
 
-  it('returns unavailable on web revoke', async () => {
-    Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
-    const result = await revokePushToken();
-    expect(result.status).toBe('unavailable');
-  });
-
   it('returns error when revoke fails', async () => {
     const messaging = jest.requireMock('@react-native-firebase/messaging');
     messaging.__mock.deleteToken.mockRejectedValue(new Error('fail'));
@@ -176,6 +184,20 @@ describe('firebasePush', () => {
       content: { title: 'Hi', body: 'There', data: { foo: 'bar' } },
       trigger: null,
     });
+
+    unsubscribe?.();
+  });
+
+  it('initializes token refresh listener', () => {
+    const messaging = jest.requireMock('@react-native-firebase/messaging');
+    const unsubscribe = initializeFCMListeners();
+    expect(messaging.__mock.onTokenRefresh).toHaveBeenCalledTimes(1);
+
+    const cb = messaging.__mock.onTokenRefresh.mock.calls[0]?.[0];
+    expect(typeof cb).toBe('function');
+
+    // Simulate token refresh (e.g., after app reinstall)
+    cb?.('new-refreshed-token');
 
     unsubscribe?.();
   });

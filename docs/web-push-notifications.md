@@ -156,6 +156,55 @@ Same as cURL, but use a GUI:
 
 ## Troubleshooting
 
+### Important: Token Behavior on Web
+
+**Push Subscription Management** (v3 implementation):
+
+- FCM tokens are **managed by Firebase in IndexedDB** (not manually stored)
+- When you toggle push OFF, the **push subscription is unsubscribed** but the **service worker stays registered**
+- This properly removes push permissions via browser's Push API: `subscription.unsubscribe()`
+- **Token behavior**: A **new token is generated each time** you re-enable push notifications
+  - When `unsubscribe()` removes the push subscription, Firebase cannot reuse the old token
+  - The old token remains in IndexedDB temporarily but becomes stale
+  - Your backend must handle token updates when users re-enable push
+
+**Why keep the service worker registered?**
+
+- Browser's push subscription can be cleanly removed via `unsubscribe()` (follows web standards)
+- Service worker remains available for re-registration without rebuild
+- Reduces unnecessary service worker teardown/rebuild cycles
+- Simpler architecture (separate concerns: push subscription vs service worker lifecycle)
+
+### Native FCM Token Behavior (iOS/Android)
+
+**Automatic Token Management**:
+
+- React Native Firebase automatically caches FCM tokens on the device
+- No manual storage needed - Firebase SDK handles persistence natively
+- Tokens persist across app restarts automatically
+- Firebase manages token lifecycle, rotation, and refreshing
+
+**Token Lifecycle**:
+
+- Tokens should be cycled on user logout/login for security
+- Firebase automatically handles token refresh when needed
+- Use `messaging().deleteToken()` to invalidate tokens on sign out
+- New token automatically generated on next `getToken()` call
+
+**Token Refresh Events**:
+
+- The app registers an `onTokenRefresh` listener that logs whenever a new token is generated
+- This fires in scenarios like:
+  - **App reinstall** - Most common scenario, old token is invalidated
+  - **Token rotation** - Firebase periodically rotates tokens for security
+  - **First app launch** - Initial token generation
+- When the listener fires, check your logs for: `[FCM] Token refreshed: <new-token>`
+- You'll also see: `[FCM] Token was regenerated (app reinstall, token rotation, or first launch). Update this token in your backend.`
+
+**Best Practice**: Let React Native Firebase manage token storage completely. Don't manually persist tokens in MMKV or AsyncStorage. Monitor the token refresh listener logs to capture new tokens for your backend.
+
+---
+
 ### Issue: No notifications in foreground
 
 **Check:**
@@ -191,6 +240,43 @@ Same as cURL, but use a GUI:
 4. Reload the page
 5. Re-enable notifications in Settings
 
+### Issue: Service worker missing but push toggle still enabled
+
+**This is handled automatically with service worker recovery** (v2 implementation)
+
+If the service worker is unregistered (manually or by browser cleanup) but the push toggle shows as enabled:
+
+1. On app load, the system checks if a service worker exists
+2. If missing, it automatically re-registers the service worker
+3. A new token is generated (the browser's push subscription was removed with the service worker)
+4. The new token is logged to console with a warning
+5. Push notifications resume working, but you'll need to update the token in your backend
+
+**Why a new token?**
+
+When a service worker is completely unregistered, the browser removes the associated push subscription. Firebase `getToken()` only reuses tokens when:
+
+- The service worker registration exists AND
+- The browser still has an active push subscription
+
+**V2 Improvement**: By keeping the service worker registered when toggling push OFF (instead of unregistering it), we avoid this issue during normal usage. New tokens are now only generated when:
+
+- Service worker is manually unregistered in DevTools
+- Browser cleans up service workers (rare)
+- First-time push enablement
+
+**What to do:**
+
+If you see the warning in console about a new token:
+
+1. Copy the new token from the browser console
+2. Update it in your backend/database
+3. Or: Toggle push OFF then ON in Settings to trigger the update flow
+
+**Preventing this:**
+
+Avoid manually unregistering the service worker in DevTools unless you're debugging. With the v2 implementation, toggling push OFF/ON in Settings will NOT unregister the service worker, so you won't see new token generation.
+
 ### Issue: "Foreground listener already registered" on every page load
 
 **This is normal and expected!** The idempotent check prevents duplicate registrations while allowing the setup function to be safely called multiple times.
@@ -213,10 +299,15 @@ Same as cURL, but use a GUI:
 
 - **Location**: `app/(tabs)/settings/index.tsx`
 - **UI**: Toggle switch under "Remote push notifications (web)"
-- **Behavior**:
-  - ON: Requests permission, registers service worker, gets FCM token
-  - OFF: Deletes FCM token, unregisters service worker
-  - Listener sets up on component mount (idempotent, safe to call multiple times)
+- **Behavior** (v3 implementation):
+  - **ON**: Requests permission, registers service worker (if needed), gets FCM token
+    - If service worker already exists, reuses it and may reuse existing token from IndexedDB
+    - Token is managed by Firebase SDK in IndexedDB (not manually stored)
+  - **OFF**: Unsubscribes from push subscription but **keeps service worker registered**
+    - Uses browser Push API: `subscription.unsubscribe()`
+    - Notifications stop immediately (no active push subscription)
+    - Firebase token remains in IndexedDB for potential reuse
+  - Foreground listener sets up on component mount (idempotent, safe to call multiple times)
 
 ## Architecture Decisions
 
@@ -248,6 +339,32 @@ We could have removed the mount-time registration and only registered during pus
 - **Better UX**: Foreground notifications work even if user hasn't enabled push
 - **Simpler logic**: No need to coordinate between toggle state and listener state
 - **No downside**: Idempotent registration prevents duplicates
+
+### Automatic Service Worker Recovery
+
+**Problem**: Service workers can be unregistered (manually or by browser cleanup), causing push notifications to stop working even though the toggle shows "enabled".
+
+**Solution**: On app mount, if push is enabled, we check if the service worker exists:
+
+1. **Service worker exists**: Send Firebase config to ensure it's initialized
+2. **Service worker missing**: Automatically re-register it by calling `registerForWebPush()`
+
+**Important caveat**: When a service worker is completely unregistered, the browser also removes the associated push subscription. This means:
+
+- A **NEW token is generated** (the old push subscription no longer exists)
+- The new token is logged to console with a warning
+- You'll need to update the token in your backend to continue sending notifications
+
+**Why can't we reuse the old token?**
+
+Firebase can only reuse tokens when BOTH of these are true:
+
+1. The service worker registration exists
+2. The browser still has an active push subscription
+
+When you unregister the service worker (e.g., via DevTools), the browser removes the push subscription, so Firebase has no choice but to create a new one.
+
+**Implementation**: `ensureServiceWorkerRegistered()` is called in `useNotificationSettings` hook when `pushOptInStatus === 'enabled'`. If a new token is generated, a warning is logged to console with the new token value.
 
 ## Production Recommendations
 

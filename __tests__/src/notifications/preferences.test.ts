@@ -82,6 +82,7 @@ describe('preferences', () => {
         pushOptInStatus: 'unknown',
         pushPromptAttempts: 0,
         pushLastPromptAt: 0,
+        pushToken: null,
       };
       (mockLocalStorage.getItem as jest.Mock).mockReturnValue(JSON.stringify(stored));
 
@@ -99,6 +100,7 @@ describe('preferences', () => {
         pushOptInStatus: 'unknown',
         pushPromptAttempts: 0,
         pushLastPromptAt: 0,
+        pushToken: null,
       };
       mockMMKV.getString.mockReturnValue(JSON.stringify(stored));
 

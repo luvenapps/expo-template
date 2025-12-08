@@ -11,6 +11,7 @@ import {
   registerForPushNotifications,
   revokePushToken,
   setupWebForegroundMessageListener,
+  ensureServiceWorkerRegistered,
 } from '@/notifications/firebasePush';
 import { useAnalytics } from '@/observability/AnalyticsProvider';
 import * as Notifications from 'expo-notifications';
@@ -139,11 +140,33 @@ export function useNotificationSettings() {
   }, [refreshPermissionStatus]);
 
   // Set up web foreground message listener on mount
+  // Also ensure service worker is registered if push is enabled
   useEffect(() => {
     if (Platform.OS === 'web') {
       setupWebForegroundMessageListener();
+
+      // Check if push is enabled and restore service worker if needed
+      if (preferences.pushOptInStatus === 'enabled') {
+        ensureServiceWorkerRegistered()
+          .then((result) => {
+            if (result?.status === 'registered') {
+              // Service worker was missing and had to be re-registered
+              // This generates a new token because the browser's push subscription was removed
+              console.warn(
+                '[FCM:web] ⚠️  Service worker was missing and has been restored with a NEW token:',
+                result.token,
+              );
+              console.warn(
+                '[FCM:web] ⚠️  You may need to update this token in your backend to continue receiving notifications',
+              );
+            }
+          })
+          .catch((error) => {
+            console.debug('[FCM:web] Failed to ensure service worker registered:', error);
+          });
+      }
     }
-  }, []);
+  }, [preferences.pushOptInStatus]);
 
   useEffect(() => {
     if (Platform.OS === 'web') {
@@ -295,7 +318,10 @@ export function useNotificationSettings() {
     }));
 
     if (result.status === 'registered') {
-      updatePreferences((prev) => ({ ...prev, pushOptInStatus: 'enabled' }));
+      updatePreferences((prev) => ({
+        ...prev,
+        pushOptInStatus: 'enabled',
+      }));
       analytics.trackEvent('notifications:push-enabled');
       return { status: 'registered', token: result.token };
     }

@@ -74,7 +74,7 @@ export async function registerForPushNotifications(): Promise<PushRegistrationRe
 
     const token = await instance.getToken();
     if (token) {
-      console.log('[FCM] Token registered:', token);
+      console.log('[FCM] ✅ Token registered (copy this for your backend):', token);
       return { status: 'registered', token };
     }
     return { status: 'error', message: 'No token' };
@@ -127,10 +127,20 @@ export function initializeFCMListeners() {
       }
     });
 
+    // Handle token refresh (fires when token changes, including after app reinstall)
+    const unsubscribeOnTokenRefresh = instance.onTokenRefresh((token: string) => {
+      console.log('[FCM] Token refreshed:', token);
+      console.info(
+        '[FCM] Token was regenerated (app reinstall, token rotation, or first launch). Update this token in your backend.',
+      );
+    });
+
     console.debug('[FCM] Foreground message listener initialized');
+    console.debug('[FCM] Token refresh listener initialized');
 
     return () => {
       unsubscribeForeground();
+      unsubscribeOnTokenRefresh();
     };
   } catch (error) {
     console.error('[FCM] Failed to initialize FCM listeners:', error);
@@ -272,10 +282,54 @@ export async function revokePushToken(): Promise<PushRevokeResult> {
   const turnOnFirebase =
     process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === 'true' ||
     process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === '1';
-  if (!turnOnFirebase || Platform.OS === 'web') {
+  if (!turnOnFirebase) {
     return { status: 'unavailable' };
   }
 
+  // Web implementation: Unsubscribe from push subscription but KEEP service worker registered
+  // This properly removes push permissions while allowing potential token reuse
+  if (Platform.OS === 'web') {
+    try {
+      // Use browser Push API to unsubscribe from push subscription
+      // This properly removes the push subscription while keeping service worker registered
+      if ('serviceWorker' in navigator) {
+        const registration = await navigator.serviceWorker.getRegistration('/');
+
+        if (registration) {
+          const subscription = await registration.pushManager.getSubscription();
+
+          if (subscription) {
+            const unsubscribed = await subscription.unsubscribe();
+
+            if (unsubscribed) {
+              console.log('[FCM:web] Push subscription unsubscribed successfully');
+            } else {
+              console.warn('[FCM:web] Failed to unsubscribe from push subscription');
+            }
+          } else {
+            console.log('[FCM:web] No active push subscription found');
+          }
+        } else {
+          console.log('[FCM:web] No service worker registration found');
+        }
+      }
+
+      // Service worker stays registered for efficient re-enablement
+      // Note: Firebase cannot reuse the old token because the push subscription was removed.
+      // A new token will be generated when push is re-enabled. The old token in IndexedDB
+      // becomes stale. Backends must handle token updates when users re-enable push.
+      console.log(
+        '[FCM:web] Service worker kept registered (new token will be generated on re-enable)',
+      );
+
+      return { status: 'revoked' };
+    } catch (error) {
+      console.error('[FCM:web] Error revoking push token:', error);
+      return { status: 'error', message: (error as Error).message };
+    }
+  }
+
+  // Native implementation
   try {
     const messagingModule = require('@react-native-firebase/messaging');
     const messaging = messagingModule.default;
@@ -467,6 +521,74 @@ async function registerForWebPush(): Promise<PushRegistrationResult> {
   } catch (error) {
     console.error('[registerForWebPush] Error:', error);
     return { status: 'error', message: (error as Error).message };
+  }
+}
+
+/**
+ * Check if service worker needs restoration and re-register if necessary.
+ * This handles cases where the service worker was unregistered but push toggle is still enabled.
+ * Called on app mount to ensure push notifications continue working.
+ *
+ * Note: Firebase getToken() automatically reuses existing tokens, so this won't generate
+ * a new token unless the existing one is invalid.
+ *
+ * @returns Promise that resolves to registration result if re-registration was needed
+ */
+export async function ensureServiceWorkerRegistered(): Promise<PushRegistrationResult | null> {
+  if (Platform.OS !== 'web') {
+    return null;
+  }
+
+  const turnOnFirebase =
+    process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === 'true' ||
+    process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === '1';
+  if (!turnOnFirebase) {
+    return null;
+  }
+
+  if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
+    return null;
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.getRegistration('/');
+
+    // If no service worker registration exists, re-register completely
+    if (!registration) {
+      console.info(
+        '[FCM:web] Service worker missing, re-registering to restore push notifications',
+      );
+      // This will reuse the existing token if it's still valid
+      return await registerForWebPush();
+    }
+
+    // Service worker exists, ensure it has the Firebase config
+    const activeWorker = registration.active;
+    if (activeWorker) {
+      const vapidKey = process.env.EXPO_PUBLIC_FIREBASE_VAPID_KEY;
+      const webConfig = {
+        apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+        authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+        projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+        storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+        messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+        appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+      };
+
+      if (hasWebConfig(webConfig, vapidKey)) {
+        // Send config to service worker to ensure it's initialized
+        activeWorker.postMessage({
+          type: 'FIREBASE_CONFIG',
+          config: webConfig,
+        });
+        console.debug('[FCM:web] Service worker config refreshed');
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.debug('[FCM:web] Error checking service worker:', error);
+    return null;
   }
 }
 
