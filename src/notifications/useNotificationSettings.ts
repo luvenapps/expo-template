@@ -539,7 +539,7 @@ export function useNotificationSettings() {
       // Fallback for unexpected status
       return { status: 'error' as const, message: 'Unexpected result status' };
     },
-    [analytics, preferences, promptForPushPermissions],
+    [analytics, permissionStatus, preferences, promptForPushPermissions],
   );
 
   useEffect(() => {

@@ -88,7 +88,6 @@ export default function SettingsScreen() {
     isChecking: isCheckingNotifications,
     toggleReminders,
     toggleDailySummary,
-    canPromptForPush,
   } = useNotificationSettings();
   const notificationsBlocked = isNative
     ? permissionStatus === 'blocked' ||
