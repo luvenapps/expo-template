@@ -15,6 +15,7 @@ import { mapPayloadToRemote, normalizePayload } from '@/supabase/mappers';
 import type { EntryRecord } from '@/supabase/types';
 import { enqueueWithDatabase } from '@/sync/outbox';
 import type { LocalTableName } from '@/supabase/domain';
+import { emitNotificationEvent } from '@/notifications/notificationEvents';
 
 const LOCAL_TABLE = DOMAIN.entities.entries.tableName as LocalTableName;
 const FOREIGN_KEY = DOMAIN.entities.entries.foreignKey;
@@ -77,6 +78,9 @@ export async function createEntryLocal(input: CreateEntryInput, options?: Mutati
       payload: buildRemotePayload(stored),
       version: stored.version,
     });
+
+    // Emit event for push notification prompt trigger
+    emitNotificationEvent('entry-created', 'entry-created');
 
     return stored;
   };

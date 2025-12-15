@@ -104,6 +104,11 @@ jest.mock('@/db/sqlite/maintenance', () => ({
 
 jest.mock('@/observability/AnalyticsProvider', () => ({
   AnalyticsProvider: ({ children }: any) => children,
+  useAnalytics: jest.fn(() => ({
+    trackEvent: jest.fn(),
+    trackError: jest.fn(),
+    trackPerformance: jest.fn(),
+  })),
 }));
 
 jest.mock('@/notifications', () => ({
@@ -114,6 +119,12 @@ jest.mock('@/notifications', () => ({
   allowInAppMessages: jest.fn().mockResolvedValue(undefined),
   setMessageTriggers: jest.fn().mockResolvedValue(undefined),
   initializeFCMListeners: jest.fn().mockReturnValue(undefined),
+}));
+
+jest.mock('@/notifications/useNotificationSettings', () => ({
+  useNotificationSettings: jest.fn(() => ({
+    tryPromptForPush: jest.fn(),
+  })),
 }));
 
 jest.mock('@/notifications/ForegroundReminderToastHost', () => ({

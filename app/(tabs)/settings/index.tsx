@@ -61,9 +61,11 @@ export default function SettingsScreen() {
     autoStart: false,
   });
   const isNative = Platform.OS !== 'web';
+  const isWeb = !isNative;
   const canSync = isNative && status === 'authenticated';
   const showDevTools =
-    isNative && Boolean((globalThis as typeof globalThis & { __DEV__?: boolean }).__DEV__);
+    (globalThis as typeof globalThis & { __DEV__?: boolean }).__DEV__ ??
+    process.env.NODE_ENV !== 'production';
   const [devStatus, setDevStatus] = useState<string | null>(null);
   const [isSeeding, setIsSeeding] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
@@ -78,6 +80,7 @@ export default function SettingsScreen() {
     permissionStatus,
     pushOptInStatus,
     promptForPushPermissions,
+    tryPromptForPush,
     disablePushNotifications,
     error: notificationError,
     pushError,
@@ -251,7 +254,7 @@ export default function SettingsScreen() {
     if (pushOptInStatus === 'enabled') return;
     if (!notificationsSupported) return;
 
-    const result = await promptForPushPermissions();
+    const result = await promptForPushPermissions({ ignoreCooldown: true });
 
     if (result.status === 'unavailable') {
       toast.show({
@@ -456,7 +459,13 @@ export default function SettingsScreen() {
 
   const handleRegisterPush = async () => {
     if (Platform.OS !== 'android') {
-      setDevStatus('Push registration helper is Android-only in Stage 9.');
+      if (Platform.OS === 'web') {
+        // Manual web trigger for testing push prompts in browser
+        await tryPromptForPush('manual');
+        setDevStatus('Triggered web push prompt (check browser UI).');
+        return;
+      }
+      setDevStatus('Push registration helper is Android-only');
       return;
     }
     setDevStatus('Requesting push permissions…');
@@ -777,7 +786,7 @@ export default function SettingsScreen() {
                       notificationsBlocked ||
                       !notificationsSupported ||
                       pushUnavailable ||
-                      (!pushEnabled && !canPromptForPush),
+                      isCheckingNotifications,
                     onChange: async (checked) => {
                       if (checked) {
                         await handlePromptPush();
@@ -908,110 +917,117 @@ export default function SettingsScreen() {
                 </PrimaryButton>
               </XStack>
             </SettingsSection>
-
-            {showDevTools ? (
-              <SettingsSection
-                title="Developer Utilities"
-                description="Seed and clear local data for manual testing on native builds."
-                footer={devStatus ?? undefined}
-              >
-                <XStack>
-                  <PrimaryButton
-                    testID="dev-seed-button"
-                    disabled={!hasSession || isSeeding || isSyncing}
-                    onPress={handleSeedSampleData}
-                  >
-                    {isSeeding ? 'Seeding…' : 'Seed sample data'}
-                  </PrimaryButton>
-                </XStack>
-
-                <XStack>
-                  <SecondaryButton
-                    testID="dev-clear-outbox-button"
-                    disabled={!hasSession || !hasOutboxData}
-                    onPress={handleClearOutbox}
-                  >
-                    Clear outbox
-                  </SecondaryButton>
-                </XStack>
-                <XStack>
-                  <SecondaryButton
-                    testID="dev-clear-db-button"
-                    disabled={isClearing}
-                    onPress={handleClearLocalDatabase}
-                  >
-                    {isClearing ? 'Clearing…' : 'Clear local database'}
-                  </SecondaryButton>
-                </XStack>
-                <XStack>
-                  <SecondaryButton
-                    testID="dev-optimize-db-button"
-                    disabled={isOptimizingDb}
-                    onPress={handleOptimizeDatabase}
-                  >
-                    {isOptimizingDb ? 'Optimizing…' : 'Optimize database'}
-                  </SecondaryButton>
-                </XStack>
-                <XStack>
-                  <SecondaryButton onPress={() => router.push('/(tabs)/settings/database')}>
-                    View local database
-                  </SecondaryButton>
-                </XStack>
-                <XStack>
-                  <SecondaryButton
-                    disabled={!notificationsSupported || !remindersEnabled}
-                    onPress={handleTestReminder}
-                  >
-                    Schedule test reminder
-                  </SecondaryButton>
-                </XStack>
-                <XStack>
-                  <SecondaryButton
-                    testID="dev-register-push-button"
-                    disabled={!isNative}
-                    onPress={handleRegisterPush}
-                  >
-                    {t('dev.registerPush')}
-                  </SecondaryButton>
-                </XStack>
-                <YStack gap="$2">
-                  <XStack gap="$3" alignItems="center" justifyContent="space-between">
-                    <SecondaryButton
-                      disabled={isArchiving}
-                      onPress={handleArchiveOldEntries}
-                      flex={1}
-                    >
-                      {isArchiving ? 'Archiving…' : 'Archive'}
-                    </SecondaryButton>
-                    <YStack gap="$2" alignItems="center">
-                      <Switch
-                        testID="dev-archive-toggle"
-                        size="$7"
-                        disabled={isArchiving}
-                        checked={archiveOffsetDays === -1}
-                        onCheckedChange={(val) => setArchiveOffsetDays(val ? -1 : 0)}
-                        borderColor={Platform.OS === 'web' ? '$borderColor' : undefined}
-                        borderWidth={Platform.OS === 'web' ? 1 : undefined}
-                        backgroundColor={
-                          archiveOffsetDays === -1 ? palette.accent : palette.secondaryBackground
-                        }
-                        pressStyle={{ opacity: 0.9 }}
-                      >
-                        <Switch.Thumb borderWidth={1} borderColor="$borderColor" />
-                      </Switch>
-                      <Text fontSize="$3" color="$colorMuted">
-                        {t('settings.archiveIncludeToday')}
-                      </Text>
-                    </YStack>
-                  </XStack>
-                  <Paragraph textAlign="center" color="$colorMuted" fontSize="$3">
-                    {archiveOptionHelper}
-                  </Paragraph>
-                </YStack>
-              </SettingsSection>
-            ) : null}
           </>
         )}
+        {showDevTools ? (
+          <>
+            <SettingsSection title="Developer Utilities" footer={devStatus ?? undefined}>
+              {isWeb && (
+                <SecondaryButton testID="dev-register-push-button" onPress={handleRegisterPush}>
+                  {t('dev.registerPush')}
+                </SecondaryButton>
+              )}
+
+              {isNative && (
+                <>
+                  <XStack>
+                    <PrimaryButton
+                      testID="dev-seed-button"
+                      disabled={!hasSession || isSeeding || isSyncing}
+                      onPress={handleSeedSampleData}
+                    >
+                      {isSeeding ? 'Seeding…' : 'Seed sample data'}
+                    </PrimaryButton>
+                  </XStack>
+
+                  <XStack>
+                    <SecondaryButton
+                      testID="dev-clear-outbox-button"
+                      disabled={!hasSession || !hasOutboxData}
+                      onPress={handleClearOutbox}
+                    >
+                      Clear outbox
+                    </SecondaryButton>
+                  </XStack>
+                  <XStack>
+                    <SecondaryButton
+                      testID="dev-clear-db-button"
+                      disabled={isClearing}
+                      onPress={handleClearLocalDatabase}
+                    >
+                      {isClearing ? 'Clearing…' : 'Clear local database'}
+                    </SecondaryButton>
+                  </XStack>
+                  <XStack>
+                    <SecondaryButton
+                      testID="dev-optimize-db-button"
+                      disabled={isOptimizingDb}
+                      onPress={handleOptimizeDatabase}
+                    >
+                      {isOptimizingDb ? 'Optimizing…' : 'Optimize database'}
+                    </SecondaryButton>
+                  </XStack>
+                  <XStack>
+                    <SecondaryButton onPress={() => router.push('/(tabs)/settings/database')}>
+                      View local database
+                    </SecondaryButton>
+                  </XStack>
+                  <XStack>
+                    <SecondaryButton
+                      disabled={!notificationsSupported || !remindersEnabled}
+                      onPress={handleTestReminder}
+                    >
+                      Schedule test reminder
+                    </SecondaryButton>
+                  </XStack>
+                  <XStack>
+                    <SecondaryButton
+                      testID="dev-register-push-button"
+                      disabled={!isNative}
+                      onPress={handleRegisterPush}
+                    >
+                      {t('dev.registerPush')}
+                    </SecondaryButton>
+                  </XStack>
+                  <YStack gap="$2">
+                    <XStack gap="$3" alignItems="center" justifyContent="space-between">
+                      <SecondaryButton
+                        disabled={isArchiving}
+                        onPress={handleArchiveOldEntries}
+                        flex={1}
+                      >
+                        {isArchiving ? 'Archiving…' : 'Archive'}
+                      </SecondaryButton>
+                      <YStack gap="$2" alignItems="center">
+                        <Switch
+                          testID="dev-archive-toggle"
+                          size="$7"
+                          disabled={isArchiving}
+                          checked={archiveOffsetDays === -1}
+                          onCheckedChange={(val) => setArchiveOffsetDays(val ? -1 : 0)}
+                          borderColor={Platform.OS === 'web' ? '$borderColor' : undefined}
+                          borderWidth={Platform.OS === 'web' ? 1 : undefined}
+                          backgroundColor={
+                            archiveOffsetDays === -1 ? palette.accent : palette.secondaryBackground
+                          }
+                          pressStyle={{ opacity: 0.9 }}
+                        >
+                          <Switch.Thumb borderWidth={1} borderColor="$borderColor" />
+                        </Switch>
+                        <Text fontSize="$3" color="$colorMuted">
+                          {t('settings.archiveIncludeToday')}
+                        </Text>
+                      </YStack>
+                    </XStack>
+                    <Paragraph textAlign="center" color="$colorMuted" fontSize="$3">
+                      {archiveOptionHelper}
+                    </Paragraph>
+                  </YStack>
+                </>
+              )}
+            </SettingsSection>
+          </>
+        ) : null}
 
         <Paragraph
           textAlign="center"

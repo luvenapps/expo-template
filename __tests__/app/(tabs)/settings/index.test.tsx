@@ -578,6 +578,7 @@ const buildNotificationSettings = (
   canPromptForPush: true,
   promptForPushPermissions: jest.fn(),
   disablePushNotifications: jest.fn(),
+  tryPromptForPush: jest.fn(),
   toggleReminders: mockToggleReminders,
   toggleDailySummary: mockToggleDailySummary,
   updateQuietHours: mockUpdateQuietHours,

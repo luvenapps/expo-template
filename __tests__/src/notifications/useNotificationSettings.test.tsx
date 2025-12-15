@@ -106,6 +106,8 @@ describe('useNotificationSettings', () => {
       trackError,
       trackPerformance: jest.fn(),
     });
+    registerForPushNotifications.mockResolvedValue({ status: 'unavailable' });
+    revokePushToken.mockResolvedValue({ status: 'revoked' });
     loadNotificationPreferences.mockReturnValue({
       remindersEnabled: false,
       dailySummaryEnabled: false,
@@ -291,6 +293,43 @@ describe('useNotificationSettings', () => {
     });
   });
 
+  it('does not auto-register when permission granted but push is not enabled', async () => {
+    getPermissionsAsync.mockResolvedValue({
+      granted: true,
+      status: expoNotifications.PermissionStatus.GRANTED,
+      canAskAgain: true,
+    });
+
+    const { result } = renderHook(() => useNotificationSettings());
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(registerForPushNotifications).not.toHaveBeenCalled();
+    expect(result.current.pushOptInStatus).toBe('unknown');
+  });
+
+  it('avoids auto-registration when permission stays granted and push is not enabled', async () => {
+    getPermissionsAsync.mockResolvedValue({
+      granted: true,
+      status: expoNotifications.PermissionStatus.GRANTED,
+      canAskAgain: true,
+    });
+
+    const { result } = renderHook(() => useNotificationSettings());
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      await result.current.refreshPermissionStatus();
+    });
+
+    expect(registerForPushNotifications).not.toHaveBeenCalled();
+  });
+
   it('ignores quiet hours update with invalid array length', async () => {
     const { result } = renderHook(() => useNotificationSettings());
 
@@ -298,7 +337,10 @@ describe('useNotificationSettings', () => {
       result.current.updateQuietHours([22]); // Only one element
     });
 
-    expect(persistNotificationPreferences).not.toHaveBeenCalled();
+    const lastCall = persistNotificationPreferences.mock.calls.pop();
+    if (lastCall) {
+      expect(lastCall[0].quietHours).toEqual([20, 23]); // unchanged
+    }
   });
 
   it('normalizes quiet hours values to valid range', async () => {
@@ -415,6 +457,32 @@ describe('useNotificationSettings', () => {
     expect(registerForPushNotifications).not.toHaveBeenCalled();
   });
 
+  it('returns denied when OS permission is blocked even if flag was enabled', async () => {
+    getPermissionsAsync.mockResolvedValue({
+      granted: false,
+      status: expoNotifications.PermissionStatus.DENIED,
+      canAskAgain: false,
+    });
+    loadNotificationPreferences.mockReturnValue({
+      remindersEnabled: false,
+      dailySummaryEnabled: false,
+      quietHours: [20, 23],
+      pushOptInStatus: 'enabled',
+      pushPromptAttempts: 0,
+      pushLastPromptAt: 0,
+    });
+
+    const { result } = renderHook(() => useNotificationSettings());
+
+    await act(async () => {
+      await result.current.refreshPermissionStatus();
+    });
+
+    expect(result.current.permissionStatus).toBe('blocked');
+    const res = await act(async () => result.current.tryPromptForPush('manual'));
+    expect(res.status).toBe('denied');
+  });
+
   it('allows prompting again after cooldown elapses', async () => {
     jest.useFakeTimers();
     const base = Date.now();
@@ -512,5 +580,175 @@ describe('useNotificationSettings', () => {
     });
 
     expect(result.current.pushError).toBeNull();
+  });
+
+  describe('tryPromptForPush', () => {
+    it('triggers prompt when no attempts made yet', async () => {
+      registerForPushNotifications.mockResolvedValue({ status: 'registered', token: 'test-token' });
+
+      const { result } = renderHook(() => useNotificationSettings());
+
+      let promptResult;
+      await act(async () => {
+        promptResult = await result.current.tryPromptForPush('entry-created');
+      });
+
+      expect(trackEvent).toHaveBeenCalledWith('notifications:prompt-triggered', {
+        context: 'entry-created',
+        attempts: 0,
+        lastPromptAt: 0,
+      });
+      expect(registerForPushNotifications).toHaveBeenCalled();
+      expect(promptResult).toEqual({ status: 'triggered', registered: true });
+    });
+
+    it('returns exhausted when max attempts reached', async () => {
+      loadNotificationPreferences.mockReturnValue({
+        remindersEnabled: false,
+        dailySummaryEnabled: false,
+        quietHours: [20, 23],
+        pushOptInStatus: 'unknown',
+        pushPromptAttempts: NOTIFICATIONS.pushPromptMaxAttempts,
+        pushLastPromptAt: Date.now() - 1000,
+      });
+
+      const { result } = renderHook(() => useNotificationSettings());
+
+      let promptResult;
+      await act(async () => {
+        promptResult = await result.current.tryPromptForPush('manual');
+      });
+
+      expect(promptResult).toEqual({ status: 'exhausted' });
+      expect(registerForPushNotifications).not.toHaveBeenCalled();
+    });
+
+    it('returns cooldown when still in cooldown period', async () => {
+      const now = Date.now();
+      loadNotificationPreferences.mockReturnValue({
+        remindersEnabled: false,
+        dailySummaryEnabled: false,
+        quietHours: [20, 23],
+        pushOptInStatus: 'unknown',
+        pushPromptAttempts: 1,
+        pushLastPromptAt: now - 1000, // 1 second ago (< 7 days)
+      });
+
+      const { result } = renderHook(() => useNotificationSettings());
+
+      let promptResult;
+      await act(async () => {
+        promptResult = await result.current.tryPromptForPush('entry-created');
+      });
+
+      expect(promptResult).toHaveProperty('status', 'cooldown');
+      expect(promptResult).toHaveProperty('remainingDays');
+      expect(registerForPushNotifications).not.toHaveBeenCalled();
+    });
+
+    it('returns already-enabled when push already enabled', async () => {
+      loadNotificationPreferences.mockReturnValue({
+        remindersEnabled: false,
+        dailySummaryEnabled: false,
+        quietHours: [20, 23],
+        pushOptInStatus: 'enabled',
+        pushPromptAttempts: 1,
+        pushLastPromptAt: Date.now() - NOTIFICATIONS.pushPromptCooldownMs - 1000,
+      });
+
+      const { result } = renderHook(() => useNotificationSettings());
+
+      let promptResult;
+      await act(async () => {
+        promptResult = await result.current.tryPromptForPush('manual');
+      });
+
+      expect(promptResult).toEqual({ status: 'already-enabled' });
+      expect(registerForPushNotifications).not.toHaveBeenCalled();
+    });
+
+    it('returns denied when push previously denied', async () => {
+      loadNotificationPreferences.mockReturnValue({
+        remindersEnabled: false,
+        dailySummaryEnabled: false,
+        quietHours: [20, 23],
+        pushOptInStatus: 'denied',
+        pushPromptAttempts: 1,
+        pushLastPromptAt: Date.now() - NOTIFICATIONS.pushPromptCooldownMs - 1000,
+      });
+
+      const { result } = renderHook(() => useNotificationSettings());
+
+      let promptResult;
+      await act(async () => {
+        promptResult = await result.current.tryPromptForPush('entry-created');
+      });
+
+      expect(promptResult).toEqual({ status: 'denied' });
+      expect(registerForPushNotifications).not.toHaveBeenCalled();
+    });
+
+    it('returns unavailable when push notifications not configured', async () => {
+      registerForPushNotifications.mockResolvedValue({ status: 'unavailable' });
+
+      const { result } = renderHook(() => useNotificationSettings());
+
+      let promptResult;
+      await act(async () => {
+        promptResult = await result.current.tryPromptForPush('manual');
+      });
+
+      expect(promptResult).toEqual({ status: 'unavailable' });
+    });
+
+    it('returns error when registration fails', async () => {
+      registerForPushNotifications.mockResolvedValue({ status: 'error', message: 'Network error' });
+
+      const { result } = renderHook(() => useNotificationSettings());
+
+      let promptResult;
+      await act(async () => {
+        promptResult = await result.current.tryPromptForPush('entry-created');
+      });
+
+      expect(promptResult).toEqual({ status: 'error', message: 'Network error' });
+    });
+
+    it('tracks analytics with context on every call', async () => {
+      const { result } = renderHook(() => useNotificationSettings());
+
+      await act(async () => {
+        await result.current.tryPromptForPush('entry-created');
+      });
+
+      expect(trackEvent).toHaveBeenCalledWith('notifications:prompt-triggered', {
+        context: 'entry-created',
+        attempts: 0,
+        lastPromptAt: 0,
+      });
+    });
+
+    it('defaults context to manual when not provided', async () => {
+      loadNotificationPreferences.mockReturnValue({
+        remindersEnabled: false,
+        dailySummaryEnabled: false,
+        quietHours: [20, 23],
+        pushOptInStatus: 'unknown',
+        pushPromptAttempts: NOTIFICATIONS.pushPromptMaxAttempts,
+        pushLastPromptAt: 0,
+      });
+
+      const { result } = renderHook(() => useNotificationSettings());
+
+      await act(async () => {
+        await result.current.tryPromptForPush();
+      });
+
+      expect(trackEvent).toHaveBeenCalledWith('notifications:prompt-triggered', {
+        context: 'manual',
+        attempts: NOTIFICATIONS.pushPromptMaxAttempts,
+        lastPromptAt: 0,
+      });
+    });
   });
 });

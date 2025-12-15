@@ -22,6 +22,10 @@ jest.mock('uuid', () => ({
   v4: jest.fn(() => 'generated-id'),
 }));
 
+jest.mock('@/notifications/notificationEvents', () => ({
+  emitNotificationEvent: jest.fn(),
+}));
+
 import { DOMAIN } from '@/config/domain.config';
 import { createDeviceLocal, deleteDeviceLocal, updateDeviceLocal } from '@/data/localDevices';
 import { createEntryLocal, deleteEntryLocal, updateEntryLocal } from '@/data/localEntries';
@@ -43,6 +47,7 @@ import {
 } from '@/data/repositories';
 import { getDb } from '@/db/sqlite';
 import { enqueueWithDatabase } from '@/sync/outbox';
+import { emitNotificationEvent } from '@/notifications/notificationEvents';
 import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -237,6 +242,32 @@ describe('local mutations enqueue outbox records', () => {
         operation: 'insert',
       }),
     );
+  });
+
+  it('emits notification event after entry creation', async () => {
+    const emitMock = emitNotificationEvent as jest.Mock;
+    const repository = mockEntryRepository({
+      id: 'entry-1',
+      userId: 'user-1',
+      [DOMAIN.entities.entries.foreignKey]: 'primary-1',
+      date: '2025-01-02',
+      amount: 1,
+      source: 'local',
+      createdAt: '2025-01-02T00:00:00.000Z',
+      updatedAt: '2025-01-02T00:00:00.000Z',
+      version: 1,
+      deletedAt: null,
+    });
+
+    (getEntryRepository as jest.Mock).mockReturnValue(repository);
+
+    await createEntryLocal({
+      userId: 'user-1',
+      [DOMAIN.entities.entries.foreignKey]: 'primary-1',
+      date: '2025-01-02',
+    } as any);
+
+    expect(emitMock).toHaveBeenCalledWith('entry-created', 'entry-created');
   });
 
   it('creates reminder and enqueues insert', async () => {

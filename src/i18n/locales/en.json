@@ -4,7 +4,7 @@
     "developerUtilities": "Developer Utilities"
   },
   "dev": {
-    "registerPush": "Register push token (Android)",
+    "registerPush": "Register push token",
     "languageSelectorLabel": "Language"
   },
   "home": {

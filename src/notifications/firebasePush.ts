@@ -14,6 +14,7 @@ export type PushRevokeResult =
 // Module-level flag to prevent double listener registration on web
 let webForegroundListenerRegistered = false;
 let webForegroundListenerRegistrationCount = 0;
+let webRegisterInFlight: Promise<PushRegistrationResult> | null = null;
 
 export async function registerForPushNotifications(): Promise<PushRegistrationResult> {
   const turnOnFirebase =
@@ -365,6 +366,12 @@ function hasWebConfig(config: WebMessagingConfig, vapidKey?: string) {
 async function registerForWebPush(): Promise<PushRegistrationResult> {
   console.debug('[registerForWebPush] Starting');
 
+  // Deduplicate concurrent/rapid calls to avoid double token generation
+  if (webRegisterInFlight) {
+    console.debug('[registerForWebPush] In-flight registration found, reusing promise');
+    return webRegisterInFlight;
+  }
+
   if (typeof window === 'undefined') {
     console.debug('[registerForWebPush] window is undefined, returning unavailable');
     return { status: 'unavailable' };
@@ -398,130 +405,141 @@ async function registerForWebPush(): Promise<PushRegistrationResult> {
     return { status: 'unavailable' };
   }
 
-  console.debug('[registerForWebPush] Checking Notification.permission:', Notification.permission);
-  const permission =
-    Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
+  webRegisterInFlight = (async () => {
+    console.debug(
+      '[registerForWebPush] Checking Notification.permission:',
+      Notification.permission,
+    );
+    const permission =
+      Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
 
-  console.debug('[registerForWebPush] Permission result:', permission);
-  if (permission !== 'granted') {
-    console.debug('[registerForWebPush] Permission denied, returning denied');
-    return { status: 'denied' };
-  }
-
-  try {
-    console.debug('[registerForWebPush] Loading Firebase modules...');
-    // Lazy-load Firebase web messaging
-    const { initializeApp, getApps } = require('firebase/app') as typeof import('firebase/app');
-    const { getMessaging, getToken, isSupported } =
-      require('firebase/messaging') as typeof import('firebase/messaging');
-
-    console.debug('[registerForWebPush] Checking Firebase messaging support...');
-    if (!(await isSupported())) {
-      console.debug('[registerForWebPush] Firebase messaging not supported, returning unavailable');
-      return { status: 'unavailable' };
+    console.debug('[registerForWebPush] Permission result:', permission);
+    if (permission !== 'granted') {
+      console.debug('[registerForWebPush] Permission denied, returning denied');
+      return { status: 'denied' };
     }
 
-    console.debug('[registerForWebPush] Initializing Firebase app...');
-    const firebaseApp =
-      getApps().length > 0 ? getApps()[0] : initializeApp(webConfig as Record<string, string>);
-    console.debug('[registerForWebPush] Firebase app initialized');
-
-    // Register Firebase messaging service worker
-    console.debug('[registerForWebPush] Registering Firebase service worker...');
-    let registration: ServiceWorkerRegistration | null = null;
     try {
-      // First, check if there's already a registration
-      const existingRegistration = await navigator.serviceWorker.getRegistration('/');
+      console.debug('[registerForWebPush] Loading Firebase modules...');
+      // Lazy-load Firebase web messaging
+      const { initializeApp, getApps } = require('firebase/app') as typeof import('firebase/app');
+      const { getMessaging, getToken, isSupported } =
+        require('firebase/messaging') as typeof import('firebase/messaging');
 
-      if (existingRegistration) {
-        console.debug('[registerForWebPush] Using existing service worker registration');
-        registration = existingRegistration;
-      } else {
-        console.debug('[registerForWebPush] Registering new service worker...');
-        registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
-          scope: '/',
-        });
-        console.debug('[registerForWebPush] Service worker registered:', registration.scope);
+      console.debug('[registerForWebPush] Checking Firebase messaging support...');
+      if (!(await isSupported())) {
+        console.debug(
+          '[registerForWebPush] Firebase messaging not supported, returning unavailable',
+        );
+        return { status: 'unavailable' };
       }
 
-      // Wait for the service worker to be ready and active
-      await navigator.serviceWorker.ready;
-      console.debug('[registerForWebPush] Service worker ready');
+      console.debug('[registerForWebPush] Initializing Firebase app...');
+      const firebaseApp =
+        getApps().length > 0 ? getApps()[0] : initializeApp(webConfig as Record<string, string>);
+      console.debug('[registerForWebPush] Firebase app initialized');
 
-      // Ensure the service worker is active before proceeding
-      const activeWorker = registration.active;
-      if (activeWorker) {
-        // Send Firebase config to the service worker
-        activeWorker.postMessage({
-          type: 'FIREBASE_CONFIG',
-          config: webConfig,
-        });
-        console.debug('[registerForWebPush] Firebase config sent to service worker');
+      // Register Firebase messaging service worker
+      console.debug('[registerForWebPush] Registering Firebase service worker...');
+      let registration: ServiceWorkerRegistration | null = null;
+      try {
+        // First, check if there's already a registration
+        const existingRegistration = await navigator.serviceWorker.getRegistration('/');
 
-        // Give the service worker a moment to process the config
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      } else if (registration.installing || registration.waiting) {
-        console.debug(
-          '[registerForWebPush] Service worker is installing/waiting, waiting for activation...',
-        );
-        // Wait for the service worker to become active
-        await new Promise<void>((resolve) => {
-          const checkState = () => {
-            if (registration?.active) {
-              resolve();
-            } else {
-              setTimeout(checkState, 50);
-            }
-          };
-          checkState();
-        });
+        if (existingRegistration) {
+          console.debug('[registerForWebPush] Using existing service worker registration');
+          registration = existingRegistration;
+        } else {
+          console.debug('[registerForWebPush] Registering new service worker...');
+          registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+            scope: '/',
+          });
+          console.debug('[registerForWebPush] Service worker registered:', registration.scope);
+        }
 
-        const newActiveWorker = registration.active;
-        if (newActiveWorker) {
-          newActiveWorker.postMessage({
+        // Wait for the service worker to be ready and active
+        await navigator.serviceWorker.ready;
+        console.debug('[registerForWebPush] Service worker ready');
+
+        // Ensure the service worker is active before proceeding
+        const activeWorker = registration.active;
+        if (activeWorker) {
+          // Send Firebase config to the service worker
+          activeWorker.postMessage({
             type: 'FIREBASE_CONFIG',
             config: webConfig,
           });
+          console.debug('[registerForWebPush] Firebase config sent to service worker');
+
+          // Give the service worker a moment to process the config
           await new Promise((resolve) => setTimeout(resolve, 100));
+        } else if (registration.installing || registration.waiting) {
+          console.debug(
+            '[registerForWebPush] Service worker is installing/waiting, waiting for activation...',
+          );
+          // Wait for the service worker to become active
+          await new Promise<void>((resolve) => {
+            const checkState = () => {
+              if (registration?.active) {
+                resolve();
+              } else {
+                setTimeout(checkState, 50);
+              }
+            };
+            checkState();
+          });
+
+          const newActiveWorker = registration.active;
+          if (newActiveWorker) {
+            newActiveWorker.postMessage({
+              type: 'FIREBASE_CONFIG',
+              config: webConfig,
+            });
+            await new Promise((resolve) => setTimeout(resolve, 100));
+          }
         }
+      } catch (swError) {
+        console.error('[registerForWebPush] Service worker registration failed:', swError);
+        return { status: 'error', message: 'Service worker registration failed' };
       }
-    } catch (swError) {
-      console.error('[registerForWebPush] Service worker registration failed:', swError);
-      return { status: 'error', message: 'Service worker registration failed' };
+
+      if (!registration || !registration.active) {
+        console.debug('[registerForWebPush] No active service worker available');
+        return { status: 'error', message: 'No active service worker available' };
+      }
+
+      console.debug('[registerForWebPush] Getting messaging instance...');
+      const messaging = getMessaging(firebaseApp);
+      console.debug('[registerForWebPush] Getting FCM token with registration:', {
+        scope: registration.scope,
+        hasActive: !!registration.active,
+        hasPushManager: !!(registration.active && 'pushManager' in registration.active),
+      });
+      const token = await getToken(messaging, {
+        vapidKey,
+        serviceWorkerRegistration: registration,
+      });
+
+      if (token) {
+        console.log('[FCM:web] Token registered:', token);
+
+        // Set up foreground message listener after successful registration
+        setupWebForegroundMessageListener();
+
+        return { status: 'registered', token };
+      }
+
+      console.debug('[registerForWebPush] No token received');
+      return { status: 'error', message: 'No token' };
+    } catch (error) {
+      console.error('[registerForWebPush] Error:', error);
+      return { status: 'error', message: (error as Error).message };
+    } finally {
+      webRegisterInFlight = null;
     }
+  })();
 
-    if (!registration || !registration.active) {
-      console.debug('[registerForWebPush] No active service worker available');
-      return { status: 'error', message: 'No active service worker available' };
-    }
-
-    console.debug('[registerForWebPush] Getting messaging instance...');
-    const messaging = getMessaging(firebaseApp);
-    console.debug('[registerForWebPush] Getting FCM token with registration:', {
-      scope: registration.scope,
-      hasActive: !!registration.active,
-      hasPushManager: !!(registration.active && 'pushManager' in registration.active),
-    });
-    const token = await getToken(messaging, {
-      vapidKey,
-      serviceWorkerRegistration: registration,
-    });
-
-    if (token) {
-      console.log('[FCM:web] Token registered:', token);
-
-      // Set up foreground message listener after successful registration
-      setupWebForegroundMessageListener();
-
-      return { status: 'registered', token };
-    }
-
-    console.debug('[registerForWebPush] No token received');
-    return { status: 'error', message: 'No token' };
-  } catch (error) {
-    console.error('[registerForWebPush] Error:', error);
-    return { status: 'error', message: (error as Error).message };
-  }
+  return webRegisterInFlight;
 }
 
 /**
@@ -562,9 +580,8 @@ export async function ensureServiceWorkerRegistered(): Promise<PushRegistrationR
       return await registerForWebPush();
     }
 
-    // Service worker exists, ensure it has the Firebase config
-    const activeWorker = registration.active;
-    if (activeWorker) {
+    // If a registration exists, do not re-register; just refresh config
+    if (registration.active) {
       const vapidKey = process.env.EXPO_PUBLIC_FIREBASE_VAPID_KEY;
       const webConfig = {
         apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
@@ -576,15 +593,16 @@ export async function ensureServiceWorkerRegistered(): Promise<PushRegistrationR
       };
 
       if (hasWebConfig(webConfig, vapidKey)) {
-        // Send config to service worker to ensure it's initialized
-        activeWorker.postMessage({
+        registration.active.postMessage({
           type: 'FIREBASE_CONFIG',
           config: webConfig,
         });
         console.debug('[FCM:web] Service worker config refreshed');
       }
+      return null;
     }
 
+    // Service worker exists, ensure it has the Firebase config
     return null;
   } catch (error) {
     console.debug('[FCM:web] Error checking service worker:', error);
@@ -594,3 +612,10 @@ export async function ensureServiceWorkerRegistered(): Promise<PushRegistrationR
 
 // Exposed for tests
 export { registerForWebPush as __registerForWebPush };
+
+// Test utility to clear web registration state
+export function __resetWebPushStateForTests() {
+  webRegisterInFlight = null;
+  webForegroundListenerRegistered = false;
+  webForegroundListenerRegistrationCount = 0;
+}

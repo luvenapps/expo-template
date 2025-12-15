@@ -7,6 +7,8 @@ import {
   setMessageTriggers,
   initializeFCMListeners,
 } from '@/notifications';
+import { onNotificationEvent } from '@/notifications/notificationEvents';
+import { useNotificationSettings } from '@/notifications/useNotificationSettings';
 import { getQueryClient, getQueryClientPersistOptions } from '@/state';
 import { pullUpdates, pushOutbox, useSync } from '@/sync';
 import { useThemeContext } from '@/ui/theme/ThemeProvider';
@@ -36,6 +38,7 @@ export function AppProviders({ children }: PropsWithChildren) {
   const syncEnabled = Platform.OS !== 'web' && isAuthenticated;
   const { resolvedTheme, palette } = useThemeContext();
   const [isAppReady, setIsAppReady] = useState(false);
+  const { tryPromptForPush } = useNotificationSettings();
   const turnOnFirebase = useMemo(
     () =>
       process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === 'true' ||
@@ -102,6 +105,18 @@ export function AppProviders({ children }: PropsWithChildren) {
       subscription?.remove?.();
     };
   }, []);
+
+  // Listen for entry creation events and trigger push permission prompt
+  useEffect(() => {
+    const unsubscribe = onNotificationEvent('entry-created', (context) => {
+      console.log('[AppProviders] Entry created, triggering push prompt with context:', context);
+      tryPromptForPush(context).catch((error) => {
+        console.error('[AppProviders] Failed to trigger push prompt:', error);
+      });
+    });
+
+    return unsubscribe;
+  }, [tryPromptForPush]);
 
   const { status: syncStatus, queueSize } = useSync({
     push: pushOutbox,

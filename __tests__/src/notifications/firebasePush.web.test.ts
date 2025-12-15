@@ -1,5 +1,6 @@
 import {
   __registerForWebPush,
+  __resetWebPushStateForTests,
   revokePushToken,
   setupWebForegroundMessageListener,
 } from '@/notifications/firebasePush';
@@ -37,6 +38,7 @@ describe('firebasePush Web', () => {
   let logSpy: jest.SpyInstance;
 
   beforeEach(() => {
+    __resetWebPushStateForTests();
     jest.clearAllMocks();
     debugSpy = jest.spyOn(console, 'debug').mockImplementation(() => {});
     infoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
@@ -100,6 +102,12 @@ describe('firebasePush Web', () => {
   });
 
   it('registers token when supported and permitted', async () => {
+    (global as any).Notification.permission = 'default';
+    (global as any).Notification.requestPermission = jest.fn(async () => 'granted');
+    const messagingModule = require('firebase/messaging');
+    messagingModule.isSupported.mockResolvedValueOnce(true);
+    messagingModule.getToken.mockResolvedValueOnce('web-token');
+
     const result = await __registerForWebPush();
     expect(result).toEqual({ status: 'registered', token: 'web-token' });
 
@@ -111,9 +119,29 @@ describe('firebasePush Web', () => {
   it('returns unavailable when messaging is not supported', async () => {
     const messagingModule = require('firebase/messaging');
     messagingModule.isSupported.mockResolvedValueOnce(false);
+    (global as any).Notification.permission = 'default';
+    (global as any).Notification.requestPermission = jest.fn(async () => 'granted');
+    messagingModule.getToken.mockResolvedValueOnce('web-token');
 
     const result = await __registerForWebPush();
     expect(result.status).toBe('unavailable');
+  });
+
+  it('reuses in-flight registration to avoid double token generation', async () => {
+    (global as any).Notification.permission = 'default';
+    (global as any).Notification.requestPermission = jest.fn(async () => 'granted');
+    const { getToken } = require('firebase/messaging');
+    const messagingModule = require('firebase/messaging');
+    messagingModule.isSupported.mockResolvedValue(true);
+    getToken.mockResolvedValueOnce('token-1');
+    getToken.mockResolvedValueOnce('token-2');
+
+    const [first, second] = await Promise.all([__registerForWebPush(), __registerForWebPush()]);
+
+    expect(first.status).toBe('registered');
+    expect(second.status).toBe('registered');
+    // Only one getToken call should have happened because of in-flight reuse
+    expect(getToken).toHaveBeenCalledTimes(1);
   });
 
   it('prevents duplicate listener registration when called multiple times', async () => {
