@@ -314,6 +314,49 @@ describe('ScreenContainer', () => {
     });
   });
 
+  describe('Scrollable and Keyboard Avoiding', () => {
+    it('should render with scrollable=false (non-scrollable)', () => {
+      const { getByTestId } = render(
+        <ScreenContainer scrollable={false}>
+          <Text>Non-scrollable Content</Text>
+        </ScreenContainer>,
+      );
+
+      expect(getByTestId('screen-container')).toBeDefined();
+    });
+
+    it('should render with keyboardAvoiding=false', () => {
+      const { getByTestId } = render(
+        <ScreenContainer keyboardAvoiding={false}>
+          <Text>No Keyboard Avoiding</Text>
+        </ScreenContainer>,
+      );
+
+      expect(getByTestId('screen-container')).toBeDefined();
+    });
+
+    it('should render with both scrollable=false and keyboardAvoiding=false', () => {
+      const { getByTestId } = render(
+        <ScreenContainer scrollable={false} keyboardAvoiding={false}>
+          <Text>Static Content</Text>
+        </ScreenContainer>,
+      );
+
+      expect(getByTestId('screen-container')).toBeDefined();
+    });
+
+    it('should accept contentContainerStyle prop', () => {
+      const style = { paddingBottom: 100 };
+      const { getByTestId } = render(
+        <ScreenContainer contentContainerStyle={style}>
+          <Text>Custom Style</Text>
+        </ScreenContainer>,
+      );
+
+      expect(getByTestId('screen-container')).toBeDefined();
+    });
+  });
+
   describe('Edge Cases', () => {
     it('should handle undefined gap prop', () => {
       const { getByTestId } = render(

@@ -28,6 +28,27 @@ describe('dbMetrics', () => {
       expect(metrics).toBeNull();
     });
 
+    it('uses sqliteModuleOverride when set', async () => {
+      platformModule.Platform.OS = 'ios';
+      const customMock = jest.fn();
+      const fakeHandle = {
+        getFirstSync: jest.fn(() => ({ size: 5 * 1024 * 1024 })),
+      };
+      customMock.mockResolvedValue(fakeHandle);
+
+      __setDbMetricsSqliteModule({ openDatabaseAsync: customMock });
+
+      const metrics = await getDatabaseSizeMetrics();
+
+      expect(customMock).toHaveBeenCalled();
+      expect(metrics).toEqual(
+        expect.objectContaining({
+          sizeBytes: 5 * 1024 * 1024,
+          sizeMB: 5,
+        }),
+      );
+    });
+
     it('reports size metrics from pragma query', async () => {
       platformModule.Platform.OS = 'ios';
       const fakeHandle = {
