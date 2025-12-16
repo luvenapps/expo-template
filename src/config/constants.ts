@@ -2,6 +2,9 @@
 export const NOTIFICATIONS = {
   pushPromptMaxAttempts: 3,
   pushPromptCooldownMs: 7 * 24 * 60 * 60 * 1000, // 7 days
+  osPromptMaxAttempts: 3,
+  osPromptCooldownMs: 7 * 24 * 60 * 60 * 1000, // 7 days
+  softDeclineCooldownMs: 3 * 24 * 60 * 60 * 1000, // 3 days
   quietHoursBufferMinutes: 5,
   toastDurationMs: {
     foregroundReminder: 5000,

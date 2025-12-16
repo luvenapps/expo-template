@@ -1,12 +1,7 @@
 /* istanbul ignore file */ // This file will change
 import { useSessionStore } from '@/auth/session';
 import { DOMAIN } from '@/config/domain.config';
-import {
-  createDeviceLocal,
-  createEntryLocal,
-  createPrimaryEntityLocal,
-  createReminderLocal,
-} from '@/data';
+import { createDeviceLocal, createEntryLocal, createPrimaryEntityLocal } from '@/data';
 import { clearAllTables, getDb, hasData } from '@/db/sqlite';
 import { archiveOldEntries } from '@/db/sqlite/archive';
 import { onDatabaseReset } from '@/db/sqlite/events';
@@ -14,9 +9,6 @@ import { optimizeDatabase } from '@/db/sqlite/maintenance';
 import { withDatabaseRetry } from '@/db/sqlite/retry';
 import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
 import { setLanguage, supportedLanguages } from '@/i18n';
-import { registerForPushNotifications } from '@/notifications/firebasePush';
-import { DEFAULT_NOTIFICATION_PREFERENCES } from '@/notifications/preferences';
-import { scheduleReminder } from '@/notifications/scheduler';
 import { useNotificationSettings } from '@/notifications/useNotificationSettings';
 import { useSyncStore } from '@/state';
 import { pullUpdates, pushOutbox, useSync } from '@/sync';
@@ -74,26 +66,22 @@ export default function SettingsScreen() {
   const [archiveOffsetDays, setArchiveOffsetDays] = useState<0 | -1>(0);
   const [, setHasDbData] = useState(false);
   const {
-    remindersEnabled,
-    dailySummaryEnabled,
-    quietHours = DEFAULT_NOTIFICATION_PREFERENCES.quietHours,
     permissionStatus,
-    pushOptInStatus,
-    promptForPushPermissions,
+    notificationStatus,
     tryPromptForPush,
     disablePushNotifications,
     error: notificationError,
     pushError,
-    isSupported: notificationsSupported,
     isChecking: isCheckingNotifications,
-    toggleReminders,
-    toggleDailySummary,
   } = useNotificationSettings();
+  // Consider block state primarily from current OS/browser permission.
+  // On web, a granted browser permission should always show the toggle even if prefs lag behind.
   const notificationsBlocked = isNative
     ? permissionStatus === 'blocked' ||
       permissionStatus === 'denied' ||
-      permissionStatus === 'unavailable'
-    : permissionStatus === 'blocked' || permissionStatus === 'denied';
+      permissionStatus === 'unavailable' ||
+      notificationStatus === 'unavailable'
+    : permissionStatus === 'blocked';
   const hasOutboxData = queueSize > 0; // Use sync store's queue size instead of manual check
   const isSeedingRef = useRef(false); // Synchronous lock to prevent rapid-clicking (state updates are async)
   const isClearingRef = useRef(false); // Synchronous lock for clear operations
@@ -125,16 +113,16 @@ export default function SettingsScreen() {
   const { theme: themePreference, setTheme, palette } = useThemeContext();
   const accentHex = palette.accent;
   const hasSession = Boolean(session?.user?.id);
-  const pushEnabled = pushOptInStatus === 'enabled';
-  const pushUnavailable = pushOptInStatus === 'unavailable';
+  const pushEnabled = notificationStatus === 'granted';
 
-  const pushStatusDisplay = useMemo(() => {
+  const pushStatusText = useMemo(() => {
     if (pushError) return pushError;
-    return pushEnabled
-      ? t('settings.pushStatusEnabledSimple')
-      : t('settings.pushStatusDisabledSimple');
-  }, [pushEnabled, pushError, t]);
-  const pushStatusText = notificationsBlocked ? '' : pushStatusDisplay;
+    if (notificationStatus === 'granted') return t('settings.pushStatusEnabledSimple');
+    if (notificationStatus === 'denied' || notificationStatus === 'unavailable')
+      return t('settings.pushStatusDisabledSimple');
+    if (notificationStatus === 'soft-declined') return t('settings.pushStatusDisabledSimple');
+    return t('settings.pushStatusDisabledSimple');
+  }, [notificationStatus, pushError, t]);
 
   // cooldown info is handled internally; no inline display to avoid noise
   const streakSample = useMemo(
@@ -250,16 +238,12 @@ export default function SettingsScreen() {
   };
 
   const handlePromptPush = async () => {
-    if (pushOptInStatus === 'enabled') return;
-    if (!notificationsSupported) return;
+    const result = await tryPromptForPush('manual');
 
-    const result = await promptForPushPermissions({ ignoreCooldown: true });
-
-    if (result.status === 'unavailable') {
+    if (result.status === 'triggered' || result.status === 'already-enabled') {
       toast.show({
-        type: 'info',
-        title: t('settings.pushUnavailableTitle'),
-        description: t('settings.pushUnavailableDescription'),
+        type: 'success',
+        title: t('settings.pushStatusEnabledSimple'),
       });
       return;
     }
@@ -273,8 +257,23 @@ export default function SettingsScreen() {
       return;
     }
 
-    if (result.status === 'registered') return;
-    if (result.status === 'denied') return;
+    if (result.status === 'exhausted') {
+      toast.show({
+        type: 'info',
+        title: t('settings.pushExhaustedTitle'),
+        description: t('settings.pushExhaustedDescription'),
+      });
+      return;
+    }
+
+    if (result.status === 'denied') {
+      toast.show({
+        type: 'info',
+        title: t('settings.pushUnavailableTitle'),
+        description: t('settings.pushUnavailableDescription'),
+      });
+      return;
+    }
   };
 
   const handleArchiveOldEntries = async () => {
@@ -348,17 +347,6 @@ export default function SettingsScreen() {
 
           await createEntryLocal(entryInput as any, { database: tx });
 
-          const reminderInput: Record<string, unknown> = {
-            userId,
-            timeLocal: '09:00',
-            daysOfWeek: '1,2,3',
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? 'UTC',
-            isEnabled: true,
-          };
-          reminderInput[DOMAIN.entities.reminders.foreignKey] = primaryEntity.id;
-
-          await createReminderLocal(reminderInput as any, { database: tx });
-
           await createDeviceLocal(
             {
               userId,
@@ -419,82 +407,26 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleTestReminder = async () => {
-    if (!notificationsSupported) {
-      setDevStatus('Notifications unavailable on this platform.');
-      return;
-    }
-    const fireDate = new Date(Date.now() + 60 * 1000);
-    try {
-      const id = await scheduleReminder(
-        {
-          id: `dev-test-${Date.now()}`,
-          title: `${DOMAIN.app.displayName} Reminder`,
-          body: 'This is a test reminder (arrives in ~1 minute).',
-          fireDate,
-        },
-        { quietHours },
-      );
-      if (!id) {
-        setDevStatus('Unable to schedule reminder. Check notification permissions.');
-        return;
-      }
-      setDevStatus('Test reminder scheduled. Check your notifications in ~1 minute.');
-      toast.show({
-        type: 'success',
-        title: 'Reminder scheduled',
-        description: 'You will receive an alert shortly.',
-      });
-    } catch (reminderError) {
-      console.error('[Settings] scheduleReminder failed', reminderError);
-      const { friendly } = showFriendlyError(reminderError, { surface: 'settings.test-reminder' });
-      const message =
-        friendly.description ??
-        (friendly.descriptionKey ? t(friendly.descriptionKey) : friendly.originalMessage) ??
-        (friendly.titleKey ? t(friendly.titleKey) : t('errors.unknown.title'));
-      setDevStatus(`Reminder scheduling failed: ${message}`);
-    }
-  };
-
   const handleRegisterPush = async () => {
-    if (Platform.OS !== 'android') {
-      if (Platform.OS === 'web') {
-        // Manual web trigger for testing push prompts in browser
-        await tryPromptForPush('manual');
-        setDevStatus('Triggered web push prompt (check browser UI).');
-        return;
-      }
-      setDevStatus('Push registration helper is Android-only');
+    const result = await tryPromptForPush('manual');
+    if (result.status === 'triggered' || result.status === 'already-enabled') {
+      setDevStatus('Push token requested (check console for logs).');
       return;
     }
-    setDevStatus('Requesting push permissions…');
-    const result = await registerForPushNotifications();
-    if (result.status === 'registered') {
-      setDevStatus(`Push token registered (printed to console).`);
-      console.log('[Push] FCM token:', result.token);
+    if (result.status === 'cooldown') {
+      setDevStatus('Push prompt in cooldown.');
       return;
     }
-
+    if (result.status === 'exhausted') {
+      setDevStatus('Push attempts exhausted; enable via system settings.');
+      return;
+    }
     if (result.status === 'denied') {
-      setDevStatus('Push permission denied. Enable notifications in system settings.');
+      setDevStatus('Push permission denied. Enable in system settings.');
       return;
     }
-
-    if (result.status === 'unavailable') {
-      setDevStatus('Push not available on this platform.');
-      return;
-    }
-
-    setDevStatus(`Push registration failed: ${result.message}`);
+    setDevStatus('Push registration unavailable on this platform.');
   };
-
-  useEffect(() => {
-    if (!remindersEnabled) {
-      if (devStatus && devStatus.includes('Test reminder scheduled')) {
-        setDevStatus('Test reminder deleted. Reminders were disabled.');
-      }
-    }
-  }, [remindersEnabled, devStatus]);
 
   const handleClearLocalDatabase = async () => {
     if (!isNative) return;
@@ -720,72 +652,16 @@ export default function SettingsScreen() {
           ) : (
             <YStack gap="$4">
               <YStack gap="$3">
-                <Paragraph fontWeight="700">{t('settings.localNotificationsTitle')}</Paragraph>
-                <Paragraph color="$colorMuted" fontSize="$3">
-                  {t('settings.localNotificationsDescription')}
-                </Paragraph>
-
                 <XStack alignItems="center" justifyContent="space-between">
                   <YStack gap="$1" flex={1} paddingRight="$3">
-                    <Paragraph fontWeight="600">{t('settings.remindersTitle')}</Paragraph>
-                    <Paragraph color="$colorMuted" fontSize="$3">
-                      {t('settings.remindersDescription')}
-                    </Paragraph>
-                  </YStack>
-                  <View width={Platform.OS === 'web' ? 64 : 'auto'}>
-                    {renderToggle({
-                      checked: remindersEnabled,
-                      disabled:
-                        notificationsBlocked || !notificationsSupported || isCheckingNotifications,
-                      onChange: (checked) => toggleReminders(checked),
-                      testID: 'settings-reminders-toggle',
-                    })}
-                  </View>
-                </XStack>
-
-                <XStack alignItems="center" justifyContent="space-between">
-                  <YStack gap="$1" flex={1} paddingRight="$3">
-                    <Paragraph fontWeight="600">{t('settings.dailySummaryTitle')}</Paragraph>
-                    <Paragraph color="$colorMuted" fontSize="$3">
-                      {t('settings.dailySummaryDescription')}
-                    </Paragraph>
-                  </YStack>
-                  {renderToggle({
-                    checked: dailySummaryEnabled,
-                    disabled:
-                      notificationsBlocked || !notificationsSupported || isCheckingNotifications,
-                    onChange: (checked) => toggleDailySummary(checked),
-                    testID: 'settings-daily-summary-toggle',
-                  })}
-                </XStack>
-              </YStack>
-
-              <YStack gap="$1">
-                <Paragraph color="$colorMuted" fontSize="$3" testID="settings-reminders-status">
-                  {t('settings.remindersTitle')}{' '}
-                  {remindersEnabled ? t('settings.enabled') : t('settings.disabled')}
-                </Paragraph>
-                <Paragraph color="$colorMuted" fontSize="$3" testID="settings-dailysummary-status">
-                  {t('settings.dailySummaryTitle')}{' '}
-                  {dailySummaryEnabled ? t('settings.enabled') : t('settings.disabled')}
-                </Paragraph>
-              </YStack>
-
-              <YStack gap="$3" paddingTop="$2">
-                <XStack alignItems="center" justifyContent="space-between">
-                  <YStack gap="$1" flex={1} paddingRight="$3">
-                    <Paragraph fontWeight="700">{t('settings.remotePushTitle')}</Paragraph>
-                    <Paragraph color="$colorMuted" fontSize="$3">
-                      {t('settings.remotePushDescription')}
+                    <Paragraph fontWeight="700">{t('settings.notificationsTitle')}</Paragraph>
+                    <Paragraph color="$colorMuted" fontSize="$3" testID="settings-push-status">
+                      {pushStatusText}
                     </Paragraph>
                   </YStack>
                   {renderToggle({
                     checked: pushEnabled,
-                    disabled:
-                      notificationsBlocked ||
-                      !notificationsSupported ||
-                      pushUnavailable ||
-                      isCheckingNotifications,
+                    disabled: notificationsBlocked || isCheckingNotifications,
                     onChange: async (checked) => {
                       if (checked) {
                         await handlePromptPush();
@@ -796,21 +672,6 @@ export default function SettingsScreen() {
                     testID: 'settings-push-toggle',
                   })}
                 </XStack>
-                {pushStatusText ? (
-                  <Paragraph color="$colorMuted" fontSize="$3" testID="settings-push-status">
-                    {pushStatusText}
-                  </Paragraph>
-                ) : null}
-
-                {!notificationsBlocked && notificationError ? (
-                  <Paragraph
-                    color="$dangerColor"
-                    fontSize="$3"
-                    testID="settings-notification-error"
-                  >
-                    {notificationError}
-                  </Paragraph>
-                ) : null}
               </YStack>
             </YStack>
           )}
@@ -969,14 +830,6 @@ export default function SettingsScreen() {
                   <XStack>
                     <SecondaryButton onPress={() => router.push('/(tabs)/settings/database')}>
                       View local database
-                    </SecondaryButton>
-                  </XStack>
-                  <XStack>
-                    <SecondaryButton
-                      disabled={!notificationsSupported || !remindersEnabled}
-                      onPress={handleTestReminder}
-                    >
-                      Schedule test reminder
                     </SecondaryButton>
                   </XStack>
                   <XStack>

@@ -3,19 +3,17 @@ import {
   ensureNotificationPermission,
 } from '@/notifications/notifications';
 import {
-  NotificationPreferences,
+  type NotificationPreferences,
   loadNotificationPreferences,
   persistNotificationPreferences,
 } from '@/notifications/preferences';
 import {
-  registerForPushNotifications,
-  revokePushToken,
-  setupWebForegroundMessageListener,
-  ensureServiceWorkerRegistered,
-} from '@/notifications/firebasePush';
+  ensureNotificationsEnabled,
+  revokeNotifications,
+} from '@/notifications/notificationSystem';
 import { useAnalytics } from '@/observability/AnalyticsProvider';
 import * as Notifications from 'expo-notifications';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 import { NOTIFICATIONS } from '@/config/constants';
 import { useTranslation } from 'react-i18next';
@@ -28,7 +26,6 @@ export type NotificationPermissionState =
   | 'unavailable';
 
 const isNative = Platform.OS !== 'web';
-const isWebSupported = Platform.OS === 'web';
 
 function mapPermission(
   status: Notifications.NotificationPermissionsStatus,
@@ -82,14 +79,10 @@ export function useNotificationSettings() {
   const [permissionStatus, setPermissionStatus] = useState<NotificationPermissionState>(
     getInitialWebPermissionStatus,
   );
-  const [nowTick, setNowTick] = useState(() => Date.now());
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pushError, setPushError] = useState<string | null>(null);
   const [isChecking, setIsChecking] = useState(false);
-  const hasRegisteredPushRef = useRef(false);
-  const isRegisteringPushRef = useRef(false);
-  const prevPermissionRef = useRef<NotificationPermissionState>('prompt');
 
   const updatePreferences = useCallback(
     (
@@ -110,7 +103,6 @@ export function useNotificationSettings() {
   const refreshPermissionStatus = useCallback(async () => {
     setIsChecking(true);
     try {
-      // On web, use Notification.permission directly to avoid Expo API issues
       if (Platform.OS === 'web') {
         const permission =
           typeof Notification !== 'undefined' ? Notification.permission : 'default';
@@ -129,7 +121,6 @@ export function useNotificationSettings() {
     } catch (permissionError) {
       setError(t(NOTIFICATIONS.copyKeys.permissionReadError));
       analytics.trackError(permissionError as Error, { source: 'notifications:permissions' });
-      // On web, default to 'prompt' to allow users to try enabling notifications
       const fallbackStatus = Platform.OS === 'web' ? 'prompt' : 'unavailable';
       setPermissionStatus(fallbackStatus);
       return fallbackStatus;
@@ -142,128 +133,79 @@ export function useNotificationSettings() {
     refreshPermissionStatus().catch(() => undefined);
   }, [refreshPermissionStatus]);
 
-  // If OS/browser permission transitions to granted (including manual enable in settings),
-  // ensure we register once and mark push enabled.
+  // Keep preferences in sync when OS/browser permission changes (e.g., user toggles in Settings)
   useEffect(() => {
-    const wasGranted = prevPermissionRef.current === 'granted';
-    if (
-      permissionStatus === 'granted' &&
-      !wasGranted &&
-      preferences.pushOptInStatus === 'enabled'
-    ) {
-      if (isRegisteringPushRef.current || hasRegisteredPushRef.current) {
-        prevPermissionRef.current = permissionStatus;
+    if (permissionStatus === 'granted') {
+      // Respect a manual off toggle: do not auto-enable/register if the user turned notifications off in-app.
+      if (preferences.pushManuallyDisabled) {
         return;
       }
-      isRegisteringPushRef.current = true;
-      registerForPushNotifications()
-        .then((result) => {
-          if (result.status === 'registered') {
-            hasRegisteredPushRef.current = true;
-            updatePreferences((prev) => ({
-              ...prev,
-              pushOptInStatus: 'enabled',
-            }));
-            analytics.trackEvent('notifications:push-enabled', { source: 'permission-sync' });
-          } else if (result.status === 'denied') {
-            updatePreferences((prev) => ({ ...prev, pushOptInStatus: 'denied' }));
-          }
-        })
-        .catch((err) => {
-          console.error('[Notifications] Failed to auto-register after permission granted:', err);
-        })
-        .finally(() => {
-          isRegisteringPushRef.current = false;
-        });
-    }
-    if (permissionStatus === 'blocked' || permissionStatus === 'denied') {
-      hasRegisteredPushRef.current = false;
-      revokePushToken().catch((err) =>
-        console.debug('[Notifications] Failed to revoke push after denial:', err),
-      );
-      updatePreferences((prev) => ({
-        ...prev,
-        pushOptInStatus: 'denied',
-      }));
-    }
-    // If permission was reset to prompt/default, clear local push state so the toggle reflects reality.
-    if (
-      permissionStatus === 'prompt' &&
-      preferences.pushOptInStatus !== 'unknown' &&
-      !hasRegisteredPushRef.current
-    ) {
-      hasRegisteredPushRef.current = false;
-      revokePushToken().catch((err) =>
-        console.debug('[Notifications] Failed to revoke push after reset:', err),
-      );
-      updatePreferences((prev) => ({
-        ...prev,
-        pushOptInStatus: 'unknown',
-        pushPromptAttempts: 0,
-        pushLastPromptAt: 0,
-      }));
-      setPushError(null);
-    }
-    prevPermissionRef.current = permissionStatus;
-  }, [analytics, permissionStatus, preferences.pushOptInStatus, updatePreferences]);
 
-  // Repair path: if permission is granted, push is marked enabled, but we haven't registered yet, register now.
+      ensureNotificationsEnabled({
+        context: 'permission-sync',
+        skipSoftPrompt: true,
+        forceRegister: true,
+      })
+        .then(() => {
+          setPreferences(loadNotificationPreferences());
+        })
+        .catch((error) => {
+          analytics.trackError(error as Error, { source: 'notifications:permission-sync' });
+        });
+      return;
+    }
+
+    if (permissionStatus === 'blocked' || permissionStatus === 'denied') {
+      // OS explicitly denied/blocked: mark as denied and turn off local reminders
+      updatePreferences((prev) => ({
+        ...prev,
+        notificationStatus: 'denied',
+        remindersEnabled: false,
+      }));
+      return;
+    }
+
+    if (permissionStatus === 'prompt') {
+      // Permission reset to default: return to unknown, reset counters, and disable reminder-side toggles
+      updatePreferences((prev) => ({
+        ...prev,
+        notificationStatus: 'unknown',
+        remindersEnabled: false,
+        osPromptAttempts: 0,
+        osLastPromptAt: 0,
+        softDeclineCount: 0,
+        softLastDeclinedAt: 0,
+      }));
+    }
+  }, [analytics, permissionStatus, preferences.pushManuallyDisabled, updatePreferences]);
+
+  // If the OS/browser already granted permission (e.g., user toggled system settings),
+  // but our stored status is not yet marked granted, register push again to obtain a token.
   useEffect(() => {
     if (permissionStatus !== 'granted') return;
-    if (preferences.pushOptInStatus !== 'enabled') return;
-    if (hasRegisteredPushRef.current || isRegisteringPushRef.current) return;
+    if (preferences.notificationStatus === 'granted') return;
+    if (preferences.pushManuallyDisabled) return;
 
-    isRegisteringPushRef.current = true;
-    registerForPushNotifications()
-      .then((result) => {
-        if (result.status === 'registered') {
-          hasRegisteredPushRef.current = true;
-          updatePreferences((prev) => ({ ...prev, pushOptInStatus: 'enabled' }));
-          analytics.trackEvent('notifications:push-enabled', { source: 'permission-sync' });
-        } else if (result.status === 'denied') {
-          updatePreferences((prev) => ({ ...prev, pushOptInStatus: 'denied' }));
-        }
+    ensureNotificationsEnabled({
+      context: 'permission-sync',
+      skipSoftPrompt: true,
+      forceRegister: true,
+    })
+      .then(() => {
+        setPreferences(loadNotificationPreferences());
       })
-      .catch((err) => {
-        console.error('[Notifications] Failed to repair push registration:', err);
-      })
-      .finally(() => {
-        isRegisteringPushRef.current = false;
+      .catch((error) => {
+        analytics.trackError(error as Error, { source: 'notifications:permission-sync' });
       });
-  }, [analytics, permissionStatus, preferences.pushOptInStatus, updatePreferences]);
-
-  // Set up web foreground message listener on mount
-  // Also ensure service worker is registered if push is enabled
-  useEffect(() => {
-    if (Platform.OS === 'web') {
-      setupWebForegroundMessageListener();
-
-      // Check if push is enabled and restore service worker if needed
-      if (preferences.pushOptInStatus === 'enabled') {
-        ensureServiceWorkerRegistered()
-          .then((result) => {
-            if (result?.status === 'registered') {
-              hasRegisteredPushRef.current = true;
-              updatePreferences((prev) => ({ ...prev, pushOptInStatus: 'enabled' }));
-              console.warn(
-                '[FCM:web] ⚠️  Service worker was missing and has been restored with a NEW token:',
-                result.token,
-              );
-              console.warn(
-                '[FCM:web] ⚠️  You may need to update this token in your backend to continue receiving notifications',
-              );
-            }
-          })
-          .catch((error) => {
-            console.debug('[FCM:web] Failed to ensure service worker registered:', error);
-          });
-      }
-    }
-  }, [preferences.pushOptInStatus, updatePreferences]);
+  }, [
+    permissionStatus,
+    preferences.notificationStatus,
+    preferences.pushManuallyDisabled,
+    analytics,
+  ]);
 
   useEffect(() => {
     if (Platform.OS === 'web') {
-      // On web, listen for visibility changes to refresh permission status
       const handleVisibilityChange = () => {
         if (document.visibilityState === 'visible') {
           refreshPermissionStatus().catch(() => undefined);
@@ -317,22 +259,6 @@ export function useNotificationSettings() {
     [analytics, refreshPermissionStatus, t, updatePreferences],
   );
 
-  const handleDailySummaryToggle = useCallback(
-    async (enabled: boolean) => {
-      analytics.trackEvent('notifications:daily-summary', { enabled });
-      setStatusMessage(
-        enabled
-          ? t(NOTIFICATIONS.copyKeys.dailySummaryEnabled)
-          : t(NOTIFICATIONS.copyKeys.dailySummaryDisabled),
-      );
-      updatePreferences((prev) => ({ ...prev, dailySummaryEnabled: enabled }));
-      if (enabled && permissionStatus !== 'granted') {
-        await refreshPermissionStatus();
-      }
-    },
-    [analytics, permissionStatus, refreshPermissionStatus, t, updatePreferences],
-  );
-
   const handleQuietHoursChange = useCallback(
     (next: number[]) => {
       if (next.length < 2) return;
@@ -349,198 +275,66 @@ export function useNotificationSettings() {
     [analytics, updatePreferences],
   );
 
-  const canPromptForPush = useCallback(() => {
-    const now = nowTick;
-    const attempts = preferences.pushPromptAttempts ?? 0;
-    const lastPromptAt = preferences.pushLastPromptAt ?? 0;
-    if (attempts >= NOTIFICATIONS.pushPromptMaxAttempts) return false;
-    if (lastPromptAt === 0) return true;
-    return now - lastPromptAt >= NOTIFICATIONS.pushPromptCooldownMs;
-  }, [nowTick, preferences.pushPromptAttempts, preferences.pushLastPromptAt]);
+  const tryPromptForPush = useCallback(
+    async (context?: string) => {
+      analytics.trackEvent('notifications:prompt-triggered', {
+        context: context || 'manual',
+        attempts: preferences.osPromptAttempts,
+        lastPromptAt: preferences.osLastPromptAt,
+      });
 
-  useEffect(() => {
-    const attempts = preferences.pushPromptAttempts ?? 0;
-    const lastPromptAt = preferences.pushLastPromptAt ?? 0;
-    if (attempts >= NOTIFICATIONS.pushPromptMaxAttempts) return;
-    if (lastPromptAt === 0) return;
-    const nextPromptAt = lastPromptAt + NOTIFICATIONS.pushPromptCooldownMs;
-    const delay = nextPromptAt - Date.now();
-    if (delay <= 0) {
-      setNowTick(Date.now());
-      return;
-    }
-    const timer = setTimeout(() => setNowTick(Date.now()), delay + 10);
-    return () => clearTimeout(timer);
-  }, [preferences.pushPromptAttempts, preferences.pushLastPromptAt]);
+      const result = await ensureNotificationsEnabled({ context, skipSoftPrompt: true });
 
-  const promptForPushPermissions = useCallback(
-    async (options?: { ignoreCooldown?: boolean }) => {
-      const ignoreCooldown = options?.ignoreCooldown ?? false;
-      console.log(
-        '[promptForPushPermissions] Starting, canPromptForPush:',
-        canPromptForPush(),
-        'ignoreCooldown:',
-        ignoreCooldown,
-      );
+      // Reload persisted preferences after the unified API updates them
+      setPreferences(loadNotificationPreferences());
 
-      if (!ignoreCooldown && !canPromptForPush()) {
-        console.log('[promptForPushPermissions] Cooldown active, returning');
-        return { status: 'cooldown' as const };
+      if (result.status === 'enabled') {
+        return { status: 'triggered' as const, registered: true };
       }
-
-      console.log('[promptForPushPermissions] Calling registerForPushNotifications...');
-      setPushError(null);
-      const result = await registerForPushNotifications();
-      console.log('[promptForPushPermissions] registerForPushNotifications result:', result);
-
-      // Don't count as an attempt if push is unavailable (not configured)
+      if (result.status === 'cooldown') {
+        const remainingDays = result.remainingDays ?? Math.ceil(NOTIFICATIONS.osPromptCooldownMs);
+        return { status: 'cooldown' as const, remainingDays };
+      }
+      if (result.status === 'exhausted') {
+        return { status: 'exhausted' as const };
+      }
+      if (result.status === 'denied') {
+        return { status: 'denied' as const };
+      }
       if (result.status === 'unavailable') {
-        console.log('[promptForPushPermissions] Status unavailable, updating preferences');
-        updatePreferences((prev) => ({ ...prev, pushOptInStatus: 'unavailable' }));
-        analytics.trackEvent('notifications:push-unavailable');
         return { status: 'unavailable' as const };
       }
-
-      // Infrastructure errors (service worker, network) shouldn't count as user attempts
       if (result.status === 'error') {
-        console.log('[promptForPushPermissions] Error (no attempt counted):', result.message);
-        setPushError(t('notifications.pushErrorDescription'));
-        analytics.trackEvent('notifications:push-error', { message: result.message });
         return { status: 'error' as const, message: result.message };
       }
 
-      // Only increment attempt counter for actual user decisions (registered/denied)
-      const now = Date.now();
-      updatePreferences((prev) => ({
-        ...prev,
-        pushPromptAttempts: (prev.pushPromptAttempts ?? 0) + 1,
-        pushLastPromptAt: now,
-      }));
-
-      if (result.status === 'registered') {
-        updatePreferences((prev) => ({
-          ...prev,
-          pushOptInStatus: 'enabled',
-        }));
-        setPermissionStatus('granted');
-        hasRegisteredPushRef.current = true;
-        analytics.trackEvent('notifications:push-enabled');
-        return { status: 'registered', token: result.token };
+      // If notifications already enabled, or other statuses, surface appropriate responses
+      if (preferences.notificationStatus === 'granted') {
+        return { status: 'already-enabled' as const };
       }
 
-      if (result.status === 'denied') {
-        updatePreferences((prev) => ({ ...prev, pushOptInStatus: 'denied' }));
-        setPushError(t('notifications.pushDeniedDescription'));
-        analytics.trackEvent('notifications:push-denied');
-        return { status: 'denied' as const };
-      }
-
-      // Shouldn't reach here, but handle gracefully
-      return result;
+      return { status: 'error' as const, message: 'Unexpected result status' };
     },
-    [analytics, canPromptForPush, t, updatePreferences],
+    [
+      analytics,
+      preferences.notificationStatus,
+      preferences.osLastPromptAt,
+      preferences.osPromptAttempts,
+    ],
   );
 
   const disablePushNotifications = useCallback(async () => {
     setPushError(null);
-    const result = await revokePushToken();
-    hasRegisteredPushRef.current = false;
-
+    await revokeNotifications();
     updatePreferences((prev) => ({
       ...prev,
-      pushOptInStatus: 'unknown',
-      pushPromptAttempts: 0,
-      pushLastPromptAt: 0,
+      notificationStatus: 'unknown',
+      pushManuallyDisabled: true,
+      osPromptAttempts: 0,
+      osLastPromptAt: 0,
     }));
-
-    if (result.status === 'revoked' || result.status === 'unavailable') {
-      analytics.trackEvent('notifications:push-disabled', { status: result.status });
-      return;
-    }
-
-    analytics.trackEvent('notifications:push-error', { message: result.message });
-    setPushError(t('notifications.pushErrorDescription'));
-  }, [analytics, t, updatePreferences]);
-
-  /**
-   * Try to prompt for push permissions with context tracking.
-   * Checks cooldown/attempt counters before calling promptForPushPermissions().
-   *
-   * @param context - Context string for analytics (e.g., 'entry-created', 'manual')
-   * @returns Status indicating the result: 'triggered', 'cooldown', 'exhausted', 'unavailable', 'denied', 'error'
-   */
-  const tryPromptForPush = useCallback(
-    async (context?: string) => {
-      const attempts = preferences.pushPromptAttempts ?? 0;
-      const lastPromptAt = preferences.pushLastPromptAt ?? 0;
-      const now = Date.now();
-
-      // Track the prompt attempt with context
-      analytics.trackEvent('notifications:prompt-triggered', {
-        context: context || 'manual',
-        attempts,
-        lastPromptAt,
-      });
-
-      // Check if user has exhausted all attempts
-      if (attempts >= NOTIFICATIONS.pushPromptMaxAttempts) {
-        console.log('[tryPromptForPush] Attempts exhausted:', attempts);
-        return { status: 'exhausted' as const };
-      }
-
-      // Check if still in cooldown period
-      if (lastPromptAt > 0 && now - lastPromptAt < NOTIFICATIONS.pushPromptCooldownMs) {
-        const remainingMs = NOTIFICATIONS.pushPromptCooldownMs - (now - lastPromptAt);
-        const remainingDays = Math.ceil(remainingMs / (24 * 60 * 60 * 1000));
-        console.log('[tryPromptForPush] Cooldown active, remaining days:', remainingDays);
-        return { status: 'cooldown' as const, remainingDays };
-      }
-
-      // Check if user already has push enabled
-      if (preferences.pushOptInStatus === 'enabled') {
-        console.log('[tryPromptForPush] Push already enabled');
-        return { status: 'already-enabled' as const };
-      }
-
-      // If OS permission is blocked/denied, surface that instead of claiming enabled
-      if (permissionStatus === 'blocked' || permissionStatus === 'denied') {
-        console.log('[tryPromptForPush] OS permission not granted:', permissionStatus);
-        return { status: 'denied' as const };
-      }
-
-      // Check if user permanently denied push
-      if (preferences.pushOptInStatus === 'denied') {
-        console.log('[tryPromptForPush] Push previously denied');
-        return { status: 'denied' as const };
-      }
-
-      // All checks passed, trigger the prompt
-      console.log('[tryPromptForPush] Triggering push prompt, context:', context);
-      const result = await promptForPushPermissions();
-
-      // Map promptForPushPermissions result to tryPromptForPush status
-      if (result.status === 'registered') {
-        return { status: 'triggered' as const, registered: true };
-      }
-      if (result.status === 'unavailable') {
-        return { status: 'unavailable' as const };
-      }
-      if (result.status === 'denied') {
-        return { status: 'denied' as const };
-      }
-      if (result.status === 'error') {
-        return { status: 'error' as const, message: result.message };
-      }
-      if (result.status === 'cooldown') {
-        // This shouldn't happen since we checked cooldown above, but handle gracefully
-        return { status: 'cooldown' as const };
-      }
-
-      // Fallback for unexpected status
-      return { status: 'error' as const, message: 'Unexpected result status' };
-    },
-    [analytics, permissionStatus, preferences, promptForPushPermissions],
-  );
+    analytics.trackEvent('notifications:push-disabled', { status: 'revoked' });
+  }, [analytics, updatePreferences]);
 
   useEffect(() => {
     if (
@@ -556,17 +350,14 @@ export function useNotificationSettings() {
     ...preferences,
     permissionStatus,
     statusMessage,
-    isSupported: isNative || isWebSupported,
+    isSupported: true,
     isChecking,
     error,
     pushError,
     toggleReminders: handleRemindersToggle,
-    toggleDailySummary: handleDailySummaryToggle,
     updateQuietHours: handleQuietHoursChange,
     refreshPermissionStatus,
-    canPromptForPush: canPromptForPush(),
-    promptForPushPermissions,
-    disablePushNotifications,
     tryPromptForPush,
+    disablePushNotifications,
   };
 }

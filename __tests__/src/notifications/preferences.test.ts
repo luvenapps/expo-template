@@ -88,7 +88,18 @@ describe('preferences', () => {
 
       const result = loadNotificationPreferences();
 
-      expect(result).toEqual(stored);
+      // loadNotificationPreferences migrates old format to new format while preserving old fields
+      expect(result).toMatchObject({
+        remindersEnabled: true,
+        dailySummaryEnabled: true,
+        quietHours: [22, 6],
+        notificationStatus: 'unknown', // migrated from pushOptInStatus
+        osPromptAttempts: 0, // migrated from pushPromptAttempts
+        osLastPromptAt: 0, // migrated from pushLastPromptAt
+        pushManuallyDisabled: false,
+        softDeclineCount: 0,
+        softLastDeclinedAt: 0,
+      });
     });
 
     it('loads stored preferences from MMKV on native', () => {
@@ -106,7 +117,18 @@ describe('preferences', () => {
 
       const result = loadNotificationPreferences();
 
-      expect(result).toEqual(stored);
+      // loadNotificationPreferences migrates old format to new format while preserving old fields
+      expect(result).toMatchObject({
+        remindersEnabled: true,
+        dailySummaryEnabled: false,
+        quietHours: [21, 7],
+        notificationStatus: 'unknown', // migrated from pushOptInStatus
+        osPromptAttempts: 0, // migrated from pushPromptAttempts
+        osLastPromptAt: 0, // migrated from pushLastPromptAt
+        pushManuallyDisabled: false,
+        softDeclineCount: 0,
+        softLastDeclinedAt: 0,
+      });
     });
 
     it('merges partial stored data with defaults', () => {

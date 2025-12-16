@@ -1,22 +1,31 @@
 import { DOMAIN } from '@/config/domain.config';
 import { Platform } from 'react-native';
 
+export type NotificationStatus = 'unknown' | 'soft-declined' | 'granted' | 'denied' | 'unavailable';
+
 export type NotificationPreferences = {
   remindersEnabled: boolean;
   dailySummaryEnabled: boolean;
   quietHours: [number, number];
-  pushOptInStatus: 'unknown' | 'enabled' | 'denied' | 'unavailable';
-  pushPromptAttempts: number;
-  pushLastPromptAt: number; // epoch ms
+  /** User explicitly toggled notifications off in-app (even if OS permission is granted) */
+  pushManuallyDisabled: boolean;
+  notificationStatus: NotificationStatus;
+  osPromptAttempts: number;
+  osLastPromptAt: number; // epoch ms
+  softDeclineCount: number;
+  softLastDeclinedAt: number; // epoch ms
 };
 
 export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   remindersEnabled: false,
   dailySummaryEnabled: false,
   quietHours: [0, 0],
-  pushOptInStatus: 'unknown',
-  pushPromptAttempts: 0,
-  pushLastPromptAt: 0,
+  pushManuallyDisabled: false,
+  notificationStatus: 'unknown',
+  osPromptAttempts: 0,
+  osLastPromptAt: 0,
+  softDeclineCount: 0,
+  softLastDeclinedAt: 0,
 };
 
 const STORAGE_KEY = `${DOMAIN.app.storageKey}-notification-preferences`;
@@ -29,6 +38,19 @@ function getNativeStore() {
     return new MMKV({ id: STORAGE_NAMESPACE });
   } catch {
     return null;
+  }
+}
+
+function mapLegacyStatus(status: string | undefined): NotificationStatus {
+  switch (status) {
+    case 'enabled':
+      return 'granted';
+    case 'denied':
+      return 'denied';
+    case 'unavailable':
+      return 'unavailable';
+    default:
+      return 'unknown';
   }
 }
 
@@ -45,28 +67,43 @@ export function loadNotificationPreferences(): NotificationPreferences {
       return DEFAULT_NOTIFICATION_PREFERENCES;
     }
 
-    const parsed = JSON.parse(raw) as Partial<NotificationPreferences>;
+    const parsed = JSON.parse(raw) as Partial<NotificationPreferences> & {
+      pushOptInStatus?: string;
+      pushPromptAttempts?: number;
+      pushLastPromptAt?: number;
+    };
     if (!parsed.quietHours || parsed.quietHours.length !== 2) {
       parsed.quietHours = DEFAULT_NOTIFICATION_PREFERENCES.quietHours;
     }
 
-    const normalized = {
+    const migrated: NotificationPreferences = {
       ...DEFAULT_NOTIFICATION_PREFERENCES,
       ...parsed,
+      pushManuallyDisabled:
+        typeof parsed.pushManuallyDisabled === 'boolean'
+          ? parsed.pushManuallyDisabled
+          : DEFAULT_NOTIFICATION_PREFERENCES.pushManuallyDisabled,
+      notificationStatus: parsed.notificationStatus ?? mapLegacyStatus(parsed.pushOptInStatus),
+      osPromptAttempts:
+        typeof parsed.osPromptAttempts === 'number'
+          ? parsed.osPromptAttempts
+          : (parsed.pushPromptAttempts ?? DEFAULT_NOTIFICATION_PREFERENCES.osPromptAttempts),
+      osLastPromptAt:
+        typeof parsed.osLastPromptAt === 'number'
+          ? parsed.osLastPromptAt
+          : (parsed.pushLastPromptAt ?? DEFAULT_NOTIFICATION_PREFERENCES.osLastPromptAt),
+      softDeclineCount:
+        typeof parsed.softDeclineCount === 'number'
+          ? parsed.softDeclineCount
+          : DEFAULT_NOTIFICATION_PREFERENCES.softDeclineCount,
+      softLastDeclinedAt:
+        typeof parsed.softLastDeclinedAt === 'number'
+          ? parsed.softLastDeclinedAt
+          : DEFAULT_NOTIFICATION_PREFERENCES.softLastDeclinedAt,
       quietHours: parsed.quietHours as [number, number],
     };
 
-    if (typeof normalized.pushPromptAttempts !== 'number') {
-      normalized.pushPromptAttempts = DEFAULT_NOTIFICATION_PREFERENCES.pushPromptAttempts;
-    }
-    if (typeof normalized.pushLastPromptAt !== 'number') {
-      normalized.pushLastPromptAt = DEFAULT_NOTIFICATION_PREFERENCES.pushLastPromptAt;
-    }
-    if (!normalized.pushOptInStatus) {
-      normalized.pushOptInStatus = DEFAULT_NOTIFICATION_PREFERENCES.pushOptInStatus;
-    }
-
-    return normalized;
+    return migrated;
   } catch {
     return DEFAULT_NOTIFICATION_PREFERENCES;
   }

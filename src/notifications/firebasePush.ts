@@ -21,6 +21,7 @@ export async function registerForPushNotifications(): Promise<PushRegistrationRe
     process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === 'true' ||
     process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === '1';
   if (!turnOnFirebase) {
+    console.warn('[FCM:web] Firebase is gated off (EXPO_PUBLIC_TURN_ON_FIREBASE=false)');
     return { status: 'unavailable' };
   }
 
@@ -373,11 +374,11 @@ async function registerForWebPush(): Promise<PushRegistrationResult> {
   }
 
   if (typeof window === 'undefined') {
-    console.debug('[registerForWebPush] window is undefined, returning unavailable');
+    console.warn('[registerForWebPush] window is undefined, returning unavailable');
     return { status: 'unavailable' };
   }
   if (!('Notification' in window) || !('serviceWorker' in navigator)) {
-    console.debug(
+    console.warn(
       '[registerForWebPush] Notification or serviceWorker not supported, returning unavailable',
     );
     return { status: 'unavailable' };
@@ -401,7 +402,7 @@ async function registerForWebPush(): Promise<PushRegistrationResult> {
   });
 
   if (!hasWebConfig(webConfig, vapidKey)) {
-    console.debug('[registerForWebPush] Config incomplete, returning unavailable');
+    console.warn('[registerForWebPush] Config incomplete, returning unavailable');
     return { status: 'unavailable' };
   }
 
