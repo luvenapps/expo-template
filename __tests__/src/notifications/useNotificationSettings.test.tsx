@@ -312,7 +312,7 @@ describe('useNotificationSettings', () => {
     });
 
     // Should not auto-register when user manually disabled push
-    expect(registerForPushNotifications).not.toHaveBeenCalled();
+    expect(ensureNotificationsEnabled).not.toHaveBeenCalled();
     expect(result.current.notificationStatus).toBe('unknown');
   });
 
@@ -345,7 +345,7 @@ describe('useNotificationSettings', () => {
       await result.current.refreshPermissionStatus();
     });
 
-    expect(registerForPushNotifications).not.toHaveBeenCalled();
+    expect(ensureNotificationsEnabled).not.toHaveBeenCalled();
   });
 
   it('ignores quiet hours update with invalid array length', async () => {

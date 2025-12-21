@@ -102,6 +102,27 @@ describe('preferences', () => {
       });
     });
 
+    it('migrates legacy data and preserves manual disable flag', () => {
+      Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
+      const stored = {
+        remindersEnabled: true,
+        dailySummaryEnabled: true,
+        quietHours: [22, 6],
+        pushOptInStatus: 'denied',
+        pushPromptAttempts: 2,
+        pushLastPromptAt: 123,
+        pushManuallyDisabled: true,
+      };
+      (mockLocalStorage.getItem as jest.Mock).mockReturnValue(JSON.stringify(stored));
+
+      const result = loadNotificationPreferences();
+
+      expect(result.pushManuallyDisabled).toBe(true);
+      expect(result.notificationStatus).toBe('denied');
+      expect(result.osPromptAttempts).toBe(2);
+      expect(result.osLastPromptAt).toBe(123);
+    });
+
     it('loads stored preferences from MMKV on native', () => {
       Object.defineProperty(Platform, 'OS', { value: 'ios', configurable: true });
       const stored = {
