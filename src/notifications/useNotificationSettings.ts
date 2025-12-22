@@ -76,8 +76,8 @@ export function useNotificationSettings() {
   const [preferences, setPreferences] = useState<NotificationPreferences>(() =>
     loadNotificationPreferences(),
   );
-  const [permissionStatus, setPermissionStatus] = useState<NotificationPermissionState>(
-    getInitialWebPermissionStatus,
+  const [permissionStatus, setPermissionStatus] = useState<NotificationPermissionState>(() =>
+    Platform.OS === 'web' ? getInitialWebPermissionStatus() : 'prompt',
   );
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -277,11 +277,23 @@ export function useNotificationSettings() {
 
   const tryPromptForPush = useCallback(
     async (context?: string) => {
+      // Always refresh permissions first so we don't act on stale OS state (e.g., user
+      // re-enabled notifications in Settings).
+      const latestPermission = await refreshPermissionStatus();
+
       analytics.trackEvent('notifications:prompt-triggered', {
         context: context || 'manual',
         attempts: preferences.osPromptAttempts,
         lastPromptAt: preferences.osLastPromptAt,
       });
+
+      // If the OS still reports blocked/denied/unavailable, surface that immediately.
+      if (latestPermission === 'blocked' || latestPermission === 'denied') {
+        return { status: 'denied' as const };
+      }
+      if (latestPermission === 'unavailable') {
+        return { status: 'unavailable' as const };
+      }
 
       const result = await ensureNotificationsEnabled({ context, skipSoftPrompt: true });
 
@@ -289,6 +301,11 @@ export function useNotificationSettings() {
       setPreferences(loadNotificationPreferences());
 
       if (result.status === 'enabled') {
+        // Clear manual-off flag now that the user has re-enabled notifications.
+        updatePreferences((prev) => ({
+          ...prev,
+          pushManuallyDisabled: false,
+        }));
         return { status: 'triggered' as const, registered: true };
       }
       if (result.status === 'cooldown') {
@@ -320,6 +337,8 @@ export function useNotificationSettings() {
       preferences.notificationStatus,
       preferences.osLastPromptAt,
       preferences.osPromptAttempts,
+      refreshPermissionStatus,
+      updatePreferences,
     ],
   );
 
