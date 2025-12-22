@@ -1,3 +1,4 @@
+import { DOMAIN } from '@/config/domain.config';
 import { Platform } from 'react-native';
 
 export type PushRegistrationResult =
@@ -14,7 +15,49 @@ export type PushRevokeResult =
 // Module-level flag to prevent double listener registration on web
 let webForegroundListenerRegistered = false;
 let webForegroundListenerRegistrationCount = 0;
-let webRegisterInFlight: Promise<PushRegistrationResult> | null = null;
+let webRegisterSessionPromise: Promise<PushRegistrationResult> | null = null;
+let lastLoggedNativeToken: string | null = null;
+let lastLoggedWebToken: string | null = null;
+let nativeRegisterInFlight: Promise<PushRegistrationResult> | null = null;
+const WEB_TOKEN_STORAGE_KEY = `${DOMAIN.app.name}-web-fcm-token`;
+const NATIVE_TOKEN_STORAGE_KEY = `${DOMAIN.app.name}-native-fcm-token`;
+
+function getNativeStore() {
+  try {
+    const { MMKV } = require('react-native-mmkv');
+    return new MMKV({ id: `${DOMAIN.app.name}-notifications` });
+  } catch {
+    return null;
+  }
+}
+
+// Load cached web token on module init (web only)
+if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+  try {
+    lastLoggedWebToken = localStorage.getItem(WEB_TOKEN_STORAGE_KEY);
+
+    // If the current page session does not have permission, clear any cached token/state
+    if ('Notification' in window && Notification.permission !== 'granted') {
+      lastLoggedWebToken = null;
+      localStorage.removeItem(WEB_TOKEN_STORAGE_KEY);
+    }
+  } catch {
+    // Ignore storage failures
+  }
+}
+
+// Load cached native token on module init (native only)
+if (Platform.OS !== 'web') {
+  try {
+    const nativeStore = getNativeStore();
+    const cachedToken = nativeStore?.getString(NATIVE_TOKEN_STORAGE_KEY) ?? null;
+    if (cachedToken) {
+      lastLoggedNativeToken = cachedToken;
+    }
+  } catch {
+    // Ignore storage failures
+  }
+}
 
 export async function registerForPushNotifications(): Promise<PushRegistrationResult> {
   const turnOnFirebase =
@@ -29,60 +72,80 @@ export async function registerForPushNotifications(): Promise<PushRegistrationRe
     return registerForWebPush();
   }
 
-  try {
-    const messagingModule = require('@react-native-firebase/messaging');
-    const messaging = messagingModule.default;
-    const AuthorizationStatus = messagingModule.AuthorizationStatus;
-    const instance = messaging();
-
-    // Ensure the device is registered for remote messages before requesting a token
-    if (instance.registerDeviceForRemoteMessages) {
-      await instance.registerDeviceForRemoteMessages();
-    }
-
-    // For Android 13+, we need to request POST_NOTIFICATIONS permission first
-    if (Platform.OS === 'android') {
-      try {
-        const { PermissionsAndroid, Platform: RNPlatform } = require('react-native');
-
-        // Only request POST_NOTIFICATIONS on Android 13+ (API level 33+)
-        const apiLevel = RNPlatform.Version;
-        if (apiLevel >= 33) {
-          const granted = await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
-          );
-
-          if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-            console.log('[FCM] POST_NOTIFICATIONS permission denied');
-            return { status: 'denied' };
-          }
-        } else {
-          console.log(`[FCM] Skipping POST_NOTIFICATIONS permission (API ${apiLevel} < 33)`);
-        }
-      } catch (permError) {
-        console.warn('[FCM] Error requesting POST_NOTIFICATIONS permission:', permError);
-        // Continue anyway - permission might not exist on this Android version
-      }
-    }
-
-    const authStatus = await instance.requestPermission();
-    const enabled =
-      authStatus === AuthorizationStatus.AUTHORIZED ||
-      authStatus === AuthorizationStatus.PROVISIONAL;
-
-    if (!enabled) {
-      return { status: 'denied' };
-    }
-
-    const token = await instance.getToken();
-    if (token) {
-      console.log('[FCM] ✅ Token registered (copy this for your backend):', token);
-      return { status: 'registered', token };
-    }
-    return { status: 'error', message: 'No token' };
-  } catch (error) {
-    return { status: 'error', message: (error as Error).message };
+  // Native fast-path + in-flight dedupe
+  if (lastLoggedNativeToken) {
+    return { status: 'registered', token: lastLoggedNativeToken };
   }
+  if (nativeRegisterInFlight) {
+    return nativeRegisterInFlight;
+  }
+
+  nativeRegisterInFlight = (async () => {
+    try {
+      const messagingModule = require('@react-native-firebase/messaging');
+      const messaging = messagingModule.default;
+      const AuthorizationStatus = messagingModule.AuthorizationStatus;
+      const instance = messaging();
+
+      // Ensure the device is registered for remote messages before requesting a token
+      if (instance.registerDeviceForRemoteMessages) {
+        await instance.registerDeviceForRemoteMessages();
+      }
+
+      // For Android 13+, we need to request POST_NOTIFICATIONS permission first
+      if (Platform.OS === 'android') {
+        try {
+          const { PermissionsAndroid, Platform: RNPlatform } = require('react-native');
+
+          // Only request POST_NOTIFICATIONS on Android 13+ (API level 33+)
+          const apiLevel = RNPlatform.Version;
+          if (apiLevel >= 33) {
+            const granted = await PermissionsAndroid.request(
+              PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+            );
+
+            if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+              console.log('[FCM] POST_NOTIFICATIONS permission denied');
+              return { status: 'denied' };
+            }
+          } else {
+            console.log(`[FCM] Skipping POST_NOTIFICATIONS permission (API ${apiLevel} < 33)`);
+          }
+        } catch (permError) {
+          console.warn('[FCM] Error requesting POST_NOTIFICATIONS permission:', permError);
+          // Continue anyway - permission might not exist on this Android version
+        }
+      }
+
+      const authStatus = await instance.requestPermission();
+      const enabled =
+        authStatus === AuthorizationStatus.AUTHORIZED ||
+        authStatus === AuthorizationStatus.PROVISIONAL;
+
+      if (!enabled) {
+        return { status: 'denied' };
+      }
+
+      const token = await instance.getToken();
+      if (token) {
+        console.log('[FCM] ✅ Token registered (copy this for your backend):', token);
+        lastLoggedNativeToken = token;
+        try {
+          getNativeStore()?.set(NATIVE_TOKEN_STORAGE_KEY, token);
+        } catch {
+          // Ignore storage failures
+        }
+        return { status: 'registered', token };
+      }
+      return { status: 'error', message: 'No token' };
+    } catch (error) {
+      return { status: 'error', message: (error as Error).message };
+    } finally {
+      nativeRegisterInFlight = null;
+    }
+  })();
+
+  return nativeRegisterInFlight;
 }
 
 /**
@@ -292,6 +355,9 @@ export async function revokePushToken(): Promise<PushRevokeResult> {
   // This properly removes push permissions while allowing potential token reuse
   if (Platform.OS === 'web') {
     try {
+      // Reset session promise so next enable will register anew
+      webRegisterSessionPromise = null;
+
       // Use browser Push API to unsubscribe from push subscription
       // This properly removes the push subscription while keeping service worker registered
       if ('serviceWorker' in navigator) {
@@ -313,6 +379,14 @@ export async function revokePushToken(): Promise<PushRevokeResult> {
           }
         } else {
           console.log('[FCM:web] No service worker registration found');
+        }
+
+        // Clear cached token so a fresh one is requested on re-enable
+        lastLoggedWebToken = null;
+        try {
+          localStorage.removeItem(WEB_TOKEN_STORAGE_KEY);
+        } catch {
+          // Ignore storage failures
         }
       }
 
@@ -337,6 +411,12 @@ export async function revokePushToken(): Promise<PushRevokeResult> {
     const messaging = messagingModule.default;
     const instance = messaging();
     await instance.deleteToken();
+    lastLoggedNativeToken = null;
+    try {
+      getNativeStore()?.delete(NATIVE_TOKEN_STORAGE_KEY);
+    } catch {
+      // Ignore storage failures
+    }
     return { status: 'revoked' };
   } catch (error) {
     return { status: 'error', message: (error as Error).message };
@@ -365,13 +445,12 @@ function hasWebConfig(config: WebMessagingConfig, vapidKey?: string) {
 }
 
 async function registerForWebPush(): Promise<PushRegistrationResult> {
-  console.debug('[registerForWebPush] Starting');
-
   // Deduplicate concurrent/rapid calls to avoid double token generation
-  if (webRegisterInFlight) {
-    console.debug('[registerForWebPush] In-flight registration found, reusing promise');
-    return webRegisterInFlight;
+  if (webRegisterSessionPromise) {
+    return webRegisterSessionPromise;
   }
+
+  console.debug('[registerForWebPush] Starting');
 
   if (typeof window === 'undefined') {
     console.warn('[registerForWebPush] window is undefined, returning unavailable');
@@ -406,7 +485,36 @@ async function registerForWebPush(): Promise<PushRegistrationResult> {
     return { status: 'unavailable' };
   }
 
-  webRegisterInFlight = (async () => {
+  // If permission was revoked in the browser, drop any cached token so we fetch a fresh one
+  if (Notification.permission !== 'granted') {
+    lastLoggedWebToken = null;
+    try {
+      localStorage.removeItem(WEB_TOKEN_STORAGE_KEY);
+    } catch {
+      // Ignore storage failures
+    }
+    // Reset session promise when permission is not granted
+    webRegisterSessionPromise = null;
+  }
+
+  // Fast-path: if permission is already granted, a service worker is active, and we have a
+  // cached token, avoid re-registering and reuse the existing token.
+  if (Notification.permission === 'granted' && lastLoggedWebToken) {
+    try {
+      const existingRegistration = await navigator.serviceWorker.getRegistration('/');
+      const existingSubscription = await existingRegistration?.pushManager?.getSubscription?.();
+      if (existingRegistration?.active && existingSubscription) {
+        console.debug(
+          '[registerForWebPush] Reusing cached token and active service worker with subscription',
+        );
+        return { status: 'registered', token: lastLoggedWebToken };
+      }
+    } catch (swCheckError) {
+      console.debug('[registerForWebPush] Failed fast-path check, continuing:', swCheckError);
+    }
+  }
+
+  webRegisterSessionPromise = (async () => {
     console.debug(
       '[registerForWebPush] Checking Notification.permission:',
       Notification.permission,
@@ -416,6 +524,13 @@ async function registerForWebPush(): Promise<PushRegistrationResult> {
 
     console.debug('[registerForWebPush] Permission result:', permission);
     if (permission !== 'granted') {
+      // Clear cached token when the browser denies permission
+      lastLoggedWebToken = null;
+      try {
+        localStorage.removeItem(WEB_TOKEN_STORAGE_KEY);
+      } catch {
+        // Ignore storage failures
+      }
       console.debug('[registerForWebPush] Permission denied, returning denied');
       return { status: 'denied' };
     }
@@ -522,6 +637,12 @@ async function registerForWebPush(): Promise<PushRegistrationResult> {
       });
 
       if (token) {
+        lastLoggedWebToken = token;
+        try {
+          localStorage.setItem(WEB_TOKEN_STORAGE_KEY, token);
+        } catch {
+          // Ignore storage failures
+        }
         console.log('[FCM:web] Token registered:', token);
 
         // Set up foreground message listener after successful registration
@@ -535,12 +656,23 @@ async function registerForWebPush(): Promise<PushRegistrationResult> {
     } catch (error) {
       console.error('[registerForWebPush] Error:', error);
       return { status: 'error', message: (error as Error).message };
-    } finally {
-      webRegisterInFlight = null;
     }
   })();
 
-  return webRegisterInFlight;
+  // Store session-scoped promise so subsequent calls in this load reuse it
+  webRegisterSessionPromise
+    .catch(() => {
+      // Allow retry on failure/denial
+      webRegisterSessionPromise = null;
+    })
+    .then((result) => {
+      if (!result || result.status !== 'registered') {
+        webRegisterSessionPromise = null;
+      }
+      return result;
+    });
+
+  return webRegisterSessionPromise;
 }
 
 /**
@@ -616,7 +748,7 @@ export { registerForWebPush as __registerForWebPush };
 
 // Test utility to clear web registration state
 export function __resetWebPushStateForTests() {
-  webRegisterInFlight = null;
+  webRegisterSessionPromise = null;
   webForegroundListenerRegistered = false;
   webForegroundListenerRegistrationCount = 0;
 }

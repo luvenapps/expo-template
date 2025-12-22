@@ -428,6 +428,37 @@ export default function SettingsScreen() {
     setDevStatus('Push registration unavailable on this platform.');
   };
 
+  const handleLogNotificationStore = () => {
+    if (!isNative) return;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { MMKV } = require('react-native-mmkv');
+      const store = new MMKV({ id: `${DOMAIN.app.name}-notifications` });
+      const keys = store.getAllKeys();
+
+      console.log('[Dev][MMKV notifications] keys:', keys);
+      if (keys.length === 0) {
+        setDevStatus('Notification store is empty (MMKV).');
+        return;
+      }
+
+      keys.forEach((key: string) => {
+        const value =
+          store.getString(key) ??
+          store.getNumber(key) ??
+          store.getBoolean(key) ??
+          store.getBuffer?.(key)?.toString('utf-8') ??
+          null;
+        console.log(`[Dev][MMKV notifications] ${key}:`, value);
+      });
+
+      setDevStatus('Notification MMKV store logged to console.');
+    } catch (error) {
+      console.error('[Dev][MMKV notifications] Failed to log store:', error);
+      setDevStatus('Failed to read notification store (see console).');
+    }
+  };
+
   const handleClearLocalDatabase = async () => {
     if (!isNative) return;
 
@@ -839,6 +870,14 @@ export default function SettingsScreen() {
                       onPress={handleRegisterPush}
                     >
                       {t('dev.registerPush')}
+                    </SecondaryButton>
+                  </XStack>
+                  <XStack>
+                    <SecondaryButton
+                      testID="dev-log-notification-store-button"
+                      onPress={handleLogNotificationStore}
+                    >
+                      Log notification MMKV
                     </SecondaryButton>
                   </XStack>
                   <YStack gap="$2">

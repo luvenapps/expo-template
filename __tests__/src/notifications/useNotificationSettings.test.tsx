@@ -701,9 +701,20 @@ describe('useNotificationSettings', () => {
 
   describe('tryPromptForPush', () => {
     it('triggers prompt when no attempts made yet', async () => {
+      // Mock permission as prompt so early return doesn't trigger
+      getPermissionsAsync.mockResolvedValue({
+        granted: false,
+        status: 'undetermined' as any,
+        canAskAgain: true,
+      });
       ensureNotificationsEnabled.mockResolvedValue({ status: 'enabled' });
 
       const { result } = renderHook(() => useNotificationSettings());
+
+      // Wait for initial permission check
+      await act(async () => {
+        await Promise.resolve();
+      });
 
       let promptResult;
       await act(async () => {
@@ -732,9 +743,20 @@ describe('useNotificationSettings', () => {
         softLastDeclinedAt: 0,
       });
 
+      // Mock permission as prompt so early return doesn't trigger
+      getPermissionsAsync.mockResolvedValue({
+        granted: false,
+        status: 'undetermined' as any,
+        canAskAgain: true,
+      });
       ensureNotificationsEnabled.mockResolvedValue({ status: 'exhausted' });
 
       const { result } = renderHook(() => useNotificationSettings());
+
+      // Wait for initial permission check
+      await act(async () => {
+        await Promise.resolve();
+      });
 
       let promptResult;
       await act(async () => {
@@ -759,9 +781,20 @@ describe('useNotificationSettings', () => {
         softLastDeclinedAt: 0,
       });
 
+      // Mock permission as prompt so early return doesn't trigger
+      getPermissionsAsync.mockResolvedValue({
+        granted: false,
+        status: 'undetermined' as any,
+        canAskAgain: true,
+      });
       ensureNotificationsEnabled.mockResolvedValue({ status: 'cooldown', remainingDays: 7 });
 
       const { result } = renderHook(() => useNotificationSettings());
+
+      // Wait for initial permission check
+      await act(async () => {
+        await Promise.resolve();
+      });
 
       let promptResult;
       await act(async () => {
@@ -786,10 +819,21 @@ describe('useNotificationSettings', () => {
         softLastDeclinedAt: 0,
       });
 
+      // Mock permission as granted so early return doesn't trigger
+      getPermissionsAsync.mockResolvedValue({
+        granted: true,
+        status: expoNotifications.PermissionStatus.GRANTED,
+        canAskAgain: false,
+      });
       // When status is 'already-enabled', ensureNotificationsEnabled returns this
       ensureNotificationsEnabled.mockResolvedValue({ status: 'already-enabled' });
 
       const { result } = renderHook(() => useNotificationSettings());
+
+      // Wait for initial permission check
+      await act(async () => {
+        await Promise.resolve();
+      });
 
       let promptResult;
       await act(async () => {
@@ -827,9 +871,20 @@ describe('useNotificationSettings', () => {
     });
 
     it('returns unavailable when push notifications not configured', async () => {
+      // Mock permission as prompt so early return doesn't trigger
+      getPermissionsAsync.mockResolvedValue({
+        granted: false,
+        status: 'undetermined' as any,
+        canAskAgain: true,
+      });
       ensureNotificationsEnabled.mockResolvedValue({ status: 'unavailable' });
 
       const { result } = renderHook(() => useNotificationSettings());
+
+      // Wait for initial permission check
+      await act(async () => {
+        await Promise.resolve();
+      });
 
       let promptResult;
       await act(async () => {
@@ -840,9 +895,20 @@ describe('useNotificationSettings', () => {
     });
 
     it('returns error when registration fails', async () => {
+      // Mock permission as prompt so early return doesn't trigger
+      getPermissionsAsync.mockResolvedValue({
+        granted: false,
+        status: 'undetermined' as any,
+        canAskAgain: true,
+      });
       ensureNotificationsEnabled.mockResolvedValue({ status: 'error', message: 'Network error' });
 
       const { result } = renderHook(() => useNotificationSettings());
+
+      // Wait for initial permission check
+      await act(async () => {
+        await Promise.resolve();
+      });
 
       let promptResult;
       await act(async () => {
@@ -853,7 +919,18 @@ describe('useNotificationSettings', () => {
     });
 
     it('tracks analytics with context on every call', async () => {
+      // Mock permission as prompt so early return doesn't trigger
+      getPermissionsAsync.mockResolvedValue({
+        granted: false,
+        status: 'undetermined' as any,
+        canAskAgain: true,
+      });
       const { result } = renderHook(() => useNotificationSettings());
+
+      // Wait for initial permission check
+      await act(async () => {
+        await Promise.resolve();
+      });
 
       await act(async () => {
         await result.current.tryPromptForPush('entry-created');
@@ -873,21 +950,34 @@ describe('useNotificationSettings', () => {
         quietHours: [20, 23],
         notificationStatus: 'unknown',
         pushManuallyDisabled: false,
-        osPromptAttempts: NOTIFICATIONS.pushPromptMaxAttempts,
+        osPromptAttempts: 0,
         osLastPromptAt: 0,
         softDeclineCount: 0,
         softLastDeclinedAt: 0,
       });
 
+      // Mock permission as prompt so tryPromptForPush can proceed
+      getPermissionsAsync.mockResolvedValue({
+        granted: false,
+        status: 'undetermined' as any,
+        canAskAgain: true,
+      });
+
       const { result } = renderHook(() => useNotificationSettings());
+
+      // Wait for initial permission check
+      await act(async () => {
+        await Promise.resolve();
+      });
 
       await act(async () => {
         await result.current.tryPromptForPush();
       });
 
+      // Verify that context defaults to 'manual' when not provided
       expect(trackEvent).toHaveBeenCalledWith('notifications:prompt-triggered', {
         context: 'manual',
-        attempts: NOTIFICATIONS.pushPromptMaxAttempts,
+        attempts: 0,
         lastPromptAt: 0,
       });
     });
