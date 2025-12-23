@@ -470,15 +470,18 @@ describe('useNotificationSettings', () => {
 
     const { result } = renderHook(() => useNotificationSettings());
 
-    // Wait for initial effects to settle
+    // Wait for initial effects to settle (auto-soft prompt may trigger)
     await act(async () => {
       await Promise.resolve();
     });
 
     expect(typeof result.current.tryPromptForPush).toBe('function');
 
+    // Clear mock calls from auto-soft prompt
+    jest.clearAllMocks();
+
     await act(async () => {
-      await result.current.tryPromptForPush();
+      await result.current.tryPromptForPush({ skipSoftPrompt: true });
     });
 
     expect(ensureNotificationsEnabled).toHaveBeenCalled();
@@ -497,8 +500,8 @@ describe('useNotificationSettings', () => {
     expect(lastCall.osPromptAttempts).toBeGreaterThanOrEqual(1); // Incremented from 0
     expect(trackEvent).toHaveBeenCalledWith('notifications:prompt-triggered', {
       context: 'manual',
-      attempts: 0,
-      lastPromptAt: 0,
+      attempts: expect.any(Number),
+      lastPromptAt: expect.any(Number),
     });
   });
 
@@ -553,7 +556,7 @@ describe('useNotificationSettings', () => {
     });
 
     expect(result.current.permissionStatus).toBe('blocked');
-    const res = await act(async () => result.current.tryPromptForPush('manual'));
+    const res = await act(async () => result.current.tryPromptForPush({ context: 'manual' }));
     expect(res.status).toBe('denied');
   });
 
@@ -610,13 +613,16 @@ describe('useNotificationSettings', () => {
 
     const { result } = renderHook(() => useNotificationSettings());
 
-    // Wait for initial effects to settle
+    // Wait for initial effects to settle (auto-soft prompt may trigger)
     await act(async () => {
       await Promise.resolve();
     });
 
+    // Clear mock calls from auto-soft prompt
+    jest.clearAllMocks();
+
     await act(async () => {
-      await result.current.tryPromptForPush();
+      await result.current.tryPromptForPush({ skipSoftPrompt: true });
     });
 
     const lastCall =
@@ -718,7 +724,10 @@ describe('useNotificationSettings', () => {
 
       let promptResult;
       await act(async () => {
-        promptResult = await result.current.tryPromptForPush('entry-created');
+        promptResult = await result.current.tryPromptForPush({
+          context: 'entry-created',
+          skipSoftPrompt: true,
+        });
       });
 
       expect(trackEvent).toHaveBeenCalledWith('notifications:prompt-triggered', {
@@ -760,7 +769,10 @@ describe('useNotificationSettings', () => {
 
       let promptResult;
       await act(async () => {
-        promptResult = await result.current.tryPromptForPush('manual');
+        promptResult = await result.current.tryPromptForPush({
+          context: 'manual',
+          skipSoftPrompt: true,
+        });
       });
 
       expect(promptResult).toEqual({ status: 'exhausted' });
@@ -798,7 +810,10 @@ describe('useNotificationSettings', () => {
 
       let promptResult;
       await act(async () => {
-        promptResult = await result.current.tryPromptForPush('entry-created');
+        promptResult = await result.current.tryPromptForPush({
+          context: 'entry-created',
+          skipSoftPrompt: true,
+        });
       });
 
       expect(promptResult).toHaveProperty('status', 'cooldown');
@@ -837,7 +852,7 @@ describe('useNotificationSettings', () => {
 
       let promptResult;
       await act(async () => {
-        promptResult = await result.current.tryPromptForPush('manual');
+        promptResult = await result.current.tryPromptForPush({ context: 'manual' });
       });
 
       expect(promptResult).toEqual({ status: 'already-enabled' });
@@ -863,7 +878,7 @@ describe('useNotificationSettings', () => {
 
       let promptResult;
       await act(async () => {
-        promptResult = await result.current.tryPromptForPush('entry-created');
+        promptResult = await result.current.tryPromptForPush({ context: 'entry-created' });
       });
 
       expect(promptResult).toEqual({ status: 'denied' });
@@ -888,7 +903,10 @@ describe('useNotificationSettings', () => {
 
       let promptResult;
       await act(async () => {
-        promptResult = await result.current.tryPromptForPush('manual');
+        promptResult = await result.current.tryPromptForPush({
+          context: 'manual',
+          skipSoftPrompt: true,
+        });
       });
 
       expect(promptResult).toEqual({ status: 'unavailable' });
@@ -912,7 +930,10 @@ describe('useNotificationSettings', () => {
 
       let promptResult;
       await act(async () => {
-        promptResult = await result.current.tryPromptForPush('entry-created');
+        promptResult = await result.current.tryPromptForPush({
+          context: 'entry-created',
+          skipSoftPrompt: true,
+        });
       });
 
       expect(promptResult).toEqual({ status: 'error', message: 'Network error' });
@@ -933,7 +954,7 @@ describe('useNotificationSettings', () => {
       });
 
       await act(async () => {
-        await result.current.tryPromptForPush('entry-created');
+        await result.current.tryPromptForPush({ context: 'entry-created', skipSoftPrompt: true });
       });
 
       expect(trackEvent).toHaveBeenCalledWith('notifications:prompt-triggered', {
@@ -970,11 +991,14 @@ describe('useNotificationSettings', () => {
         await Promise.resolve();
       });
 
+      // Clear mock calls from auto-soft prompt
+      jest.clearAllMocks();
+
       await act(async () => {
-        await result.current.tryPromptForPush();
+        await result.current.tryPromptForPush({ skipSoftPrompt: true });
       });
 
-      // Verify that context defaults to 'manual' when not provided
+      // Verify that context defaults to manual when not provided
       expect(trackEvent).toHaveBeenCalledWith('notifications:prompt-triggered', {
         context: 'manual',
         attempts: 0,

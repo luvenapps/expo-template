@@ -218,5 +218,11 @@
     "archiveIncludeToday": "Include today",
     "archiveIncludeTodayHelper": "Archive entries including today.",
     "upcomingFeatures": "Additional settings will arrive alongside theme controls and data export."
+  },
+  "notifications": {
+    "softPromptTitle": "Stay on track",
+    "softPromptMessage": "Enable notifications to get reminders and updates for your habits.",
+    "softPromptNotNow": "Not Now",
+    "softPromptAllow": "Allow"
   }
 }

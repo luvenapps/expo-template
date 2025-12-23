@@ -218,5 +218,11 @@
     "archiveIncludeToday": "Incluir hoy",
     "archiveIncludeTodayHelper": "Archivar entradas incluyendo hoy.",
     "upcomingFeatures": "Pronto llegarán más ajustes junto con controles de tema y exportación de datos."
+  },
+  "notifications": {
+    "softPromptTitle": "Mantente al día",
+    "softPromptMessage": "Activa las notificaciones para recibir recordatorios y actualizaciones de tus hábitos.",
+    "softPromptNotNow": "Ahora No",
+    "softPromptAllow": "Permitir"
   }
 }

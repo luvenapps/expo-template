@@ -13,7 +13,7 @@ import {
 } from '@/notifications/notificationSystem';
 import { useAnalytics } from '@/observability/AnalyticsProvider';
 import * as Notifications from 'expo-notifications';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 import { NOTIFICATIONS } from '@/config/constants';
 import { useTranslation } from 'react-i18next';
@@ -83,6 +83,9 @@ export function useNotificationSettings() {
   const [error, setError] = useState<string | null>(null);
   const [pushError, setPushError] = useState<string | null>(null);
   const [isChecking, setIsChecking] = useState(false);
+  const [softPromptOpen, setSoftPromptOpen] = useState(false);
+  const [softPromptContext, setSoftPromptContext] = useState<string | undefined>(undefined);
+  const lastAutoSoftPromptRef = useRef<number | null>(null);
 
   const updatePreferences = useCallback(
     (
@@ -166,16 +169,26 @@ export function useNotificationSettings() {
     }
 
     if (permissionStatus === 'prompt') {
-      // Permission reset to default: return to unknown, reset counters, and disable reminder-side toggles
-      updatePreferences((prev) => ({
-        ...prev,
-        notificationStatus: 'unknown',
-        remindersEnabled: false,
-        osPromptAttempts: 0,
-        osLastPromptAt: 0,
-        softDeclineCount: 0,
-        softLastDeclinedAt: 0,
-      }));
+      // Permission reset to default: keep soft-decline history, only reset hard-denial state.
+      updatePreferences((prev) => {
+        if (prev.notificationStatus === 'soft-declined') return prev;
+        if (prev.notificationStatus === 'unknown') return prev;
+        if (prev.notificationStatus === 'denied' || prev.notificationStatus === 'unavailable') {
+          return {
+            ...prev,
+            notificationStatus: 'unknown',
+            osPromptAttempts: 0,
+            osLastPromptAt: 0,
+          };
+        }
+        if (prev.notificationStatus === 'granted') {
+          return {
+            ...prev,
+            notificationStatus: 'unknown',
+          };
+        }
+        return prev;
+      });
     }
   }, [analytics, permissionStatus, preferences.pushManuallyDisabled, updatePreferences]);
 
@@ -275,8 +288,41 @@ export function useNotificationSettings() {
     [analytics, updatePreferences],
   );
 
+  const handleSoftPromptAllow = useCallback(async () => {
+    const result = await ensureNotificationsEnabled({
+      context: softPromptContext || 'auto',
+      skipSoftPrompt: true,
+      forceRegister: true,
+    });
+
+    setPreferences(loadNotificationPreferences());
+    setSoftPromptOpen(false);
+    setSoftPromptContext(undefined);
+
+    if (result.status === 'enabled') {
+      updatePreferences((prev) => ({
+        ...prev,
+        pushManuallyDisabled: false,
+      }));
+    }
+  }, [setPreferences, softPromptContext, updatePreferences]);
+
+  const handleSoftPromptDecline = useCallback(() => {
+    const now = Date.now();
+    updatePreferences((prev) => ({
+      ...prev,
+      notificationStatus: 'soft-declined',
+      softDeclineCount: prev.softDeclineCount + 1,
+      softLastDeclinedAt: now,
+    }));
+    setSoftPromptOpen(false);
+    setSoftPromptContext(undefined);
+  }, [updatePreferences]);
+
   const tryPromptForPush = useCallback(
-    async (context?: string) => {
+    async (options?: { context?: string; skipSoftPrompt?: boolean }) => {
+      const context = options?.context;
+      const skipSoftPrompt = options?.skipSoftPrompt ?? false;
       // Always refresh permissions first so we don't act on stale OS state (e.g., user
       // re-enabled notifications in Settings).
       const latestPermission = await refreshPermissionStatus();
@@ -295,7 +341,30 @@ export function useNotificationSettings() {
         return { status: 'unavailable' as const };
       }
 
-      const result = await ensureNotificationsEnabled({ context, skipSoftPrompt: true });
+      // Soft prompt: if permission is still prompt/default, show an educational dialog
+      const now = Date.now();
+      const softCooldownActive =
+        preferences.softLastDeclinedAt &&
+        now - preferences.softLastDeclinedAt < NOTIFICATIONS.softDeclineCooldownMs;
+
+      if (latestPermission === 'prompt' && !skipSoftPrompt && !softCooldownActive) {
+        setSoftPromptContext(context);
+        setSoftPromptOpen(true);
+        return { status: 'soft-prompt' as const };
+      }
+
+      // Respect soft-decline cooldown
+      if (softCooldownActive) {
+        const remainingMs =
+          NOTIFICATIONS.softDeclineCooldownMs - (now - (preferences.softLastDeclinedAt || 0));
+        const remainingDays = Math.ceil(remainingMs / (24 * 60 * 60 * 1000));
+        return { status: 'cooldown' as const, remainingDays };
+      }
+
+      const result = await ensureNotificationsEnabled({
+        context,
+        skipSoftPrompt: true,
+      });
 
       // Reload persisted preferences after the unified API updates them
       setPreferences(loadNotificationPreferences());
@@ -337,10 +406,27 @@ export function useNotificationSettings() {
       preferences.notificationStatus,
       preferences.osLastPromptAt,
       preferences.osPromptAttempts,
+      preferences.softLastDeclinedAt,
       refreshPermissionStatus,
       updatePreferences,
     ],
   );
+
+  // Auto-show the soft prompt on first load (or after cooldown) when OS/browser is still in
+  // prompt/default state. Relies on tryPromptForPush to enforce cooldown/attempts.
+  useEffect(() => {
+    if (permissionStatus !== 'prompt') return;
+    if (preferences.pushManuallyDisabled) return;
+
+    const now = Date.now();
+    const last = lastAutoSoftPromptRef.current;
+    if (last && now - last < NOTIFICATIONS.softDeclineCooldownMs) return;
+
+    lastAutoSoftPromptRef.current = now;
+    tryPromptForPush({ context: 'auto-soft', skipSoftPrompt: false }).catch((error) => {
+      analytics.trackError(error as Error, { source: 'notifications:auto-soft' });
+    });
+  }, [analytics, permissionStatus, preferences.pushManuallyDisabled, tryPromptForPush]);
 
   const disablePushNotifications = useCallback(async () => {
     setPushError(null);
@@ -378,5 +464,16 @@ export function useNotificationSettings() {
     refreshPermissionStatus,
     tryPromptForPush,
     disablePushNotifications,
+    // Soft prompt modal props
+    softPrompt: {
+      open: softPromptOpen,
+      title: t('notifications.softPromptTitle'),
+      message: t('notifications.softPromptMessage'),
+      allowLabel: t('notifications.softPromptAllow'),
+      notNowLabel: t('notifications.softPromptNotNow'),
+      onAllow: handleSoftPromptAllow,
+      onNotNow: handleSoftPromptDecline,
+      setOpen: setSoftPromptOpen,
+    },
   };
 }

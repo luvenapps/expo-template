@@ -12,6 +12,7 @@ import { useNotificationSettings } from '@/notifications/useNotificationSettings
 import { getQueryClient, getQueryClientPersistOptions } from '@/state';
 import { pullUpdates, pushOutbox, useSync } from '@/sync';
 import { useThemeContext } from '@/ui/theme/ThemeProvider';
+import { SoftPromptModal } from '@/ui/components/SoftPromptModal';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { StatusBar } from 'expo-status-bar';
@@ -38,7 +39,7 @@ export function AppProviders({ children }: PropsWithChildren) {
   const syncEnabled = Platform.OS !== 'web' && isAuthenticated;
   const { resolvedTheme, palette } = useThemeContext();
   const [isAppReady, setIsAppReady] = useState(false);
-  const { tryPromptForPush } = useNotificationSettings();
+  const { tryPromptForPush, softPrompt } = useNotificationSettings();
   const turnOnFirebase = useMemo(
     () =>
       process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === 'true' ||
@@ -110,7 +111,7 @@ export function AppProviders({ children }: PropsWithChildren) {
   useEffect(() => {
     const unsubscribe = onNotificationEvent('entry-created', (context) => {
       console.log('[AppProviders] Entry created, triggering push prompt with context:', context);
-      tryPromptForPush(context).catch((error) => {
+      tryPromptForPush({ context }).catch((error) => {
         console.error('[AppProviders] Failed to trigger push prompt:', error);
       });
     });
@@ -191,6 +192,16 @@ export function AppProviders({ children }: PropsWithChildren) {
       <AnalyticsProvider>
         <GestureHandlerRootView style={{ flex: 1, backgroundColor: palette.background }}>
           <ForegroundReminderToastHost />
+          <SoftPromptModal
+            open={softPrompt.open}
+            title={softPrompt.title}
+            message={softPrompt.message}
+            allowLabel={softPrompt.allowLabel}
+            notNowLabel={softPrompt.notNowLabel}
+            onAllow={softPrompt.onAllow}
+            onNotNow={softPrompt.onNotNow}
+            onOpenChange={softPrompt.setOpen}
+          />
           <SafeAreaProvider>
             {isWeb && persistOptions ? (
               <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>

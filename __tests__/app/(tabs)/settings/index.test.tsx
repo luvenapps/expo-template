@@ -192,6 +192,15 @@ jest.mock('@tamagui/select', () => {
     (displayName: string) =>
     ({ children, ...props }: any) =>
       mockReact.createElement('View', { testID: displayName, ...props }, children);
+  const dialogSimple =
+    (displayName: string) =>
+    ({ children, ...props }: any) =>
+      mockReact.createElement('View', { testID: displayName, ...props }, children);
+
+  const DialogComponent = ({ children, ...props }: any) =>
+    mockReact.createElement('View', { testID: 'Dialog', ...props }, children);
+  DialogComponent.Overlay = dialogSimple('DialogOverlay');
+  DialogComponent.Content = dialogSimple('DialogContent');
 
   SelectComponent.Trigger = simple('SelectTrigger');
   SelectComponent.Value = simple('SelectValue');
@@ -206,6 +215,7 @@ jest.mock('@tamagui/select', () => {
   return {
     __esModule: true,
     Select: SelectComponent,
+    Dialog: DialogComponent,
   };
 });
 jest.mock('react-i18next', () => {
@@ -579,6 +589,16 @@ const buildNotificationSettings = (
   toggleReminders: mockToggleReminders,
   updateQuietHours: mockUpdateQuietHours,
   refreshPermissionStatus: jest.fn(() => Promise.resolve('prompt' as const)),
+  softPrompt: {
+    open: false,
+    title: 'Enable notifications?',
+    message: 'Get reminders for your habits',
+    allowLabel: 'Allow',
+    notNowLabel: 'Not now',
+    onAllow: jest.fn(() => Promise.resolve()),
+    onNotNow: jest.fn(),
+    setOpen: jest.fn(),
+  },
   ...overrides,
 });
 

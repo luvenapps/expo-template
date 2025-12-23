@@ -32,6 +32,24 @@ jest.mock('@/sync', () => ({
   pullUpdates: jest.fn(),
 }));
 
+jest.mock('@/notifications/useNotificationSettings', () => ({
+  useNotificationSettings: jest.fn().mockReturnValue({
+    permissionStatus: 'prompt',
+    remindersEnabled: false,
+    tryPromptForPush: jest.fn(),
+    softPrompt: {
+      open: false,
+      title: 'Enable notifications?',
+      message: 'Get reminders for your habits',
+      allowLabel: 'Allow',
+      notNowLabel: 'Not now',
+      onAllow: jest.fn(),
+      onNotNow: jest.fn(),
+      setOpen: jest.fn(),
+    },
+  }),
+}));
+
 // Mock ThemeProvider
 jest.mock('@/ui/theme/ThemeProvider', () => {
   const { themePalettes } = jest.requireActual('@/ui/theme/palette');
@@ -51,14 +69,45 @@ jest.mock('@/ui/theme/ThemeProvider', () => {
 });
 
 // Mock Tamagui
-jest.mock('tamagui', () => ({
-  TamaguiProvider: ({ children }: any) => children,
-  Theme: ({ children }: any) => children,
-  YStack: ({ children }: any) => <>{children}</>,
-  createTamagui: jest.fn(() => ({})),
-  createTokens: jest.fn((tokens) => tokens),
-  createFont: jest.fn((font) => font),
-}));
+jest.mock('tamagui', () => {
+  const React = jest.requireActual('react');
+  const Dialog: any = ({ children }: any) => <>{children}</>;
+  Dialog.displayName = 'Dialog';
+  Dialog.Portal = ({ children }: any) => <>{children}</>;
+  Dialog.Portal.displayName = 'Dialog.Portal';
+  Dialog.Overlay = () => null;
+  Dialog.Overlay.displayName = 'Dialog.Overlay';
+  Dialog.Content = ({ children }: any) => <>{children}</>;
+  Dialog.Content.displayName = 'Dialog.Content';
+  Dialog.Title = ({ children, asChild }: any) => (asChild ? children : <>{children}</>);
+  Dialog.Title.displayName = 'Dialog.Title';
+  Dialog.Description = ({ children, asChild }: any) => (asChild ? children : <>{children}</>);
+  Dialog.Description.displayName = 'Dialog.Description';
+  Dialog.Close = ({ children }: any) => <>{children}</>;
+  Dialog.Close.displayName = 'Dialog.Close';
+
+  return {
+    TamaguiProvider: ({ children }: any) => children,
+    Theme: ({ children }: any) => children,
+    YStack: ({ children, ...props }: any) => React.createElement('YStack', props, children),
+    XStack: ({ children, ...props }: any) => React.createElement('XStack', props, children),
+    Paragraph: ({ children, ...props }: any) => React.createElement('Paragraph', props, children),
+    Dialog,
+    Button: ({ children, ...props }: any) => React.createElement('Button', props, children),
+    createTamagui: jest.fn(() => ({})),
+    createTokens: jest.fn((tokens) => tokens),
+    createFont: jest.fn((font) => font),
+  };
+});
+
+// Mock PrimaryButton
+jest.mock('@/ui/components/PrimaryButton', () => {
+  const React = jest.requireActual('react');
+  return {
+    PrimaryButton: ({ children, ...props }: any) =>
+      React.createElement('PrimaryButton', props, children),
+  };
+});
 
 // Mock Tamagui fonts
 jest.mock('@tamagui/font-inter', () => ({
@@ -86,10 +135,6 @@ jest.mock('expo-router', () => {
   return { Stack: MockStack };
 });
 
-import { render } from '@testing-library/react-native';
-import React from 'react';
-import RootLayout from '../../app/_layout';
-
 jest.mock('@/db/sqlite/cleanup', () => ({
   cleanupSoftDeletedRecords: jest.fn().mockResolvedValue(0),
 }));
@@ -101,6 +146,10 @@ jest.mock('@/db/sqlite/archive', () => ({
 jest.mock('@/db/sqlite/maintenance', () => ({
   optimizeDatabase: jest.fn().mockResolvedValue(undefined),
 }));
+
+import { render } from '@testing-library/react-native';
+import React from 'react';
+import RootLayout from '../../app/_layout';
 
 jest.mock('@/observability/AnalyticsProvider', () => ({
   AnalyticsProvider: ({ children }: any) => children,
@@ -119,12 +168,6 @@ jest.mock('@/notifications', () => ({
   allowInAppMessages: jest.fn().mockResolvedValue(undefined),
   setMessageTriggers: jest.fn().mockResolvedValue(undefined),
   initializeFCMListeners: jest.fn().mockReturnValue(undefined),
-}));
-
-jest.mock('@/notifications/useNotificationSettings', () => ({
-  useNotificationSettings: jest.fn(() => ({
-    tryPromptForPush: jest.fn(),
-  })),
 }));
 
 jest.mock('@/notifications/ForegroundReminderToastHost', () => ({

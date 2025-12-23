@@ -238,7 +238,7 @@ export default function SettingsScreen() {
   };
 
   const handlePromptPush = async () => {
-    const result = await tryPromptForPush('manual');
+    const result = await tryPromptForPush({ context: 'manual', skipSoftPrompt: true });
 
     if (result.status === 'triggered' || result.status === 'already-enabled') {
       toast.show({
@@ -408,7 +408,7 @@ export default function SettingsScreen() {
   };
 
   const handleRegisterPush = async () => {
-    const result = await tryPromptForPush('manual');
+    const result = await tryPromptForPush({ context: 'manual', skipSoftPrompt: true });
     if (result.status === 'triggered' || result.status === 'already-enabled') {
       setDevStatus('Push token requested (check console for logs).');
       return;
