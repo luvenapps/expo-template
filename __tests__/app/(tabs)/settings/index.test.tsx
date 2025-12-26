@@ -24,8 +24,6 @@ jest.mock('expo-router', () => {
 // Mock setTheme
 const mockSetTheme = jest.fn();
 
-const mockToggleReminders = jest.fn();
-const mockToggleDailySummary = jest.fn();
 const mockUpdateQuietHours = jest.fn();
 const mockTrackError = jest.fn();
 
@@ -73,11 +71,8 @@ jest.mock('@/sync/cursors', () => ({
 
 jest.mock('@/notifications/useNotificationSettings', () => ({
   useNotificationSettings: jest.fn(() => ({
-    remindersEnabled: false,
-    dailySummaryEnabled: false,
     quietHours: [20, 23],
     permissionStatus: 'prompt',
-    statusMessage: null,
     error: null,
     pushError: null,
     notificationStatus: 'unknown',
@@ -90,7 +85,6 @@ jest.mock('@/notifications/useNotificationSettings', () => ({
     disablePushNotifications: jest.fn(),
     isSupported: true,
     isChecking: false,
-    toggleReminders: mockToggleReminders,
     updateQuietHours: mockUpdateQuietHours,
     refreshPermissionStatus: jest.fn(),
   })),
@@ -251,10 +245,6 @@ jest.mock('react-i18next', () => {
         'Quick look at upcoming streaks (placeholder until main UI lands).',
       'settings.calendarPreviewTitle': 'Calendar preview',
       'settings.calendarPreviewDescription': 'Consistency heatmap placeholder for upcoming flows.',
-      'settings.remindersTitle': 'Reminders',
-      'settings.dailySummaryTitle': 'Daily summary',
-      'settings.remindersDescription': 'Send push notifications when it’s time to log progress.',
-      'settings.dailySummaryDescription': 'Receive a brief recap of streaks.',
       'settings.pushTitle': 'Push notifications',
       'settings.pushDescription': 'Enable alerts for reminders, summaries, and updates.',
       'settings.pushStatusEnabled': 'Push notifications are enabled.',
@@ -333,11 +323,6 @@ jest.mock('react-i18next', () => {
         'Vista rápida de rachas próximas (interfaz provisional).',
       'settings.calendarPreviewTitle': 'Vista previa del calendario',
       'settings.calendarPreviewDescription': 'Mapa de calor provisional para futuras vistas.',
-      'settings.remindersTitle': 'Recordatorios',
-      'settings.dailySummaryTitle': 'Resumen diario',
-      'settings.remindersDescription':
-        'Envía notificaciones push cuando sea hora de registrar progreso.',
-      'settings.dailySummaryDescription': 'Recibe un breve resumen de tus rachas.',
       'settings.pushTitle': 'Notificaciones push',
       'settings.pushDescription': 'Activa alertas para recordatorios, resúmenes y novedades.',
       'settings.pushStatusEnabled': 'Las notificaciones push están activadas.',
@@ -567,11 +552,8 @@ type NotificationSettingsMock = ReturnType<typeof useNotificationSettings>;
 const buildNotificationSettings = (
   overrides: Partial<NotificationSettingsMock> = {},
 ): NotificationSettingsMock => ({
-  remindersEnabled: false,
-  dailySummaryEnabled: false,
   quietHours: [20, 23] as [number, number],
   permissionStatus: 'prompt',
-  statusMessage: null,
   error: null,
   pushError: null,
   isSupported: true,
@@ -586,7 +568,6 @@ const buildNotificationSettings = (
     Promise.resolve({ status: 'triggered' as const, registered: true }),
   ),
   disablePushNotifications: jest.fn(() => Promise.resolve()),
-  toggleReminders: mockToggleReminders,
   updateQuietHours: mockUpdateQuietHours,
   refreshPermissionStatus: jest.fn(() => Promise.resolve('prompt' as const)),
   softPrompt: {
@@ -606,8 +587,6 @@ describe('SettingsScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockPush.mockClear();
-    mockToggleReminders.mockClear();
-    mockToggleDailySummary.mockClear();
     mockUpdateQuietHours.mockClear();
     mockTrackError.mockClear();
     mockDatabaseResetListeners = [];
@@ -823,9 +802,7 @@ describe('SettingsScreen', () => {
     it('surfaces status messages from notification hook', () => {
       // These testIDs no longer exist - the status is shown inline without specific testIDs
       // We can test that the screen renders without errors instead
-      mockedUseNotificationSettings.mockReturnValue(
-        buildNotificationSettings({ remindersEnabled: true }),
-      );
+      mockedUseNotificationSettings.mockReturnValue(buildNotificationSettings());
 
       const { getByTestId } = render(<SettingsScreen />);
       expect(getByTestId('settings-push-toggle')).toBeDefined();

@@ -5,8 +5,6 @@ import { NOTIFICATIONS } from '@/config/constants';
 // Mock dependencies BEFORE importing the module
 jest.mock('@/notifications/preferences', () => ({
   DEFAULT_NOTIFICATION_PREFERENCES: {
-    remindersEnabled: false,
-    dailySummaryEnabled: false,
     quietHours: [0, 0] as [number, number],
     pushManuallyDisabled: false,
     notificationStatus: 'unknown',
@@ -55,8 +53,6 @@ describe('notificationSystem', () => {
 
     // Default mock returns
     loadNotificationPreferences.mockReturnValue({
-      remindersEnabled: false,
-      dailySummaryEnabled: false,
       quietHours: [0, 0],
       pushManuallyDisabled: false,
       notificationStatus: 'unknown',
@@ -75,8 +71,6 @@ describe('notificationSystem', () => {
     describe('early returns for terminal states', () => {
       it('returns enabled when already granted', async () => {
         loadNotificationPreferences.mockReturnValue({
-          remindersEnabled: false,
-          dailySummaryEnabled: false,
           quietHours: [0, 0],
           pushManuallyDisabled: false,
           notificationStatus: 'granted',
@@ -94,8 +88,6 @@ describe('notificationSystem', () => {
 
       it('returns denied when already denied', async () => {
         loadNotificationPreferences.mockReturnValue({
-          remindersEnabled: false,
-          dailySummaryEnabled: false,
           quietHours: [0, 0],
           pushManuallyDisabled: false,
           notificationStatus: 'denied',
@@ -113,8 +105,6 @@ describe('notificationSystem', () => {
 
       it('returns unavailable when marked unavailable', async () => {
         loadNotificationPreferences.mockReturnValue({
-          remindersEnabled: false,
-          dailySummaryEnabled: false,
           quietHours: [0, 0],
           pushManuallyDisabled: false,
           notificationStatus: 'unavailable',
@@ -132,8 +122,6 @@ describe('notificationSystem', () => {
 
       it('bypasses terminal state check when forceRegister is true', async () => {
         loadNotificationPreferences.mockReturnValue({
-          remindersEnabled: false,
-          dailySummaryEnabled: false,
           quietHours: [0, 0],
           pushManuallyDisabled: false,
           notificationStatus: 'granted',
@@ -155,8 +143,6 @@ describe('notificationSystem', () => {
     describe('attempt exhaustion and cooldown', () => {
       it('returns exhausted when max attempts reached', async () => {
         loadNotificationPreferences.mockReturnValue({
-          remindersEnabled: false,
-          dailySummaryEnabled: false,
           quietHours: [0, 0],
           pushManuallyDisabled: false,
           notificationStatus: 'unknown',
@@ -175,8 +161,6 @@ describe('notificationSystem', () => {
       it('returns cooldown when in cooldown period', async () => {
         const lastPromptAt = mockNow - 1000; // 1 second ago
         loadNotificationPreferences.mockReturnValue({
-          remindersEnabled: false,
-          dailySummaryEnabled: false,
           quietHours: [0, 0],
           pushManuallyDisabled: false,
           notificationStatus: 'unknown',
@@ -198,8 +182,6 @@ describe('notificationSystem', () => {
 
       it('bypasses cooldown and exhaustion when forceRegister is true', async () => {
         loadNotificationPreferences.mockReturnValue({
-          remindersEnabled: false,
-          dailySummaryEnabled: false,
           quietHours: [0, 0],
           pushManuallyDisabled: false,
           notificationStatus: 'unknown',
@@ -220,8 +202,6 @@ describe('notificationSystem', () => {
     describe('permission request handling', () => {
       it('persists granted status and returns enabled', async () => {
         const prefs = {
-          remindersEnabled: false,
-          dailySummaryEnabled: false,
           quietHours: [0, 0] as [number, number],
           pushManuallyDisabled: false,
           notificationStatus: 'unknown' as const,
@@ -247,8 +227,6 @@ describe('notificationSystem', () => {
 
       it('persists unavailable status', async () => {
         const prefs = {
-          remindersEnabled: false,
-          dailySummaryEnabled: false,
           quietHours: [0, 0] as [number, number],
           pushManuallyDisabled: false,
           notificationStatus: 'unknown' as const,
@@ -275,8 +253,6 @@ describe('notificationSystem', () => {
 
       it('persists denied status and increments attempts on denial', async () => {
         const prefs = {
-          remindersEnabled: false,
-          dailySummaryEnabled: false,
           quietHours: [0, 0] as [number, number],
           pushManuallyDisabled: false,
           notificationStatus: 'unknown' as const,
@@ -302,8 +278,6 @@ describe('notificationSystem', () => {
 
       it('handles error status', async () => {
         const prefs = {
-          remindersEnabled: false,
-          dailySummaryEnabled: false,
           quietHours: [0, 0] as [number, number],
           pushManuallyDisabled: false,
           notificationStatus: 'unknown' as const,
@@ -332,8 +306,6 @@ describe('notificationSystem', () => {
 
       it('sets osLastPromptAt to 0 when forceRegister is true', async () => {
         const prefs = {
-          remindersEnabled: false,
-          dailySummaryEnabled: false,
           quietHours: [0, 0] as [number, number],
           pushManuallyDisabled: false,
           notificationStatus: 'unknown' as const,

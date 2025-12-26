@@ -76,8 +76,6 @@ describe('preferences', () => {
     it('loads stored preferences from localStorage on web', () => {
       Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
       const stored = {
-        remindersEnabled: true,
-        dailySummaryEnabled: true,
         quietHours: [22, 6],
         pushOptInStatus: 'unknown',
         pushPromptAttempts: 0,
@@ -88,10 +86,8 @@ describe('preferences', () => {
 
       const result = loadNotificationPreferences();
 
-      // loadNotificationPreferences migrates old format to new format while preserving old fields
+      // loadNotificationPreferences migrates old format to new format
       expect(result).toMatchObject({
-        remindersEnabled: true,
-        dailySummaryEnabled: true,
         quietHours: [22, 6],
         notificationStatus: 'unknown', // migrated from pushOptInStatus
         osPromptAttempts: 0, // migrated from pushPromptAttempts
@@ -105,8 +101,6 @@ describe('preferences', () => {
     it('migrates legacy data and preserves manual disable flag', () => {
       Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
       const stored = {
-        remindersEnabled: true,
-        dailySummaryEnabled: true,
         quietHours: [22, 6],
         pushOptInStatus: 'denied',
         pushPromptAttempts: 2,
@@ -126,8 +120,6 @@ describe('preferences', () => {
     it('loads stored preferences from MMKV on native', () => {
       Object.defineProperty(Platform, 'OS', { value: 'ios', configurable: true });
       const stored = {
-        remindersEnabled: true,
-        dailySummaryEnabled: false,
         quietHours: [21, 7],
         pushOptInStatus: 'unknown',
         pushPromptAttempts: 0,
@@ -138,10 +130,8 @@ describe('preferences', () => {
 
       const result = loadNotificationPreferences();
 
-      // loadNotificationPreferences migrates old format to new format while preserving old fields
+      // loadNotificationPreferences migrates old format to new format
       expect(result).toMatchObject({
-        remindersEnabled: true,
-        dailySummaryEnabled: false,
         quietHours: [21, 7],
         notificationStatus: 'unknown', // migrated from pushOptInStatus
         osPromptAttempts: 0, // migrated from pushPromptAttempts
@@ -154,22 +144,20 @@ describe('preferences', () => {
 
     it('merges partial stored data with defaults', () => {
       Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
-      const partial = { remindersEnabled: true };
+      const partial = { quietHours: [8, 22] };
       (mockLocalStorage.getItem as jest.Mock).mockReturnValue(JSON.stringify(partial));
 
       const result = loadNotificationPreferences();
 
       expect(result).toEqual({
         ...DEFAULT_NOTIFICATION_PREFERENCES,
-        remindersEnabled: true,
+        quietHours: [8, 22],
       });
     });
 
     it('fixes invalid quietHours array', () => {
       Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
       const invalid = {
-        remindersEnabled: true,
-        dailySummaryEnabled: true,
         quietHours: [22], // Invalid: only one element
       };
       (mockLocalStorage.getItem as jest.Mock).mockReturnValue(JSON.stringify(invalid));
@@ -219,8 +207,6 @@ describe('preferences', () => {
       Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
       const preferences = {
         ...DEFAULT_NOTIFICATION_PREFERENCES,
-        remindersEnabled: true,
-        dailySummaryEnabled: true,
         quietHours: [22, 6] as [number, number],
       };
 
@@ -236,8 +222,6 @@ describe('preferences', () => {
       Object.defineProperty(Platform, 'OS', { value: 'ios', configurable: true });
       const preferences = {
         ...DEFAULT_NOTIFICATION_PREFERENCES,
-        remindersEnabled: false,
-        dailySummaryEnabled: true,
         quietHours: [20, 23] as [number, number],
       };
 
@@ -254,8 +238,6 @@ describe('preferences', () => {
 
       const preferences = {
         ...DEFAULT_NOTIFICATION_PREFERENCES,
-        remindersEnabled: true,
-        dailySummaryEnabled: false,
         quietHours: [20, 23] as [number, number],
       };
 
@@ -277,8 +259,6 @@ describe('preferences', () => {
       });
       const preferences = {
         ...DEFAULT_NOTIFICATION_PREFERENCES,
-        remindersEnabled: true,
-        dailySummaryEnabled: false,
         quietHours: [20, 23] as [number, number],
       };
 

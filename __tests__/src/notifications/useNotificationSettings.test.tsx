@@ -8,11 +8,6 @@ jest.mock('@/notifications/preferences', () => ({
   persistNotificationPreferences: jest.fn(),
 }));
 
-jest.mock('@/notifications/notifications', () => ({
-  ensureNotificationPermission: jest.fn(),
-  cancelAllScheduledNotifications: jest.fn(),
-}));
-
 jest.mock('@/notifications/firebasePush', () => ({
   registerForPushNotifications: jest.fn(),
   revokePushToken: jest.fn(),
@@ -53,7 +48,6 @@ jest.mock('react-i18next', () => ({
 }));
 
 const preferenceModule = require('@/notifications/preferences');
-const notificationModule = require('@/notifications/notifications');
 const firebasePushModule = require('@/notifications/firebasePush');
 const notificationSystemModule = require('@/notifications/notificationSystem');
 const analyticsModule = require('@/observability/AnalyticsProvider');
@@ -66,14 +60,6 @@ const loadNotificationPreferences =
 const persistNotificationPreferences =
   preferenceModule.persistNotificationPreferences as jest.MockedFunction<
     typeof preferenceModule.persistNotificationPreferences
-  >;
-const ensureNotificationPermission =
-  notificationModule.ensureNotificationPermission as jest.MockedFunction<
-    typeof notificationModule.ensureNotificationPermission
-  >;
-const cancelAllScheduledNotifications =
-  notificationModule.cancelAllScheduledNotifications as jest.MockedFunction<
-    typeof notificationModule.cancelAllScheduledNotifications
   >;
 const registerForPushNotifications =
   firebasePushModule.registerForPushNotifications as jest.MockedFunction<
@@ -123,8 +109,6 @@ describe('useNotificationSettings', () => {
     ensureNotificationsEnabled.mockResolvedValue({ status: 'triggered', registered: false });
     revokeNotifications.mockResolvedValue({ status: 'revoked' });
     loadNotificationPreferences.mockReturnValue({
-      remindersEnabled: false,
-      dailySummaryEnabled: false,
       quietHours: [20, 23],
       notificationStatus: 'unknown',
       pushManuallyDisabled: false,
@@ -155,91 +139,7 @@ describe('useNotificationSettings', () => {
       await Promise.resolve();
     });
 
-    expect(result.current.remindersEnabled).toBe(false);
     expect(result.current.permissionStatus).toBe('denied');
-  });
-
-  it('enables reminders when permission granted', async () => {
-    ensureNotificationPermission.mockResolvedValue(true);
-
-    // Mock permission as granted so the useEffect doesn't override the state
-    getPermissionsAsync.mockResolvedValue({
-      granted: true,
-      status: expoNotifications.PermissionStatus.GRANTED,
-      canAskAgain: false,
-    });
-
-    const { result } = renderHook(() => useNotificationSettings());
-
-    // Wait for initial permission check
-    await act(async () => {
-      await Promise.resolve();
-    });
-
-    // Initial state should be false
-    expect(result.current.remindersEnabled).toBe(false);
-
-    await act(async () => {
-      await result.current.toggleReminders(true);
-    });
-
-    // Wait for all state updates to complete
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
-
-    expect(persistNotificationPreferences).toHaveBeenCalledWith(
-      expect.objectContaining({ remindersEnabled: true }),
-    );
-    expect(trackEvent).toHaveBeenCalledWith('notifications:reminders', { enabled: true });
-
-    // The hook updates state via updatePreferences callback, which sets the state immediately
-    // Check that the state was updated
-    expect(result.current.remindersEnabled).toBe(true);
-  });
-
-  it('reports error and reverts toggle when permission denied', async () => {
-    ensureNotificationPermission.mockResolvedValue(false);
-    getPermissionsAsync.mockResolvedValue({
-      granted: false,
-      status: expoNotifications.PermissionStatus.DENIED,
-      canAskAgain: false,
-    });
-
-    const { result } = renderHook(() => useNotificationSettings());
-
-    await act(async () => {
-      await result.current.toggleReminders(true);
-    });
-
-    expect(result.current.remindersEnabled).toBe(false);
-    expect(result.current.error).toBeNull();
-    expect(trackEvent).toHaveBeenCalledWith('notifications:reminders-blocked');
-  });
-
-  it('disables reminders and cancels notifications when toggled off', async () => {
-    loadNotificationPreferences.mockReturnValue({
-      remindersEnabled: true,
-      dailySummaryEnabled: false,
-      quietHours: [20, 23],
-      notificationStatus: 'unknown',
-      pushManuallyDisabled: false,
-      osPromptAttempts: 0,
-      osLastPromptAt: 0,
-      softDeclineCount: 0,
-      softLastDeclinedAt: 0,
-    });
-
-    const { result } = renderHook(() => useNotificationSettings());
-
-    await act(async () => {
-      await result.current.toggleReminders(false);
-    });
-
-    expect(cancelAllScheduledNotifications).toHaveBeenCalled();
-    expect(persistNotificationPreferences).toHaveBeenCalledWith(
-      expect.objectContaining({ remindersEnabled: false }),
-    );
   });
 
   it('sets isSupported based on platform', async () => {
@@ -288,8 +188,6 @@ describe('useNotificationSettings', () => {
 
   it('does not auto-register when permission granted but push manually disabled', async () => {
     loadNotificationPreferences.mockReturnValue({
-      remindersEnabled: false,
-      dailySummaryEnabled: false,
       quietHours: [20, 23],
       notificationStatus: 'unknown',
       pushManuallyDisabled: true, // User manually disabled push
@@ -318,8 +216,6 @@ describe('useNotificationSettings', () => {
 
   it('avoids auto-registration when permission stays granted and push manually disabled', async () => {
     loadNotificationPreferences.mockReturnValue({
-      remindersEnabled: false,
-      dailySummaryEnabled: false,
       quietHours: [20, 23],
       notificationStatus: 'unknown',
       pushManuallyDisabled: true, // User manually disabled push
@@ -457,8 +353,6 @@ describe('useNotificationSettings', () => {
 
     // Update loadNotificationPreferences to return updated state after persistence
     loadNotificationPreferences.mockReturnValue({
-      remindersEnabled: false,
-      dailySummaryEnabled: false,
       quietHours: [20, 23],
       notificationStatus: 'granted',
       pushManuallyDisabled: false,
@@ -508,8 +402,6 @@ describe('useNotificationSettings', () => {
   it('respects cooldown and max attempts for push prompt', async () => {
     const now = Date.now();
     loadNotificationPreferences.mockReturnValue({
-      remindersEnabled: false,
-      dailySummaryEnabled: false,
       quietHours: [20, 23],
       notificationStatus: 'unknown',
       pushManuallyDisabled: false,
@@ -536,8 +428,6 @@ describe('useNotificationSettings', () => {
       canAskAgain: false,
     });
     loadNotificationPreferences.mockReturnValue({
-      remindersEnabled: false,
-      dailySummaryEnabled: false,
       quietHours: [20, 23],
       notificationStatus: 'granted',
       pushManuallyDisabled: false,
@@ -565,8 +455,6 @@ describe('useNotificationSettings', () => {
     const base = Date.now();
     const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(base);
     loadNotificationPreferences.mockReturnValue({
-      remindersEnabled: false,
-      dailySummaryEnabled: false,
       quietHours: [20, 23],
       notificationStatus: 'unknown',
       pushManuallyDisabled: false,
@@ -644,35 +532,6 @@ describe('useNotificationSettings', () => {
     });
   });
 
-  it('does not call cancelAll on web when disabling reminders', async () => {
-    // Note: Platform.OS is checked statically in the module, so we test the native behavior
-    // where isNative is true. The actual web behavior is covered implicitly since
-    // cancelAllScheduledNotifications checks Platform.OS internally
-    loadNotificationPreferences.mockReturnValue({
-      remindersEnabled: true,
-      dailySummaryEnabled: false,
-      quietHours: [20, 23],
-      notificationStatus: 'unknown',
-      pushManuallyDisabled: false,
-      osPromptAttempts: 0,
-      osLastPromptAt: 0,
-      softDeclineCount: 0,
-      softLastDeclinedAt: 0,
-    });
-
-    const { result } = renderHook(() => useNotificationSettings());
-
-    await act(async () => {
-      await result.current.toggleReminders(false);
-    });
-
-    // On native platforms, cancelAll should be called
-    expect(cancelAllScheduledNotifications).toHaveBeenCalled();
-    expect(persistNotificationPreferences).toHaveBeenCalledWith(
-      expect.objectContaining({ remindersEnabled: false }),
-    );
-  });
-
   it('disables push notifications and revokes token', async () => {
     revokeNotifications.mockResolvedValue({ status: 'revoked' });
     const { result } = renderHook(() => useNotificationSettings());
@@ -741,8 +600,6 @@ describe('useNotificationSettings', () => {
 
     it('returns exhausted when max attempts reached', async () => {
       loadNotificationPreferences.mockReturnValue({
-        remindersEnabled: false,
-        dailySummaryEnabled: false,
         quietHours: [20, 23],
         notificationStatus: 'unknown',
         pushManuallyDisabled: false,
@@ -782,8 +639,6 @@ describe('useNotificationSettings', () => {
     it('returns cooldown when still in cooldown period', async () => {
       const now = Date.now();
       loadNotificationPreferences.mockReturnValue({
-        remindersEnabled: false,
-        dailySummaryEnabled: false,
         quietHours: [20, 23],
         notificationStatus: 'unknown',
         pushManuallyDisabled: false,
@@ -823,8 +678,6 @@ describe('useNotificationSettings', () => {
 
     it('returns already-enabled when push already enabled', async () => {
       loadNotificationPreferences.mockReturnValue({
-        remindersEnabled: false,
-        dailySummaryEnabled: false,
         quietHours: [20, 23],
         notificationStatus: 'granted',
         pushManuallyDisabled: false,
@@ -861,8 +714,6 @@ describe('useNotificationSettings', () => {
 
     it('returns denied when push previously denied', async () => {
       loadNotificationPreferences.mockReturnValue({
-        remindersEnabled: false,
-        dailySummaryEnabled: false,
         quietHours: [20, 23],
         notificationStatus: 'denied',
         pushManuallyDisabled: false,
@@ -966,8 +817,6 @@ describe('useNotificationSettings', () => {
 
     it('defaults context to manual when not provided', async () => {
       loadNotificationPreferences.mockReturnValue({
-        remindersEnabled: false,
-        dailySummaryEnabled: false,
         quietHours: [20, 23],
         notificationStatus: 'unknown',
         pushManuallyDisabled: false,

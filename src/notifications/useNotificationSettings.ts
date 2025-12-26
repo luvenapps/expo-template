@@ -1,8 +1,4 @@
 import {
-  cancelAllScheduledNotifications,
-  ensureNotificationPermission,
-} from '@/notifications/notifications';
-import {
   type NotificationPreferences,
   loadNotificationPreferences,
   persistNotificationPreferences,
@@ -24,8 +20,6 @@ export type NotificationPermissionState =
   | 'denied'
   | 'blocked'
   | 'unavailable';
-
-const isNative = Platform.OS !== 'web';
 
 function mapPermission(
   status: Notifications.NotificationPermissionsStatus,
@@ -79,7 +73,6 @@ export function useNotificationSettings() {
   const [permissionStatus, setPermissionStatus] = useState<NotificationPermissionState>(() =>
     Platform.OS === 'web' ? getInitialWebPermissionStatus() : 'prompt',
   );
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pushError, setPushError] = useState<string | null>(null);
   const [isChecking, setIsChecking] = useState(false);
@@ -163,7 +156,6 @@ export function useNotificationSettings() {
       updatePreferences((prev) => ({
         ...prev,
         notificationStatus: 'denied',
-        remindersEnabled: false,
       }));
       return;
     }
@@ -239,38 +231,6 @@ export function useNotificationSettings() {
       subscription?.remove?.();
     };
   }, [refreshPermissionStatus]);
-
-  const handleRemindersToggle = useCallback(
-    async (enabled: boolean) => {
-      analytics.trackEvent('notifications:reminders', { enabled });
-      setStatusMessage(null);
-      setError(null);
-
-      if (!enabled) {
-        updatePreferences((prev) => ({ ...prev, remindersEnabled: false }));
-        if (isNative) {
-          await cancelAllScheduledNotifications();
-        }
-        setStatusMessage(t('notifications.remindersDisabled'));
-        return;
-      }
-
-      const granted = await ensureNotificationPermission();
-      if (!granted) {
-        await refreshPermissionStatus();
-        updatePreferences((prev) => ({ ...prev, remindersEnabled: false }));
-        setError(null);
-        setStatusMessage(null);
-        analytics.trackEvent('notifications:reminders-blocked');
-        return;
-      }
-
-      setPermissionStatus('granted');
-      updatePreferences((prev) => ({ ...prev, remindersEnabled: true }));
-      setStatusMessage(t('notifications.remindersEnabled'));
-    },
-    [analytics, refreshPermissionStatus, t, updatePreferences],
-  );
 
   const handleQuietHoursChange = useCallback(
     (next: number[]) => {
@@ -461,12 +421,10 @@ export function useNotificationSettings() {
   return {
     ...preferences,
     permissionStatus,
-    statusMessage,
     isSupported: true,
     isChecking,
     error,
     pushError,
-    toggleReminders: handleRemindersToggle,
     updateQuietHours: handleQuietHoursChange,
     refreshPermissionStatus,
     tryPromptForPush,

@@ -4,8 +4,6 @@ import { Platform } from 'react-native';
 export type NotificationStatus = 'unknown' | 'soft-declined' | 'granted' | 'denied' | 'unavailable';
 
 export type NotificationPreferences = {
-  remindersEnabled: boolean;
-  dailySummaryEnabled: boolean;
   quietHours: [number, number];
   /** User explicitly toggled notifications off in-app (even if OS permission is granted) */
   pushManuallyDisabled: boolean;
@@ -17,8 +15,6 @@ export type NotificationPreferences = {
 };
 
 export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
-  remindersEnabled: false,
-  dailySummaryEnabled: false,
   quietHours: [0, 0],
   pushManuallyDisabled: false,
   notificationStatus: 'unknown',
@@ -78,7 +74,6 @@ export function loadNotificationPreferences(): NotificationPreferences {
 
     const migrated: NotificationPreferences = {
       ...DEFAULT_NOTIFICATION_PREFERENCES,
-      ...parsed,
       pushManuallyDisabled:
         typeof parsed.pushManuallyDisabled === 'boolean'
           ? parsed.pushManuallyDisabled

@@ -89,7 +89,6 @@ jest.mock('@/sync', () => ({
 jest.mock('@/notifications/useNotificationSettings', () => ({
   useNotificationSettings: jest.fn().mockReturnValue({
     permissionStatus: 'prompt',
-    remindersEnabled: false,
     tryPromptForPush: jest.fn(),
     softPrompt: {
       open: false,
