@@ -4,9 +4,10 @@ const STALE_HANDLE_PATTERNS = [
   'NativeDatabase.prepareSync',
   'database is closed',
   'NullPointerException',
+  "Failed to run the query 'begin'",
 ];
 
-function isStaleHandleError(error: unknown) {
+export function isStaleHandleError(error: unknown) {
   if (!(error instanceof Error)) return false;
   const message = error.message ?? '';
   return STALE_HANDLE_PATTERNS.some((pattern) => message.includes(pattern));
