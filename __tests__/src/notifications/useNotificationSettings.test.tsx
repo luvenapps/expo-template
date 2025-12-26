@@ -109,7 +109,6 @@ describe('useNotificationSettings', () => {
     ensureNotificationsEnabled.mockResolvedValue({ status: 'triggered', registered: false });
     revokeNotifications.mockResolvedValue({ status: 'revoked' });
     loadNotificationPreferences.mockReturnValue({
-      quietHours: [20, 23],
       notificationStatus: 'unknown',
       pushManuallyDisabled: false,
       osPromptAttempts: 0,
@@ -170,25 +169,8 @@ describe('useNotificationSettings', () => {
     );
   });
 
-  it('updates quiet hours with valid values', async () => {
-    const { result } = renderHook(() => useNotificationSettings());
-
-    await act(async () => {
-      result.current.updateQuietHours([22, 6]);
-    });
-
-    expect(persistNotificationPreferences).toHaveBeenCalledWith(
-      expect.objectContaining({ quietHours: [22, 6] }),
-    );
-    expect(trackEvent).toHaveBeenCalledWith('notifications:quiet-hours', {
-      start: 22,
-      end: 6,
-    });
-  });
-
   it('does not auto-register when permission granted but push manually disabled', async () => {
     loadNotificationPreferences.mockReturnValue({
-      quietHours: [20, 23],
       notificationStatus: 'unknown',
       pushManuallyDisabled: true, // User manually disabled push
       osPromptAttempts: 0,
@@ -216,7 +198,6 @@ describe('useNotificationSettings', () => {
 
   it('avoids auto-registration when permission stays granted and push manually disabled', async () => {
     loadNotificationPreferences.mockReturnValue({
-      quietHours: [20, 23],
       notificationStatus: 'unknown',
       pushManuallyDisabled: true, // User manually disabled push
       osPromptAttempts: 0,
@@ -242,43 +223,6 @@ describe('useNotificationSettings', () => {
     });
 
     expect(ensureNotificationsEnabled).not.toHaveBeenCalled();
-  });
-
-  it('ignores quiet hours update with invalid array length', async () => {
-    const { result } = renderHook(() => useNotificationSettings());
-
-    await act(async () => {
-      result.current.updateQuietHours([22]); // Only one element
-    });
-
-    const lastCall = persistNotificationPreferences.mock.calls.pop();
-    if (lastCall) {
-      expect(lastCall[0].quietHours).toEqual([20, 23]); // unchanged
-    }
-  });
-
-  it('normalizes quiet hours values to valid range', async () => {
-    const { result } = renderHook(() => useNotificationSettings());
-
-    await act(async () => {
-      result.current.updateQuietHours([25, -5]); // Out of range values
-    });
-
-    expect(persistNotificationPreferences).toHaveBeenCalledWith(
-      expect.objectContaining({ quietHours: [24, 0] }), // Normalized to 0-24 range
-    );
-  });
-
-  it('floors decimal values in quiet hours', async () => {
-    const { result } = renderHook(() => useNotificationSettings());
-
-    await act(async () => {
-      result.current.updateQuietHours([22.8, 6.3]);
-    });
-
-    expect(persistNotificationPreferences).toHaveBeenCalledWith(
-      expect.objectContaining({ quietHours: [22, 6] }), // Floored values
-    );
   });
 
   it('maps granted permission status correctly', async () => {
@@ -353,7 +297,6 @@ describe('useNotificationSettings', () => {
 
     // Update loadNotificationPreferences to return updated state after persistence
     loadNotificationPreferences.mockReturnValue({
-      quietHours: [20, 23],
       notificationStatus: 'granted',
       pushManuallyDisabled: false,
       osPromptAttempts: 1,
@@ -402,7 +345,6 @@ describe('useNotificationSettings', () => {
   it('respects cooldown and max attempts for push prompt', async () => {
     const now = Date.now();
     loadNotificationPreferences.mockReturnValue({
-      quietHours: [20, 23],
       notificationStatus: 'unknown',
       pushManuallyDisabled: false,
       osPromptAttempts: 3,
@@ -428,7 +370,6 @@ describe('useNotificationSettings', () => {
       canAskAgain: false,
     });
     loadNotificationPreferences.mockReturnValue({
-      quietHours: [20, 23],
       notificationStatus: 'granted',
       pushManuallyDisabled: false,
       osPromptAttempts: 0,
@@ -455,7 +396,6 @@ describe('useNotificationSettings', () => {
     const base = Date.now();
     const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(base);
     loadNotificationPreferences.mockReturnValue({
-      quietHours: [20, 23],
       notificationStatus: 'unknown',
       pushManuallyDisabled: false,
       osPromptAttempts: 1,
@@ -600,7 +540,6 @@ describe('useNotificationSettings', () => {
 
     it('returns exhausted when max attempts reached', async () => {
       loadNotificationPreferences.mockReturnValue({
-        quietHours: [20, 23],
         notificationStatus: 'unknown',
         pushManuallyDisabled: false,
         osPromptAttempts: NOTIFICATIONS.osPromptMaxAttempts,
@@ -639,7 +578,6 @@ describe('useNotificationSettings', () => {
     it('returns cooldown when still in cooldown period', async () => {
       const now = Date.now();
       loadNotificationPreferences.mockReturnValue({
-        quietHours: [20, 23],
         notificationStatus: 'unknown',
         pushManuallyDisabled: false,
         osPromptAttempts: 1,
@@ -678,7 +616,6 @@ describe('useNotificationSettings', () => {
 
     it('returns already-enabled when push already enabled', async () => {
       loadNotificationPreferences.mockReturnValue({
-        quietHours: [20, 23],
         notificationStatus: 'granted',
         pushManuallyDisabled: false,
         osPromptAttempts: 1,
@@ -714,7 +651,6 @@ describe('useNotificationSettings', () => {
 
     it('returns denied when push previously denied', async () => {
       loadNotificationPreferences.mockReturnValue({
-        quietHours: [20, 23],
         notificationStatus: 'denied',
         pushManuallyDisabled: false,
         osPromptAttempts: 1,
@@ -817,7 +753,6 @@ describe('useNotificationSettings', () => {
 
     it('defaults context to manual when not provided', async () => {
       loadNotificationPreferences.mockReturnValue({
-        quietHours: [20, 23],
         notificationStatus: 'unknown',
         pushManuallyDisabled: false,
         osPromptAttempts: 0,

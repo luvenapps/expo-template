@@ -169,8 +169,8 @@ jest.mock('@/notifications', () => ({
   initializeFCMListeners: jest.fn().mockReturnValue(undefined),
 }));
 
-jest.mock('@/notifications/ForegroundReminderToastHost', () => ({
-  ForegroundReminderToastHost: () => null,
+jest.mock('@/notifications/ForegroundReminderAnalyticsHost', () => ({
+  ForegroundReminderAnalyticsHost: () => null,
 }));
 
 jest.mock('@/state', () => ({

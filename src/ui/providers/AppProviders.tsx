@@ -22,7 +22,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { YStack } from 'tamagui';
 import { AnalyticsProvider } from '@/observability/AnalyticsProvider';
-import { ForegroundReminderToastHost } from '@/notifications/ForegroundReminderToastHost';
+import { ForegroundReminderAnalyticsHost } from '@/notifications/ForegroundReminderAnalyticsHost';
 import { cleanupSoftDeletedRecords } from '@/db/sqlite/cleanup';
 import { archiveOldEntries } from '@/db/sqlite/archive';
 import { optimizeDatabase } from '@/db/sqlite/maintenance';
@@ -191,7 +191,7 @@ export function AppProviders({ children }: PropsWithChildren) {
     <I18nextProvider i18n={i18n}>
       <AnalyticsProvider>
         <GestureHandlerRootView style={{ flex: 1, backgroundColor: palette.background }}>
-          <ForegroundReminderToastHost />
+          <ForegroundReminderAnalyticsHost />
           <SoftPromptModal
             open={softPrompt.open}
             title={softPrompt.title}

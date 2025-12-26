@@ -232,22 +232,6 @@ export function useNotificationSettings() {
     };
   }, [refreshPermissionStatus]);
 
-  const handleQuietHoursChange = useCallback(
-    (next: number[]) => {
-      if (next.length < 2) return;
-      const normalized: [number, number] = [
-        Math.max(0, Math.min(24, Math.floor(next[0]))),
-        Math.max(0, Math.min(24, Math.floor(next[1]))),
-      ];
-      analytics.trackEvent('notifications:quiet-hours', {
-        start: normalized[0],
-        end: normalized[1],
-      });
-      updatePreferences((prev) => ({ ...prev, quietHours: normalized }));
-    },
-    [analytics, updatePreferences],
-  );
-
   const handleSoftPromptAllow = useCallback(async () => {
     const result = await ensureNotificationsEnabled({
       context: softPromptContext || 'auto',
@@ -425,7 +409,6 @@ export function useNotificationSettings() {
     isChecking,
     error,
     pushError,
-    updateQuietHours: handleQuietHoursChange,
     refreshPermissionStatus,
     tryPromptForPush,
     disablePushNotifications,

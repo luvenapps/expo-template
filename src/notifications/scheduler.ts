@@ -1,5 +1,3 @@
-import { NOTIFICATIONS } from '@/config/constants';
-import { NotificationPreferences } from '@/notifications/preferences';
 import {
   ensureNotificationPermission,
   scheduleLocalNotification,
@@ -49,14 +47,7 @@ export async function configureNotificationHandler() {
   });
 }
 
-export type ScheduleOptions = {
-  quietHours: NotificationPreferences['quietHours'];
-};
-
-export async function scheduleReminder(
-  payload: ReminderPayload,
-  options: ScheduleOptions,
-): Promise<string | null> {
+export async function scheduleReminder(payload: ReminderPayload): Promise<string | null> {
   if (Platform.OS === 'web') return null;
 
   const granted = await ensureNotificationPermission();
@@ -64,7 +55,7 @@ export async function scheduleReminder(
     return null;
   }
 
-  const triggerDate = buildTrigger(payload.fireDate, options.quietHours);
+  const triggerDate = payload.fireDate;
   const delaySeconds = Math.max(5, Math.ceil(dayjs(triggerDate).diff(dayjs(), 'second')));
   const trigger: Notifications.NotificationTriggerInput =
     Platform.OS === 'android'
@@ -92,32 +83,4 @@ export async function scheduleReminder(
     trigger,
     badge: badge ?? undefined,
   });
-}
-
-function buildTrigger(fireDate: Date, quietHours: NotificationPreferences['quietHours']): Date {
-  const date = dayjs(fireDate);
-  if (isOutsideQuietHours(date, quietHours)) {
-    return date.toDate();
-  }
-
-  const [quietStart, quietEnd] = quietHours;
-  const nextAllowed =
-    quietEnd > quietStart
-      ? date.hour(quietEnd).minute(NOTIFICATIONS.quietHoursBufferMinutes)
-      : date.add(1, 'day').hour(quietEnd).minute(NOTIFICATIONS.quietHoursBufferMinutes);
-
-  return nextAllowed.toDate();
-}
-
-function isOutsideQuietHours(date: dayjs.Dayjs, quietHours: [number, number]) {
-  const [quietStart, quietEnd] = quietHours;
-  if (quietStart === quietEnd) {
-    return true;
-  }
-
-  const hour = date.hour();
-  if (quietStart < quietEnd) {
-    return hour < quietStart || hour >= quietEnd;
-  }
-  return hour >= quietEnd && hour < quietStart;
 }

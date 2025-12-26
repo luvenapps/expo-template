@@ -24,7 +24,6 @@ jest.mock('expo-router', () => {
 // Mock setTheme
 const mockSetTheme = jest.fn();
 
-const mockUpdateQuietHours = jest.fn();
 const mockTrackError = jest.fn();
 
 // Mock ThemeProvider
@@ -71,7 +70,6 @@ jest.mock('@/sync/cursors', () => ({
 
 jest.mock('@/notifications/useNotificationSettings', () => ({
   useNotificationSettings: jest.fn(() => ({
-    quietHours: [20, 23],
     permissionStatus: 'prompt',
     error: null,
     pushError: null,
@@ -85,7 +83,6 @@ jest.mock('@/notifications/useNotificationSettings', () => ({
     disablePushNotifications: jest.fn(),
     isSupported: true,
     isChecking: false,
-    updateQuietHours: mockUpdateQuietHours,
     refreshPermissionStatus: jest.fn(),
   })),
 }));
@@ -552,7 +549,6 @@ type NotificationSettingsMock = ReturnType<typeof useNotificationSettings>;
 const buildNotificationSettings = (
   overrides: Partial<NotificationSettingsMock> = {},
 ): NotificationSettingsMock => ({
-  quietHours: [20, 23] as [number, number],
   permissionStatus: 'prompt',
   error: null,
   pushError: null,
@@ -568,7 +564,6 @@ const buildNotificationSettings = (
     Promise.resolve({ status: 'triggered' as const, registered: true }),
   ),
   disablePushNotifications: jest.fn(() => Promise.resolve()),
-  updateQuietHours: mockUpdateQuietHours,
   refreshPermissionStatus: jest.fn(() => Promise.resolve('prompt' as const)),
   softPrompt: {
     open: false,
@@ -587,7 +582,6 @@ describe('SettingsScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockPush.mockClear();
-    mockUpdateQuietHours.mockClear();
     mockTrackError.mockClear();
     mockDatabaseResetListeners = [];
     mockTransaction.mockClear();

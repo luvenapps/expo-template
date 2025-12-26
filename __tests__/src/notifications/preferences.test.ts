@@ -76,7 +76,6 @@ describe('preferences', () => {
     it('loads stored preferences from localStorage on web', () => {
       Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
       const stored = {
-        quietHours: [22, 6],
         pushOptInStatus: 'unknown',
         pushPromptAttempts: 0,
         pushLastPromptAt: 0,
@@ -88,7 +87,6 @@ describe('preferences', () => {
 
       // loadNotificationPreferences migrates old format to new format
       expect(result).toMatchObject({
-        quietHours: [22, 6],
         notificationStatus: 'unknown', // migrated from pushOptInStatus
         osPromptAttempts: 0, // migrated from pushPromptAttempts
         osLastPromptAt: 0, // migrated from pushLastPromptAt
@@ -101,7 +99,6 @@ describe('preferences', () => {
     it('migrates legacy data and preserves manual disable flag', () => {
       Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
       const stored = {
-        quietHours: [22, 6],
         pushOptInStatus: 'denied',
         pushPromptAttempts: 2,
         pushLastPromptAt: 123,
@@ -120,7 +117,6 @@ describe('preferences', () => {
     it('loads stored preferences from MMKV on native', () => {
       Object.defineProperty(Platform, 'OS', { value: 'ios', configurable: true });
       const stored = {
-        quietHours: [21, 7],
         pushOptInStatus: 'unknown',
         pushPromptAttempts: 0,
         pushLastPromptAt: 0,
@@ -132,7 +128,6 @@ describe('preferences', () => {
 
       // loadNotificationPreferences migrates old format to new format
       expect(result).toMatchObject({
-        quietHours: [21, 7],
         notificationStatus: 'unknown', // migrated from pushOptInStatus
         osPromptAttempts: 0, // migrated from pushPromptAttempts
         osLastPromptAt: 0, // migrated from pushLastPromptAt
@@ -144,27 +139,15 @@ describe('preferences', () => {
 
     it('merges partial stored data with defaults', () => {
       Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
-      const partial = { quietHours: [8, 22] };
+      const partial = { pushManuallyDisabled: true };
       (mockLocalStorage.getItem as jest.Mock).mockReturnValue(JSON.stringify(partial));
 
       const result = loadNotificationPreferences();
 
       expect(result).toEqual({
         ...DEFAULT_NOTIFICATION_PREFERENCES,
-        quietHours: [8, 22],
+        pushManuallyDisabled: true,
       });
-    });
-
-    it('fixes invalid quietHours array', () => {
-      Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
-      const invalid = {
-        quietHours: [22], // Invalid: only one element
-      };
-      (mockLocalStorage.getItem as jest.Mock).mockReturnValue(JSON.stringify(invalid));
-
-      const result = loadNotificationPreferences();
-
-      expect(result.quietHours).toEqual(DEFAULT_NOTIFICATION_PREFERENCES.quietHours);
     });
 
     it('returns defaults when JSON parsing fails', () => {
@@ -207,7 +190,6 @@ describe('preferences', () => {
       Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
       const preferences = {
         ...DEFAULT_NOTIFICATION_PREFERENCES,
-        quietHours: [22, 6] as [number, number],
       };
 
       persistNotificationPreferences(preferences);
@@ -222,7 +204,6 @@ describe('preferences', () => {
       Object.defineProperty(Platform, 'OS', { value: 'ios', configurable: true });
       const preferences = {
         ...DEFAULT_NOTIFICATION_PREFERENCES,
-        quietHours: [20, 23] as [number, number],
       };
 
       persistNotificationPreferences(preferences);
@@ -238,7 +219,6 @@ describe('preferences', () => {
 
       const preferences = {
         ...DEFAULT_NOTIFICATION_PREFERENCES,
-        quietHours: [20, 23] as [number, number],
       };
 
       expect(() => persistNotificationPreferences(preferences)).not.toThrow();
@@ -259,7 +239,6 @@ describe('preferences', () => {
       });
       const preferences = {
         ...DEFAULT_NOTIFICATION_PREFERENCES,
-        quietHours: [20, 23] as [number, number],
       };
 
       expect(() => persistNotificationPreferences(preferences)).not.toThrow();

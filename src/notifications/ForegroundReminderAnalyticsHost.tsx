@@ -1,23 +1,20 @@
 /* istanbul ignore file */
-// Integration component that wires together expo-notifications, toast system, and analytics.
+// Integration component that wires together expo-notifications and analytics.
 // Testing would require complex notification event mocking with minimal benefit since
-// each underlying system (notifications, toast, analytics) is already tested independently.
+// each underlying system (notifications, analytics) is already tested independently.
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 
-import { NOTIFICATIONS } from '@/config/constants';
 import { useAnalytics } from '@/observability/AnalyticsProvider';
-import { ToastContainer, useToast, type ToastController } from '@/ui/components/Toast';
 import { DOMAIN } from '@/config/domain.config';
 
-export function ForegroundReminderToastHost() {
-  const toast = useToast();
-  useForegroundReminderToasts(toast);
-  return <ToastContainer messages={toast.messages} dismiss={toast.dismiss} />;
+export function ForegroundReminderAnalyticsHost() {
+  useForegroundReminderTracking();
+  return null;
 }
 
-function useForegroundReminderToasts(toast: ToastController) {
+function useForegroundReminderTracking() {
   const analytics = useAnalytics();
 
   useEffect(() => {
@@ -31,16 +28,18 @@ function useForegroundReminderToasts(toast: ToastController) {
         return;
       }
 
-      const title = notification.request.content.title ?? 'Reminder arrived';
-      const description =
-        notification.request.content.body ?? 'A reminder fired while the app was open.';
+      if (data?.foregroundPresented) {
+        return;
+      }
 
-      toast.show({
-        type: 'info',
-        title,
-        description,
-        duration: NOTIFICATIONS.toastDurationMs.foregroundReminder,
-      });
+      Notifications.scheduleNotificationAsync({
+        content: {
+          title: notification.request.content.title ?? 'Reminder',
+          body: notification.request.content.body ?? '',
+          data: { ...data, foregroundPresented: true },
+        },
+        trigger: null,
+      }).catch(() => undefined);
 
       analytics.trackEvent('notifications:foreground-fired', {
         reminderId: data.reminderId,
@@ -52,5 +51,5 @@ function useForegroundReminderToasts(toast: ToastController) {
     return () => {
       subscription.remove();
     };
-  }, [analytics, toast]);
+  }, [analytics]);
 }

@@ -9,6 +9,7 @@ import { optimizeDatabase } from '@/db/sqlite/maintenance';
 import { withDatabaseRetry } from '@/db/sqlite/retry';
 import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
 import { setLanguage, supportedLanguages } from '@/i18n';
+import { scheduleReminder } from '@/notifications/scheduler';
 import { useNotificationSettings } from '@/notifications/useNotificationSettings';
 import { useSyncStore } from '@/state';
 import { pullUpdates, pushOutbox, useSync } from '@/sync';
@@ -426,6 +427,40 @@ export default function SettingsScreen() {
       return;
     }
     setDevStatus('Push registration unavailable on this platform.');
+  };
+
+  const handleScheduleTestReminder = async () => {
+    if (!isNative) {
+      setDevStatus('Test reminders require a native build.');
+      return;
+    }
+    try {
+      const fireDate = new Date(Date.now() + 30 * 1000);
+      const id = `dev-reminder-${fireDate.getTime()}`;
+      const result = await scheduleReminder({
+        id,
+        title: 'Test reminder',
+        body: 'This is a test reminder.',
+        fireDate,
+      });
+
+      if (!result) {
+        setDevStatus('Reminder not scheduled (permissions may be missing).');
+        return;
+      }
+
+      setDevStatus('Scheduled a test reminder for 30 seconds from now.');
+    } catch (error) {
+      const { friendly } = showFriendlyError(error, {
+        surface: 'settings.schedule-reminder',
+        suppressToast: true,
+      });
+      const message =
+        friendly.description ??
+        (friendly.descriptionKey ? t(friendly.descriptionKey) : friendly.originalMessage) ??
+        (friendly.titleKey ? t(friendly.titleKey) : t('errors.unknown.title'));
+      setDevStatus(message);
+    }
   };
 
   const handleLogNotificationStore = () => {
@@ -870,6 +905,15 @@ export default function SettingsScreen() {
                       onPress={handleRegisterPush}
                     >
                       {t('dev.registerPush')}
+                    </SecondaryButton>
+                  </XStack>
+                  <XStack>
+                    <SecondaryButton
+                      testID="dev-schedule-reminder-button"
+                      disabled={!isNative}
+                      onPress={handleScheduleTestReminder}
+                    >
+                      Schedule test reminder (30s)
                     </SecondaryButton>
                   </XStack>
                   <XStack>

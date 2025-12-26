@@ -4,7 +4,6 @@ import { Platform } from 'react-native';
 export type NotificationStatus = 'unknown' | 'soft-declined' | 'granted' | 'denied' | 'unavailable';
 
 export type NotificationPreferences = {
-  quietHours: [number, number];
   /** User explicitly toggled notifications off in-app (even if OS permission is granted) */
   pushManuallyDisabled: boolean;
   notificationStatus: NotificationStatus;
@@ -15,7 +14,6 @@ export type NotificationPreferences = {
 };
 
 export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
-  quietHours: [0, 0],
   pushManuallyDisabled: false,
   notificationStatus: 'unknown',
   osPromptAttempts: 0,
@@ -68,10 +66,6 @@ export function loadNotificationPreferences(): NotificationPreferences {
       pushPromptAttempts?: number;
       pushLastPromptAt?: number;
     };
-    if (!parsed.quietHours || parsed.quietHours.length !== 2) {
-      parsed.quietHours = DEFAULT_NOTIFICATION_PREFERENCES.quietHours;
-    }
-
     const migrated: NotificationPreferences = {
       ...DEFAULT_NOTIFICATION_PREFERENCES,
       pushManuallyDisabled:
@@ -95,7 +89,6 @@ export function loadNotificationPreferences(): NotificationPreferences {
         typeof parsed.softLastDeclinedAt === 'number'
           ? parsed.softLastDeclinedAt
           : DEFAULT_NOTIFICATION_PREFERENCES.softLastDeclinedAt,
-      quietHours: parsed.quietHours as [number, number],
     };
 
     return migrated;

@@ -7,7 +7,6 @@ import {
   configureNotificationHandler,
   scheduleReminder,
   ReminderPayload,
-  ScheduleOptions,
 } from '@/notifications/scheduler';
 import {
   ensureNotificationPermission,
@@ -170,14 +169,10 @@ describe('scheduler', () => {
       fireDate: dayjs().add(1, 'hour').toDate(),
     };
 
-    const mockOptions: ScheduleOptions = {
-      quietHours: [0, 0], // No quiet hours
-    };
-
     it('returns null on web platform', async () => {
       Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
 
-      const result = await scheduleReminder(mockPayload, mockOptions);
+      const result = await scheduleReminder(mockPayload);
 
       expect(result).toBeNull();
       expect(ensureNotificationPermission).not.toHaveBeenCalled();
@@ -187,7 +182,7 @@ describe('scheduler', () => {
       Object.defineProperty(Platform, 'OS', { value: 'ios', configurable: true });
       (ensureNotificationPermission as any).mockResolvedValue(false);
 
-      const result = await scheduleReminder(mockPayload, mockOptions);
+      const result = await scheduleReminder(mockPayload);
 
       expect(result).toBeNull();
       expect(scheduleLocalNotification).not.toHaveBeenCalled();
@@ -199,7 +194,7 @@ describe('scheduler', () => {
       (scheduleLocalNotification as any).mockResolvedValue('notification-id-123');
       incrementBadgeCountMock.mockResolvedValue(2);
 
-      const result = await scheduleReminder(mockPayload, mockOptions);
+      const result = await scheduleReminder(mockPayload);
 
       expect(result).toBe('notification-id-123');
       expect(scheduleLocalNotification).toHaveBeenCalledWith({
@@ -224,7 +219,7 @@ describe('scheduler', () => {
       (scheduleLocalNotification as any).mockResolvedValue('notification-id-456');
       incrementBadgeCountMock.mockResolvedValue(null);
 
-      const result = await scheduleReminder(mockPayload, mockOptions);
+      const result = await scheduleReminder(mockPayload);
 
       expect(result).toBe('notification-id-456');
       expect(scheduleLocalNotification).toHaveBeenCalledWith({
@@ -256,137 +251,10 @@ describe('scheduler', () => {
         fireDate: dayjs().subtract(10, 'seconds').toDate(),
       };
 
-      await scheduleReminder(pastPayload, mockOptions);
+      await scheduleReminder(pastPayload);
 
       const call = (scheduleLocalNotification as jest.Mock).mock.calls[0][0] as any;
       expect(call.trigger.seconds).toBeGreaterThanOrEqual(5);
-    });
-
-    it('delays notification when inside quiet hours (same day)', async () => {
-      Object.defineProperty(Platform, 'OS', { value: 'ios', configurable: true });
-      (ensureNotificationPermission as any).mockResolvedValue(true);
-      (scheduleLocalNotification as any).mockResolvedValue('notification-id');
-
-      // Set quiet hours from 22:00 to 07:00 (next day)
-      const quietOptions: ScheduleOptions = {
-        quietHours: [22, 7],
-      };
-
-      // Try to schedule during quiet hours (e.g., 23:00)
-      const quietPayload = {
-        ...mockPayload,
-        fireDate: dayjs().hour(23).minute(0).second(0).toDate(),
-      };
-
-      await scheduleReminder(quietPayload, quietOptions);
-
-      const call = (scheduleLocalNotification as jest.Mock).mock.calls[0][0] as any;
-      const triggerDate = dayjs(call.trigger.date as Date);
-
-      // Should be delayed to 07:05 next day
-      expect(triggerDate.hour()).toBe(7);
-      expect(triggerDate.minute()).toBe(5);
-    });
-
-    it('delays notification when inside quiet hours (next day)', async () => {
-      Object.defineProperty(Platform, 'OS', { value: 'ios', configurable: true });
-      (ensureNotificationPermission as any).mockResolvedValue(true);
-      (scheduleLocalNotification as any).mockResolvedValue('notification-id');
-
-      // Set quiet hours from 22:00 to 07:00
-      const quietOptions: ScheduleOptions = {
-        quietHours: [22, 7],
-      };
-
-      // Try to schedule during early morning quiet hours (e.g., 02:00)
-      const quietPayload = {
-        ...mockPayload,
-        fireDate: dayjs().hour(2).minute(0).second(0).toDate(),
-      };
-
-      await scheduleReminder(quietPayload, quietOptions);
-
-      const call = (scheduleLocalNotification as jest.Mock).mock.calls[0][0] as any;
-      const triggerDate = dayjs(call.trigger.date as Date);
-
-      // Should be delayed to 07:05 same day
-      expect(triggerDate.hour()).toBe(7);
-      expect(triggerDate.minute()).toBe(5);
-    });
-
-    it('does not delay notification when outside quiet hours', async () => {
-      Object.defineProperty(Platform, 'OS', { value: 'ios', configurable: true });
-      (ensureNotificationPermission as any).mockResolvedValue(true);
-      (scheduleLocalNotification as any).mockResolvedValue('notification-id');
-
-      const quietOptions: ScheduleOptions = {
-        quietHours: [22, 7],
-      };
-
-      // Schedule at 12:00 (outside quiet hours)
-      const outsidePayload = {
-        ...mockPayload,
-        fireDate: dayjs().hour(12).minute(0).second(0).toDate(),
-      };
-
-      await scheduleReminder(outsidePayload, quietOptions);
-
-      const call = (scheduleLocalNotification as jest.Mock).mock.calls[0][0] as any;
-      const triggerDate = dayjs(call.trigger.date as Date);
-
-      // Should keep the original time
-      expect(triggerDate.hour()).toBe(12);
-      expect(triggerDate.minute()).toBe(0);
-    });
-
-    it('does not delay when quiet hours are disabled (start === end)', async () => {
-      Object.defineProperty(Platform, 'OS', { value: 'ios', configurable: true });
-      (ensureNotificationPermission as any).mockResolvedValue(true);
-      (scheduleLocalNotification as any).mockResolvedValue('notification-id');
-
-      const noQuietOptions: ScheduleOptions = {
-        quietHours: [0, 0],
-      };
-
-      const payload = {
-        ...mockPayload,
-        fireDate: dayjs().hour(3).minute(30).second(0).toDate(),
-      };
-
-      await scheduleReminder(payload, noQuietOptions);
-
-      const call = (scheduleLocalNotification as jest.Mock).mock.calls[0][0] as any;
-      const triggerDate = dayjs(call.trigger.date as Date);
-
-      // Should keep the original time
-      expect(triggerDate.hour()).toBe(3);
-      expect(triggerDate.minute()).toBe(30);
-    });
-
-    it('handles quiet hours in same day (start < end)', async () => {
-      Object.defineProperty(Platform, 'OS', { value: 'ios', configurable: true });
-      (ensureNotificationPermission as any).mockResolvedValue(true);
-      (scheduleLocalNotification as any).mockResolvedValue('notification-id');
-
-      // Quiet hours from 13:00 to 14:00 (same day)
-      const sameDayQuietOptions: ScheduleOptions = {
-        quietHours: [13, 14],
-      };
-
-      // Schedule at 13:30 (inside quiet hours)
-      const insidePayload = {
-        ...mockPayload,
-        fireDate: dayjs().hour(13).minute(30).second(0).toDate(),
-      };
-
-      await scheduleReminder(insidePayload, sameDayQuietOptions);
-
-      const call = (scheduleLocalNotification as jest.Mock).mock.calls[0][0] as any;
-      const triggerDate = dayjs(call.trigger.date as Date);
-
-      // Should be delayed to 14:05
-      expect(triggerDate.hour()).toBe(14);
-      expect(triggerDate.minute()).toBe(5);
     });
 
     it('includes custom data in notification payload', async () => {
@@ -403,7 +271,7 @@ describe('scheduler', () => {
         },
       };
 
-      await scheduleReminder(customPayload, mockOptions);
+      await scheduleReminder(customPayload);
 
       expect(scheduleLocalNotification).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -430,7 +298,7 @@ describe('scheduler', () => {
         fireDate: dayjs().add(1, 'hour').toDate(),
       };
 
-      await scheduleReminder(noDataPayload, mockOptions);
+      await scheduleReminder(noDataPayload);
 
       expect(scheduleLocalNotification).toHaveBeenCalledWith(
         expect.objectContaining({
