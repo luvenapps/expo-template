@@ -28,6 +28,7 @@ import { archiveOldEntries } from '@/db/sqlite/archive';
 import { optimizeDatabase } from '@/db/sqlite/maintenance';
 import i18n from '@/i18n';
 import { I18nextProvider } from 'react-i18next';
+import { NOTIFICATIONS } from '@/config/constants';
 
 const queryClient = getQueryClient();
 const persistOptions = getQueryClientPersistOptions();
@@ -110,6 +111,8 @@ export function AppProviders({ children }: PropsWithChildren) {
   // Listen for entry creation events and trigger push permission prompt
   useEffect(() => {
     const unsubscribe = onNotificationEvent('entry-created', (context) => {
+      if (Platform.OS === 'web') return;
+      if (NOTIFICATIONS.initialSoftPromptTrigger !== 'first-entry') return;
       console.log('[AppProviders] Entry created, triggering push prompt with context:', context);
       tryPromptForPush({ context }).catch((error) => {
         console.error('[AppProviders] Failed to trigger push prompt:', error);

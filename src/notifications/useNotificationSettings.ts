@@ -1,18 +1,18 @@
+import { NOTIFICATIONS } from '@/config/constants';
+import {
+  ensureNotificationsEnabled,
+  revokeNotifications,
+} from '@/notifications/notificationSystem';
 import {
   type NotificationPreferences,
   loadNotificationPreferences,
   persistNotificationPreferences,
 } from '@/notifications/preferences';
-import {
-  ensureNotificationsEnabled,
-  revokeNotifications,
-} from '@/notifications/notificationSystem';
 import { useAnalytics } from '@/observability/AnalyticsProvider';
 import * as Notifications from 'expo-notifications';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, Platform } from 'react-native';
-import { NOTIFICATIONS } from '@/config/constants';
 import { useTranslation } from 'react-i18next';
+import { AppState, Platform } from 'react-native';
 
 export type NotificationPermissionState =
   | 'granted'
@@ -353,6 +353,7 @@ export function useNotificationSettings() {
   // Auto-show the soft prompt on first load (or after cooldown) when OS/browser is still in
   // prompt/default state. Relies on tryPromptForPush to enforce cooldown/attempts.
   useEffect(() => {
+    if (Platform.OS !== 'web' && NOTIFICATIONS.initialSoftPromptTrigger !== 'app-install') return;
     if (permissionStatus !== 'prompt') return;
     if (preferences.pushManuallyDisabled) return;
 
