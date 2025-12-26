@@ -295,15 +295,22 @@ export function useNotificationSettings() {
       forceRegister: true,
     });
 
+    // Reload persisted preferences after the unified API updates them (matches tryPromptForPush)
     setPreferences(loadNotificationPreferences());
     setSoftPromptOpen(false);
     setSoftPromptContext(undefined);
 
     if (result.status === 'enabled') {
+      // Clear manual-off flag now that the user has re-enabled notifications (matches tryPromptForPush)
       updatePreferences((prev) => ({
         ...prev,
         pushManuallyDisabled: false,
       }));
+    }
+
+    // On web, reload to ensure full state sync
+    if (result.status === 'enabled' && Platform.OS === 'web') {
+      window.location.reload();
     }
   }, [setPreferences, softPromptContext, updatePreferences]);
 
