@@ -2,7 +2,6 @@
 import { DOMAIN } from '@/config/domain.config';
 import { Platform } from 'react-native';
 import { emitDatabaseReset } from './events';
-import { isStaleHandleError } from './retry';
 import { deviceEntity, entryEntity, outbox, primaryEntity, reminderEntity } from './schema';
 
 /**
@@ -33,24 +32,10 @@ async function createDrizzleInstance() {
     throw new Error('Failed to open SQLite database - returned null');
   }
 
-  ensureSqliteSchema(sqliteHandle);
+  await ensureSqliteSchema(sqliteHandle);
   dbInstance = drizzle(sqliteHandle);
 
   return dbInstance;
-}
-
-async function createDrizzleInstanceWithRetry() {
-  try {
-    return await createDrizzleInstance();
-  } catch (error) {
-    if (!isStaleHandleError(error)) {
-      throw error;
-    }
-
-    console.warn('[SQLite] Stale handle detected during init. Resetting and retrying…');
-    await resetDatabase();
-    return await createDrizzleInstance();
-  }
 }
 
 /**
@@ -66,7 +51,7 @@ export async function getDb() {
   if (!dbPromise) {
     dbPromise = (async () => {
       try {
-        return await createDrizzleInstanceWithRetry();
+        return await createDrizzleInstance();
       } catch (error) {
         console.error('[SQLite] Database initialization failed:', error);
         dbPromise = null; // Reset so it can be retried

@@ -7,12 +7,12 @@ const ENTRIES_TABLE = DOMAIN.entities.entries.tableName;
 function createMockDatabase(initialVersion: number) {
   const execCalls: string[] = [];
   const db = {
-    getFirstSync: jest.fn(() => ({ user_version: initialVersion })),
-    execSync: jest.fn((statement: string) => {
+    getFirstAsync: jest.fn(async () => ({ user_version: initialVersion })),
+    execAsync: jest.fn(async (statement: string) => {
       execCalls.push(statement);
     }),
-    withTransactionSync: jest.fn((callback: () => void) => {
-      callback();
+    withTransactionAsync: jest.fn(async (callback: () => Promise<void> | void) => {
+      await callback();
     }),
   };
 
@@ -34,13 +34,13 @@ describe('ensureSqliteSchema', () => {
     consoleWarnSpy.mockRestore();
   });
 
-  it('applies schema statements when user_version is outdated', () => {
+  it('applies schema statements when user_version is outdated', async () => {
     const { ensureSqliteSchema } = require('@/db/sqlite/setup');
     const { db, execCalls } = createMockDatabase(0);
 
-    ensureSqliteSchema(db);
+    await ensureSqliteSchema(db);
 
-    expect(db.withTransactionSync).toHaveBeenCalledTimes(1);
+    expect(db.withTransactionAsync).toHaveBeenCalledTimes(1);
     expect(execCalls).toEqual(
       expect.arrayContaining([
         expect.stringContaining(`CREATE TABLE IF NOT EXISTS "${PRIMARY_TABLE}"`),
@@ -52,17 +52,17 @@ describe('ensureSqliteSchema', () => {
     );
   });
 
-  it('skips execution when schema version already applied', () => {
+  it('skips execution when schema version already applied', async () => {
     const { ensureSqliteSchema } = require('@/db/sqlite/setup');
     const { db } = createMockDatabase(1);
 
-    ensureSqliteSchema(db);
+    await ensureSqliteSchema(db);
 
-    expect(db.withTransactionSync).not.toHaveBeenCalled();
-    expect(db.execSync).not.toHaveBeenCalled();
+    expect(db.withTransactionAsync).not.toHaveBeenCalled();
+    expect(db.execAsync).not.toHaveBeenCalled();
   });
 
-  it('should skip initialization on web platform', () => {
+  it('should skip initialization on web platform', async () => {
     // Mock Platform.OS to be 'web'
     Object.defineProperty(Platform, 'OS', {
       get: () => 'web',
@@ -72,10 +72,10 @@ describe('ensureSqliteSchema', () => {
     const { ensureSqliteSchema } = require('@/db/sqlite/setup');
     const { db } = createMockDatabase(0);
 
-    ensureSqliteSchema(db);
+    await ensureSqliteSchema(db);
 
-    expect(db.getFirstSync).not.toHaveBeenCalled();
-    expect(db.withTransactionSync).not.toHaveBeenCalled();
+    expect(db.getFirstAsync).not.toHaveBeenCalled();
+    expect(db.withTransactionAsync).not.toHaveBeenCalled();
 
     // Reset Platform.OS
     Object.defineProperty(Platform, 'OS', {
@@ -84,82 +84,82 @@ describe('ensureSqliteSchema', () => {
     });
   });
 
-  it('should handle statement execution errors', () => {
+  it('should handle statement execution errors', async () => {
     const { ensureSqliteSchema } = require('@/db/sqlite/setup');
     const db = {
-      getFirstSync: jest.fn(() => ({ user_version: 0 })),
-      execSync: jest.fn((statement: string) => {
+      getFirstAsync: jest.fn(async () => ({ user_version: 0 })),
+      execAsync: jest.fn(async (statement: string) => {
         if (statement.includes('CREATE TABLE')) {
           throw new Error('SQL syntax error');
         }
       }),
-      withTransactionSync: jest.fn((callback: () => void) => {
-        callback();
+      withTransactionAsync: jest.fn(async (callback: () => Promise<void> | void) => {
+        await callback();
       }),
     };
 
-    expect(() => ensureSqliteSchema(db as any)).toThrow('SQL syntax error');
+    await expect(ensureSqliteSchema(db as any)).rejects.toThrow('SQL syntax error');
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       expect.stringContaining('[SQLite Setup] Failed to execute statement'),
       expect.any(Error),
     );
   });
 
-  it('should retry on stale handle error', () => {
+  it('should retry on stale handle error', async () => {
     const { ensureSqliteSchema } = require('@/db/sqlite/setup');
     let attemptCount = 0;
     const db = {
-      getFirstSync: jest.fn(() => {
+      getFirstAsync: jest.fn(async () => {
         attemptCount++;
         if (attemptCount === 1) {
           throw new Error('NullPointerException');
         }
         return { user_version: 0 };
       }),
-      execSync: jest.fn(),
-      withTransactionSync: jest.fn((callback: () => void) => {
-        callback();
+      execAsync: jest.fn(),
+      withTransactionAsync: jest.fn(async (callback: () => Promise<void> | void) => {
+        await callback();
       }),
     };
 
-    ensureSqliteSchema(db as any);
+    await ensureSqliteSchema(db as any);
 
-    expect(db.getFirstSync).toHaveBeenCalledTimes(2);
+    expect(db.getFirstAsync).toHaveBeenCalledTimes(2);
     expect(consoleWarnSpy).toHaveBeenCalledWith(
       '[SQLite Setup] Stale handle detected, will retry...',
     );
   });
 
-  it('should throw error after exhausting retries', () => {
+  it('should throw error after exhausting retries', async () => {
     const { ensureSqliteSchema } = require('@/db/sqlite/setup');
     const db = {
-      getFirstSync: jest.fn(() => {
+      getFirstAsync: jest.fn(async () => {
         throw new Error('database is closed');
       }),
-      execSync: jest.fn(),
-      withTransactionSync: jest.fn(),
+      execAsync: jest.fn(),
+      withTransactionAsync: jest.fn(),
     };
 
-    expect(() => ensureSqliteSchema(db as any)).toThrow('database is closed');
-    expect(db.getFirstSync).toHaveBeenCalledTimes(2); // Initial attempt + 1 retry
+    await expect(ensureSqliteSchema(db as any)).rejects.toThrow('database is closed');
+    expect(db.getFirstAsync).toHaveBeenCalledTimes(2); // Initial attempt + 1 retry
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       '[SQLite Setup] Schema initialization failed:',
       expect.any(Error),
     );
   });
 
-  it('should throw non-stale-handle errors immediately', () => {
+  it('should throw non-stale-handle errors immediately', async () => {
     const { ensureSqliteSchema } = require('@/db/sqlite/setup');
     const db = {
-      getFirstSync: jest.fn(() => {
+      getFirstAsync: jest.fn(async () => {
         throw new Error('Permission denied');
       }),
-      execSync: jest.fn(),
-      withTransactionSync: jest.fn(),
+      execAsync: jest.fn(),
+      withTransactionAsync: jest.fn(),
     };
 
-    expect(() => ensureSqliteSchema(db as any)).toThrow('Permission denied');
-    expect(db.getFirstSync).toHaveBeenCalledTimes(1); // No retry for non-stale errors
+    await expect(ensureSqliteSchema(db as any)).rejects.toThrow('Permission denied');
+    expect(db.getFirstAsync).toHaveBeenCalledTimes(1); // No retry for non-stale errors
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       '[SQLite Setup] Schema initialization failed:',
       expect.any(Error),
@@ -172,26 +172,26 @@ describe('resetSchemaInitialization', () => {
     jest.resetModules();
   });
 
-  it('should reset initialization state', () => {
+  it('should reset initialization state', async () => {
     const { ensureSqliteSchema, resetSchemaInitialization } = require('@/db/sqlite/setup');
     const { db } = createMockDatabase(1);
 
     // First call - should skip because version is up to date
-    ensureSqliteSchema(db);
-    expect(db.getFirstSync).toHaveBeenCalledTimes(1);
+    await ensureSqliteSchema(db);
+    expect(db.getFirstAsync).toHaveBeenCalledTimes(1);
 
     // Reset modules to get fresh state
-    db.getFirstSync.mockClear();
+    db.getFirstAsync.mockClear();
 
     // Second call without reset - should also skip (already initialized)
-    ensureSqliteSchema(db);
-    expect(db.getFirstSync).not.toHaveBeenCalled();
+    await ensureSqliteSchema(db);
+    expect(db.getFirstAsync).not.toHaveBeenCalled();
 
     // Reset initialization
     resetSchemaInitialization();
 
     // Third call after reset - should check version again
-    ensureSqliteSchema(db);
-    expect(db.getFirstSync).toHaveBeenCalledTimes(1);
+    await ensureSqliteSchema(db);
+    expect(db.getFirstAsync).toHaveBeenCalledTimes(1);
   });
 });

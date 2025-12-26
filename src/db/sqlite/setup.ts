@@ -82,7 +82,7 @@ function buildStatements(): string[] {
   ].map((statement) => statement.replace(/\s+\n/g, '\n').trim());
 }
 
-export function ensureSqliteSchema(database: SQLiteDatabase) {
+export async function ensureSqliteSchema(database: SQLiteDatabase) {
   if (Platform.OS === 'web' || initialized) {
     return;
   }
@@ -100,7 +100,7 @@ export function ensureSqliteSchema(database: SQLiteDatabase) {
         }
       }
 
-      const currentVersionResult = database.getFirstSync('PRAGMA user_version') as {
+      const currentVersionResult = (await database.getFirstAsync('PRAGMA user_version')) as {
         user_version: number;
       } | null;
       const currentVersion = currentVersionResult?.user_version ?? 0;
@@ -110,20 +110,20 @@ export function ensureSqliteSchema(database: SQLiteDatabase) {
         return;
       }
 
-      database.withTransactionSync(() => {
-        database.execSync('PRAGMA foreign_keys = ON');
+      await database.withTransactionAsync(async () => {
+        await database.execAsync('PRAGMA foreign_keys = ON');
         const statements = buildStatements();
 
         for (let i = 0; i < statements.length; i++) {
           try {
-            database.execSync(statements[i]);
+            await database.execAsync(statements[i]);
           } catch (error) {
             console.error(`[SQLite Setup] Failed to execute statement ${i + 1}:`, error);
             throw error;
           }
         }
 
-        database.execSync(`PRAGMA user_version = ${SCHEMA_VERSION}`);
+        await database.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION}`);
       });
 
       initialized = true;
