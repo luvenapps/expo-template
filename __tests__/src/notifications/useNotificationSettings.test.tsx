@@ -579,10 +579,10 @@ describe('useNotificationSettings', () => {
     const { result } = renderHook(() => useNotificationSettings());
     expect(typeof result.current.tryPromptForPush).toBe('function');
 
-    nowSpy.mockReturnValue(base + NOTIFICATIONS.pushPromptCooldownMs + 50);
+    nowSpy.mockReturnValue(base + NOTIFICATIONS.osPromptCooldownMs + 50);
 
     await act(async () => {
-      jest.advanceTimersByTime(NOTIFICATIONS.pushPromptCooldownMs + 100);
+      jest.advanceTimersByTime(NOTIFICATIONS.osPromptCooldownMs + 100);
     });
 
     expect(typeof result.current.tryPromptForPush).toBe('function');
@@ -746,7 +746,7 @@ describe('useNotificationSettings', () => {
         quietHours: [20, 23],
         notificationStatus: 'unknown',
         pushManuallyDisabled: false,
-        osPromptAttempts: NOTIFICATIONS.pushPromptMaxAttempts,
+        osPromptAttempts: NOTIFICATIONS.osPromptMaxAttempts,
         osLastPromptAt: Date.now() - 1000,
         softDeclineCount: 0,
         softLastDeclinedAt: 0,
@@ -829,7 +829,7 @@ describe('useNotificationSettings', () => {
         notificationStatus: 'granted',
         pushManuallyDisabled: false,
         osPromptAttempts: 1,
-        osLastPromptAt: Date.now() - NOTIFICATIONS.pushPromptCooldownMs - 1000,
+        osLastPromptAt: Date.now() - NOTIFICATIONS.osPromptCooldownMs - 1000,
         softDeclineCount: 0,
         softLastDeclinedAt: 0,
       });
@@ -867,7 +867,7 @@ describe('useNotificationSettings', () => {
         notificationStatus: 'denied',
         pushManuallyDisabled: false,
         osPromptAttempts: 1,
-        osLastPromptAt: Date.now() - NOTIFICATIONS.pushPromptCooldownMs - 1000,
+        osLastPromptAt: Date.now() - NOTIFICATIONS.osPromptCooldownMs - 1000,
         softDeclineCount: 0,
         softLastDeclinedAt: 0,
       });

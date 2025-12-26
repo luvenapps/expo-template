@@ -122,7 +122,7 @@ export function useNotificationSettings() {
       setPermissionStatus(mapped);
       return mapped;
     } catch (permissionError) {
-      setError(t(NOTIFICATIONS.copyKeys.permissionReadError));
+      setError(t('notifications.permissionReadError'));
       analytics.trackError(permissionError as Error, { source: 'notifications:permissions' });
       const fallbackStatus = Platform.OS === 'web' ? 'prompt' : 'unavailable';
       setPermissionStatus(fallbackStatus);
@@ -251,7 +251,7 @@ export function useNotificationSettings() {
         if (isNative) {
           await cancelAllScheduledNotifications();
         }
-        setStatusMessage(t(NOTIFICATIONS.copyKeys.remindersDisabled));
+        setStatusMessage(t('notifications.remindersDisabled'));
         return;
       }
 
@@ -267,7 +267,7 @@ export function useNotificationSettings() {
 
       setPermissionStatus('granted');
       updatePreferences((prev) => ({ ...prev, remindersEnabled: true }));
-      setStatusMessage(t(NOTIFICATIONS.copyKeys.remindersEnabled));
+      setStatusMessage(t('notifications.remindersEnabled'));
     },
     [analytics, refreshPermissionStatus, t, updatePreferences],
   );

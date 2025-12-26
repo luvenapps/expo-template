@@ -1,7 +1,5 @@
 // Centralized tunables for notifications and related UX
 export const NOTIFICATIONS = {
-  pushPromptMaxAttempts: 3,
-  pushPromptCooldownMs: 7 * 24 * 60 * 60 * 1000, // 7 days
   osPromptMaxAttempts: 3,
   osPromptCooldownMs: 7 * 24 * 60 * 60 * 1000, // 7 days
   softDeclineCooldownMs: 3 * 24 * 60 * 60 * 1000, // 3 days
@@ -9,15 +7,6 @@ export const NOTIFICATIONS = {
   toastDurationMs: {
     foregroundReminder: 5000,
     default: 4000,
-  },
-  // Localized copy is referenced by translation keys; resolve with i18n `t(...)` where used.
-  copyKeys: {
-    permissionReadError: 'notifications.permissionReadError',
-    remindersEnabled: 'notifications.remindersEnabled',
-    remindersDisabled: 'notifications.remindersDisabled',
-    remindersBlocked: 'notifications.remindersBlocked',
-    dailySummaryEnabled: 'notifications.dailySummaryEnabled',
-    dailySummaryDisabled: 'notifications.dailySummaryDisabled',
   },
 };
 
