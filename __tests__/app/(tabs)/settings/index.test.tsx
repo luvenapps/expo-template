@@ -74,7 +74,6 @@ jest.mock('@/notifications/useNotificationSettings', () => ({
     error: null,
     pushError: null,
     notificationStatus: 'unknown',
-    osPromptAttempts: 0,
     osLastPromptAt: 0,
     pushManuallyDisabled: false,
     softDeclineCount: 0,
@@ -555,8 +554,6 @@ const buildNotificationSettings = (
   isSupported: true,
   isChecking: false,
   notificationStatus: 'unknown',
-  osPromptAttempts: 0,
-  osLastPromptAt: 0,
   pushManuallyDisabled: false,
   softDeclineCount: 0,
   softLastDeclinedAt: 0,
@@ -874,7 +871,6 @@ describe('SettingsScreen', () => {
       mockedUseNotificationSettings.mockReturnValue(
         buildNotificationSettings({
           notificationStatus: 'unknown',
-          osPromptAttempts: 2,
           tryPromptForPush,
         }),
       );
@@ -925,7 +921,6 @@ describe('SettingsScreen', () => {
       mockedUseNotificationSettings.mockReturnValue(
         buildNotificationSettings({
           notificationStatus: 'unknown',
-          osPromptAttempts: 3,
         }),
       );
 

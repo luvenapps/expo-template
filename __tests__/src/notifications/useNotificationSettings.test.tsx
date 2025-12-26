@@ -1,4 +1,3 @@
-import { NOTIFICATIONS } from '@/config/constants';
 import { useNotificationSettings } from '@/notifications/useNotificationSettings';
 import { act, renderHook } from '@testing-library/react-native';
 import { AppState, Platform } from 'react-native';
@@ -111,8 +110,6 @@ describe('useNotificationSettings', () => {
     loadNotificationPreferences.mockReturnValue({
       notificationStatus: 'unknown',
       pushManuallyDisabled: false,
-      osPromptAttempts: 0,
-      osLastPromptAt: 0,
       softDeclineCount: 0,
       softLastDeclinedAt: 0,
     });
@@ -173,8 +170,6 @@ describe('useNotificationSettings', () => {
     loadNotificationPreferences.mockReturnValue({
       notificationStatus: 'unknown',
       pushManuallyDisabled: true, // User manually disabled push
-      osPromptAttempts: 0,
-      osLastPromptAt: 0,
       softDeclineCount: 0,
       softLastDeclinedAt: 0,
     });
@@ -200,8 +195,6 @@ describe('useNotificationSettings', () => {
     loadNotificationPreferences.mockReturnValue({
       notificationStatus: 'unknown',
       pushManuallyDisabled: true, // User manually disabled push
-      osPromptAttempts: 0,
-      osLastPromptAt: 0,
       softDeclineCount: 0,
       softLastDeclinedAt: 0,
     });
@@ -289,8 +282,6 @@ describe('useNotificationSettings', () => {
         ...prefs,
         notificationStatus: 'granted',
         pushManuallyDisabled: false,
-        osPromptAttempts: prefs.osPromptAttempts + 1,
-        osLastPromptAt: Date.now(),
       });
       return { status: 'enabled' };
     });
@@ -299,8 +290,6 @@ describe('useNotificationSettings', () => {
     loadNotificationPreferences.mockReturnValue({
       notificationStatus: 'granted',
       pushManuallyDisabled: false,
-      osPromptAttempts: 1,
-      osLastPromptAt: Date.now(),
       softDeclineCount: 0,
       softLastDeclinedAt: 0,
     });
@@ -334,33 +323,9 @@ describe('useNotificationSettings', () => {
       softDeclineCount: 0,
       softLastDeclinedAt: 0,
     });
-    expect(lastCall.osPromptAttempts).toBeGreaterThanOrEqual(1); // Incremented from 0
     expect(trackEvent).toHaveBeenCalledWith('notifications:prompt-triggered', {
       context: 'manual',
-      attempts: expect.any(Number),
-      lastPromptAt: expect.any(Number),
     });
-  });
-
-  it('respects cooldown and max attempts for push prompt', async () => {
-    const now = Date.now();
-    loadNotificationPreferences.mockReturnValue({
-      notificationStatus: 'unknown',
-      pushManuallyDisabled: false,
-      osPromptAttempts: 3,
-      osLastPromptAt: now,
-      softDeclineCount: 0,
-      softLastDeclinedAt: 0,
-    });
-
-    const { result } = renderHook(() => useNotificationSettings());
-
-    expect(typeof result.current.tryPromptForPush).toBe('function');
-    await act(async () => {
-      await result.current.tryPromptForPush();
-    });
-
-    expect(registerForPushNotifications).not.toHaveBeenCalled();
   });
 
   it('returns denied when OS permission is blocked even if flag was enabled', async () => {
@@ -372,8 +337,6 @@ describe('useNotificationSettings', () => {
     loadNotificationPreferences.mockReturnValue({
       notificationStatus: 'granted',
       pushManuallyDisabled: false,
-      osPromptAttempts: 0,
-      osLastPromptAt: 0,
       softDeclineCount: 0,
       softLastDeclinedAt: 0,
     });
@@ -391,32 +354,6 @@ describe('useNotificationSettings', () => {
     expect(res.status).toBe('denied');
   });
 
-  it('allows prompting again after cooldown elapses', async () => {
-    jest.useFakeTimers();
-    const base = Date.now();
-    const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(base);
-    loadNotificationPreferences.mockReturnValue({
-      notificationStatus: 'unknown',
-      pushManuallyDisabled: false,
-      osPromptAttempts: 1,
-      osLastPromptAt: base,
-      softDeclineCount: 0,
-      softLastDeclinedAt: 0,
-    });
-
-    const { result } = renderHook(() => useNotificationSettings());
-    expect(typeof result.current.tryPromptForPush).toBe('function');
-
-    nowSpy.mockReturnValue(base + NOTIFICATIONS.osPromptCooldownMs + 50);
-
-    await act(async () => {
-      jest.advanceTimersByTime(NOTIFICATIONS.osPromptCooldownMs + 100);
-    });
-
-    expect(typeof result.current.tryPromptForPush).toBe('function');
-    nowSpy.mockRestore();
-  });
-
   it('handles push denial', async () => {
     // Mock permission as prompt so useEffect doesn't interfere
     getPermissionsAsync.mockResolvedValue({
@@ -428,13 +365,10 @@ describe('useNotificationSettings', () => {
     // Mock ensureNotificationsEnabled to simulate denial behavior
     ensureNotificationsEnabled.mockImplementation(async () => {
       const prefs = loadNotificationPreferences();
-      const now = Date.now();
       persistNotificationPreferences({
         ...prefs,
         notificationStatus: 'denied',
         pushManuallyDisabled: false,
-        osPromptAttempts: prefs.osPromptAttempts + 1,
-        osLastPromptAt: now,
       });
       return { status: 'denied' };
     });
@@ -460,15 +394,11 @@ describe('useNotificationSettings', () => {
     expect(lastCall).toMatchObject({
       notificationStatus: 'denied',
       pushManuallyDisabled: false,
-      osPromptAttempts: 1,
       softDeclineCount: 0,
       softLastDeclinedAt: 0,
     });
-    expect(lastCall.osLastPromptAt).toBeGreaterThan(0); // Updated to current time
     expect(trackEvent).toHaveBeenCalledWith('notifications:prompt-triggered', {
       context: 'manual',
-      attempts: 0,
-      lastPromptAt: 0,
     });
   });
 
@@ -485,8 +415,6 @@ describe('useNotificationSettings', () => {
       expect.objectContaining({
         notificationStatus: 'unknown',
         pushManuallyDisabled: true, // Set to true when manually disabling
-        osPromptAttempts: 0,
-        osLastPromptAt: 0,
         softDeclineCount: 0,
         softLastDeclinedAt: 0,
       }),
@@ -531,95 +459,15 @@ describe('useNotificationSettings', () => {
 
       expect(trackEvent).toHaveBeenCalledWith('notifications:prompt-triggered', {
         context: 'entry-created',
-        attempts: 0,
-        lastPromptAt: 0,
       });
       expect(ensureNotificationsEnabled).toHaveBeenCalled();
       expect(promptResult).toEqual({ status: 'triggered', registered: true });
-    });
-
-    it('returns exhausted when max attempts reached', async () => {
-      loadNotificationPreferences.mockReturnValue({
-        notificationStatus: 'unknown',
-        pushManuallyDisabled: false,
-        osPromptAttempts: NOTIFICATIONS.osPromptMaxAttempts,
-        osLastPromptAt: Date.now() - 1000,
-        softDeclineCount: 0,
-        softLastDeclinedAt: 0,
-      });
-
-      // Mock permission as prompt so early return doesn't trigger
-      getPermissionsAsync.mockResolvedValue({
-        granted: false,
-        status: 'undetermined' as any,
-        canAskAgain: true,
-      });
-      ensureNotificationsEnabled.mockResolvedValue({ status: 'exhausted' });
-
-      const { result } = renderHook(() => useNotificationSettings());
-
-      // Wait for initial permission check
-      await act(async () => {
-        await Promise.resolve();
-      });
-
-      let promptResult;
-      await act(async () => {
-        promptResult = await result.current.tryPromptForPush({
-          context: 'manual',
-          skipSoftPrompt: true,
-        });
-      });
-
-      expect(promptResult).toEqual({ status: 'exhausted' });
-      expect(registerForPushNotifications).not.toHaveBeenCalled();
-    });
-
-    it('returns cooldown when still in cooldown period', async () => {
-      const now = Date.now();
-      loadNotificationPreferences.mockReturnValue({
-        notificationStatus: 'unknown',
-        pushManuallyDisabled: false,
-        osPromptAttempts: 1,
-        osLastPromptAt: now - 1000, // 1 second ago (< 7 days)
-        softDeclineCount: 0,
-        softLastDeclinedAt: 0,
-      });
-
-      // Mock permission as prompt so early return doesn't trigger
-      getPermissionsAsync.mockResolvedValue({
-        granted: false,
-        status: 'undetermined' as any,
-        canAskAgain: true,
-      });
-      ensureNotificationsEnabled.mockResolvedValue({ status: 'cooldown', remainingDays: 7 });
-
-      const { result } = renderHook(() => useNotificationSettings());
-
-      // Wait for initial permission check
-      await act(async () => {
-        await Promise.resolve();
-      });
-
-      let promptResult;
-      await act(async () => {
-        promptResult = await result.current.tryPromptForPush({
-          context: 'entry-created',
-          skipSoftPrompt: true,
-        });
-      });
-
-      expect(promptResult).toHaveProperty('status', 'cooldown');
-      expect(promptResult).toHaveProperty('remainingDays');
-      expect(registerForPushNotifications).not.toHaveBeenCalled();
     });
 
     it('returns already-enabled when push already enabled', async () => {
       loadNotificationPreferences.mockReturnValue({
         notificationStatus: 'granted',
         pushManuallyDisabled: false,
-        osPromptAttempts: 1,
-        osLastPromptAt: Date.now() - NOTIFICATIONS.osPromptCooldownMs - 1000,
         softDeclineCount: 0,
         softLastDeclinedAt: 0,
       });
@@ -653,8 +501,6 @@ describe('useNotificationSettings', () => {
       loadNotificationPreferences.mockReturnValue({
         notificationStatus: 'denied',
         pushManuallyDisabled: false,
-        osPromptAttempts: 1,
-        osLastPromptAt: Date.now() - NOTIFICATIONS.osPromptCooldownMs - 1000,
         softDeclineCount: 0,
         softLastDeclinedAt: 0,
       });
@@ -746,8 +592,6 @@ describe('useNotificationSettings', () => {
 
       expect(trackEvent).toHaveBeenCalledWith('notifications:prompt-triggered', {
         context: 'entry-created',
-        attempts: 0,
-        lastPromptAt: 0,
       });
     });
 
@@ -755,8 +599,6 @@ describe('useNotificationSettings', () => {
       loadNotificationPreferences.mockReturnValue({
         notificationStatus: 'unknown',
         pushManuallyDisabled: false,
-        osPromptAttempts: 0,
-        osLastPromptAt: 0,
         softDeclineCount: 0,
         softLastDeclinedAt: 0,
       });
@@ -785,8 +627,6 @@ describe('useNotificationSettings', () => {
       // Verify that context defaults to manual when not provided
       expect(trackEvent).toHaveBeenCalledWith('notifications:prompt-triggered', {
         context: 'manual',
-        attempts: 0,
-        lastPromptAt: 0,
       });
     });
   });

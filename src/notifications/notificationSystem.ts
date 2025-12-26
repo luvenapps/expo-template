@@ -1,5 +1,4 @@
 import { Platform } from 'react-native';
-import { NOTIFICATIONS } from '@/config/constants';
 import {
   DEFAULT_NOTIFICATION_PREFERENCES,
   NotificationStatus,
@@ -13,9 +12,7 @@ type EnsureResult =
   | { status: 'enabled' }
   | { status: 'denied'; message?: string }
   | { status: 'unavailable'; message?: string }
-  | { status: 'error'; message?: string }
-  | { status: 'cooldown'; remainingDays: number }
-  | { status: 'exhausted' };
+  | { status: 'error'; message?: string };
 
 const platform = Platform.OS === 'web' ? web : native;
 
@@ -26,7 +23,6 @@ export async function ensureNotificationsEnabled(options?: {
   forceRegister?: boolean;
 }): Promise<EnsureResult> {
   const prefs = loadNotificationPreferences();
-  const now = Date.now();
 
   // Early returns for terminal states (unless explicitly forcing a re-register)
   if (!options?.forceRegister) {
@@ -41,20 +37,6 @@ export async function ensureNotificationsEnabled(options?: {
     }
   }
 
-  // Attempt exhaustion (skip when forceRegister=true; used for permission-sync recovery)
-  if (!options?.forceRegister) {
-    if (prefs.osPromptAttempts >= NOTIFICATIONS.osPromptMaxAttempts) {
-      return { status: 'exhausted' };
-    }
-
-    // Cooldown check
-    if (prefs.osLastPromptAt && now - prefs.osLastPromptAt < NOTIFICATIONS.osPromptCooldownMs) {
-      const remainingMs = NOTIFICATIONS.osPromptCooldownMs - (now - prefs.osLastPromptAt);
-      const remainingDays = Math.ceil(remainingMs / (24 * 60 * 60 * 1000));
-      return { status: 'cooldown', remainingDays };
-    }
-  }
-
   // Request OS permission (no soft prompt in Phase 1)
   const result = await platform.requestPermission();
 
@@ -63,8 +45,6 @@ export async function ensureNotificationsEnabled(options?: {
       ...prefs,
       notificationStatus: 'granted',
       pushManuallyDisabled: false,
-      osPromptAttempts: 0,
-      osLastPromptAt: options?.forceRegister ? 0 : now,
     });
     return { status: 'enabled' };
   }
@@ -73,18 +53,15 @@ export async function ensureNotificationsEnabled(options?: {
     persistNotificationPreferences({
       ...prefs,
       notificationStatus: 'unavailable',
-      osLastPromptAt: now,
     });
     return { status: 'unavailable', message: result.message };
   }
 
-  // Denied or error count as an attempt; mark as denied
+  // Denied or error: mark as denied
   persistNotificationPreferences({
     ...prefs,
     notificationStatus: 'denied',
     pushManuallyDisabled: false,
-    osPromptAttempts: prefs.osPromptAttempts + 1,
-    osLastPromptAt: now,
   });
 
   if (result.status === 'error') {

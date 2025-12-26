@@ -7,8 +7,6 @@ export type NotificationPreferences = {
   /** User explicitly toggled notifications off in-app (even if OS permission is granted) */
   pushManuallyDisabled: boolean;
   notificationStatus: NotificationStatus;
-  osPromptAttempts: number;
-  osLastPromptAt: number; // epoch ms
   softDeclineCount: number;
   softLastDeclinedAt: number; // epoch ms
 };
@@ -16,8 +14,6 @@ export type NotificationPreferences = {
 export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   pushManuallyDisabled: false,
   notificationStatus: 'unknown',
-  osPromptAttempts: 0,
-  osLastPromptAt: 0,
   softDeclineCount: 0,
   softLastDeclinedAt: 0,
 };
@@ -73,14 +69,6 @@ export function loadNotificationPreferences(): NotificationPreferences {
           ? parsed.pushManuallyDisabled
           : DEFAULT_NOTIFICATION_PREFERENCES.pushManuallyDisabled,
       notificationStatus: parsed.notificationStatus ?? mapLegacyStatus(parsed.pushOptInStatus),
-      osPromptAttempts:
-        typeof parsed.osPromptAttempts === 'number'
-          ? parsed.osPromptAttempts
-          : (parsed.pushPromptAttempts ?? DEFAULT_NOTIFICATION_PREFERENCES.osPromptAttempts),
-      osLastPromptAt:
-        typeof parsed.osLastPromptAt === 'number'
-          ? parsed.osLastPromptAt
-          : (parsed.pushLastPromptAt ?? DEFAULT_NOTIFICATION_PREFERENCES.osLastPromptAt),
       softDeclineCount:
         typeof parsed.softDeclineCount === 'number'
           ? parsed.softDeclineCount

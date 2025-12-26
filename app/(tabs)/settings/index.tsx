@@ -249,24 +249,6 @@ export default function SettingsScreen() {
       return;
     }
 
-    if (result.status === 'cooldown') {
-      toast.show({
-        type: 'info',
-        title: t('settings.pushCooldownTitle'),
-        description: t('settings.pushCooldownDescription'),
-      });
-      return;
-    }
-
-    if (result.status === 'exhausted') {
-      toast.show({
-        type: 'info',
-        title: t('settings.pushExhaustedTitle'),
-        description: t('settings.pushExhaustedDescription'),
-      });
-      return;
-    }
-
     if (result.status === 'denied') {
       toast.show({
         type: 'info',
@@ -412,14 +394,6 @@ export default function SettingsScreen() {
     const result = await tryPromptForPush({ context: 'manual', skipSoftPrompt: true });
     if (result.status === 'triggered' || result.status === 'already-enabled') {
       setDevStatus('Push token requested (check console for logs).');
-      return;
-    }
-    if (result.status === 'cooldown') {
-      setDevStatus('Push prompt in cooldown.');
-      return;
-    }
-    if (result.status === 'exhausted') {
-      setDevStatus('Push attempts exhausted; enable via system settings.');
       return;
     }
     if (result.status === 'denied') {

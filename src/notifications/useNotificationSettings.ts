@@ -169,8 +169,6 @@ export function useNotificationSettings() {
           return {
             ...prev,
             notificationStatus: 'unknown',
-            osPromptAttempts: 0,
-            osLastPromptAt: 0,
           };
         }
         if (prev.notificationStatus === 'granted') {
@@ -280,8 +278,6 @@ export function useNotificationSettings() {
 
       analytics.trackEvent('notifications:prompt-triggered', {
         context: context || 'manual',
-        attempts: preferences.osPromptAttempts,
-        lastPromptAt: preferences.osLastPromptAt,
       });
 
       // If the OS still reports blocked/denied/unavailable, surface that immediately.
@@ -328,13 +324,6 @@ export function useNotificationSettings() {
         }));
         return { status: 'triggered' as const, registered: true };
       }
-      if (result.status === 'cooldown') {
-        const remainingDays = result.remainingDays ?? Math.ceil(NOTIFICATIONS.osPromptCooldownMs);
-        return { status: 'cooldown' as const, remainingDays };
-      }
-      if (result.status === 'exhausted') {
-        return { status: 'exhausted' as const };
-      }
       if (result.status === 'denied') {
         return { status: 'denied' as const };
       }
@@ -355,8 +344,6 @@ export function useNotificationSettings() {
     [
       analytics,
       preferences.notificationStatus,
-      preferences.osLastPromptAt,
-      preferences.osPromptAttempts,
       preferences.softLastDeclinedAt,
       refreshPermissionStatus,
       updatePreferences,
@@ -386,8 +373,6 @@ export function useNotificationSettings() {
       ...prev,
       notificationStatus: 'unknown',
       pushManuallyDisabled: true,
-      osPromptAttempts: 0,
-      osLastPromptAt: 0,
     }));
     analytics.trackEvent('notifications:push-disabled', { status: 'revoked' });
   }, [analytics, updatePreferences]);

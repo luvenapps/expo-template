@@ -1,14 +1,11 @@
 import { describe, expect, it, jest, beforeEach } from '@jest/globals';
 import { Platform } from 'react-native';
-import { NOTIFICATIONS } from '@/config/constants';
 
 // Mock dependencies BEFORE importing the module
 jest.mock('@/notifications/preferences', () => ({
   DEFAULT_NOTIFICATION_PREFERENCES: {
     pushManuallyDisabled: false,
     notificationStatus: 'unknown',
-    osPromptAttempts: 0,
-    osLastPromptAt: 0,
     softDeclineCount: 0,
     softLastDeclinedAt: 0,
   },
@@ -54,8 +51,6 @@ describe('notificationSystem', () => {
     loadNotificationPreferences.mockReturnValue({
       pushManuallyDisabled: false,
       notificationStatus: 'unknown',
-      osPromptAttempts: 0,
-      osLastPromptAt: 0,
       softDeclineCount: 0,
       softLastDeclinedAt: 0,
     });
@@ -71,8 +66,6 @@ describe('notificationSystem', () => {
         loadNotificationPreferences.mockReturnValue({
           pushManuallyDisabled: false,
           notificationStatus: 'granted',
-          osPromptAttempts: 0,
-          osLastPromptAt: 0,
           softDeclineCount: 0,
           softLastDeclinedAt: 0,
         });
@@ -87,8 +80,6 @@ describe('notificationSystem', () => {
         loadNotificationPreferences.mockReturnValue({
           pushManuallyDisabled: false,
           notificationStatus: 'denied',
-          osPromptAttempts: 1,
-          osLastPromptAt: mockNow - 1000,
           softDeclineCount: 0,
           softLastDeclinedAt: 0,
         });
@@ -103,8 +94,6 @@ describe('notificationSystem', () => {
         loadNotificationPreferences.mockReturnValue({
           pushManuallyDisabled: false,
           notificationStatus: 'unavailable',
-          osPromptAttempts: 0,
-          osLastPromptAt: 0,
           softDeclineCount: 0,
           softLastDeclinedAt: 0,
         });
@@ -119,8 +108,6 @@ describe('notificationSystem', () => {
         loadNotificationPreferences.mockReturnValue({
           pushManuallyDisabled: false,
           notificationStatus: 'granted',
-          osPromptAttempts: 0,
-          osLastPromptAt: 0,
           softDeclineCount: 0,
           softLastDeclinedAt: 0,
         });
@@ -134,69 +121,11 @@ describe('notificationSystem', () => {
       });
     });
 
-    describe('attempt exhaustion and cooldown', () => {
-      it('returns exhausted when max attempts reached', async () => {
-        loadNotificationPreferences.mockReturnValue({
-          pushManuallyDisabled: false,
-          notificationStatus: 'unknown',
-          osPromptAttempts: NOTIFICATIONS.osPromptMaxAttempts,
-          osLastPromptAt: mockNow - 1000,
-          softDeclineCount: 0,
-          softLastDeclinedAt: 0,
-        });
-
-        const result = await ensureNotificationsEnabled();
-
-        expect(result).toEqual({ status: 'exhausted' });
-        expect(persistNotificationPreferences).not.toHaveBeenCalled();
-      });
-
-      it('returns cooldown when in cooldown period', async () => {
-        const lastPromptAt = mockNow - 1000; // 1 second ago
-        loadNotificationPreferences.mockReturnValue({
-          pushManuallyDisabled: false,
-          notificationStatus: 'unknown',
-          osPromptAttempts: 1,
-          osLastPromptAt: lastPromptAt,
-          softDeclineCount: 0,
-          softLastDeclinedAt: 0,
-        });
-
-        const result = await ensureNotificationsEnabled();
-
-        expect(result).toHaveProperty('status', 'cooldown');
-        expect(result).toHaveProperty('remainingDays');
-        if ('remainingDays' in result) {
-          expect(result.remainingDays).toBeGreaterThan(0);
-        }
-        expect(persistNotificationPreferences).not.toHaveBeenCalled();
-      });
-
-      it('bypasses cooldown and exhaustion when forceRegister is true', async () => {
-        loadNotificationPreferences.mockReturnValue({
-          pushManuallyDisabled: false,
-          notificationStatus: 'unknown',
-          osPromptAttempts: NOTIFICATIONS.osPromptMaxAttempts,
-          osLastPromptAt: mockNow - 1000,
-          softDeclineCount: 0,
-          softLastDeclinedAt: 0,
-        });
-        mockWebRequestPermission.mockResolvedValue({ status: 'granted', token: 'token' });
-
-        const result = await ensureNotificationsEnabled({ forceRegister: true });
-
-        expect(result).toEqual({ status: 'enabled' });
-        expect(mockWebRequestPermission).toHaveBeenCalled();
-      });
-    });
-
     describe('permission request handling', () => {
       it('persists granted status and returns enabled', async () => {
         const prefs = {
           pushManuallyDisabled: false,
           notificationStatus: 'unknown' as const,
-          osPromptAttempts: 0,
-          osLastPromptAt: 0,
           softDeclineCount: 0,
           softLastDeclinedAt: 0,
         };
@@ -210,8 +139,6 @@ describe('notificationSystem', () => {
           ...prefs,
           notificationStatus: 'granted',
           pushManuallyDisabled: false,
-          osPromptAttempts: 0,
-          osLastPromptAt: mockNow,
         });
       });
 
@@ -219,8 +146,6 @@ describe('notificationSystem', () => {
         const prefs = {
           pushManuallyDisabled: false,
           notificationStatus: 'unknown' as const,
-          osPromptAttempts: 0,
-          osLastPromptAt: 0,
           softDeclineCount: 0,
           softLastDeclinedAt: 0,
         };
@@ -236,16 +161,13 @@ describe('notificationSystem', () => {
         expect(persistNotificationPreferences).toHaveBeenCalledWith({
           ...prefs,
           notificationStatus: 'unavailable',
-          osLastPromptAt: mockNow,
         });
       });
 
-      it('persists denied status and increments attempts on denial', async () => {
+      it('persists denied status on denial', async () => {
         const prefs = {
           pushManuallyDisabled: false,
           notificationStatus: 'unknown' as const,
-          osPromptAttempts: 0,
-          osLastPromptAt: 0,
           softDeclineCount: 0,
           softLastDeclinedAt: 0,
         };
@@ -259,8 +181,6 @@ describe('notificationSystem', () => {
           ...prefs,
           notificationStatus: 'denied',
           pushManuallyDisabled: false,
-          osPromptAttempts: 1,
-          osLastPromptAt: mockNow,
         });
       });
 
@@ -268,8 +188,6 @@ describe('notificationSystem', () => {
         const prefs = {
           pushManuallyDisabled: false,
           notificationStatus: 'unknown' as const,
-          osPromptAttempts: 0,
-          osLastPromptAt: 0,
           softDeclineCount: 0,
           softLastDeclinedAt: 0,
         };
@@ -286,31 +204,6 @@ describe('notificationSystem', () => {
           ...prefs,
           notificationStatus: 'denied',
           pushManuallyDisabled: false,
-          osPromptAttempts: 1,
-          osLastPromptAt: mockNow,
-        });
-      });
-
-      it('sets osLastPromptAt to 0 when forceRegister is true', async () => {
-        const prefs = {
-          pushManuallyDisabled: false,
-          notificationStatus: 'unknown' as const,
-          osPromptAttempts: 2,
-          osLastPromptAt: 12345,
-          softDeclineCount: 0,
-          softLastDeclinedAt: 0,
-        };
-        loadNotificationPreferences.mockReturnValue(prefs);
-        mockWebRequestPermission.mockResolvedValue({ status: 'granted', token: 'token' });
-
-        await ensureNotificationsEnabled({ forceRegister: true });
-
-        expect(persistNotificationPreferences).toHaveBeenCalledWith({
-          ...prefs,
-          notificationStatus: 'granted',
-          pushManuallyDisabled: false,
-          osPromptAttempts: 0,
-          osLastPromptAt: 0, // Reset when forceRegister
         });
       });
     });

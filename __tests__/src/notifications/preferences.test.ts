@@ -88,8 +88,6 @@ describe('preferences', () => {
       // loadNotificationPreferences migrates old format to new format
       expect(result).toMatchObject({
         notificationStatus: 'unknown', // migrated from pushOptInStatus
-        osPromptAttempts: 0, // migrated from pushPromptAttempts
-        osLastPromptAt: 0, // migrated from pushLastPromptAt
         pushManuallyDisabled: false,
         softDeclineCount: 0,
         softLastDeclinedAt: 0,
@@ -110,8 +108,6 @@ describe('preferences', () => {
 
       expect(result.pushManuallyDisabled).toBe(true);
       expect(result.notificationStatus).toBe('denied');
-      expect(result.osPromptAttempts).toBe(2);
-      expect(result.osLastPromptAt).toBe(123);
     });
 
     it('loads stored preferences from MMKV on native', () => {
@@ -129,8 +125,6 @@ describe('preferences', () => {
       // loadNotificationPreferences migrates old format to new format
       expect(result).toMatchObject({
         notificationStatus: 'unknown', // migrated from pushOptInStatus
-        osPromptAttempts: 0, // migrated from pushPromptAttempts
-        osLastPromptAt: 0, // migrated from pushLastPromptAt
         pushManuallyDisabled: false,
         softDeclineCount: 0,
         softLastDeclinedAt: 0,

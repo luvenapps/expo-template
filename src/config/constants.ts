@@ -1,7 +1,5 @@
 // Centralized tunables for notifications and related UX
 export const NOTIFICATIONS = {
-  osPromptMaxAttempts: 3,
-  osPromptCooldownMs: 7 * 24 * 60 * 60 * 1000, // 7 days
   softDeclineCooldownMs: 3 * 24 * 60 * 60 * 1000, // 3 days
   toastDurationMs: {
     foregroundReminder: 5000,
