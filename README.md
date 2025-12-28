@@ -240,7 +240,7 @@ export const DOMAIN = {
     displayName: 'Examples',
     database: 'examples.db',
     syncTask: 'examples-sync-task',
-    storageKey: 'examples-supabase-session',
+    storageKey: 'examples',
     cursorStorageId: 'examples-sync-cursors',
   },
   entities: {
