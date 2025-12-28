@@ -20,7 +20,7 @@ export const DOMAIN = {
     displayName: '__APP_NAME__',
     database: '__APP_NAME__.db',
     syncTask: '__APP_NAME__-sync-task',
-    storageKey: '__APP_NAME__-supabase-session',
+    storageKey: '__APP_NAME__',
     cursorStorageId: '__APP_NAME__-sync-cursors',
   },
 
