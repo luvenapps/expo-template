@@ -90,10 +90,17 @@ export function SoftPromptModal({
                 />
               </Svg>
             </XStack>
-            <XStack gap="$3" justifyContent="center">
+            <YStack gap="$3" justifyContent="center">
               <PrimaryButton
                 width="auto"
-                minWidth={150}
+                onPress={handleAllow}
+                testID="soft-prompt-allow"
+                aria-label="soft-prompt-allow"
+              >
+                {resolvedAllowLabel}
+              </PrimaryButton>
+              <PrimaryButton
+                width="auto"
                 onPress={handleNotNow}
                 testID="soft-prompt-not-now"
                 aria-label="soft-prompt-not-now"
@@ -101,19 +108,11 @@ export function SoftPromptModal({
                 backgroundColor="transparent"
                 color="$color"
                 borderColor="$borderColor"
+                marginBottom="$5"
               >
                 {resolvedNotNowLabel}
               </PrimaryButton>
-              <PrimaryButton
-                width="auto"
-                minWidth={150}
-                onPress={handleAllow}
-                testID="soft-prompt-allow"
-                aria-label="soft-prompt-allow"
-              >
-                {resolvedAllowLabel}
-              </PrimaryButton>
-            </XStack>
+            </YStack>
           </YStack>
         </Dialog.Content>
       </Dialog.Portal>

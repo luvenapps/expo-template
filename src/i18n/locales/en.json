@@ -212,8 +212,8 @@
     "upcomingFeatures": "Additional settings will arrive alongside theme controls and data export."
   },
   "notifications": {
-    "softPromptTitle": "Stay on track",
-    "softPromptMessage": "Enable notifications to get reminders and updates for your habits.",
+    "softPromptTitle": "Turn on notifications",
+    "softPromptMessage": "Stay on track. Enable notifications to get reminders and updates for your habits.",
     "softPromptNotNow": "Not Now",
     "softPromptAllow": "Turn on"
   }
