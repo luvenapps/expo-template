@@ -1,7 +1,7 @@
 // Centralized tunables for notifications and related UX
 export const NOTIFICATIONS = {
   softDeclineCooldownMs: 3 * 24 * 60 * 60 * 1000, // 3 days
-  initialSoftPromptTrigger: 'app-install' as 'app-install' | 'first-entry',
+  initialSoftPromptTrigger: 'first-entry' as 'app-install' | 'first-entry',
   toastDurationMs: {
     foregroundReminder: 5000,
     default: 4000,
