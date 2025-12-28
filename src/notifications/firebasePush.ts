@@ -87,6 +87,30 @@ export async function registerForPushNotifications(): Promise<PushRegistrationRe
       const AuthorizationStatus = messagingModule.AuthorizationStatus;
       const instance = messaging();
 
+      if (Platform.OS === 'ios') {
+        try {
+          const Notifications = require('expo-notifications');
+          const current = await Notifications.getPermissionsAsync();
+          const granted =
+            current.granted || current.status === Notifications.PermissionStatus.GRANTED;
+
+          if (!granted) {
+            if (!current.canAskAgain) {
+              return { status: 'denied' };
+            }
+
+            const requested = await Notifications.requestPermissionsAsync();
+            const requestedGranted =
+              requested.granted || requested.status === Notifications.PermissionStatus.GRANTED;
+            if (!requestedGranted) {
+              return { status: 'denied' };
+            }
+          }
+        } catch (permissionError) {
+          console.warn('[FCM] iOS notification permission request failed:', permissionError);
+        }
+      }
+
       // Ensure the device is registered for remote messages before requesting a token
       if (instance.registerDeviceForRemoteMessages) {
         await instance.registerDeviceForRemoteMessages();

@@ -78,6 +78,21 @@ jest.mock('@react-native-firebase/messaging', () => {
 
 jest.mock('expo-notifications', () => ({
   scheduleNotificationAsync: jest.fn(),
+  getPermissionsAsync: jest.fn().mockResolvedValue({
+    granted: true,
+    status: 'granted',
+    canAskAgain: true,
+  }),
+  requestPermissionsAsync: jest.fn().mockResolvedValue({
+    granted: true,
+    status: 'granted',
+    canAskAgain: true,
+  }),
+  PermissionStatus: {
+    GRANTED: 'granted',
+    DENIED: 'denied',
+    UNDETERMINED: 'undetermined',
+  },
 }));
 
 describe('firebasePush Native', () => {

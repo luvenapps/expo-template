@@ -50,6 +50,12 @@
       "expo-system-ui",
       "expo-sqlite",
       "expo-background-task",
+      [
+        "expo-notifications",
+        {
+          "enableBackgroundRemoteNotifications": true
+        }
+      ],
       "expo-localization",
       "expo-web-browser",
       "./plugins/withFirebaseCredentials.js",

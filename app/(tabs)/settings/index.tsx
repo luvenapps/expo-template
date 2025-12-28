@@ -403,6 +403,37 @@ export default function SettingsScreen() {
     setDevStatus('Push registration unavailable on this platform.');
   };
 
+  const handleLogPushRegistrationStatus = async () => {
+    if (!isNative) return;
+    try {
+      setDevStatus(null);
+      const messagingModule = await import('@react-native-firebase/messaging');
+      const messaging = messagingModule.default;
+      if (!messaging) {
+        setDevStatus('Push registration unavailable on this platform.');
+        return;
+      }
+      const instance = messaging();
+      const apnsToken = await instance.getAPNSToken();
+      const fcmToken = await instance.getToken();
+      const isRegistered = instance.isDeviceRegisteredForRemoteMessages;
+      console.log('[Dev][Push] isDeviceRegisteredForRemoteMessages:', isRegistered);
+      console.log('[Dev][Push] APNs token:', apnsToken);
+      console.log('[Dev][Push] FCM token:', fcmToken);
+      setDevStatus('Push registration status logged to console.');
+    } catch (error) {
+      const { friendly } = showFriendlyError(error, {
+        surface: 'settings.push-status',
+        suppressToast: true,
+      });
+      const message =
+        friendly.description ??
+        (friendly.descriptionKey ? t(friendly.descriptionKey) : friendly.originalMessage) ??
+        (friendly.titleKey ? t(friendly.titleKey) : t('errors.unknown.title'));
+      setDevStatus(`Error: ${message}`);
+    }
+  };
+
   const handleScheduleTestReminder = async () => {
     if (!isNative) {
       setDevStatus('Test reminders require a native build.');
@@ -883,17 +914,29 @@ export default function SettingsScreen() {
                   </XStack>
                   <XStack>
                     <SecondaryButton
+                      testID="dev-log-push-status-button"
+                      disabled={!isNative}
+                      onPress={handleLogPushRegistrationStatus}
+                      fontSize="$3"
+                    >
+                      Log push registration status
+                    </SecondaryButton>
+                  </XStack>
+                  <XStack>
+                    <SecondaryButton
                       testID="dev-schedule-reminder-button"
                       disabled={!isNative}
                       onPress={handleScheduleTestReminder}
+                      fontSize="$4"
                     >
-                      Schedule test reminder (30s)
+                      Schedule test reminder
                     </SecondaryButton>
                   </XStack>
                   <XStack>
                     <SecondaryButton
                       testID="dev-log-notification-store-button"
                       onPress={handleLogNotificationStore}
+                      fontSize="$4"
                     >
                       Log notification MMKV
                     </SecondaryButton>
