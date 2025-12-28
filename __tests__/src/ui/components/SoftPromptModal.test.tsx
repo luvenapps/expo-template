@@ -1,5 +1,9 @@
 import { render, fireEvent } from '@testing-library/react-native';
 import React from 'react';
+
+// Unmock SoftPromptModal for this test file (it's globally mocked in setup.ts)
+jest.unmock('@/ui/components/SoftPromptModal');
+
 import { SoftPromptModal } from '@/ui/components/SoftPromptModal';
 
 // Mock Tamagui components
@@ -26,6 +30,11 @@ jest.mock('tamagui', () => {
     YStack: ({ children, ...props }: any) => React.createElement('YStack', props, children),
     XStack: ({ children, ...props }: any) => React.createElement('XStack', props, children),
     Paragraph: ({ children, ...props }: any) => React.createElement('Paragraph', props, children),
+    useTheme: jest.fn(() => ({
+      color: {
+        get: () => '#111111',
+      },
+    })),
   };
 });
 

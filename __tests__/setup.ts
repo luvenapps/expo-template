@@ -87,3 +87,8 @@ jest.mock('@/ui/components/Toast', () => ({
   }),
   ToastContainer: () => null,
 }));
+
+// Mock SoftPromptModal to prevent Tamagui theme issues in tests
+jest.mock('@/ui/components/SoftPromptModal', () => ({
+  SoftPromptModal: () => null,
+}));
