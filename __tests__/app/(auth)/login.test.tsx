@@ -661,47 +661,81 @@ describe('OAuth authentication', () => {
 
   test('navigates back on successful OAuth login when canGoBack is true', async () => {
     mockCanGoBack.mockReturnValue(true);
-    const oauthMock = jest.fn().mockResolvedValue({ success: true });
-    mockedUseSessionStore.mockImplementation((selector: any) =>
-      selector({
-        signInWithEmail: jest.fn().mockResolvedValue({ success: true }),
-        signInWithOAuth: oauthMock,
-        setError: jest.fn(),
-        isLoading: false,
-        error: null,
-      }),
-    );
 
-    const { getByTestId } = render(<LoginScreen />);
-    await act(async () => {
-      fireEvent.press(getByTestId('oauth-google-button'));
-      await waitFor(() => {
-        expect(mockBack).toHaveBeenCalled();
-      });
+    const mockStore = {
+      signInWithEmail: jest.fn().mockResolvedValue({ success: true }),
+      signInWithOAuth: jest.fn(),
+      setError: jest.fn(),
+      isLoading: false,
+      error: null,
+      status: 'unauthenticated' as 'unauthenticated' | 'authenticated',
+    };
+
+    mockStore.signInWithOAuth.mockImplementation(async () => {
+      mockStore.status = 'authenticated';
+      return { success: true };
     });
+
+    mockedUseSessionStore.mockImplementation((selector: any) => selector(mockStore));
+
+    const { getByTestId, rerender } = render(<LoginScreen />);
+
+    fireEvent.press(getByTestId('oauth-google-button'));
+
+    // Wait for OAuth to complete
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    // Trigger re-render with updated status to simulate Zustand update
+    await act(async () => {
+      rerender(<LoginScreen />);
+    });
+
+    await waitFor(() => {
+      expect(mockBack).toHaveBeenCalled();
+    });
+
     expect(mockReplace).not.toHaveBeenCalled();
   });
 
   test('replaces to tabs on successful OAuth login when canGoBack is false', async () => {
     mockCanGoBack.mockReturnValue(false);
-    const oauthMock = jest.fn().mockResolvedValue({ success: true });
-    mockedUseSessionStore.mockImplementation((selector: any) =>
-      selector({
-        signInWithEmail: jest.fn().mockResolvedValue({ success: true }),
-        signInWithOAuth: oauthMock,
-        setError: jest.fn(),
-        isLoading: false,
-        error: null,
-      }),
-    );
 
-    const { getByTestId } = render(<LoginScreen />);
-    await act(async () => {
-      fireEvent.press(getByTestId('oauth-google-button'));
-      await waitFor(() => {
-        expect(mockReplace).toHaveBeenCalledWith('/(tabs)');
-      });
+    const mockStore = {
+      signInWithEmail: jest.fn().mockResolvedValue({ success: true }),
+      signInWithOAuth: jest.fn(),
+      setError: jest.fn(),
+      isLoading: false,
+      error: null,
+      status: 'unauthenticated' as 'unauthenticated' | 'authenticated',
+    };
+
+    mockStore.signInWithOAuth.mockImplementation(async () => {
+      mockStore.status = 'authenticated';
+      return { success: true };
     });
+
+    mockedUseSessionStore.mockImplementation((selector: any) => selector(mockStore));
+
+    const { getByTestId, rerender } = render(<LoginScreen />);
+
+    fireEvent.press(getByTestId('oauth-google-button'));
+
+    // Wait for OAuth to complete
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    // Trigger re-render with updated status to simulate Zustand update
+    await act(async () => {
+      rerender(<LoginScreen />);
+    });
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/(tabs)');
+    });
+
     expect(mockBack).not.toHaveBeenCalled();
   });
 

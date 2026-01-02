@@ -100,11 +100,15 @@ jest.mock('expo-linking', () => ({
 }));
 
 const mockReplace = jest.fn();
+const mockBack = jest.fn();
+const mockCanGoBack = jest.fn(() => true);
 const mockUseLocalSearchParams = jest.fn();
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({
     replace: mockReplace,
+    back: mockBack,
+    canGoBack: mockCanGoBack,
   }),
   useLocalSearchParams: () => mockUseLocalSearchParams(),
 }));
@@ -161,6 +165,9 @@ describe('AuthCallbackScreen - Native', () => {
 
   beforeEach(() => {
     mockReplace.mockClear();
+    mockBack.mockClear();
+    mockCanGoBack.mockClear();
+    mockCanGoBack.mockReturnValue(true); // Reset to default
     mockedSetSession.mockClear();
     mockedExchangeCodeForSession.mockClear();
     mockedCreateURL.mockClear();
@@ -214,8 +221,22 @@ describe('AuthCallbackScreen - Native', () => {
     render(<AuthCallbackScreen />);
 
     await waitFor(() => {
+      expect(mockBack).toHaveBeenCalled();
+    });
+  });
+
+  it('replaces to tabs when canGoBack is false after successful code exchange', async () => {
+    mockCanGoBack.mockReturnValue(false);
+    mockUseLocalSearchParams.mockReturnValue({ code: 'auth-code-456' });
+    mockedCreateURL.mockReturnValue('betterhabits://auth-callback?code=auth-code-456');
+    mockedExchangeCodeForSession.mockResolvedValue({ data: { session: {} }, error: null } as any);
+
+    render(<AuthCallbackScreen />);
+
+    await waitFor(() => {
       expect(mockReplace).toHaveBeenCalledWith('/(tabs)');
     });
+    expect(mockBack).not.toHaveBeenCalled();
   });
 
   it('shows error when code is missing', async () => {
@@ -363,7 +384,7 @@ describe('AuthCallbackScreen - Native', () => {
     render(<AuthCallbackScreen />);
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/(tabs)');
+      expect(mockBack).toHaveBeenCalled();
     });
   });
 
@@ -387,7 +408,7 @@ describe('AuthCallbackScreen - Native', () => {
       expect(mockedExchangeCodeForSession).toHaveBeenCalledWith(
         'betterhabits://auth-callback?code=auth-code-456',
       );
-      expect(mockReplace).toHaveBeenCalledWith('/(tabs)');
+      expect(mockBack).toHaveBeenCalled();
     });
   });
 
@@ -419,7 +440,7 @@ describe('AuthCallbackScreen - Native', () => {
       expect(mockedExchangeCodeForSession).toHaveBeenCalledWith(
         'betterhabits://auth-callback?code=embedded-code',
       );
-      expect(mockReplace).toHaveBeenCalledWith('/(tabs)');
+      expect(mockBack).toHaveBeenCalled();
     });
   });
 
@@ -445,7 +466,7 @@ describe('AuthCallbackScreen - Native', () => {
         access_token: 'token-abc',
         refresh_token: 'refresh-xyz',
       });
-      expect(mockReplace).toHaveBeenCalledWith('/(tabs)');
+      expect(mockBack).toHaveBeenCalled();
     });
   });
 
@@ -486,6 +507,23 @@ describe('AuthCallbackScreen - Native', () => {
 
     const errorElement = getByTestId('auth-callback-error');
     expect(errorElement).toBeTruthy();
+  });
+
+  it('navigates back on Android when no code and no tokens in URL', async () => {
+    const originalOS = Platform.OS;
+    Object.defineProperty(Platform, 'OS', { value: 'android', writable: true });
+
+    mockUseLocalSearchParams.mockReturnValue({});
+    mockedGetInitialURL.mockResolvedValue('betterhabits://auth-callback');
+    mockedGetSession.mockResolvedValue({ data: { session: null }, error: null } as any);
+
+    render(<AuthCallbackScreen />);
+
+    await waitFor(() => {
+      expect(mockBack).toHaveBeenCalled();
+    });
+
+    Object.defineProperty(Platform, 'OS', { value: originalOS, writable: true });
   });
 
   it('handles exchangeCodeForSession error when processing URL code', async () => {
@@ -629,8 +667,22 @@ describe('AuthCallbackScreen - Web', () => {
     });
   });
 
-  it('shows error when tokens are missing from hash on web', async () => {
+  it('redirects when no hash params but existing session on web', async () => {
     mockWindowLocation.hash = '';
+    mockedGetSession.mockResolvedValue({
+      data: { session: { user: { id: '123' } } },
+      error: null,
+    } as any);
+
+    render(<AuthCallbackScreen />);
+
+    await waitFor(() => {
+      expect(mockWindowLocation.replace).toHaveBeenCalledWith('/');
+    });
+  });
+
+  it('shows error when tokens are missing from hash on web', async () => {
+    mockWindowLocation.hash = '#access_token=token123';
     const handleError = jest.fn(() => ({
       toastId: 'toast-1',
       friendly: {
@@ -660,7 +712,7 @@ describe('AuthCallbackScreen - Web', () => {
   });
 
   it('shows error when only access_token is present on web', async () => {
-    mockWindowLocation.hash = '#access_token=token123';
+    mockWindowLocation.hash = '#refresh_token=refresh456';
     const handleError = jest.fn(() => ({
       toastId: 'toast-1',
       friendly: {

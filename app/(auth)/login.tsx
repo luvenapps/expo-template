@@ -16,7 +16,7 @@ import {
 import type { NavigationProp, ParamListBase } from '@react-navigation/native';
 import { Eye, EyeOff } from '@tamagui/lucide-icons';
 import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
-import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Platform, TextInput } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { Button, Card, Form, View, YStack, useThemeName } from 'tamagui';
@@ -34,6 +34,8 @@ export default function LoginScreen() {
   const setError = useSessionStore((state) => state.setError);
   const isLoading = useSessionStore((state) => state.isLoading);
   const error = useSessionStore((state) => state.error);
+  const status = useSessionStore((state) => state.status);
+  const hasNavigatedRef = useRef(false);
   const toast = useToast();
   const handleFriendlyError = useFriendlyErrorHandler();
   const { t } = useTranslation();
@@ -48,8 +50,22 @@ export default function LoginScreen() {
       setPassword('');
       setShowPassword(false);
       setError(null);
+      hasNavigatedRef.current = false;
     }, [setError]),
   );
+
+  useEffect(() => {
+    if (status !== 'authenticated' || hasNavigatedRef.current) {
+      return;
+    }
+
+    hasNavigatedRef.current = true;
+    if (navigation.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)');
+    }
+  }, [navigation, router, status]);
 
   const handleAuthError = useCallback(
     (rawError: unknown) => {
@@ -106,8 +122,10 @@ export default function LoginScreen() {
       setError(null);
 
       if (navigation.canGoBack()) {
+        hasNavigatedRef.current = true;
         router.back();
       } else {
+        hasNavigatedRef.current = true;
         router.replace('/(tabs)');
       }
     } else {
@@ -119,13 +137,6 @@ export default function LoginScreen() {
     const result = await signInWithOAuth(provider);
     if (result.success) {
       setError(null);
-      if (Platform.OS !== 'web') {
-        if (navigation.canGoBack()) {
-          router.back();
-        } else {
-          router.replace('/(tabs)');
-        }
-      }
     } else {
       handleAuthError(result.friendlyError ?? result.error ?? t('auth.errorUnknown'));
     }

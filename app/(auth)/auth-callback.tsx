@@ -19,6 +19,13 @@ export default function AuthCallbackScreen() {
   const hasProcessedRef = useRef(false);
   const isProcessingRef = useRef(false);
   const latestUrl = useURL();
+  const goBackOrHome = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)');
+    }
+  }, [router]);
 
   const queryParams = useMemo(() => {
     const entries = Object.entries(params).map(([key, value]) => [
@@ -51,6 +58,7 @@ export default function AuthCallbackScreen() {
       return;
     }
 
+    setErrorMessage(null);
     hasProcessedRef.current = true;
 
     if (webHashRef.current === null) {
@@ -61,8 +69,18 @@ export default function AuthCallbackScreen() {
     const hashParams = new URLSearchParams(webHashRef.current.replace(/^#/, ''));
     const accessToken = hashParams.get('access_token');
     const refreshToken = hashParams.get('refresh_token');
+    const hasHashParams = Array.from(hashParams.keys()).length > 0;
 
     if (!accessToken || !refreshToken) {
+      if (!hasHashParams) {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (session) {
+          window.location.replace('/');
+        }
+        return;
+      }
       reportError({
         code: 'auth.oauth.browser',
         titleKey: 'errors.auth.oauthBrowser.title',
@@ -90,7 +108,20 @@ export default function AuthCallbackScreen() {
       return;
     }
 
+    setErrorMessage(null);
     isProcessingRef.current = true;
+
+    if (Platform.OS === 'android' && !queryParams.code) {
+      const url = latestUrl ?? '';
+      const hasTokenInUrl =
+        typeof url === 'string' &&
+        (url.includes('access_token=') || url.includes('refresh_token=') || url.includes('code='));
+      if (!hasTokenInUrl) {
+        hasProcessedRef.current = true;
+        goBackOrHome();
+        return;
+      }
+    }
 
     const {
       data: { session },
@@ -99,7 +130,7 @@ export default function AuthCallbackScreen() {
 
     if (session) {
       hasProcessedRef.current = true;
-      router.replace('/(tabs)');
+      goBackOrHome();
       return;
     }
 
@@ -113,7 +144,7 @@ export default function AuthCallbackScreen() {
         reportError(error);
         return;
       }
-      router.replace('/(tabs)');
+      goBackOrHome();
       return;
     }
 
@@ -157,7 +188,7 @@ export default function AuthCallbackScreen() {
         reportError(error);
         return;
       }
-      router.replace('/(tabs)');
+      goBackOrHome();
       return;
     }
 
@@ -175,7 +206,7 @@ export default function AuthCallbackScreen() {
         reportError(error);
         return;
       }
-      router.replace('/(tabs)');
+      goBackOrHome();
       return;
     }
 
@@ -189,8 +220,26 @@ export default function AuthCallbackScreen() {
       return;
     }
 
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      const {
+        data: { session: retrySession },
+      } = await supabase.auth.getSession();
+      if (retrySession) {
+        hasProcessedRef.current = true;
+        goBackOrHome();
+        return;
+      }
+    }
+
+    if (Platform.OS === 'android') {
+      hasProcessedRef.current = true;
+      goBackOrHome();
+      return;
+    }
+
     isProcessingRef.current = false;
-  }, [latestUrl, queryParams, reportError, router]);
+  }, [goBackOrHome, latestUrl, queryParams, reportError]);
 
   useEffect(() => {
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
