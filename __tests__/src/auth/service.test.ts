@@ -14,6 +14,8 @@ jest.mock('@/auth/client', () => ({
       signInWithPassword: jest.fn(),
       signInWithOAuth: jest.fn(),
       signInWithIdToken: jest.fn(),
+      exchangeCodeForSession: jest.fn(),
+      setSession: jest.fn(),
       signOut: jest.fn(),
       signUp: jest.fn(),
       resetPasswordForEmail: jest.fn(),
@@ -34,6 +36,25 @@ jest.mock('@/errors/friendly', () => ({
 jest.mock('expo-linking', () => ({
   createURL: jest.fn((path: string) => `myapp://${path}`),
   openURL: jest.fn(() => Promise.resolve()),
+  parse: jest.fn((url: string) => {
+    const [baseWithQuery] = url.split('#');
+    const [base, query] = baseWithQuery.split('?');
+    const queryParams: Record<string, string> = {};
+    if (query) {
+      for (const part of query.split('&')) {
+        const [key, value] = part.split('=');
+        if (key) {
+          queryParams[key] = value ?? '';
+        }
+      }
+    }
+    return {
+      queryParams,
+      scheme: base.split(':')[0],
+      hostname: '',
+      path: '',
+    };
+  }),
 }));
 
 jest.mock('expo-apple-authentication', () => {
@@ -50,8 +71,18 @@ jest.mock('expo-crypto', () => ({
   CryptoDigestAlgorithm: { SHA256: 'SHA256' },
 }));
 
-jest.mock('expo-modules-core', () => ({
-  requireOptionalNativeModule: jest.fn(() => undefined),
+// Create a mutable mock for expo-web-browser that can be modified in tests
+const mockWebBrowser: {
+  openAuthSessionAsync: jest.Mock | undefined;
+} = {
+  openAuthSessionAsync: jest.fn(),
+};
+
+jest.mock('expo-web-browser', () => ({
+  __esModule: true,
+  get openAuthSessionAsync() {
+    return mockWebBrowser.openAuthSessionAsync;
+  },
 }));
 
 jest.mock('uuid', () => ({
@@ -65,8 +96,7 @@ describe('auth/service', () => {
   const resolveFriendlyError = require('@/errors/friendly').resolveFriendlyError as jest.Mock;
   const appleAuth = require('expo-apple-authentication');
   const crypto = require('expo-crypto');
-  const requireOptionalNativeModule = require('expo-modules-core')
-    .requireOptionalNativeModule as jest.Mock;
+  const linkingModule = Linking as jest.Mocked<typeof Linking>;
 
   // Mock console methods to suppress logs in tests
   const originalConsoleInfo = console.info;
@@ -93,9 +123,19 @@ describe('auth/service', () => {
     // Default mock for signInWithOAuth to prevent undefined errors
     supabase.auth.signInWithOAuth.mockResolvedValue({ data: { url: null }, error: null });
     // Restore default implementations for expo modules after clearAllMocks
+    resolveFriendlyError.mockReset();
+    resolveFriendlyError.mockImplementation(() => ({
+      code: 'unknown',
+      title: 't',
+      description: 'd',
+      type: 'error',
+      originalMessage: 'orig',
+    }));
     appleAuth.isAvailableAsync.mockImplementation(() => Promise.resolve(false));
     appleAuth.signInAsync.mockImplementation(() => Promise.reject(new Error('Not mocked')));
     crypto.digestStringAsync.mockImplementation(() => Promise.resolve('hashed'));
+    // Reset mockWebBrowser to default state
+    mockWebBrowser.openAuthSessionAsync = jest.fn();
   });
 
   it('uses native Apple sign-in on iOS when available', async () => {
@@ -209,9 +249,7 @@ describe('auth/service', () => {
       data: { url: 'https://provider.com/auth' },
       error: null,
     });
-    requireOptionalNativeModule.mockReturnValueOnce({
-      openAuthSessionAsync: jest.fn(() => Promise.resolve()),
-    });
+    mockWebBrowser.openAuthSessionAsync = jest.fn(() => Promise.resolve());
 
     const result = await signInWithOAuth('apple');
 
@@ -326,8 +364,8 @@ describe('auth/service', () => {
   });
 
   it('falls back to Linking when openAuthSessionAsync missing', async () => {
-    Object.defineProperty(Platform, 'OS', { value: 'ios', writable: true });
-    requireOptionalNativeModule.mockReturnValueOnce({});
+    Object.defineProperty(Platform, 'OS', { value: 'ios', writable: true, configurable: true });
+    mockWebBrowser.openAuthSessionAsync = undefined;
     appleAuth.isAvailableAsync.mockResolvedValueOnce(false);
     supabase.auth.signInWithOAuth.mockResolvedValueOnce({
       data: { url: 'https://example.com' },
@@ -335,27 +373,33 @@ describe('auth/service', () => {
     });
     const result = await signInWithOAuth('google');
     expect(result.success).toBe(true);
-    expect(Linking.openURL).toHaveBeenCalledWith('https://example.com');
+    expect(linkingModule.openURL).toHaveBeenCalledWith('https://example.com');
   });
 
   it('calls openAuthSessionAsync when available', async () => {
-    Object.defineProperty(Platform, 'OS', { value: 'ios', writable: true });
-    const openAuthSessionAsync = jest.fn(() => Promise.resolve());
-    requireOptionalNativeModule.mockReturnValueOnce({ openAuthSessionAsync });
+    Object.defineProperty(Platform, 'OS', { value: 'ios', writable: true, configurable: true });
+    const openAuthSessionAsync = jest.fn(() =>
+      Promise.resolve({ type: 'success', url: 'myapp://auth-callback?code=abc' }),
+    );
+    mockWebBrowser.openAuthSessionAsync = openAuthSessionAsync;
     appleAuth.isAvailableAsync.mockResolvedValueOnce(false);
     supabase.auth.signInWithOAuth.mockResolvedValueOnce({
       data: { url: 'https://example.com' },
       error: null,
     });
+    supabase.auth.exchangeCodeForSession.mockResolvedValueOnce({ error: null });
     const result = await signInWithOAuth('google');
     expect(result.success).toBe(true);
     expect(openAuthSessionAsync).toHaveBeenCalled();
+    expect(supabase.auth.exchangeCodeForSession).toHaveBeenCalledWith(
+      'myapp://auth-callback?code=abc',
+    );
   });
 
   it('handles openAuthSessionAsync failure', async () => {
-    Object.defineProperty(Platform, 'OS', { value: 'ios', writable: true });
+    Object.defineProperty(Platform, 'OS', { value: 'ios', writable: true, configurable: true });
     const openAuthSessionAsync = jest.fn(() => Promise.reject(new Error('browser fail')));
-    requireOptionalNativeModule.mockReturnValueOnce({ openAuthSessionAsync });
+    mockWebBrowser.openAuthSessionAsync = openAuthSessionAsync;
     appleAuth.isAvailableAsync.mockResolvedValueOnce(false);
     supabase.auth.signInWithOAuth.mockResolvedValueOnce({
       data: { url: 'https://example.com' },
@@ -377,6 +421,12 @@ describe('auth/service', () => {
     const result = await signOut();
     expect(result.success).toBe(false);
     expect(result.error).toBe('signout fail');
+  });
+
+  it('treats 403 signOut errors as success', async () => {
+    supabase.auth.signOut.mockResolvedValueOnce({ error: { status: 403 } });
+    const result = await signOut();
+    expect(result.success).toBe(true);
   });
 
   it('returns friendly error on signUpWithEmail failure', async () => {

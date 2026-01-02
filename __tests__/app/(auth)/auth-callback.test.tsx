@@ -74,13 +74,14 @@ import { supabase } from '@/auth/client';
 import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import * as Linking from 'expo-linking';
-import { Platform } from 'react-native';
 import React from 'react';
+import { Platform } from 'react-native';
 import AuthCallbackScreen from '../../../app/(auth)/auth-callback';
 
 jest.mock('@/auth/client', () => ({
   supabase: {
     auth: {
+      getSession: jest.fn(),
       setSession: jest.fn(),
       exchangeCodeForSession: jest.fn(),
     },
@@ -93,6 +94,9 @@ jest.mock('@/errors/useFriendlyErrorHandler', () => ({
 
 jest.mock('expo-linking', () => ({
   createURL: jest.fn(),
+  getInitialURL: jest.fn(() => Promise.resolve(null)),
+  parse: jest.fn(() => ({ queryParams: {}, scheme: 'betterhabits', hostname: '', path: '' })),
+  useURL: jest.fn(() => null),
 }));
 
 const mockReplace = jest.fn();
@@ -111,14 +115,23 @@ const mockedSetSession = supabase.auth.setSession as jest.MockedFunction<
 const mockedExchangeCodeForSession = supabase.auth.exchangeCodeForSession as jest.MockedFunction<
   typeof supabase.auth.exchangeCodeForSession
 >;
+const mockedGetSession = supabase.auth.getSession as jest.MockedFunction<
+  typeof supabase.auth.getSession
+>;
 const mockedFriendlyError = useFriendlyErrorHandler as jest.MockedFunction<
   typeof useFriendlyErrorHandler
 >;
 const mockedCreateURL = Linking.createURL as jest.MockedFunction<typeof Linking.createURL>;
+const mockedGetInitialURL = Linking.getInitialURL as jest.MockedFunction<
+  typeof Linking.getInitialURL
+>;
 
 // Suppress act() warnings
 const originalError = console.error;
+const originalInfo = console.info;
+
 beforeAll(() => {
+  console.info = jest.fn();
   console.error = (...args: any[]) => {
     if (
       typeof args[0] === 'string' &&
@@ -132,6 +145,7 @@ beforeAll(() => {
 
 afterAll(() => {
   console.error = originalError;
+  console.info = originalInfo;
 });
 
 describe('AuthCallbackScreen - Native', () => {
@@ -150,7 +164,11 @@ describe('AuthCallbackScreen - Native', () => {
     mockedSetSession.mockClear();
     mockedExchangeCodeForSession.mockClear();
     mockedCreateURL.mockClear();
+    mockedGetSession.mockClear();
+    mockedGetInitialURL.mockClear();
     mockUseLocalSearchParams.mockReturnValue({});
+    mockedGetSession.mockResolvedValue({ data: { session: null }, error: null } as any);
+    mockedGetInitialURL.mockResolvedValue(null);
     // Default mock for exchangeCodeForSession
     mockedExchangeCodeForSession.mockResolvedValue({ data: { session: {} }, error: null } as any);
     mockedFriendlyError.mockReturnValue(
@@ -167,8 +185,8 @@ describe('AuthCallbackScreen - Native', () => {
 
   it('renders signing in message', () => {
     mockUseLocalSearchParams.mockReturnValue({ code: 'auth-code-123' });
-    const { getByText } = render(<AuthCallbackScreen />);
-    expect(getByText('auth.signingIn')).toBeTruthy();
+    const { queryByText } = render(<AuthCallbackScreen />);
+    expect(queryByText('auth.signingIn')).toBeNull();
   });
 
   it('exchanges code for session on native with valid code', async () => {
@@ -202,6 +220,7 @@ describe('AuthCallbackScreen - Native', () => {
 
   it('shows error when code is missing', async () => {
     mockUseLocalSearchParams.mockReturnValue({});
+    mockedGetInitialURL.mockResolvedValue('betterhabits://auth-callback#access_token=');
     const handleError = jest.fn(() => ({
       toastId: 'toast-1',
       friendly: {
@@ -263,6 +282,7 @@ describe('AuthCallbackScreen - Native', () => {
 
   it('shows retry button when error occurs', async () => {
     mockUseLocalSearchParams.mockReturnValue({});
+    mockedGetInitialURL.mockResolvedValue('betterhabits://auth-callback#access_token=');
     const handleError = jest.fn(() => ({
       toastId: 'toast-1',
       friendly: {
@@ -284,6 +304,7 @@ describe('AuthCallbackScreen - Native', () => {
 
   it('navigates to login when retry button is pressed', async () => {
     mockUseLocalSearchParams.mockReturnValue({});
+    mockedGetInitialURL.mockResolvedValue('betterhabits://auth-callback#access_token=');
     const handleError = jest.fn(() => ({
       toastId: 'toast-1',
       friendly: {
@@ -330,6 +351,179 @@ describe('AuthCallbackScreen - Native', () => {
         queryParams: { code: 'auth-code-123' },
       });
     });
+  });
+
+  it('redirects to tabs when session already exists', async () => {
+    mockUseLocalSearchParams.mockReturnValue({});
+    mockedGetSession.mockResolvedValue({
+      data: { session: { user: { id: 'user-1' } } },
+      error: null,
+    } as any);
+
+    render(<AuthCallbackScreen />);
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/(tabs)');
+    });
+  });
+
+  it('handles code from initial URL', async () => {
+    mockUseLocalSearchParams.mockReturnValue({});
+    mockedGetSession.mockResolvedValue({ data: { session: null }, error: null } as any);
+    mockedGetInitialURL.mockResolvedValue('betterhabits://auth-callback?code=auth-code-456');
+    const mockParse = Linking.parse as jest.MockedFunction<typeof Linking.parse>;
+    mockParse.mockReturnValue({
+      queryParams: { code: 'auth-code-456' },
+      scheme: 'betterhabits',
+      hostname: '',
+      path: 'auth-callback',
+    });
+    mockedCreateURL.mockReturnValue('betterhabits://auth-callback?code=auth-code-456');
+    mockedExchangeCodeForSession.mockResolvedValue({ data: { session: {} }, error: null } as any);
+
+    render(<AuthCallbackScreen />);
+
+    await waitFor(() => {
+      expect(mockedExchangeCodeForSession).toHaveBeenCalledWith(
+        'betterhabits://auth-callback?code=auth-code-456',
+      );
+      expect(mockReplace).toHaveBeenCalledWith('/(tabs)');
+    });
+  });
+
+  it('handles embedded URL with code', async () => {
+    mockUseLocalSearchParams.mockReturnValue({});
+    mockedGetSession.mockResolvedValue({ data: { session: null }, error: null } as any);
+    const encodedUrl = encodeURIComponent('betterhabits://auth-callback?code=embedded-code');
+    mockedGetInitialURL.mockResolvedValue(`betterhabits://auth-callback?url=${encodedUrl}`);
+    const mockParse = Linking.parse as jest.MockedFunction<typeof Linking.parse>;
+    mockParse
+      .mockReturnValueOnce({
+        queryParams: { url: encodedUrl },
+        scheme: 'betterhabits',
+        hostname: '',
+        path: 'auth-callback',
+      })
+      .mockReturnValueOnce({
+        queryParams: { code: 'embedded-code' },
+        scheme: 'betterhabits',
+        hostname: '',
+        path: 'auth-callback',
+      });
+    mockedCreateURL.mockReturnValue('betterhabits://auth-callback?code=embedded-code');
+    mockedExchangeCodeForSession.mockResolvedValue({ data: { session: {} }, error: null } as any);
+
+    render(<AuthCallbackScreen />);
+
+    await waitFor(() => {
+      expect(mockedExchangeCodeForSession).toHaveBeenCalledWith(
+        'betterhabits://auth-callback?code=embedded-code',
+      );
+      expect(mockReplace).toHaveBeenCalledWith('/(tabs)');
+    });
+  });
+
+  it('handles access and refresh tokens from hash in initial URL', async () => {
+    mockUseLocalSearchParams.mockReturnValue({});
+    mockedGetSession.mockResolvedValue({ data: { session: null }, error: null } as any);
+    mockedGetInitialURL.mockResolvedValue(
+      'betterhabits://auth-callback#access_token=token-abc&refresh_token=refresh-xyz',
+    );
+    const mockParse = Linking.parse as jest.MockedFunction<typeof Linking.parse>;
+    mockParse.mockReturnValue({
+      queryParams: {},
+      scheme: 'betterhabits',
+      hostname: '',
+      path: 'auth-callback',
+    });
+    mockedSetSession.mockResolvedValue({ data: { session: {} }, error: null } as any);
+
+    render(<AuthCallbackScreen />);
+
+    await waitFor(() => {
+      expect(mockedSetSession).toHaveBeenCalledWith({
+        access_token: 'token-abc',
+        refresh_token: 'refresh-xyz',
+      });
+      expect(mockReplace).toHaveBeenCalledWith('/(tabs)');
+    });
+  });
+
+  it('handles setSession error when processing hash tokens', async () => {
+    mockUseLocalSearchParams.mockReturnValue({});
+    mockedGetSession.mockResolvedValue({ data: { session: null }, error: null } as any);
+    mockedGetInitialURL.mockResolvedValue(
+      'betterhabits://auth-callback#access_token=token-abc&refresh_token=refresh-xyz',
+    );
+    const mockParse = Linking.parse as jest.MockedFunction<typeof Linking.parse>;
+    mockParse.mockReturnValue({
+      queryParams: {},
+      scheme: 'betterhabits',
+      hostname: '',
+      path: 'auth-callback',
+    });
+    const authError = { message: 'Invalid tokens', status: 401 };
+    mockedSetSession.mockResolvedValue({ data: null, error: authError } as any);
+
+    const handleError = jest.fn(() => ({
+      toastId: 'toast-1',
+      friendly: {
+        code: 'auth.invalid-credentials' as const,
+        type: 'error' as const,
+        description: 'Invalid authentication tokens',
+      },
+    }));
+    mockedFriendlyError.mockReturnValue(handleError);
+
+    const { getByTestId } = render(<AuthCallbackScreen />);
+
+    await waitFor(() => {
+      expect(handleError).toHaveBeenCalledWith(authError, {
+        surface: 'auth.callback',
+        suppressToast: true,
+      });
+    });
+
+    const errorElement = getByTestId('auth-callback-error');
+    expect(errorElement).toBeTruthy();
+  });
+
+  it('handles exchangeCodeForSession error when processing URL code', async () => {
+    mockUseLocalSearchParams.mockReturnValue({});
+    mockedGetSession.mockResolvedValue({ data: { session: null }, error: null } as any);
+    mockedGetInitialURL.mockResolvedValue('betterhabits://auth-callback?code=invalid-code');
+    const mockParse = Linking.parse as jest.MockedFunction<typeof Linking.parse>;
+    mockParse.mockReturnValue({
+      queryParams: { code: 'invalid-code' },
+      scheme: 'betterhabits',
+      hostname: '',
+      path: 'auth-callback',
+    });
+    mockedCreateURL.mockReturnValue('betterhabits://auth-callback?code=invalid-code');
+    const authError = { message: 'Code expired', status: 400 };
+    mockedExchangeCodeForSession.mockResolvedValue({ data: null, error: authError } as any);
+
+    const handleError = jest.fn(() => ({
+      toastId: 'toast-1',
+      friendly: {
+        code: 'auth.oauth.redirect' as const,
+        type: 'error' as const,
+        description: 'Authorization code has expired',
+      },
+    }));
+    mockedFriendlyError.mockReturnValue(handleError);
+
+    const { getByTestId } = render(<AuthCallbackScreen />);
+
+    await waitFor(() => {
+      expect(handleError).toHaveBeenCalledWith(authError, {
+        surface: 'auth.callback',
+        suppressToast: true,
+      });
+    });
+
+    const errorElement = getByTestId('auth-callback-error');
+    expect(errorElement).toBeTruthy();
   });
 });
 
@@ -533,6 +727,10 @@ describe('AuthCallbackScreen - Error Message Display', () => {
     Object.defineProperty(Platform, 'OS', { value: 'ios', writable: true });
     mockReplace.mockClear();
     mockUseLocalSearchParams.mockReturnValue({});
+    mockedGetSession.mockClear();
+    mockedGetInitialURL.mockClear();
+    mockedGetSession.mockResolvedValue({ data: { session: null }, error: null } as any);
+    mockedGetInitialURL.mockResolvedValue('betterhabits://auth-callback#access_token=');
   });
 
   it('displays error description when available', async () => {

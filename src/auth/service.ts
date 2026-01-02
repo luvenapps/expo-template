@@ -3,7 +3,7 @@ import type { Provider } from '@supabase/supabase-js';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Crypto from 'expo-crypto';
 import * as Linking from 'expo-linking';
-import { requireOptionalNativeModule } from 'expo-modules-core';
+import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from './client';
@@ -35,12 +35,78 @@ export async function signInWithEmail(email: string, password: string): Promise<
   return { success: true };
 }
 
-type WebBrowserModule = {
-  openAuthSessionAsync?: (url: string, redirectUrl?: string, options?: unknown) => Promise<unknown>;
-};
+function parseOAuthRedirect(url: string) {
+  const parsed = Linking.parse(url);
+  const code =
+    parsed.queryParams && typeof parsed.queryParams.code === 'string'
+      ? parsed.queryParams.code
+      : undefined;
+  const hash = url.split('#')[1] ?? '';
+  const hashParams = new URLSearchParams(hash);
+  const accessToken = hashParams.get('access_token');
+  const refreshToken = hashParams.get('refresh_token');
 
-function getWebBrowserModule() {
-  return requireOptionalNativeModule<WebBrowserModule>('ExpoWebBrowser');
+  return { code, accessToken, refreshToken };
+}
+
+async function resolveOAuthSession(url: string): Promise<AuthResult> {
+  const { code, accessToken, refreshToken } = parseOAuthRedirect(url);
+
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(url);
+    if (error) {
+      const friendly = resolveFriendlyError(error);
+      return {
+        success: false,
+        error:
+          friendly.originalMessage ??
+          friendly.description ??
+          friendly.title ??
+          friendly.descriptionKey ??
+          friendly.titleKey,
+        code: friendly.code,
+        friendlyError: friendly,
+      };
+    }
+    return { success: true };
+  }
+
+  if (accessToken && refreshToken) {
+    const { error } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+
+    if (error) {
+      const friendly = resolveFriendlyError(error);
+      return {
+        success: false,
+        error:
+          friendly.originalMessage ??
+          friendly.description ??
+          friendly.title ??
+          friendly.descriptionKey ??
+          friendly.titleKey,
+        code: friendly.code,
+        friendlyError: friendly,
+      };
+    }
+
+    return { success: true };
+  }
+
+  const friendly = resolveFriendlyError(new Error('OAuth redirect missing tokens'));
+  return {
+    success: false,
+    error:
+      friendly.originalMessage ??
+      friendly.description ??
+      friendly.title ??
+      friendly.descriptionKey ??
+      friendly.titleKey,
+    code: friendly.code,
+    friendlyError: friendly,
+  };
 }
 
 async function signInWithAppleNative(): Promise<AuthResult> {
@@ -197,16 +263,42 @@ export async function signInWithOAuth(provider: Provider): Promise<AuthResult> {
     return { success: true };
   }
 
-  const webBrowser = getWebBrowserModule();
-  const openAuthSession = webBrowser?.openAuthSessionAsync;
+  console.info('[Auth] OAuth redirect URL', { redirectTo });
+  console.info('[Auth] OAuth auth URL', { authUrl });
+
+  const openAuthSession = WebBrowser.openAuthSessionAsync;
 
   if (!openAuthSession) {
+    console.info('[Auth] OAuth browser session unavailable, falling back to Linking', {
+      platform: Platform.OS,
+    });
     await Linking.openURL(authUrl);
     return { success: true };
   }
 
   try {
-    await openAuthSession(authUrl, redirectTo, {});
+    console.info('[Auth] OAuth browser session available', { platform: Platform.OS });
+    const result = await openAuthSession(authUrl, redirectTo, {});
+    console.info('[Auth] OAuth browser result', result);
+    if (result && typeof result === 'object' && 'type' in result) {
+      if (result.type === 'success' && 'url' in result && typeof result.url === 'string') {
+        return await resolveOAuthSession(result.url);
+      }
+
+      const friendly = resolveFriendlyError(new Error('OAuth cancelled or missing redirect'));
+      return {
+        success: false,
+        error:
+          friendly.originalMessage ??
+          friendly.description ??
+          friendly.title ??
+          friendly.descriptionKey ??
+          friendly.titleKey,
+        code: friendly.code,
+        friendlyError: friendly,
+      };
+    }
+
     return { success: true };
   } catch (browserError) {
     const message =
@@ -226,7 +318,11 @@ export async function signInWithOAuth(provider: Provider): Promise<AuthResult> {
 }
 
 export async function signOut(): Promise<AuthResult> {
-  const { error } = await supabase.auth.signOut();
+  const { error } = await supabase.auth.signOut({ scope: 'local' });
+  const status = error && typeof error === 'object' && 'status' in error ? error.status : undefined;
+  if (status === 401 || status === 403 || status === 404) {
+    return { success: true };
+  }
   if (error) {
     const friendly = resolveFriendlyError(error);
     const errorMessage =

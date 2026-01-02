@@ -92,3 +92,10 @@ jest.mock('@/ui/components/Toast', () => ({
 jest.mock('@/ui/components/SoftPromptModal', () => ({
   SoftPromptModal: () => null,
 }));
+
+// Mock expo-linking to provide useURL hook
+jest.mock('expo-linking', () => ({
+  ...jest.requireActual('expo-linking'),
+  useURL: jest.fn(() => null),
+  openURL: jest.fn(() => Promise.resolve()),
+}));

@@ -119,10 +119,12 @@ export default function LoginScreen() {
     const result = await signInWithOAuth(provider);
     if (result.success) {
       setError(null);
-      if (navigation.canGoBack()) {
-        router.back();
-      } else {
-        router.replace('/(tabs)');
+      if (Platform.OS !== 'web') {
+        if (navigation.canGoBack()) {
+          router.back();
+        } else {
+          router.replace('/(tabs)');
+        }
       }
     } else {
       handleAuthError(result.friendlyError ?? result.error ?? t('auth.errorUnknown'));

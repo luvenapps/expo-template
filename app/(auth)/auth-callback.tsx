@@ -1,6 +1,7 @@
 import { supabase } from '@/auth/client';
 import { InlineError, PrimaryButton, ScreenContainer, TitleText } from '@/ui';
 import * as Linking from 'expo-linking';
+import { useURL } from 'expo-linking';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -16,6 +17,8 @@ export default function AuthCallbackScreen() {
   const handleFriendlyError = useFriendlyErrorHandler();
   const webHashRef = useRef<string | null>(null);
   const hasProcessedRef = useRef(false);
+  const isProcessingRef = useRef(false);
+  const latestUrl = useURL();
 
   const queryParams = useMemo(() => {
     const entries = Object.entries(params).map(([key, value]) => [
@@ -83,13 +86,100 @@ export default function AuthCallbackScreen() {
   }, [reportError]);
 
   const handleNativeCallback = useCallback(async () => {
-    if (hasProcessedRef.current) {
+    if (hasProcessedRef.current || isProcessingRef.current) {
       return;
     }
 
-    hasProcessedRef.current = true;
+    isProcessingRef.current = true;
 
-    if (!queryParams.code) {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    console.info('[AuthCallback] Native session present', { hasSession: Boolean(session) });
+
+    if (session) {
+      hasProcessedRef.current = true;
+      router.replace('/(tabs)');
+      return;
+    }
+
+    if (queryParams.code) {
+      hasProcessedRef.current = true;
+      const redirectUrl = Linking.createURL('auth-callback', {
+        queryParams,
+      });
+      const { error } = await supabase.auth.exchangeCodeForSession(redirectUrl);
+      if (error) {
+        reportError(error);
+        return;
+      }
+      router.replace('/(tabs)');
+      return;
+    }
+
+    const initialUrl = latestUrl ?? (await Linking.getInitialURL());
+    const parsedInitial = initialUrl ? Linking.parse(initialUrl) : null;
+    const embeddedUrl =
+      parsedInitial?.queryParams && typeof parsedInitial.queryParams.url === 'string'
+        ? parsedInitial.queryParams.url
+        : null;
+    const resolvedUrl = embeddedUrl ? decodeURIComponent(embeddedUrl) : initialUrl;
+    const parsedResolved = resolvedUrl ? Linking.parse(resolvedUrl) : null;
+    const codeFromUrl =
+      parsedResolved?.queryParams && typeof parsedResolved.queryParams.code === 'string'
+        ? parsedResolved.queryParams.code
+        : undefined;
+
+    console.info('[AuthCallback] Native initial URL', {
+      hasUrl: Boolean(initialUrl),
+      hasEmbeddedUrl: Boolean(embeddedUrl),
+    });
+
+    console.info('[AuthCallback] Native resolved URL', {
+      resolvedUrl,
+      parsedResolved,
+    });
+
+    const hash = resolvedUrl?.split('#')[1] ?? '';
+    console.info('[AuthCallback] Native hash params', {
+      hasHash: Boolean(hash),
+      hasAccessToken: hash.includes('access_token='),
+      hasRefreshToken: hash.includes('refresh_token='),
+    });
+
+    if (codeFromUrl) {
+      hasProcessedRef.current = true;
+      const redirectUrl = Linking.createURL('auth-callback', {
+        queryParams: { code: codeFromUrl },
+      });
+      const { error } = await supabase.auth.exchangeCodeForSession(redirectUrl);
+      if (error) {
+        reportError(error);
+        return;
+      }
+      router.replace('/(tabs)');
+      return;
+    }
+
+    const hashParams = new URLSearchParams(hash);
+    const accessToken = hashParams.get('access_token');
+    const refreshToken = hashParams.get('refresh_token');
+
+    if (accessToken && refreshToken) {
+      hasProcessedRef.current = true;
+      const { error } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+      if (error) {
+        reportError(error);
+        return;
+      }
+      router.replace('/(tabs)');
+      return;
+    }
+
+    if (initialUrl && (codeFromUrl || hash)) {
       reportError({
         code: 'auth.oauth.browser',
         titleKey: 'errors.auth.oauthBrowser.title',
@@ -99,14 +189,8 @@ export default function AuthCallbackScreen() {
       return;
     }
 
-    const redirectUrl = Linking.createURL('auth-callback', { queryParams });
-    const { error } = await supabase.auth.exchangeCodeForSession(redirectUrl);
-    if (error) {
-      reportError(error);
-      return;
-    }
-    router.replace('/(tabs)');
-  }, [queryParams, reportError, router]);
+    isProcessingRef.current = false;
+  }, [latestUrl, queryParams, reportError, router]);
 
   useEffect(() => {
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
@@ -115,6 +199,10 @@ export default function AuthCallbackScreen() {
       void handleNativeCallback();
     }
   }, [handleNativeCallback, handleWebCallback]);
+
+  if (Platform.OS !== 'web' && !errorMessage) {
+    return null;
+  }
 
   return (
     <ScreenContainer justifyContent="center" alignItems="center" scrollable={false}>
