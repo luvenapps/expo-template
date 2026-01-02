@@ -600,7 +600,7 @@ Before shipping preview/production builds, follow [`docs/build-size.md`](docs/bu
 We implement Supabase’s [Expo React Native social auth quickstart](https://supabase.com/docs/guides/auth/quickstarts/with-expo-react-native-social-auth), which uses Expo Linking + AuthSession to drive Supabase’s hosted OAuth flows. Use that guide as your source of truth; the notes below capture __APP_NAME__-specific details.
 
 1. **Register callback URLs**
-   - In Supabase Studio’s _Authentication → URL Configuration_, add both `__APP_NAME__://auth/callback` and your deployed web URL (e.g., `https://yourdomain.com/auth/callback`).
+   - In Supabase Studio’s _Authentication → URL Configuration_, add both `__APP_NAME__://auth-callback` and your deployed web URL (e.g., `https://yourdomain.com/auth-callback`).
    - The native scheme `__APP_NAME__` is already declared in `app.json`; don’t change it unless you update every OAuth redirect.
 2. **Enable providers (Studio)**
    - Go to _Authentication → Providers_ and toggle Apple + Google on.
@@ -610,7 +610,7 @@ We implement Supabase’s [Expo React Native social auth quickstart](https://sup
    - If you run Supabase locally (`npm run supabase:dev`), restart it so the provider config takes effect.
    - Restart Metro (`npm start`) and rebuild native dev clients after flipping providers on/off.
 4. **Test the flows**
-   - Native: tapping “Continue with …” opens the system browser overlay (Chrome Custom Tabs or ASWebAuthenticationSession). Once the Supabase redirect hits `__APP_NAME__://auth/callback`, the session listener updates Zustand.
+   - Native: tapping “Continue with …” opens the system browser overlay (Chrome Custom Tabs or ASWebAuthenticationSession). Once the Supabase redirect hits `__APP_NAME__://auth-callback`, the session listener updates Zustand.
    - Web: the login page redirects in the same tab; after sign-in, Supabase sends the browser back to `https://<project>.supabase.co/auth/v1/callback` which returns to your app.
 
 **Provider-specific tips**:

@@ -1,8 +1,8 @@
+import { resolveFriendlyError, type FriendlyError } from '@/errors/friendly';
 import type { Provider } from '@supabase/supabase-js';
-import { Platform } from 'react-native';
 import * as Linking from 'expo-linking';
 import { requireOptionalNativeModule } from 'expo-modules-core';
-import { resolveFriendlyError, type FriendlyError } from '@/errors/friendly';
+import { Platform } from 'react-native';
 import { supabase } from './client';
 
 export type AuthResult = {
@@ -41,7 +41,10 @@ function getWebBrowserModule() {
 }
 
 export async function signInWithOAuth(provider: Provider): Promise<AuthResult> {
-  const redirectTo = Linking.createURL('auth/callback');
+  const redirectTo =
+    Platform.OS === 'web' && typeof window !== 'undefined' && window.location?.origin
+      ? new URL('/auth-callback', window.location.origin).toString()
+      : Linking.createURL('auth-callback');
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
@@ -72,8 +75,8 @@ export async function signInWithOAuth(provider: Provider): Promise<AuthResult> {
     return { success: true };
   }
 
-  if (Platform.OS === 'web') {
-    window.location.assign(authUrl);
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    setTimeout(() => window?.location?.assign(authUrl), 0);
     return { success: true };
   }
 
@@ -146,9 +149,11 @@ export async function signUpWithEmail(email: string, password: string): Promise<
 }
 
 export async function sendPasswordReset(email: string): Promise<AuthResult> {
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: Linking.createURL('auth/callback'),
-  });
+  const redirectTo =
+    Platform.OS === 'web' && typeof window !== 'undefined' && window.location?.origin
+      ? new URL('/auth-callback', window.location.origin).toString()
+      : Linking.createURL('auth-callback');
+  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
   if (error) {
     const friendly = resolveFriendlyError(error);
     const errorMessage =

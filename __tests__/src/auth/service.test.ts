@@ -74,9 +74,10 @@ describe('auth/service', () => {
   });
 
   it('opens browser on web signInWithOAuth', async () => {
+    jest.useFakeTimers();
     Object.defineProperty(Platform, 'OS', { value: 'web' });
     const assignSpy = jest.fn();
-    const mockLocation = { ...window.location, assign: assignSpy };
+    const mockLocation = { ...window.location, assign: assignSpy, origin: 'https://test.com' };
     Object.defineProperty(window, 'location', { configurable: true, value: mockLocation });
     supabase.auth.signInWithOAuth.mockResolvedValueOnce({
       data: { url: 'https://example.com' },
@@ -84,8 +85,10 @@ describe('auth/service', () => {
     });
     const result = await signInWithOAuth('google');
     expect(result.success).toBe(true);
+    jest.runAllTimers();
     expect(assignSpy).toHaveBeenCalledWith('https://example.com');
     assignSpy.mockRestore();
+    jest.useRealTimers();
   });
 
   it('falls back to Linking when openAuthSessionAsync missing', async () => {

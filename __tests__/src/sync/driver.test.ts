@@ -390,9 +390,13 @@ describe('sync driver', () => {
     });
 
     it('includes a windowStart timestamp in sync-pull payload', async () => {
-      const nowSpy = jest
-        .spyOn(Date, 'now')
-        .mockReturnValue(new Date('2025-11-10T00:00:00.000Z').getTime());
+      const realNow = Date.now();
+      const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(realNow);
+
+      // Calculate expected windowStart (beginning of previous year in UTC, matching getWindowStartIso logic)
+      const currentDate = new Date(realNow);
+      const startYear = currentDate.getUTCFullYear() - 1;
+      const expectedWindowStart = new Date(Date.UTC(startYear, 0, 1, 0, 0, 0, 0)).toISOString();
 
       await pullUpdates();
 
@@ -400,7 +404,7 @@ describe('sync driver', () => {
         'sync-pull',
         expect.objectContaining({
           body: expect.objectContaining({
-            windowStart: '2024-01-01T00:00:00.000Z',
+            windowStart: expectedWindowStart,
           }),
         }),
       );

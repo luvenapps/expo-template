@@ -9,7 +9,9 @@ export type FriendlyErrorCode =
   | 'auth.invalid-credentials'
   | 'auth.oauth.browser'
   | 'auth.rate-limit'
+  | 'auth.oauth.missing_url'
   | 'notifications.permission'
+  | 'auth.oauth.redirect'
   | 'unknown';
 
 export type FriendlyError = {
