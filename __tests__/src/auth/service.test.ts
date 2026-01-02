@@ -13,6 +13,7 @@ jest.mock('@/auth/client', () => ({
     auth: {
       signInWithPassword: jest.fn(),
       signInWithOAuth: jest.fn(),
+      signInWithIdToken: jest.fn(),
       signOut: jest.fn(),
       signUp: jest.fn(),
       resetPasswordForEmail: jest.fn(),
@@ -35,8 +36,26 @@ jest.mock('expo-linking', () => ({
   openURL: jest.fn(() => Promise.resolve()),
 }));
 
+jest.mock('expo-apple-authentication', () => {
+  const mock = {
+    signInAsync: jest.fn(),
+    isAvailableAsync: jest.fn(() => Promise.resolve(false)),
+    AppleAuthenticationScope: { EMAIL: 0, FULL_NAME: 1 },
+  };
+  return mock;
+});
+
+jest.mock('expo-crypto', () => ({
+  digestStringAsync: jest.fn(() => Promise.resolve('hashed')),
+  CryptoDigestAlgorithm: { SHA256: 'SHA256' },
+}));
+
 jest.mock('expo-modules-core', () => ({
   requireOptionalNativeModule: jest.fn(() => undefined),
+}));
+
+jest.mock('uuid', () => ({
+  v4: jest.fn(() => 'test-uuid'),
 }));
 
 describe('auth/service', () => {
@@ -44,13 +63,64 @@ describe('auth/service', () => {
   const originalLocation = window.location;
   const supabase = require('@/auth/client').supabase as any;
   const resolveFriendlyError = require('@/errors/friendly').resolveFriendlyError as jest.Mock;
+  const appleAuth = require('expo-apple-authentication');
+  const crypto = require('expo-crypto');
   const requireOptionalNativeModule = require('expo-modules-core')
     .requireOptionalNativeModule as jest.Mock;
 
+  // Mock console methods to suppress logs in tests
+  const originalConsoleInfo = console.info;
+  const originalConsoleError = console.error;
+
+  beforeAll(() => {
+    console.info = jest.fn();
+    console.error = jest.fn();
+  });
+
+  afterAll(() => {
+    console.info = originalConsoleInfo;
+    console.error = originalConsoleError;
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
-    Object.defineProperty(Platform, 'OS', { value: originalOS });
+    Object.defineProperty(Platform, 'OS', {
+      value: originalOS,
+      writable: true,
+      configurable: true,
+    });
     Object.defineProperty(window, 'location', { configurable: true, value: originalLocation });
+    // Default mock for signInWithOAuth to prevent undefined errors
+    supabase.auth.signInWithOAuth.mockResolvedValue({ data: { url: null }, error: null });
+    // Restore default implementations for expo modules after clearAllMocks
+    appleAuth.isAvailableAsync.mockImplementation(() => Promise.resolve(false));
+    appleAuth.signInAsync.mockImplementation(() => Promise.reject(new Error('Not mocked')));
+    crypto.digestStringAsync.mockImplementation(() => Promise.resolve('hashed'));
+  });
+
+  it('uses native Apple sign-in on iOS when available', async () => {
+    Object.defineProperty(Platform, 'OS', { value: 'ios', writable: true });
+
+    appleAuth.isAvailableAsync.mockImplementationOnce(() => Promise.resolve(true));
+    appleAuth.signInAsync.mockImplementationOnce(() =>
+      Promise.resolve({
+        identityToken: 'token',
+        authorizationCode: 'code',
+        user: 'user-id',
+        email: 'test@example.com',
+        fullName: { givenName: 'Test', familyName: 'User' },
+        realUserStatus: 1,
+      }),
+    );
+    supabase.auth.signInWithIdToken.mockResolvedValueOnce({ data: { session: {} }, error: null });
+
+    const result = await signInWithOAuth('apple');
+
+    expect(appleAuth.isAvailableAsync).toHaveBeenCalled();
+    expect(appleAuth.signInAsync).toHaveBeenCalled();
+    expect(result.success).toBe(true);
+    expect(supabase.auth.signInWithIdToken).toHaveBeenCalled();
+    expect(supabase.auth.signInWithOAuth).not.toHaveBeenCalled();
   });
 
   it('returns friendly error on signInWithEmail failure', async () => {
@@ -75,7 +145,7 @@ describe('auth/service', () => {
 
   it('opens browser on web signInWithOAuth', async () => {
     jest.useFakeTimers();
-    Object.defineProperty(Platform, 'OS', { value: 'web' });
+    Object.defineProperty(Platform, 'OS', { value: 'web', writable: true });
     const assignSpy = jest.fn();
     const mockLocation = { ...window.location, assign: assignSpy, origin: 'https://test.com' };
     Object.defineProperty(window, 'location', { configurable: true, value: mockLocation });
@@ -92,39 +162,42 @@ describe('auth/service', () => {
   });
 
   it('falls back to Linking when openAuthSessionAsync missing', async () => {
-    Object.defineProperty(Platform, 'OS', { value: 'ios' });
+    Object.defineProperty(Platform, 'OS', { value: 'ios', writable: true });
     requireOptionalNativeModule.mockReturnValueOnce({});
+    appleAuth.isAvailableAsync.mockResolvedValueOnce(false);
     supabase.auth.signInWithOAuth.mockResolvedValueOnce({
       data: { url: 'https://example.com' },
       error: null,
     });
-    const result = await signInWithOAuth('apple');
+    const result = await signInWithOAuth('google');
     expect(result.success).toBe(true);
     expect(Linking.openURL).toHaveBeenCalledWith('https://example.com');
   });
 
   it('calls openAuthSessionAsync when available', async () => {
-    Object.defineProperty(Platform, 'OS', { value: 'ios' });
+    Object.defineProperty(Platform, 'OS', { value: 'ios', writable: true });
     const openAuthSessionAsync = jest.fn(() => Promise.resolve());
     requireOptionalNativeModule.mockReturnValueOnce({ openAuthSessionAsync });
+    appleAuth.isAvailableAsync.mockResolvedValueOnce(false);
     supabase.auth.signInWithOAuth.mockResolvedValueOnce({
       data: { url: 'https://example.com' },
       error: null,
     });
-    const result = await signInWithOAuth('apple');
+    const result = await signInWithOAuth('google');
     expect(result.success).toBe(true);
     expect(openAuthSessionAsync).toHaveBeenCalled();
   });
 
   it('handles openAuthSessionAsync failure', async () => {
-    Object.defineProperty(Platform, 'OS', { value: 'ios' });
+    Object.defineProperty(Platform, 'OS', { value: 'ios', writable: true });
     const openAuthSessionAsync = jest.fn(() => Promise.reject(new Error('browser fail')));
     requireOptionalNativeModule.mockReturnValueOnce({ openAuthSessionAsync });
+    appleAuth.isAvailableAsync.mockResolvedValueOnce(false);
     supabase.auth.signInWithOAuth.mockResolvedValueOnce({
       data: { url: 'https://example.com' },
       error: null,
     });
-    const result = await signInWithOAuth('apple');
+    const result = await signInWithOAuth('google');
     expect(result.success).toBe(false);
     expect(result.code).toBe('auth.oauth.browser');
     expect(result.error).toContain('browser fail');

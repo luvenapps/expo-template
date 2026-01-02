@@ -17,9 +17,11 @@
       "supportsTablet": true,
       "bundleIdentifier": "__APP_ID__",
       "buildNumber": "1",
+      "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "appleTeamId": "HWJZHVS443"
     },
     "android": {
       "versionCode": 1,
@@ -57,6 +59,7 @@
         }
       ],
       "expo-localization",
+      "expo-apple-authentication",
       "expo-web-browser",
       "./plugins/withFirebaseCredentials.js",
       "./plugins/withFirebaseConfig.js",
