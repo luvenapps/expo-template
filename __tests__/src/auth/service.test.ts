@@ -123,6 +123,170 @@ describe('auth/service', () => {
     expect(supabase.auth.signInWithOAuth).not.toHaveBeenCalled();
   });
 
+  it('handles missing identity token from Apple sign-in', async () => {
+    Object.defineProperty(Platform, 'OS', { value: 'ios', writable: true });
+
+    appleAuth.isAvailableAsync.mockImplementationOnce(() => Promise.resolve(true));
+    appleAuth.signInAsync.mockImplementationOnce(() =>
+      Promise.resolve({
+        identityToken: null, // Missing token
+        authorizationCode: 'code',
+        user: 'user-id',
+        email: 'test@example.com',
+        fullName: { givenName: 'Test', familyName: 'User' },
+        realUserStatus: 1,
+      }),
+    );
+    resolveFriendlyError.mockReturnValueOnce({
+      code: 'auth.apple.no-token',
+      description: 'Missing identity token',
+      type: 'error',
+    });
+
+    const result = await signInWithOAuth('apple');
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('Missing identity token');
+    expect(supabase.auth.signInWithIdToken).not.toHaveBeenCalled();
+  });
+
+  it('handles Supabase error during Apple ID token exchange', async () => {
+    Object.defineProperty(Platform, 'OS', { value: 'ios', writable: true });
+
+    appleAuth.isAvailableAsync.mockImplementationOnce(() => Promise.resolve(true));
+    appleAuth.signInAsync.mockImplementationOnce(() =>
+      Promise.resolve({
+        identityToken: 'token',
+        authorizationCode: 'code',
+        user: 'user-id',
+        email: 'test@example.com',
+        fullName: { givenName: 'Test', familyName: 'User' },
+        realUserStatus: 1,
+      }),
+    );
+    supabase.auth.signInWithIdToken.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'Invalid token', status: 401, code: 'invalid_token' },
+    });
+    resolveFriendlyError.mockReturnValueOnce({
+      code: 'auth.invalid-credentials',
+      description: 'Invalid Apple token',
+      type: 'error',
+    });
+
+    const result = await signInWithOAuth('apple');
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('Invalid Apple token');
+  });
+
+  it('handles Apple sign-in exception', async () => {
+    Object.defineProperty(Platform, 'OS', { value: 'ios', writable: true });
+
+    appleAuth.isAvailableAsync.mockImplementationOnce(() => Promise.resolve(true));
+    appleAuth.signInAsync.mockImplementationOnce(() =>
+      Promise.reject({ code: '1001', domain: 'ASAuthorization', message: 'User canceled' }),
+    );
+    resolveFriendlyError.mockReturnValueOnce({
+      code: 'auth.canceled',
+      description: 'Sign in was canceled',
+      type: 'error',
+    });
+
+    const result = await signInWithOAuth('apple');
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('Sign in was canceled');
+  });
+
+  it('handles isAvailableAsync exception', async () => {
+    Object.defineProperty(Platform, 'OS', { value: 'ios', writable: true });
+
+    appleAuth.isAvailableAsync.mockImplementationOnce(() =>
+      Promise.reject(new Error('Not supported')),
+    );
+    supabase.auth.signInWithOAuth.mockResolvedValueOnce({
+      data: { url: 'https://provider.com/auth' },
+      error: null,
+    });
+    requireOptionalNativeModule.mockReturnValueOnce({
+      openAuthSessionAsync: jest.fn(() => Promise.resolve()),
+    });
+
+    const result = await signInWithOAuth('apple');
+
+    // Should fall back to web OAuth flow
+    expect(result.success).toBe(true);
+    expect(supabase.auth.signInWithOAuth).toHaveBeenCalled();
+  });
+
+  it('uses title fallback when description is missing for Apple token error', async () => {
+    Object.defineProperty(Platform, 'OS', { value: 'ios', writable: true });
+
+    appleAuth.isAvailableAsync.mockImplementationOnce(() => Promise.resolve(true));
+    appleAuth.signInAsync.mockImplementationOnce(() =>
+      Promise.resolve({
+        identityToken: null,
+        authorizationCode: 'code',
+        user: 'user-id',
+      }),
+    );
+    resolveFriendlyError.mockReturnValueOnce({
+      code: 'auth.apple.no-token',
+      title: 'Token Missing',
+      type: 'error',
+    });
+
+    const result = await signInWithOAuth('apple');
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('Token Missing');
+  });
+
+  it('uses descriptionKey fallback for Apple ID exchange error', async () => {
+    Object.defineProperty(Platform, 'OS', { value: 'ios', writable: true });
+
+    appleAuth.isAvailableAsync.mockImplementationOnce(() => Promise.resolve(true));
+    appleAuth.signInAsync.mockImplementationOnce(() =>
+      Promise.resolve({
+        identityToken: 'token',
+        authorizationCode: 'code',
+        user: 'user-id',
+      }),
+    );
+    supabase.auth.signInWithIdToken.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'Invalid' },
+    });
+    resolveFriendlyError.mockReturnValueOnce({
+      code: 'auth.invalid',
+      descriptionKey: 'errors.auth.invalid.description',
+      type: 'error',
+    });
+
+    const result = await signInWithOAuth('apple');
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('errors.auth.invalid.description');
+  });
+
+  it('uses titleKey fallback for Apple sign-in exception', async () => {
+    Object.defineProperty(Platform, 'OS', { value: 'ios', writable: true });
+
+    appleAuth.isAvailableAsync.mockImplementationOnce(() => Promise.resolve(true));
+    appleAuth.signInAsync.mockImplementationOnce(() => Promise.reject(new Error('Failed')));
+    resolveFriendlyError.mockReturnValueOnce({
+      code: 'auth.failed',
+      titleKey: 'errors.auth.failed.title',
+      type: 'error',
+    });
+
+    const result = await signInWithOAuth('apple');
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('errors.auth.failed.title');
+  });
+
   it('returns friendly error on signInWithEmail failure', async () => {
     supabase.auth.signInWithPassword.mockResolvedValueOnce({ error: new Error('boom') });
     resolveFriendlyError.mockReturnValueOnce({
