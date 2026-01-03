@@ -312,5 +312,215 @@ describe('firebasePush Native', () => {
       const result = await registerForPushNotifications();
       expect(result.status).toBe('error');
     });
+
+    it('returns error when getToken returns empty token', async () => {
+      const { registerForPushNotifications } = require('@/notifications/firebasePush');
+      const messaging = jest.requireMock('@react-native-firebase/messaging');
+      messaging.__mock.getToken.mockResolvedValue('');
+
+      const result = await registerForPushNotifications();
+      expect(result).toEqual({ status: 'error', message: 'No token' });
+    });
+
+    it('returns error when getToken returns null', async () => {
+      const { registerForPushNotifications } = require('@/notifications/firebasePush');
+      const messaging = jest.requireMock('@react-native-firebase/messaging');
+      messaging.__mock.getToken.mockResolvedValue(null);
+
+      const result = await registerForPushNotifications();
+      expect(result).toEqual({ status: 'error', message: 'No token' });
+    });
+
+    it('handles FCM listener initialization failure gracefully', () => {
+      const { initializeFCMListeners } = require('@/notifications/firebasePush');
+      const messaging = jest.requireMock('@react-native-firebase/messaging');
+      messaging.__mock.onMessage.mockImplementation(() => {
+        throw new Error('Listener setup failed');
+      });
+
+      // Should not throw - errors are logged
+      expect(() => initializeFCMListeners()).not.toThrow();
+    });
+
+    it('handles background handler setup failure gracefully', () => {
+      const { setupBackgroundMessageHandler } = require('@/notifications/firebasePush');
+      const messagingMock = jest.requireMock('@react-native-firebase/messaging');
+      messagingMock.default = jest.fn(() => {
+        throw new Error('Background handler setup failed');
+      });
+
+      // Should not throw - errors are logged
+      expect(() => setupBackgroundMessageHandler()).not.toThrow();
+    });
+
+    it('handles notification display failure in foreground listener', async () => {
+      const { initializeFCMListeners } = require('@/notifications/firebasePush');
+      const messaging = jest.requireMock('@react-native-firebase/messaging');
+      const Notifications = jest.requireMock('expo-notifications');
+
+      // Mock scheduleNotificationAsync to throw error
+      Notifications.scheduleNotificationAsync.mockRejectedValue(new Error('Display failed'));
+
+      initializeFCMListeners();
+
+      const cb = messaging.__mock.onMessage.mock.calls[0]?.[0];
+
+      // Should not throw even if notification display fails
+      await expect(
+        cb?.({
+          notification: { title: 'Test', body: 'Body' },
+          data: {},
+        }),
+      ).resolves.toBeUndefined();
+    });
+  });
+
+  describe('iOS-specific behavior', () => {
+    beforeEach(() => {
+      process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = 'true';
+      Object.defineProperty(Platform, 'OS', { value: 'ios', configurable: true });
+    });
+
+    it('registers successfully on iOS when permission is already granted', async () => {
+      const { registerForPushNotifications } = require('@/notifications/firebasePush');
+      const Notifications = jest.requireMock('expo-notifications');
+      Notifications.getPermissionsAsync.mockResolvedValue({
+        granted: true,
+        status: 'granted',
+        canAskAgain: true,
+      });
+
+      const result = await registerForPushNotifications();
+      expect(result).toEqual({ status: 'registered', token: 'mock-token' });
+      expect(Notifications.requestPermissionsAsync).not.toHaveBeenCalled();
+    });
+
+    it('requests permission on iOS when not already granted', async () => {
+      const { registerForPushNotifications } = require('@/notifications/firebasePush');
+      const Notifications = jest.requireMock('expo-notifications');
+      Notifications.getPermissionsAsync.mockResolvedValue({
+        granted: false,
+        status: 'denied',
+        canAskAgain: true,
+      });
+      Notifications.requestPermissionsAsync.mockResolvedValue({
+        granted: true,
+        status: 'granted',
+        canAskAgain: true,
+      });
+
+      const result = await registerForPushNotifications();
+      expect(result).toEqual({ status: 'registered', token: 'mock-token' });
+      expect(Notifications.requestPermissionsAsync).toHaveBeenCalled();
+    });
+
+    it('returns denied on iOS when permission cannot be asked again', async () => {
+      const { registerForPushNotifications } = require('@/notifications/firebasePush');
+      const Notifications = jest.requireMock('expo-notifications');
+      Notifications.getPermissionsAsync.mockResolvedValue({
+        granted: false,
+        status: 'denied',
+        canAskAgain: false,
+      });
+
+      const result = await registerForPushNotifications();
+      expect(result).toEqual({ status: 'denied' });
+      expect(Notifications.requestPermissionsAsync).not.toHaveBeenCalled();
+    });
+
+    it('returns denied on iOS when user denies permission request', async () => {
+      const { registerForPushNotifications } = require('@/notifications/firebasePush');
+      const Notifications = jest.requireMock('expo-notifications');
+      Notifications.getPermissionsAsync.mockResolvedValue({
+        granted: false,
+        status: 'denied',
+        canAskAgain: true,
+      });
+      Notifications.requestPermissionsAsync.mockResolvedValue({
+        granted: false,
+        status: 'denied',
+        canAskAgain: false,
+      });
+
+      const result = await registerForPushNotifications();
+      expect(result).toEqual({ status: 'denied' });
+    });
+
+    it('continues registration on iOS if permission check throws', async () => {
+      const { registerForPushNotifications } = require('@/notifications/firebasePush');
+      const Notifications = jest.requireMock('expo-notifications');
+      Notifications.getPermissionsAsync.mockRejectedValue(new Error('Permission API failed'));
+
+      const result = await registerForPushNotifications();
+      // Should continue and succeed despite permission check failure
+      expect(result).toEqual({ status: 'registered', token: 'mock-token' });
+    });
+  });
+
+  describe('Android-specific behavior', () => {
+    beforeEach(() => {
+      process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = 'true';
+      Object.defineProperty(Platform, 'OS', { value: 'android', configurable: true });
+    });
+
+    // Note: Android POST_NOTIFICATIONS permission tests are complex to properly mock
+    // since react-native module requires are hard to intercept mid-test.
+    // The actual Android permission logic is tested via integration tests.
+    // These tests verify the basic flow continues even when permissions APIs are unavailable.
+
+    it('handles Android registration flow', async () => {
+      const { registerForPushNotifications } = require('@/notifications/firebasePush');
+      const result = await registerForPushNotifications();
+      // Should succeed on Android
+      expect(result).toEqual({ status: 'registered', token: 'mock-token' });
+    });
+  });
+
+  describe('token caching and deduplication', () => {
+    beforeEach(() => {
+      process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = 'true';
+    });
+
+    it('returns cached token on subsequent calls without re-registering', async () => {
+      const { registerForPushNotifications } = require('@/notifications/firebasePush');
+      const messaging = jest.requireMock('@react-native-firebase/messaging');
+
+      // First call
+      const result1 = await registerForPushNotifications();
+      expect(result1).toEqual({ status: 'registered', token: 'mock-token' });
+
+      // Clear mocks to verify they're not called again
+      messaging.__mock.requestPermission.mockClear();
+      messaging.__mock.getToken.mockClear();
+      messaging.__mock.registerDeviceForRemoteMessages.mockClear();
+
+      // Second call - should return cached token
+      const result2 = await registerForPushNotifications();
+      expect(result2).toEqual({ status: 'registered', token: 'mock-token' });
+      expect(messaging.__mock.requestPermission).not.toHaveBeenCalled();
+      expect(messaging.__mock.getToken).not.toHaveBeenCalled();
+      expect(messaging.__mock.registerDeviceForRemoteMessages).not.toHaveBeenCalled();
+    });
+
+    it('deduplicates concurrent registration calls', async () => {
+      const { registerForPushNotifications } = require('@/notifications/firebasePush');
+      const messaging = jest.requireMock('@react-native-firebase/messaging');
+
+      // Make multiple concurrent calls
+      const [result1, result2, result3] = await Promise.all([
+        registerForPushNotifications(),
+        registerForPushNotifications(),
+        registerForPushNotifications(),
+      ]);
+
+      // All should succeed with same token
+      expect(result1).toEqual({ status: 'registered', token: 'mock-token' });
+      expect(result2).toEqual({ status: 'registered', token: 'mock-token' });
+      expect(result3).toEqual({ status: 'registered', token: 'mock-token' });
+
+      // Registration should only happen once
+      expect(messaging.__mock.requestPermission).toHaveBeenCalledTimes(1);
+      expect(messaging.__mock.getToken).toHaveBeenCalledTimes(1);
+    });
   });
 });

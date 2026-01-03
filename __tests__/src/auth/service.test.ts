@@ -527,4 +527,391 @@ describe('auth/service', () => {
     expect(result.success).toBe(false);
     expect(result.error).toBe('errors.auth.reset.title');
   });
+
+  describe('signOut HTTP error codes', () => {
+    it('treats 401 as successful signOut', async () => {
+      supabase.auth.signOut.mockResolvedValueOnce({
+        error: { message: 'Unauthorized', status: 401 },
+      });
+      const result = await signOut();
+      expect(result.success).toBe(true);
+    });
+
+    it('treats 403 as successful signOut', async () => {
+      supabase.auth.signOut.mockResolvedValueOnce({
+        error: { message: 'Forbidden', status: 403 },
+      });
+      const result = await signOut();
+      expect(result.success).toBe(true);
+    });
+
+    it('treats 404 as successful signOut', async () => {
+      supabase.auth.signOut.mockResolvedValueOnce({
+        error: { message: 'Not found', status: 404 },
+      });
+      const result = await signOut();
+      expect(result.success).toBe(true);
+    });
+
+    it('returns error for 500 status code', async () => {
+      supabase.auth.signOut.mockResolvedValueOnce({
+        error: { message: 'Server error', status: 500 },
+      });
+      resolveFriendlyError.mockReturnValueOnce({
+        code: 'auth.server-error',
+        description: 'Server error occurred',
+        type: 'error',
+      });
+      const result = await signOut();
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Server error occurred');
+    });
+
+    it('returns error for error without status code', async () => {
+      supabase.auth.signOut.mockResolvedValueOnce({
+        error: { message: 'Unknown error' },
+      });
+      resolveFriendlyError.mockReturnValueOnce({
+        code: 'auth.unknown',
+        description: 'Unknown error',
+        type: 'error',
+      });
+      const result = await signOut();
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Unknown error');
+    });
+  });
+
+  describe('OAuth redirect edge cases', () => {
+    it('handles OAuth redirect with missing access_token', async () => {
+      Object.defineProperty(Platform, 'OS', { value: 'ios', writable: true });
+      supabase.auth.signInWithOAuth.mockResolvedValueOnce({
+        data: { url: 'https://provider.com/auth' },
+        error: null,
+      });
+      mockWebBrowser.openAuthSessionAsync = jest.fn().mockResolvedValueOnce({
+        type: 'success',
+        url: 'myapp://auth-callback#refresh_token=refresh123',
+      });
+      resolveFriendlyError.mockReturnValueOnce({
+        code: 'auth.oauth.missing-tokens',
+        description: 'Missing tokens',
+        type: 'error',
+      });
+
+      const result = await signInWithOAuth('google');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Missing tokens');
+    });
+
+    it('handles OAuth redirect with missing refresh_token', async () => {
+      Object.defineProperty(Platform, 'OS', { value: 'ios', writable: true });
+      supabase.auth.signInWithOAuth.mockResolvedValueOnce({
+        data: { url: 'https://provider.com/auth' },
+        error: null,
+      });
+      mockWebBrowser.openAuthSessionAsync = jest.fn().mockResolvedValueOnce({
+        type: 'success',
+        url: 'myapp://auth-callback#access_token=access123',
+      });
+      resolveFriendlyError.mockReturnValueOnce({
+        code: 'auth.oauth.missing-tokens',
+        description: 'Missing tokens',
+        type: 'error',
+      });
+
+      const result = await signInWithOAuth('google');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Missing tokens');
+    });
+
+    it('handles OAuth redirect with valid access and refresh tokens', async () => {
+      Object.defineProperty(Platform, 'OS', { value: 'ios', writable: true });
+      supabase.auth.signInWithOAuth.mockResolvedValueOnce({
+        data: { url: 'https://provider.com/auth' },
+        error: null,
+      });
+      mockWebBrowser.openAuthSessionAsync = jest.fn().mockResolvedValueOnce({
+        type: 'success',
+        url: 'myapp://auth-callback#access_token=access123&refresh_token=refresh123',
+      });
+      supabase.auth.setSession.mockResolvedValueOnce({ data: { session: {} }, error: null });
+
+      const result = await signInWithOAuth('google');
+
+      expect(result.success).toBe(true);
+      expect(supabase.auth.setSession).toHaveBeenCalledWith({
+        access_token: 'access123',
+        refresh_token: 'refresh123',
+      });
+    });
+
+    it('handles setSession error when using access/refresh tokens', async () => {
+      Object.defineProperty(Platform, 'OS', { value: 'ios', writable: true });
+      supabase.auth.signInWithOAuth.mockResolvedValueOnce({
+        data: { url: 'https://provider.com/auth' },
+        error: null,
+      });
+      mockWebBrowser.openAuthSessionAsync = jest.fn().mockResolvedValueOnce({
+        type: 'success',
+        url: 'myapp://auth-callback#access_token=access123&refresh_token=refresh123',
+      });
+      supabase.auth.setSession.mockResolvedValueOnce({
+        data: null,
+        error: { message: 'Invalid session' },
+      });
+      resolveFriendlyError.mockReturnValueOnce({
+        code: 'auth.invalid-session',
+        description: 'Session is invalid',
+        type: 'error',
+      });
+
+      const result = await signInWithOAuth('google');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Session is invalid');
+    });
+
+    it('handles OAuth redirect with authorization code', async () => {
+      Object.defineProperty(Platform, 'OS', { value: 'ios', writable: true });
+      supabase.auth.signInWithOAuth.mockResolvedValueOnce({
+        data: { url: 'https://provider.com/auth' },
+        error: null,
+      });
+      mockWebBrowser.openAuthSessionAsync = jest.fn().mockResolvedValueOnce({
+        type: 'success',
+        url: 'myapp://auth-callback?code=authcode123',
+      });
+      supabase.auth.exchangeCodeForSession.mockResolvedValueOnce({
+        data: { session: {} },
+        error: null,
+      });
+
+      const result = await signInWithOAuth('google');
+
+      expect(result.success).toBe(true);
+      expect(supabase.auth.exchangeCodeForSession).toHaveBeenCalled();
+    });
+
+    it('handles exchangeCodeForSession error', async () => {
+      Object.defineProperty(Platform, 'OS', { value: 'ios', writable: true });
+      supabase.auth.signInWithOAuth.mockResolvedValueOnce({
+        data: { url: 'https://provider.com/auth' },
+        error: null,
+      });
+      mockWebBrowser.openAuthSessionAsync = jest.fn().mockResolvedValueOnce({
+        type: 'success',
+        url: 'myapp://auth-callback?code=authcode123',
+      });
+      supabase.auth.exchangeCodeForSession.mockResolvedValueOnce({
+        data: null,
+        error: { message: 'Invalid code' },
+      });
+      resolveFriendlyError.mockReturnValueOnce({
+        code: 'auth.invalid-code',
+        description: 'Code is invalid',
+        type: 'error',
+      });
+
+      const result = await signInWithOAuth('google');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Code is invalid');
+    });
+
+    it('handles OAuth cancel', async () => {
+      Object.defineProperty(Platform, 'OS', { value: 'ios', writable: true });
+      supabase.auth.signInWithOAuth.mockResolvedValueOnce({
+        data: { url: 'https://provider.com/auth' },
+        error: null,
+      });
+      mockWebBrowser.openAuthSessionAsync = jest.fn().mockResolvedValueOnce({
+        type: 'cancel',
+      });
+      resolveFriendlyError.mockReturnValueOnce({
+        code: 'auth.oauth.canceled',
+        description: 'User canceled',
+        type: 'error',
+      });
+
+      const result = await signInWithOAuth('google');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('User canceled');
+    });
+
+    it('handles OAuth browser exception', async () => {
+      Object.defineProperty(Platform, 'OS', { value: 'ios', writable: true });
+      supabase.auth.signInWithOAuth.mockResolvedValueOnce({
+        data: { url: 'https://provider.com/auth' },
+        error: null,
+      });
+      mockWebBrowser.openAuthSessionAsync = jest
+        .fn()
+        .mockRejectedValueOnce(new Error('Browser failed'));
+
+      const result = await signInWithOAuth('google');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Browser failed');
+      expect(result.code).toBe('auth.oauth.browser');
+    });
+
+    it('handles OAuth browser exception with non-Error object', async () => {
+      Object.defineProperty(Platform, 'OS', { value: 'ios', writable: true });
+      supabase.auth.signInWithOAuth.mockResolvedValueOnce({
+        data: { url: 'https://provider.com/auth' },
+        error: null,
+      });
+      mockWebBrowser.openAuthSessionAsync = jest.fn().mockRejectedValueOnce('string error');
+
+      const result = await signInWithOAuth('google');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Unable to open sign-in window');
+      expect(result.code).toBe('auth.oauth.browser');
+    });
+  });
+
+  describe('OAuth browser fallback', () => {
+    it('falls back to Linking.openURL when WebBrowser is unavailable', async () => {
+      Object.defineProperty(Platform, 'OS', { value: 'android', writable: true });
+      supabase.auth.signInWithOAuth.mockResolvedValueOnce({
+        data: { url: 'https://provider.com/auth' },
+        error: null,
+      });
+      // Simulate WebBrowser.openAuthSessionAsync being undefined
+      mockWebBrowser.openAuthSessionAsync = undefined;
+
+      const result = await signInWithOAuth('google');
+
+      expect(result.success).toBe(true);
+      expect(linkingModule.openURL).toHaveBeenCalledWith('https://provider.com/auth');
+    });
+  });
+
+  describe('Apple auth platform variations', () => {
+    it('uses web OAuth flow for Apple on Android', async () => {
+      Object.defineProperty(Platform, 'OS', { value: 'android', writable: true });
+      supabase.auth.signInWithOAuth.mockResolvedValueOnce({
+        data: { url: 'https://appleid.apple.com/auth' },
+        error: null,
+      });
+      mockWebBrowser.openAuthSessionAsync = jest.fn().mockResolvedValueOnce({
+        type: 'success',
+        url: 'myapp://auth-callback?code=appleCode',
+      });
+      supabase.auth.exchangeCodeForSession.mockResolvedValueOnce({
+        data: { session: {} },
+        error: null,
+      });
+
+      const result = await signInWithOAuth('apple');
+
+      expect(result.success).toBe(true);
+      expect(appleAuth.isAvailableAsync).not.toHaveBeenCalled();
+      expect(supabase.auth.signInWithOAuth).toHaveBeenCalled();
+    });
+
+    it('uses web OAuth flow for Apple on web platform', async () => {
+      jest.useFakeTimers();
+      Object.defineProperty(Platform, 'OS', { value: 'web', writable: true });
+      const mockAssign = jest.fn();
+      Object.defineProperty(window, 'location', {
+        configurable: true,
+        value: {
+          origin: 'https://app.example.com',
+          assign: mockAssign,
+        },
+      });
+      supabase.auth.signInWithOAuth.mockResolvedValueOnce({
+        data: { url: 'https://appleid.apple.com/auth' },
+        error: null,
+      });
+
+      const result = await signInWithOAuth('apple');
+
+      expect(result.success).toBe(true);
+      expect(appleAuth.isAvailableAsync).not.toHaveBeenCalled();
+
+      // Run the setTimeout callback
+      jest.runAllTimers();
+      expect(mockAssign).toHaveBeenCalledWith('https://appleid.apple.com/auth');
+
+      jest.useRealTimers();
+    });
+  });
+
+  describe('Redirect URL construction', () => {
+    it('uses window.location.origin for web platform in OAuth', async () => {
+      Object.defineProperty(Platform, 'OS', { value: 'web', writable: true });
+      Object.defineProperty(window, 'location', {
+        configurable: true,
+        value: {
+          origin: 'https://app.example.com',
+          assign: jest.fn(),
+        },
+      });
+      supabase.auth.signInWithOAuth.mockResolvedValueOnce({
+        data: { url: 'https://provider.com/auth' },
+        error: null,
+      });
+
+      await signInWithOAuth('google');
+
+      expect(supabase.auth.signInWithOAuth).toHaveBeenCalledWith({
+        provider: 'google',
+        options: {
+          redirectTo: 'https://app.example.com/auth-callback',
+          skipBrowserRedirect: true,
+        },
+      });
+    });
+
+    it('uses Linking.createURL for native platform in OAuth', async () => {
+      Object.defineProperty(Platform, 'OS', { value: 'ios', writable: true });
+      supabase.auth.signInWithOAuth.mockResolvedValueOnce({
+        data: { url: null },
+        error: null,
+      });
+
+      await signInWithOAuth('google');
+
+      expect(supabase.auth.signInWithOAuth).toHaveBeenCalledWith({
+        provider: 'google',
+        options: {
+          redirectTo: 'myapp://auth-callback',
+          skipBrowserRedirect: true,
+        },
+      });
+    });
+
+    it('uses window.location.origin for web platform in password reset', async () => {
+      Object.defineProperty(Platform, 'OS', { value: 'web', writable: true });
+      Object.defineProperty(window, 'location', {
+        configurable: true,
+        value: { origin: 'https://app.example.com' },
+      });
+      supabase.auth.resetPasswordForEmail.mockResolvedValueOnce({ error: null });
+
+      await sendPasswordReset('test@example.com');
+
+      expect(supabase.auth.resetPasswordForEmail).toHaveBeenCalledWith('test@example.com', {
+        redirectTo: 'https://app.example.com/auth-callback',
+      });
+    });
+
+    it('uses Linking.createURL for native platform in password reset', async () => {
+      Object.defineProperty(Platform, 'OS', { value: 'android', writable: true });
+      supabase.auth.resetPasswordForEmail.mockResolvedValueOnce({ error: null });
+
+      await sendPasswordReset('test@example.com');
+
+      expect(supabase.auth.resetPasswordForEmail).toHaveBeenCalledWith('test@example.com', {
+        redirectTo: 'myapp://auth-callback',
+      });
+    });
+  });
 });

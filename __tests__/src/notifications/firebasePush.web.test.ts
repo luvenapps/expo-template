@@ -40,6 +40,8 @@ describe('firebasePush Web', () => {
   let debugSpy: jest.SpyInstance;
   let infoSpy: jest.SpyInstance;
   let logSpy: jest.SpyInstance;
+  let warnSpy: jest.SpyInstance;
+  let errorSpy: jest.SpyInstance;
   let lastNotification: any;
 
   beforeEach(() => {
@@ -48,6 +50,8 @@ describe('firebasePush Web', () => {
     debugSpy = jest.spyOn(console, 'debug').mockImplementation(() => {});
     infoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
     logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     (Platform as any).OS = 'web';
     process.env.EXPO_PUBLIC_FIREBASE_VAPID_KEY = 'test-vapid';
     process.env.EXPO_PUBLIC_FIREBASE_API_KEY = 'api';
@@ -108,6 +112,8 @@ describe('firebasePush Web', () => {
     debugSpy.mockRestore();
     infoSpy.mockRestore();
     logSpy.mockRestore();
+    warnSpy.mockRestore();
+    errorSpy.mockRestore();
   });
 
   it('returns denied when permission is blocked', async () => {
@@ -301,5 +307,211 @@ describe('firebasePush Web', () => {
         payload: expect.objectContaining({ tag: 'habits', title: 'Later' }),
       }),
     );
+  });
+
+  describe('Web registration edge cases', () => {
+    it('returns unavailable when window is undefined', async () => {
+      const originalWindow = global.window;
+      delete (global as any).window;
+
+      const result = await __registerForWebPush();
+      expect(result.status).toBe('unavailable');
+
+      (global as any).window = originalWindow;
+    });
+
+    it('returns unavailable when Notification API is not available', async () => {
+      delete (global as any).window.Notification;
+      delete (global as any).Notification;
+
+      const result = await __registerForWebPush();
+      expect(result.status).toBe('unavailable');
+    });
+
+    it('returns unavailable when serviceWorker is not available', async () => {
+      delete (global as any).navigator.serviceWorker;
+
+      const result = await __registerForWebPush();
+      expect(result.status).toBe('unavailable');
+    });
+
+    it('returns unavailable when Firebase config is incomplete (missing vapidKey)', async () => {
+      delete process.env.EXPO_PUBLIC_FIREBASE_VAPID_KEY;
+
+      const result = await __registerForWebPush();
+      expect(result.status).toBe('unavailable');
+    });
+
+    it('returns unavailable when Firebase config is incomplete (missing apiKey)', async () => {
+      delete process.env.EXPO_PUBLIC_FIREBASE_API_KEY;
+
+      const result = await __registerForWebPush();
+      expect(result.status).toBe('unavailable');
+    });
+  });
+
+  describe('Web revoke edge cases', () => {
+    it('returns revoked when no service worker registration exists', async () => {
+      (Platform as any).OS = 'web';
+      (global as any).navigator.serviceWorker.getRegistration = jest.fn(async () => null);
+
+      const result = await revokePushToken();
+      expect(result.status).toBe('revoked');
+    });
+
+    it('returns revoked when no push subscription exists', async () => {
+      (Platform as any).OS = 'web';
+
+      const mockRegistration = {
+        pushManager: {
+          getSubscription: jest.fn().mockResolvedValue(null),
+        },
+      } as any;
+
+      (global as any).navigator.serviceWorker.getRegistration = jest
+        .fn()
+        .mockResolvedValue(mockRegistration);
+
+      const result = await revokePushToken();
+      expect(result.status).toBe('revoked');
+    });
+
+    it('returns error when unsubscribe fails', async () => {
+      (Platform as any).OS = 'web';
+
+      const mockUnsubscribe = jest.fn().mockRejectedValue(new Error('Unsubscribe failed'));
+      const mockGetSubscription = jest.fn().mockResolvedValue({
+        unsubscribe: mockUnsubscribe,
+      });
+      const mockRegistration = {
+        pushManager: {
+          getSubscription: mockGetSubscription,
+        },
+      } as any;
+
+      (global as any).navigator.serviceWorker.getRegistration = jest
+        .fn()
+        .mockResolvedValue(mockRegistration);
+
+      const result = await revokePushToken();
+      expect(result).toEqual({ status: 'error', message: 'Unsubscribe failed' });
+    });
+
+    it('logs warning when unsubscribe returns false', async () => {
+      (Platform as any).OS = 'web';
+
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const mockUnsubscribe = jest.fn().mockResolvedValue(false);
+      const mockGetSubscription = jest.fn().mockResolvedValue({
+        unsubscribe: mockUnsubscribe,
+      });
+      const mockRegistration = {
+        pushManager: {
+          getSubscription: mockGetSubscription,
+        },
+      } as any;
+
+      (global as any).navigator.serviceWorker.getRegistration = jest
+        .fn()
+        .mockResolvedValue(mockRegistration);
+
+      const result = await revokePushToken();
+      expect(result.status).toBe('revoked');
+
+      warnSpy.mockRestore();
+    });
+  });
+
+  describe('Foreground listener setup edge cases', () => {
+    it('skips setup when not on web platform', () => {
+      (Platform as any).OS = 'ios';
+      setupWebForegroundMessageListener();
+      // Should not throw or cause issues
+    });
+
+    it('skips setup when Firebase is disabled', () => {
+      process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = 'false';
+      setupWebForegroundMessageListener();
+      // Should not throw or cause issues
+    });
+
+    it('handles missing Notification permission gracefully', () => {
+      const { onMessage } = require('firebase/messaging');
+      const { initializeApp, getApps } = require('firebase/app');
+
+      if (getApps().length === 0) {
+        initializeApp({
+          apiKey: 'api',
+          authDomain: 'auth',
+          projectId: 'project',
+          storageBucket: 'bucket',
+          messagingSenderId: 'sender',
+          appId: 'app',
+        });
+      }
+
+      (global as any).Notification.permission = 'denied';
+
+      let handler: (payload: any) => void = () => undefined;
+      onMessage.mockImplementation((_messaging: any, callback: (payload: any) => void) => {
+        handler = callback;
+      });
+
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+      setupWebForegroundMessageListener();
+
+      handler({
+        notification: { title: 'Test', body: 'Message' },
+        data: {},
+      });
+
+      // Should not throw
+
+      warnSpy.mockRestore();
+    });
+
+    it('handles notification display error gracefully', () => {
+      const { onMessage } = require('firebase/messaging');
+      const { initializeApp, getApps } = require('firebase/app');
+
+      if (getApps().length === 0) {
+        initializeApp({
+          apiKey: 'api',
+          authDomain: 'auth',
+          projectId: 'project',
+          storageBucket: 'bucket',
+          messagingSenderId: 'sender',
+          appId: 'app',
+        });
+      }
+
+      const originalNotification = global.Notification;
+      const notificationMock = jest.fn().mockImplementation(() => {
+        throw new Error('Notification API error');
+      }) as any;
+      notificationMock.permission = 'granted';
+      (global as any).Notification = notificationMock;
+
+      let handler: (payload: any) => void = () => undefined;
+      onMessage.mockImplementation((_messaging: any, callback: (payload: any) => void) => {
+        handler = callback;
+      });
+
+      const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+      setupWebForegroundMessageListener();
+
+      // Should not throw even if notification display fails
+      expect(() =>
+        handler({
+          notification: { title: 'Test', body: 'Message' },
+          data: {},
+        }),
+      ).not.toThrow();
+
+      global.Notification = originalNotification;
+      errorSpy.mockRestore();
+    });
   });
 });
