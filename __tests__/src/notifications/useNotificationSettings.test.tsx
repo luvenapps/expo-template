@@ -1,6 +1,6 @@
 import { useNotificationSettings } from '@/notifications/useNotificationSettings';
 import { act, renderHook } from '@testing-library/react-native';
-import { AppState, Platform } from 'react-native';
+import { AppState, Platform, type AppStateStatus } from 'react-native';
 
 jest.mock('@/notifications/preferences', () => ({
   loadNotificationPreferences: jest.fn(),
@@ -91,6 +91,7 @@ describe('useNotificationSettings', () => {
   const trackEvent = jest.fn();
   const trackError = jest.fn();
   let appStateSpy: jest.SpyInstance;
+  let appStateListener: ((state: AppStateStatus) => void) | null;
 
   beforeEach(() => {
     console.log = jest.fn();
@@ -98,9 +99,13 @@ describe('useNotificationSettings', () => {
     mockT.mockClear();
     trackEvent.mockClear();
     trackError.mockClear();
+    appStateListener = null;
     appStateSpy = jest
       .spyOn(AppState, 'addEventListener')
-      .mockReturnValue({ remove: jest.fn() } as any);
+      .mockImplementation((_event, callback) => {
+        appStateListener = callback;
+        return { remove: jest.fn() } as any;
+      });
     Object.defineProperty(Platform, 'OS', { value: 'ios' });
     useAnalytics.mockReturnValue({
       trackEvent,
@@ -1120,8 +1125,7 @@ describe('useNotificationSettings', () => {
 
       // Simulate app state change to active
       await act(async () => {
-        const appStateCallback = appStateSpy.mock.calls[0][1];
-        appStateCallback('active');
+        appStateListener?.('active');
       });
 
       expect(getPermissionsAsync).toHaveBeenCalled();
@@ -1141,8 +1145,7 @@ describe('useNotificationSettings', () => {
 
       // Simulate app state change to background
       await act(async () => {
-        const appStateCallback = appStateSpy.mock.calls[0][1];
-        appStateCallback('background');
+        appStateListener?.('background');
       });
 
       expect(getPermissionsAsync).not.toHaveBeenCalled();
