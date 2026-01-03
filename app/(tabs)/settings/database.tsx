@@ -9,6 +9,7 @@ import {
   primaryEntity,
   reminderEntity,
 } from '@/db/sqlite/schema';
+import { createLogger } from '@/observability/logger';
 import { ScreenContainer, SecondaryButton } from '@/ui';
 import { pluralize } from '@/utils';
 import { ChevronLeft, ChevronRight, Database } from '@tamagui/lucide-icons';
@@ -49,6 +50,7 @@ const TABLE_CONFIGS = {
 } as const;
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+const logger = createLogger('DatabaseViewer');
 
 export default function DatabaseViewerScreen() {
   const router = useRouter();
@@ -87,7 +89,7 @@ export default function DatabaseViewerScreen() {
       setData(records);
       setTotalCount(count);
     } catch (err) {
-      console.error('[DatabaseViewer] Error fetching data:', err);
+      logger.error('Error fetching data:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch data');
       setData([]);
       setTotalCount(0);

@@ -4,10 +4,13 @@
  * that the UI layer (with hook access) can respond to.
  */
 
+import { createLogger } from '@/observability/logger';
+
 type NotificationEventType = 'entry-created';
 type NotificationEventListener = (context: string) => void;
 
 const listeners = new Map<NotificationEventType, Set<NotificationEventListener>>();
+const logger = createLogger('NotificationEvents');
 
 /**
  * Subscribe to notification events
@@ -38,7 +41,7 @@ export function emitNotificationEvent(event: NotificationEventType, context: str
     try {
       listener(context);
     } catch (error) {
-      console.error(`[NotificationEvents] Error in ${event} listener:`, error);
+      logger.error(`Error in ${event} listener:`, error);
     }
   });
 }

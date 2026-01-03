@@ -1,5 +1,6 @@
 /* istanbul ignore file */
 import { ANALYTICS } from '@/config/constants';
+import { createLogger } from '@/observability/logger';
 import { Platform } from 'react-native';
 import type {
   AnalyticsBackend,
@@ -12,6 +13,7 @@ type WebFirebaseApp = import('firebase/app').FirebaseApp;
 type WebAnalytics = import('firebase/analytics').Analytics;
 
 let cachedBackend: AnalyticsBackend | null | undefined;
+const logger = createLogger('Firebase');
 
 const turnOnFirebase =
   process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === 'true' ||
@@ -29,9 +31,7 @@ const webConfig = {
 
 export function getFirebaseAnalyticsBackend(): AnalyticsBackend | null {
   if (!turnOnFirebase) {
-    if (__DEV__) {
-      console.log('[Firebase] TURN_ON_FIREBASE is false; analytics disabled.');
-    }
+    logger.info('TURN_ON_FIREBASE is false; analytics disabled.');
     cachedBackend = null;
     return null;
   }
@@ -43,15 +43,10 @@ export function getFirebaseAnalyticsBackend(): AnalyticsBackend | null {
   cachedBackend =
     Platform.OS === 'web' ? createWebBackendIfAvailable() : createNativeBackendIfAvailable();
 
-  if (__DEV__) {
-    if (cachedBackend) {
-      console.log(
-        '[Firebase] Analytics backend initialized successfully for platform:',
-        Platform.OS,
-      );
-    } else {
-      console.log('[Firebase] Analytics backend is NULL - events will not be sent');
-    }
+  if (cachedBackend) {
+    logger.info('Analytics backend initialized successfully for platform:', Platform.OS);
+  } else {
+    logger.warn('Analytics backend is NULL - events will not be sent');
   }
 
   return cachedBackend;
@@ -64,11 +59,9 @@ function createNativeBackendIfAvailable(): AnalyticsBackend | null {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const analytics = require('@react-native-firebase/analytics');
     if (!analytics?.default) {
-      if (__DEV__) {
-        console.log(
-          '[Firebase] Native analytics module not available. Rebuild the app after running: npx expo prebuild --clean',
-        );
-      }
+      logger.warn(
+        'Native analytics module not available. Rebuild the app after running: npx expo prebuild --clean',
+      );
       return null;
     }
 
@@ -80,24 +73,22 @@ function createNativeBackendIfAvailable(): AnalyticsBackend | null {
       trackEvent: (envelope) => {
         const eventName = sanitizeEventName(envelope.event);
         const payload = buildPayload(envelope, envelope.payload);
-        if (__DEV__) {
-          console.log('[Firebase] Sending native event:', eventName, payload);
-        }
+        logger.debug('Sending native event:', { eventName, payload });
         analyticsInstance
           .setUserId(envelope.distinctId)
           .then(() => {
-            if (__DEV__) console.log('[Firebase] User ID set successfully');
+            logger.debug('User ID set successfully');
           })
           .catch((err: Error) => {
-            if (__DEV__) console.error('[Firebase] Failed to set user ID:', err);
+            logger.error('Failed to set user ID:', err);
           });
         analyticsInstance
           .logEvent(eventName, payload)
           .then(() => {
-            if (__DEV__) console.log('[Firebase] Event logged successfully:', eventName);
+            logger.debug('Event logged successfully:', eventName);
           })
           .catch((err: Error) => {
-            if (__DEV__) console.error('[Firebase] Failed to log event:', eventName, err);
+            logger.error('Failed to log event:', { eventName, err });
           });
       },
       trackError: (envelope) => {
@@ -124,11 +115,9 @@ function createNativeBackendIfAvailable(): AnalyticsBackend | null {
       },
     };
   } catch {
-    if (__DEV__) {
-      console.log(
-        '[Firebase] Failed to initialize native analytics. You may need to rebuild: npx expo prebuild --clean',
-      );
-    }
+    logger.warn(
+      'Failed to initialize native analytics. You may need to rebuild: npx expo prebuild --clean',
+    );
     return null;
   }
 }
@@ -138,9 +127,7 @@ function createWebBackendIfAvailable(): AnalyticsBackend | null {
   if (typeof window === 'undefined') return null;
 
   if (!hasCompleteWebConfig()) {
-    if (__DEV__) {
-      console.log('[Firebase] Web config incomplete:', webConfig);
-    }
+    logger.warn('Web config incomplete:', webConfig);
     return null;
   }
 
@@ -159,9 +146,7 @@ function createWebBackendIfAvailable(): AnalyticsBackend | null {
       trackEvent: (envelope: AnalyticsEventEnvelope) => {
         const eventName = sanitizeEventName(envelope.event);
         const payload = buildPayload(envelope, envelope.payload);
-        if (__DEV__) {
-          console.log('[Firebase] Sending web event:', eventName, payload);
-        }
+        logger.debug('Sending web event:', { eventName, payload });
         setUserId(analyticsInstance as WebAnalytics, envelope.distinctId);
         logEvent(analyticsInstance as WebAnalytics, eventName, payload);
       },
