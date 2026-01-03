@@ -1,4 +1,5 @@
 import { DOMAIN } from '@/config/domain.config';
+import { createLogger } from '@/observability/logger';
 import { Platform } from 'react-native';
 
 export type PushRegistrationResult =
@@ -21,6 +22,9 @@ let lastLoggedWebToken: string | null = null;
 let nativeRegisterInFlight: Promise<PushRegistrationResult> | null = null;
 const WEB_TOKEN_STORAGE_KEY = `${DOMAIN.app.name}-web-fcm-token`;
 const NATIVE_TOKEN_STORAGE_KEY = `${DOMAIN.app.name}-native-fcm-token`;
+const logger = createLogger('FCM');
+const webLogger = createLogger('FCM:web');
+const webRegisterLogger = createLogger('FCM:web:register');
 
 function getNativeStore() {
   try {
@@ -64,7 +68,7 @@ export async function registerForPushNotifications(): Promise<PushRegistrationRe
     process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === 'true' ||
     process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === '1';
   if (!turnOnFirebase) {
-    console.warn('[FCM:web] Firebase is gated off (EXPO_PUBLIC_TURN_ON_FIREBASE=false)');
+    webLogger.warn('Firebase is gated off (EXPO_PUBLIC_TURN_ON_FIREBASE=false)');
     return { status: 'unavailable' };
   }
 
@@ -107,7 +111,7 @@ export async function registerForPushNotifications(): Promise<PushRegistrationRe
             }
           }
         } catch (permissionError) {
-          console.warn('[FCM] iOS notification permission request failed:', permissionError);
+          logger.warn('iOS notification permission request failed:', permissionError);
         }
       }
 
@@ -129,14 +133,14 @@ export async function registerForPushNotifications(): Promise<PushRegistrationRe
             );
 
             if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-              console.log('[FCM] POST_NOTIFICATIONS permission denied');
+              logger.info('POST_NOTIFICATIONS permission denied');
               return { status: 'denied' };
             }
           } else {
-            console.log(`[FCM] Skipping POST_NOTIFICATIONS permission (API ${apiLevel} < 33)`);
+            logger.info(`Skipping POST_NOTIFICATIONS permission (API ${apiLevel} < 33)`);
           }
         } catch (permError) {
-          console.warn('[FCM] Error requesting POST_NOTIFICATIONS permission:', permError);
+          logger.warn('Error requesting POST_NOTIFICATIONS permission:', permError);
           // Continue anyway - permission might not exist on this Android version
         }
       }
@@ -152,7 +156,7 @@ export async function registerForPushNotifications(): Promise<PushRegistrationRe
 
       const token = await instance.getToken();
       if (token) {
-        console.log('[FCM] ✅ Token registered (copy this for your backend):', token);
+        logger.info('✅ Token registered (copy this for your backend):', token);
         lastLoggedNativeToken = token;
         try {
           getNativeStore()?.set(NATIVE_TOKEN_STORAGE_KEY, token);
@@ -193,7 +197,7 @@ export function initializeFCMListeners() {
 
     // Handle foreground notifications
     const unsubscribeForeground = instance.onMessage(async (remoteMessage: any) => {
-      console.info('[FCM] Foreground notification received:', remoteMessage);
+      logger.info('Foreground notification received:', remoteMessage);
 
       // Display notification using expo-notifications or react-native-notifications
       if (remoteMessage.notification) {
@@ -211,28 +215,28 @@ export function initializeFCMListeners() {
             trigger: null, // Show immediately
           });
         } catch (notifError) {
-          console.warn('[FCM] Failed to display foreground notification:', notifError);
+          logger.warn('Failed to display foreground notification:', notifError);
         }
       }
     });
 
     // Handle token refresh (fires when token changes, including after app reinstall)
     const unsubscribeOnTokenRefresh = instance.onTokenRefresh((token: string) => {
-      console.log('[FCM] Token refreshed:', token);
-      console.info(
-        '[FCM] Token was regenerated (app reinstall, token rotation, or first launch). Update this token in your backend.',
+      logger.info('Token refreshed:', token);
+      logger.info(
+        'Token was regenerated (app reinstall, token rotation, or first launch). Update this token in your backend.',
       );
     });
 
-    console.debug('[FCM] Foreground message listener initialized');
-    console.debug('[FCM] Token refresh listener initialized');
+    logger.debug('Foreground message listener initialized');
+    logger.debug('Token refresh listener initialized');
 
     return () => {
       unsubscribeForeground();
       unsubscribeOnTokenRefresh();
     };
   } catch (error) {
-    console.error('[FCM] Failed to initialize FCM listeners:', error);
+    logger.error('Failed to initialize FCM listeners:', error);
   }
 }
 
@@ -255,14 +259,14 @@ export function setupBackgroundMessageHandler() {
     const messaging = messagingModule.default;
 
     messaging().setBackgroundMessageHandler(async (remoteMessage: any) => {
-      console.info('[FCM] Background notification received:', remoteMessage);
+      logger.info('Background notification received:', remoteMessage);
       // Background notifications are automatically displayed by FCM
       // You can add custom logic here if needed (e.g., update local database)
     });
 
-    console.debug('[FCM] Background message handler registered');
+    logger.debug('Background message handler registered');
   } catch (error) {
-    console.error('[FCM] Failed to setup background message handler:', error);
+    logger.error('Failed to setup background message handler:', error);
   }
 }
 
@@ -273,13 +277,13 @@ export function setupBackgroundMessageHandler() {
 /* istanbul ignore next */
 export function setupWebForegroundMessageListener() {
   if (Platform.OS !== 'web') {
-    console.debug('[FCM:web] Not web platform, skipping foreground listener');
+    webLogger.debug('Not web platform, skipping foreground listener');
     return;
   }
 
   webForegroundListenerRegistrationCount += 1;
   if (webForegroundListenerRegistrationCount > 1) {
-    console.debug('[FCM:web] Foreground listener already registered, skipping');
+    webLogger.debug('Foreground listener already registered, skipping');
     return;
   }
 
@@ -287,20 +291,20 @@ export function setupWebForegroundMessageListener() {
     process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === 'true' ||
     process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === '1';
   if (!turnOnFirebase) {
-    console.info('[FCM:web] Firebase not enabled, skipping foreground listener');
+    webLogger.info('Firebase not enabled, skipping foreground listener');
     return;
   }
 
   // Prevent double registration - onMessage handlers stack, causing duplicate notifications
   if (webForegroundListenerRegistered) {
-    console.debug('[FCM:web] Foreground listener already registered, skipping');
+    webLogger.debug('Foreground listener already registered, skipping');
     return;
   }
 
   // Mark as registered up front so repeated calls short-circuit even if initialization later fails.
   webForegroundListenerRegistered = true;
 
-  console.debug('[FCM:web] Setting up foreground message listener...');
+  webLogger.debug('Setting up foreground message listener...');
 
   try {
     // Lazy-load Firebase web messaging
@@ -309,30 +313,30 @@ export function setupWebForegroundMessageListener() {
       require('firebase/messaging') as typeof import('firebase/messaging');
 
     const apps = getApps();
-    console.debug('[FCM:web] Firebase apps count:', apps.length);
+    webLogger.debug('Firebase apps count:', apps.length);
 
     if (apps.length === 0) {
-      console.debug(
-        '[FCM:web] No Firebase app initialized yet, skipping foreground listener (will retry on registration)',
+      webLogger.debug(
+        'No Firebase app initialized yet, skipping foreground listener (will retry on registration)',
       );
       return;
     }
 
     const messaging = getMessaging(apps[0]);
-    console.debug('[FCM:web] Got messaging instance, registering onMessage handler');
+    webLogger.debug('Got messaging instance, registering onMessage handler');
 
     // Handle foreground messages
     // NOTE: onMessage fires for ALL messages when app is in foreground (both notification and data-only).
     // Firebase does NOT auto-display notifications in foreground - we must handle them manually.
     onMessage(messaging, (payload) => {
-      console.debug('[FCM:web] 🔔 Foreground message received');
-      console.debug('[FCM:web] Payload:', JSON.stringify(payload, null, 2));
+      webLogger.debug('🔔 Foreground message received');
+      webLogger.debug('Payload:', JSON.stringify(payload, null, 2));
 
       // Extract notification content from either notification or data payload
       const title = payload.notification?.title || payload.data?.title || 'Better Habits';
       const body = payload.notification?.body || payload.data?.body || '';
 
-      console.debug('[FCM:web] Displaying notification:', { title, body });
+      webLogger.debug('Displaying notification:', { title, body });
 
       // Always display in foreground (Firebase doesn't auto-display)
       if ('Notification' in window && Notification.permission === 'granted') {
@@ -346,24 +350,24 @@ export function setupWebForegroundMessageListener() {
           });
 
           notification.onclick = () => {
-            console.debug('[FCM:web] Notification clicked');
+            webLogger.debug('Notification clicked');
             window.focus();
             notification.close();
           };
 
-          console.debug('[FCM:web] ✅ Notification displayed successfully');
+          webLogger.debug('✅ Notification displayed successfully');
         } catch (error) {
-          console.error('[FCM:web] ❌ Error displaying notification:', error);
+          webLogger.error('❌ Error displaying notification:', error);
         }
       } else {
-        console.warn('[FCM:web] ⚠️  Cannot display notification - permission not granted');
+        webLogger.warn('⚠️  Cannot display notification - permission not granted');
       }
     });
 
     webForegroundListenerRegistered = true;
-    console.debug('[FCM:web] ✅ Foreground message listener successfully set up');
+    webLogger.debug('✅ Foreground message listener successfully set up');
   } catch (error) {
-    console.error('[FCM:web] ❌ Failed to setup foreground message listener:', error);
+    webLogger.error('❌ Failed to setup foreground message listener:', error);
   }
 }
 
@@ -394,15 +398,15 @@ export async function revokePushToken(): Promise<PushRevokeResult> {
             const unsubscribed = await subscription.unsubscribe();
 
             if (unsubscribed) {
-              console.log('[FCM:web] Push subscription unsubscribed successfully');
+              webLogger.info('Push subscription unsubscribed successfully');
             } else {
-              console.warn('[FCM:web] Failed to unsubscribe from push subscription');
+              webLogger.warn('Failed to unsubscribe from push subscription');
             }
           } else {
-            console.log('[FCM:web] No active push subscription found');
+            webLogger.info('No active push subscription found');
           }
         } else {
-          console.log('[FCM:web] No service worker registration found');
+          webLogger.info('No service worker registration found');
         }
 
         // Clear cached token so a fresh one is requested on re-enable
@@ -418,13 +422,11 @@ export async function revokePushToken(): Promise<PushRevokeResult> {
       // Note: Firebase cannot reuse the old token because the push subscription was removed.
       // A new token will be generated when push is re-enabled. The old token in IndexedDB
       // becomes stale. Backends must handle token updates when users re-enable push.
-      console.log(
-        '[FCM:web] Service worker kept registered (new token will be generated on re-enable)',
-      );
+      webLogger.info('Service worker kept registered (new token will be generated on re-enable)');
 
       return { status: 'revoked' };
     } catch (error) {
-      console.error('[FCM:web] Error revoking push token:', error);
+      webLogger.error('Error revoking push token:', error);
       return { status: 'error', message: (error as Error).message };
     }
   }
@@ -474,16 +476,14 @@ async function registerForWebPush(): Promise<PushRegistrationResult> {
     return webRegisterSessionPromise;
   }
 
-  console.debug('[registerForWebPush] Starting');
+  webRegisterLogger.debug('Starting');
 
   if (typeof window === 'undefined') {
-    console.warn('[registerForWebPush] window is undefined, returning unavailable');
+    webRegisterLogger.warn('window is undefined, returning unavailable');
     return { status: 'unavailable' };
   }
   if (!('Notification' in window) || !('serviceWorker' in navigator)) {
-    console.warn(
-      '[registerForWebPush] Notification or serviceWorker not supported, returning unavailable',
-    );
+    webRegisterLogger.warn('Notification or serviceWorker not supported, returning unavailable');
     return { status: 'unavailable' };
   }
 
@@ -497,7 +497,7 @@ async function registerForWebPush(): Promise<PushRegistrationResult> {
     appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
   };
 
-  console.debug('[registerForWebPush] Config check:', {
+  webRegisterLogger.debug('Config check:', {
     hasVapidKey: !!vapidKey,
     hasApiKey: !!webConfig.apiKey,
     hasAuthDomain: !!webConfig.authDomain,
@@ -505,7 +505,7 @@ async function registerForWebPush(): Promise<PushRegistrationResult> {
   });
 
   if (!hasWebConfig(webConfig, vapidKey)) {
-    console.warn('[registerForWebPush] Config incomplete, returning unavailable');
+    webRegisterLogger.warn('Config incomplete, returning unavailable');
     return { status: 'unavailable' };
   }
 
@@ -528,25 +528,20 @@ async function registerForWebPush(): Promise<PushRegistrationResult> {
       const existingRegistration = await navigator.serviceWorker.getRegistration('/');
       const existingSubscription = await existingRegistration?.pushManager?.getSubscription?.();
       if (existingRegistration?.active && existingSubscription) {
-        console.debug(
-          '[registerForWebPush] Reusing cached token and active service worker with subscription',
-        );
+        webRegisterLogger.debug('Reusing cached token and active service worker with subscription');
         return { status: 'registered', token: lastLoggedWebToken };
       }
     } catch (swCheckError) {
-      console.debug('[registerForWebPush] Failed fast-path check, continuing:', swCheckError);
+      webRegisterLogger.debug('Failed fast-path check, continuing:', swCheckError);
     }
   }
 
   webRegisterSessionPromise = (async () => {
-    console.debug(
-      '[registerForWebPush] Checking Notification.permission:',
-      Notification.permission,
-    );
+    webRegisterLogger.debug('Checking Notification.permission:', Notification.permission);
     const permission =
       Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
 
-    console.debug('[registerForWebPush] Permission result:', permission);
+    webRegisterLogger.debug('Permission result:', permission);
     if (permission !== 'granted') {
       // Clear cached token when the browser denies permission
       lastLoggedWebToken = null;
@@ -555,51 +550,49 @@ async function registerForWebPush(): Promise<PushRegistrationResult> {
       } catch {
         // Ignore storage failures
       }
-      console.debug('[registerForWebPush] Permission denied, returning denied');
+      webRegisterLogger.debug('Permission denied, returning denied');
       return { status: 'denied' };
     }
 
     try {
-      console.debug('[registerForWebPush] Loading Firebase modules...');
+      webRegisterLogger.debug('Loading Firebase modules...');
       // Lazy-load Firebase web messaging
       const { initializeApp, getApps } = require('firebase/app') as typeof import('firebase/app');
       const { getMessaging, getToken, isSupported } =
         require('firebase/messaging') as typeof import('firebase/messaging');
 
-      console.debug('[registerForWebPush] Checking Firebase messaging support...');
+      webRegisterLogger.debug('Checking Firebase messaging support...');
       if (!(await isSupported())) {
-        console.debug(
-          '[registerForWebPush] Firebase messaging not supported, returning unavailable',
-        );
+        webRegisterLogger.debug('Firebase messaging not supported, returning unavailable');
         return { status: 'unavailable' };
       }
 
-      console.debug('[registerForWebPush] Initializing Firebase app...');
+      webRegisterLogger.debug('Initializing Firebase app...');
       const firebaseApp =
         getApps().length > 0 ? getApps()[0] : initializeApp(webConfig as Record<string, string>);
-      console.debug('[registerForWebPush] Firebase app initialized');
+      webRegisterLogger.debug('Firebase app initialized');
 
       // Register Firebase messaging service worker
-      console.debug('[registerForWebPush] Registering Firebase service worker...');
+      webRegisterLogger.debug('Registering Firebase service worker...');
       let registration: ServiceWorkerRegistration | null = null;
       try {
         // First, check if there's already a registration
         const existingRegistration = await navigator.serviceWorker.getRegistration('/');
 
         if (existingRegistration) {
-          console.debug('[registerForWebPush] Using existing service worker registration');
+          webRegisterLogger.debug('Using existing service worker registration');
           registration = existingRegistration;
         } else {
-          console.debug('[registerForWebPush] Registering new service worker...');
+          webRegisterLogger.debug('Registering new service worker...');
           registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
             scope: '/',
           });
-          console.debug('[registerForWebPush] Service worker registered:', registration.scope);
+          webRegisterLogger.debug('Service worker registered:', registration.scope);
         }
 
         // Wait for the service worker to be ready and active
         await navigator.serviceWorker.ready;
-        console.debug('[registerForWebPush] Service worker ready');
+        webRegisterLogger.debug('Service worker ready');
 
         // Ensure the service worker is active before proceeding
         const activeWorker = registration.active;
@@ -609,13 +602,13 @@ async function registerForWebPush(): Promise<PushRegistrationResult> {
             type: 'FIREBASE_CONFIG',
             config: webConfig,
           });
-          console.debug('[registerForWebPush] Firebase config sent to service worker');
+          webRegisterLogger.debug('Firebase config sent to service worker');
 
           // Give the service worker a moment to process the config
           await new Promise((resolve) => setTimeout(resolve, 100));
         } else if (registration.installing || registration.waiting) {
-          console.debug(
-            '[registerForWebPush] Service worker is installing/waiting, waiting for activation...',
+          webRegisterLogger.debug(
+            'Service worker is installing/waiting, waiting for activation...',
           );
           // Wait for the service worker to become active
           await new Promise<void>((resolve) => {
@@ -639,18 +632,18 @@ async function registerForWebPush(): Promise<PushRegistrationResult> {
           }
         }
       } catch (swError) {
-        console.error('[registerForWebPush] Service worker registration failed:', swError);
+        webRegisterLogger.error('Service worker registration failed:', swError);
         return { status: 'error', message: 'Service worker registration failed' };
       }
 
       if (!registration || !registration.active) {
-        console.debug('[registerForWebPush] No active service worker available');
+        webRegisterLogger.debug('No active service worker available');
         return { status: 'error', message: 'No active service worker available' };
       }
 
-      console.debug('[registerForWebPush] Getting messaging instance...');
+      webRegisterLogger.debug('Getting messaging instance...');
       const messaging = getMessaging(firebaseApp);
-      console.debug('[registerForWebPush] Getting FCM token with registration:', {
+      webRegisterLogger.debug('Getting FCM token with registration:', {
         scope: registration.scope,
         hasActive: !!registration.active,
         hasPushManager: !!(registration.active && 'pushManager' in registration.active),
@@ -667,7 +660,7 @@ async function registerForWebPush(): Promise<PushRegistrationResult> {
         } catch {
           // Ignore storage failures
         }
-        console.log('[FCM:web] Token registered:', token);
+        webLogger.info('Token registered:', token);
 
         // Set up foreground message listener after successful registration
         setupWebForegroundMessageListener();
@@ -675,10 +668,10 @@ async function registerForWebPush(): Promise<PushRegistrationResult> {
         return { status: 'registered', token };
       }
 
-      console.debug('[registerForWebPush] No token received');
+      webRegisterLogger.debug('No token received');
       return { status: 'error', message: 'No token' };
     } catch (error) {
-      console.error('[registerForWebPush] Error:', error);
+      webRegisterLogger.error('Error:', error);
       return { status: 'error', message: (error as Error).message };
     }
   })();
@@ -730,9 +723,7 @@ export async function ensureServiceWorkerRegistered(): Promise<PushRegistrationR
 
     // If no service worker registration exists, re-register completely
     if (!registration) {
-      console.info(
-        '[FCM:web] Service worker missing, re-registering to restore push notifications',
-      );
+      webLogger.info('Service worker missing, re-registering to restore push notifications');
       // This will reuse the existing token if it's still valid
       return await registerForWebPush();
     }
@@ -754,7 +745,7 @@ export async function ensureServiceWorkerRegistered(): Promise<PushRegistrationR
           type: 'FIREBASE_CONFIG',
           config: webConfig,
         });
-        console.debug('[FCM:web] Service worker config refreshed');
+        webLogger.debug('Service worker config refreshed');
       }
       return null;
     }
@@ -762,7 +753,7 @@ export async function ensureServiceWorkerRegistered(): Promise<PushRegistrationR
     // Service worker exists, ensure it has the Firebase config
     return null;
   } catch (error) {
-    console.debug('[FCM:web] Error checking service worker:', error);
+    webLogger.debug('Error checking service worker:', error);
     return null;
   }
 }

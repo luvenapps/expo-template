@@ -168,27 +168,27 @@ describe('firebasePush Web', () => {
 
     // Call setup function four times
     setupWebForegroundMessageListener();
-    const firstCallLogs = [...debugSpy.mock.calls];
+    const firstCallLogs = [...logSpy.mock.calls];
 
     setupWebForegroundMessageListener();
     setupWebForegroundMessageListener();
     setupWebForegroundMessageListener();
 
     // Check if the listener was registered or already registered on first call
-    const wasAlreadyRegistered = firstCallLogs.some(
-      (call) => call[0] === '[FCM:web] Foreground listener already registered, skipping',
+    const wasAlreadyRegistered = firstCallLogs.some((call) =>
+      String(call[0]).includes('Foreground listener already registered, skipping'),
     );
 
     if (wasAlreadyRegistered) {
       // If it was already registered, all 4 calls should log "already registered"
-      const alreadyRegisteredCalls = debugSpy.mock.calls.filter(
-        (call) => call[0] === '[FCM:web] Foreground listener already registered, skipping',
+      const alreadyRegisteredCalls = logSpy.mock.calls.filter((call) =>
+        String(call[0]).includes('Foreground listener already registered, skipping'),
       );
       expect(alreadyRegisteredCalls.length).toBe(4);
     } else {
       // If it wasn't registered, first call should succeed, next 3 should skip
-      const alreadyRegisteredCalls = debugSpy.mock.calls.filter(
-        (call) => call[0] === '[FCM:web] Foreground listener already registered, skipping',
+      const alreadyRegisteredCalls = logSpy.mock.calls.filter((call) =>
+        String(call[0]).includes('Foreground listener already registered, skipping'),
       );
       expect(alreadyRegisteredCalls.length).toBe(3);
 
