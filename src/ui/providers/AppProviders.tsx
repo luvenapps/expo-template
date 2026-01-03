@@ -29,10 +29,14 @@ import { optimizeDatabase } from '@/db/sqlite/maintenance';
 import i18n from '@/i18n';
 import { I18nextProvider } from 'react-i18next';
 import { NOTIFICATIONS } from '@/config/constants';
+import { createLogger } from '@/observability/logger';
 
 const queryClient = getQueryClient();
 const persistOptions = getQueryClientPersistOptions();
 const isWeb = Platform.OS === 'web';
+const iamLogger = createLogger('IAM');
+const appLogger = createLogger('AppProviders');
+const dbLogger = createLogger('SQLite');
 
 export function AppProviders({ children }: PropsWithChildren) {
   const sessionStatus = useSessionStore((state) => state.status);
@@ -77,13 +81,13 @@ export function AppProviders({ children }: PropsWithChildren) {
     if (!isAppReady || !turnOnFirebase) return;
 
     const triggerAppReady = async () => {
-      console.log('[IAM] App ready, triggering app_ready event');
+      iamLogger.info('App ready, triggering app_ready event');
       await setMessageTriggers({ app_ready: 'app_ready' });
-      console.log('[IAM] app_ready event triggered');
+      iamLogger.info('app_ready event triggered');
     };
 
     triggerAppReady().catch((error) => {
-      console.error('[IAM] Failed to trigger app_ready event:', error);
+      iamLogger.error('Failed to trigger app_ready event:', error);
     });
   }, [isAppReady, turnOnFirebase]);
 
@@ -113,9 +117,9 @@ export function AppProviders({ children }: PropsWithChildren) {
     const unsubscribe = onNotificationEvent('entry-created', (context) => {
       if (Platform.OS === 'web') return;
       if (NOTIFICATIONS.initialSoftPromptTrigger !== 'first-entry') return;
-      console.log('[AppProviders] Entry created, triggering push prompt with context:', context);
+      appLogger.info('Entry created, triggering push prompt with context:', context);
       tryPromptForPush({ context }).catch((error) => {
-        console.error('[AppProviders] Failed to trigger push prompt:', error);
+        appLogger.error('Failed to trigger push prompt:', error);
       });
     });
 
@@ -157,22 +161,22 @@ export function AppProviders({ children }: PropsWithChildren) {
       lastOptimizationRef.current = timestamp;
       optimizeDatabase({ vacuum: true })
         .then(() => {
-          console.log('[SQLite] Ran VACUUM/PRAGMA optimize');
+          dbLogger.info('Ran VACUUM/PRAGMA optimize');
         })
         .catch((error) => {
-          console.error('[SQLite] Optimization routine failed:', error);
+          dbLogger.error('Optimization routine failed:', error);
         });
     };
 
     cleanupSoftDeletedRecords()
       .then((removed) => {
         if (removed > 0) {
-          console.log(`[SQLite] Cleaned up ${removed} soft-deleted records`);
+          dbLogger.info(`Cleaned up ${removed} soft-deleted records`);
           requestOptimization();
         }
       })
       .catch((error) => {
-        console.error('[SQLite] Soft-delete cleanup failed:', error);
+        dbLogger.error('Soft-delete cleanup failed:', error);
       });
 
     if (now - lastArchiveRef.current >= 7 * DAY_MS) {
@@ -180,12 +184,12 @@ export function AppProviders({ children }: PropsWithChildren) {
       archiveOldEntries()
         .then((archived) => {
           if (archived > 0) {
-            console.log(`[SQLite] Archived ${archived} entries older than 2 years`);
+            dbLogger.info(`Archived ${archived} entries older than 2 years`);
             requestOptimization();
           }
         })
         .catch((error) => {
-          console.error('[SQLite] Archive routine failed:', error);
+          dbLogger.error('Archive routine failed:', error);
         });
     }
   }, [queueSize, syncStatus]);

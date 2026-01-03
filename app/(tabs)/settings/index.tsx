@@ -34,6 +34,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Linking, Platform } from 'react-native';
 import { Button, Paragraph, Progress, Switch, Text, View, XStack, YStack } from 'tamagui';
+import { createLogger } from '@/observability/logger';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -90,6 +91,9 @@ export default function SettingsScreen() {
   const { t, i18n } = useTranslation();
   const currentLanguage = (i18n.language ?? 'en').split('-')[0];
   const showFriendlyError = useFriendlyErrorHandler(toast);
+  const settingsLogger = useMemo(() => createLogger('Settings'), []);
+  const devPushLogger = useMemo(() => createLogger('Dev:Push'), []);
+  const devNotificationsLogger = useMemo(() => createLogger('Dev:MMKV:notifications'), []);
   const syncDisabledMessage = !isNative
     ? t('settings.syncUnavailableWeb')
     : status !== 'authenticated'
@@ -176,10 +180,10 @@ export default function SettingsScreen() {
       const dataExists = await hasData();
       setHasDbData(dataExists);
     } catch (error) {
-      console.error('[Settings] Error checking database data:', error);
+      settingsLogger.error('Error checking database data:', error);
       setHasDbData(false);
     }
-  }, [isNative]);
+  }, [isNative, settingsLogger]);
 
   // Check for database data on mount and when session changes
   // Note: Outbox data is tracked via queueSize from sync store
@@ -224,7 +228,7 @@ export default function SettingsScreen() {
         description: 'We will notify you if an error occurs.',
       });
     } catch (syncError) {
-      console.error('[Settings] manual sync failed', syncError);
+      settingsLogger.error('manual sync failed', syncError);
       const { friendly } = showFriendlyError(syncError, { surface: 'settings.sync' });
       const message =
         friendly.description ??
@@ -280,7 +284,7 @@ export default function SettingsScreen() {
           : 'Archive complete. No qualifying entries found.',
       );
     } catch (error) {
-      console.error('[Settings] archive entries failed', error);
+      settingsLogger.error('archive entries failed', error);
       const { friendly } = showFriendlyError(error, { surface: 'settings.archive' });
       const message =
         friendly.description ??
@@ -356,7 +360,7 @@ export default function SettingsScreen() {
       const pending = await getPending();
       useSyncStore.getState().setQueueSize(pending.length);
     } catch (error) {
-      console.error('[Settings] Seed sample data failed:', error);
+      settingsLogger.error('Seed sample data failed:', error);
       const { friendly } = showFriendlyError(error, { surface: 'settings.seed' });
       const message =
         friendly.description ??
@@ -417,9 +421,9 @@ export default function SettingsScreen() {
       const apnsToken = await instance.getAPNSToken();
       const fcmToken = await instance.getToken();
       const isRegistered = instance.isDeviceRegisteredForRemoteMessages;
-      console.log('[Dev][Push] isDeviceRegisteredForRemoteMessages:', isRegistered);
-      console.log('[Dev][Push] APNs token:', apnsToken);
-      console.log('[Dev][Push] FCM token:', fcmToken);
+      devPushLogger.info('isDeviceRegisteredForRemoteMessages:', isRegistered);
+      devPushLogger.info('APNs token:', apnsToken);
+      devPushLogger.info('FCM token:', fcmToken);
       setDevStatus('Push registration status logged to console.');
     } catch (error) {
       const { friendly } = showFriendlyError(error, {
@@ -476,7 +480,7 @@ export default function SettingsScreen() {
       const store = new MMKV({ id: `${DOMAIN.app.name}-notifications` });
       const keys = store.getAllKeys();
 
-      console.log('[Dev][MMKV notifications] keys:', keys);
+      devNotificationsLogger.info('keys:', keys);
       if (keys.length === 0) {
         setDevStatus('Notification store is empty (MMKV).');
         return;
@@ -489,12 +493,12 @@ export default function SettingsScreen() {
           store.getBoolean(key) ??
           store.getBuffer?.(key)?.toString('utf-8') ??
           null;
-        console.log(`[Dev][MMKV notifications] ${key}:`, value);
+        devNotificationsLogger.info(`${key}:`, value);
       });
 
       setDevStatus('Notification MMKV store logged to console.');
     } catch (error) {
-      console.error('[Dev][MMKV notifications] Failed to log store:', error);
+      devNotificationsLogger.error('Failed to log store:', error);
       setDevStatus('Failed to read notification store (see console).');
     }
   };
@@ -516,7 +520,7 @@ export default function SettingsScreen() {
       await checkDatabaseData();
       useSyncStore.getState().setQueueSize(0);
     } catch (error) {
-      console.error('[Settings] Clear local database failed:', error);
+      settingsLogger.error('Clear local database failed:', error);
       const { friendly } = showFriendlyError(error, { surface: 'settings.clear-db' });
       const message =
         friendly.description ??
@@ -543,7 +547,7 @@ export default function SettingsScreen() {
         description: 'Reclaimed space and refreshed indexes.',
       });
     } catch (error) {
-      console.error('[Settings] Optimize database failed:', error);
+      settingsLogger.error('Optimize database failed:', error);
       const { friendly } = showFriendlyError(error, { surface: 'settings.optimize-db' });
       const message =
         friendly.description ??
