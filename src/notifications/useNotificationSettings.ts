@@ -9,6 +9,7 @@ import {
   persistNotificationPreferences,
 } from '@/notifications/preferences';
 import { useAnalytics } from '@/observability/AnalyticsProvider';
+import { onNotificationEvent } from '@/observability/notificationEvents';
 import * as Notifications from 'expo-notifications';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -229,6 +230,16 @@ export function useNotificationSettings() {
       subscription?.remove?.();
     };
   }, [refreshPermissionStatus]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') {
+      return undefined;
+    }
+
+    return onNotificationEvent((event) => {
+      analytics.trackEvent(event.name, event.payload);
+    });
+  }, [analytics]);
 
   const handleSoftPromptAllow = useCallback(async () => {
     const result = await ensureNotificationsEnabled({

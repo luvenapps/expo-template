@@ -28,6 +28,10 @@ jest.mock('firebase/messaging', () => ({
   onMessage: jest.fn(),
 }));
 
+jest.mock('@/observability/notificationEvents', () => ({
+  emitNotificationEvent: jest.fn(),
+}));
+
 describe('firebasePush Web', () => {
   const originalPlatform = Platform.OS;
   const originalNotification = global.Notification;
@@ -36,6 +40,7 @@ describe('firebasePush Web', () => {
   let debugSpy: jest.SpyInstance;
   let infoSpy: jest.SpyInstance;
   let logSpy: jest.SpyInstance;
+  let lastNotification: any;
 
   beforeEach(() => {
     __resetWebPushStateForTests();
@@ -53,10 +58,20 @@ describe('firebasePush Web', () => {
     process.env.EXPO_PUBLIC_FIREBASE_APP_ID = 'app';
     process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = 'true';
 
-    const notificationMock = {
-      permission: 'granted',
-      requestPermission: jest.fn(async () => 'granted'),
-    } as any;
+    lastNotification = null;
+    const notificationMock = jest.fn().mockImplementation(() => {
+      lastNotification = {
+        close: jest.fn(),
+        onclick: null,
+        onclose: null,
+      };
+      return lastNotification;
+    }) as unknown as Notification & {
+      permission: string;
+      requestPermission: jest.Mock<Promise<NotificationPermission>>;
+    };
+    notificationMock.permission = 'granted';
+    notificationMock.requestPermission = jest.fn(async () => 'granted');
     const registration = {
       scope: '/',
       update: jest.fn(),
@@ -81,6 +96,7 @@ describe('firebasePush Web', () => {
       ...(global as any).window,
       Notification: notificationMock,
       navigator: navigatorMock,
+      focus: jest.fn(),
     };
   });
 
@@ -219,5 +235,71 @@ describe('firebasePush Web', () => {
     expect(result.status).toBe('revoked');
     expect(mockGetSubscription).toHaveBeenCalled();
     expect(mockUnsubscribe).toHaveBeenCalled();
+  });
+
+  it('emits analytics events for foreground notification display/click/dismiss', () => {
+    const { onMessage } = require('firebase/messaging');
+    const { emitNotificationEvent } = require('@/observability/notificationEvents');
+    const { initializeApp, getApps } = require('firebase/app');
+
+    if (getApps().length === 0) {
+      initializeApp({
+        apiKey: 'api',
+        authDomain: 'auth',
+        projectId: 'project',
+        storageBucket: 'bucket',
+        messagingSenderId: 'sender',
+        appId: 'app',
+      });
+    }
+
+    let handler: (payload: any) => void = () => undefined;
+    onMessage.mockImplementation((_messaging: any, callback: (payload: any) => void) => {
+      handler = callback;
+    });
+
+    setupWebForegroundMessageListener();
+
+    handler({
+      notification: { title: 'Hello', body: 'World' },
+      data: { tag: 'habits' },
+    });
+
+    expect(emitNotificationEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'notification:foreground:displayed',
+        payload: expect.objectContaining({ tag: 'habits', title: 'Hello' }),
+      }),
+    );
+
+    lastNotification?.onclick?.();
+    lastNotification?.onclose?.();
+
+    expect(emitNotificationEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'notification:foreground:clicked',
+        payload: expect.objectContaining({ tag: 'habits', title: 'Hello' }),
+      }),
+    );
+
+    expect(emitNotificationEvent).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'notification:foreground:dismissed',
+      }),
+    );
+
+    emitNotificationEvent.mockClear();
+    handler({
+      notification: { title: 'Later', body: 'Reminder' },
+      data: { tag: 'habits' },
+    });
+    lastNotification?.onclose?.();
+
+    expect(emitNotificationEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'notification:foreground:dismissed',
+        payload: expect.objectContaining({ tag: 'habits', title: 'Later' }),
+      }),
+    );
   });
 });

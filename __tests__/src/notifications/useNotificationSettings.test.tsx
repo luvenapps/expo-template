@@ -25,6 +25,10 @@ jest.mock('@/observability/AnalyticsProvider', () => ({
   })),
 }));
 
+jest.mock('@/observability/notificationEvents', () => ({
+  onNotificationEvent: jest.fn(),
+}));
+
 jest.mock('expo-notifications', () => ({
   PermissionStatus: {
     GRANTED: 'granted',

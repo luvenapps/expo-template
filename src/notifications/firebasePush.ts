@@ -1,5 +1,6 @@
 import { DOMAIN } from '@/config/domain.config';
 import { createLogger } from '@/observability/logger';
+import { emitNotificationEvent } from '@/observability/notificationEvents';
 import { Platform } from 'react-native';
 
 export type PushRegistrationResult =
@@ -349,10 +350,36 @@ export function setupWebForegroundMessageListener() {
             tag: payload.data?.tag || 'default',
           });
 
+          const eventPayload = {
+            tag: payload.data?.tag || 'default',
+            title,
+            timestamp: new Date().toISOString(),
+            platform: 'web' as const,
+          };
+
+          emitNotificationEvent({
+            name: 'notification:foreground:displayed',
+            payload: eventPayload,
+          });
+
+          let wasClicked = false;
           notification.onclick = () => {
             webLogger.debug('Notification clicked');
+            wasClicked = true;
+            emitNotificationEvent({
+              name: 'notification:foreground:clicked',
+              payload: eventPayload,
+            });
             window.focus();
             notification.close();
+          };
+
+          notification.onclose = () => {
+            if (wasClicked) return;
+            emitNotificationEvent({
+              name: 'notification:foreground:dismissed',
+              payload: eventPayload,
+            });
           };
 
           webLogger.debug('✅ Notification displayed successfully');
