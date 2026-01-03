@@ -6,6 +6,7 @@ import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 import { v4 as uuidv4 } from 'uuid';
+import { createLogger } from '@/observability/logger';
 import { supabase } from './client';
 
 export type AuthResult = {
@@ -14,6 +15,8 @@ export type AuthResult = {
   code?: string;
   friendlyError?: FriendlyError;
 };
+
+const logger = createLogger('Auth');
 
 export async function signInWithEmail(email: string, password: string): Promise<AuthResult> {
   const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -125,7 +128,7 @@ async function signInWithAppleNative(): Promise<AuthResult> {
       nonce: hashedNonce,
     });
 
-    console.info('[Auth] Apple sign-in credential received', {
+    logger.info('Apple sign-in credential received', {
       hasIdentityToken: Boolean(credential.identityToken),
       hasAuthorizationCode: Boolean(credential.authorizationCode),
       hasEmail: Boolean(credential.email),
@@ -135,7 +138,7 @@ async function signInWithAppleNative(): Promise<AuthResult> {
     });
 
     if (!credential.identityToken) {
-      console.error('[Auth] Apple sign-in failed: missing identity token');
+      logger.error('Apple sign-in failed: missing identity token');
       const friendly = resolveFriendlyError(new Error('Missing Apple identity token'));
       return {
         success: false,
@@ -163,7 +166,7 @@ async function signInWithAppleNative(): Promise<AuthResult> {
         status: 'status' in error ? (error as { status?: number }).status : undefined,
         code: 'code' in error ? (error as { code?: string }).code : undefined,
       };
-      console.error('[Auth] Apple sign-in failed during Supabase exchange', errorDetails);
+      logger.error('Apple sign-in failed during Supabase exchange', errorDetails);
       const friendly = resolveFriendlyError(error);
       return {
         success: false,
@@ -194,7 +197,7 @@ async function signInWithAppleNative(): Promise<AuthResult> {
       }
     }
 
-    console.error('[Auth] Apple sign-in failed', details);
+    logger.error('Apple sign-in failed', details);
     const friendly = resolveFriendlyError(error);
     return {
       success: false,
@@ -213,12 +216,12 @@ async function signInWithAppleNative(): Promise<AuthResult> {
 export async function signInWithOAuth(provider: Provider): Promise<AuthResult> {
   if (provider === 'apple' && Platform.OS === 'ios') {
     const isAvailable = await AppleAuthentication.isAvailableAsync().catch((error) => {
-      console.error('[Auth] Apple sign-in availability check failed', {
+      logger.error('Apple sign-in availability check failed', {
         message: error instanceof Error ? error.message : 'Unknown error',
       });
       return false;
     });
-    console.info('[Auth] Apple sign-in available', { isAvailable });
+    logger.info('Apple sign-in available', { isAvailable });
     if (isAvailable) {
       return await signInWithAppleNative();
     }
@@ -263,13 +266,13 @@ export async function signInWithOAuth(provider: Provider): Promise<AuthResult> {
     return { success: true };
   }
 
-  console.info('[Auth] OAuth redirect URL', { redirectTo });
-  console.info('[Auth] OAuth auth URL', { authUrl });
+  logger.info('OAuth redirect URL', { redirectTo });
+  logger.info('OAuth auth URL', { authUrl });
 
   const openAuthSession = WebBrowser.openAuthSessionAsync;
 
   if (!openAuthSession) {
-    console.info('[Auth] OAuth browser session unavailable, falling back to Linking', {
+    logger.info('OAuth browser session unavailable, falling back to Linking', {
       platform: Platform.OS,
     });
     await Linking.openURL(authUrl);
@@ -277,9 +280,9 @@ export async function signInWithOAuth(provider: Provider): Promise<AuthResult> {
   }
 
   try {
-    console.info('[Auth] OAuth browser session available', { platform: Platform.OS });
+    logger.info('OAuth browser session available', { platform: Platform.OS });
     const result = await openAuthSession(authUrl, redirectTo, {});
-    console.info('[Auth] OAuth browser result', result);
+    logger.info('OAuth browser result', result);
     if (result && typeof result === 'object' && 'type' in result) {
       if (result.type === 'success' && 'url' in result && typeof result.url === 'string') {
         return await resolveOAuthSession(result.url);

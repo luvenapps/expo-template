@@ -1,5 +1,6 @@
 import { supabase } from '@/auth/client';
 import { InlineError, PrimaryButton, ScreenContainer, TitleText } from '@/ui';
+import { createLogger } from '@/observability/logger';
 import * as Linking from 'expo-linking';
 import { useURL } from 'expo-linking';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -10,6 +11,7 @@ import { YStack } from 'tamagui';
 import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
 
 export default function AuthCallbackScreen() {
+  const logger = useMemo(() => createLogger('AuthCallback'), []);
   const router = useRouter();
   const params = useLocalSearchParams();
   const { t } = useTranslation();
@@ -126,7 +128,7 @@ export default function AuthCallbackScreen() {
     const {
       data: { session },
     } = await supabase.auth.getSession();
-    console.info('[AuthCallback] Native session present', { hasSession: Boolean(session) });
+    logger.info('Native session present', { hasSession: Boolean(session) });
 
     if (session) {
       hasProcessedRef.current = true;
@@ -161,18 +163,18 @@ export default function AuthCallbackScreen() {
         ? parsedResolved.queryParams.code
         : undefined;
 
-    console.info('[AuthCallback] Native initial URL', {
+    logger.info('Native initial URL', {
       hasUrl: Boolean(initialUrl),
       hasEmbeddedUrl: Boolean(embeddedUrl),
     });
 
-    console.info('[AuthCallback] Native resolved URL', {
+    logger.info('Native resolved URL', {
       resolvedUrl,
       parsedResolved,
     });
 
     const hash = resolvedUrl?.split('#')[1] ?? '';
-    console.info('[AuthCallback] Native hash params', {
+    logger.info('Native hash params', {
       hasHash: Boolean(hash),
       hasAccessToken: hash.includes('access_token='),
       hasRefreshToken: hash.includes('refresh_token='),
