@@ -210,15 +210,7 @@ export function useNotificationSettings() {
 
   useEffect(() => {
     if (Platform.OS === 'web') {
-      const handleVisibilityChange = () => {
-        if (document.visibilityState === 'visible') {
-          refreshPermissionStatus().catch(() => undefined);
-        }
-      };
-      document.addEventListener('visibilitychange', handleVisibilityChange);
-      return () => {
-        document.removeEventListener('visibilitychange', handleVisibilityChange);
-      };
+      return undefined;
     }
 
     const subscription = AppState.addEventListener('change', (state) => {

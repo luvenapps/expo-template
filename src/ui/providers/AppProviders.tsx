@@ -7,6 +7,7 @@ import {
   setMessageTriggers,
   initializeFCMListeners,
 } from '@/notifications';
+import { ensureServiceWorkerRegistered } from '@/notifications/firebasePush';
 import { onNotificationEvent } from '@/notifications/notificationEvents';
 import { useNotificationSettings } from '@/notifications/useNotificationSettings';
 import { getQueryClient, getQueryClientPersistOptions } from '@/state';
@@ -75,6 +76,38 @@ export function AppProviders({ children }: PropsWithChildren) {
       unsubscribeFCM?.();
     };
   }, [turnOnFirebase]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') {
+      return undefined;
+    }
+
+    let lastResumeAt = 0;
+    const runResumeCheck = () => {
+      const now = Date.now();
+      if (now - lastResumeAt < 500) return;
+      lastResumeAt = now;
+      ensureServiceWorkerRegistered().catch(() => undefined);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        runResumeCheck();
+      }
+    };
+
+    const handleFocus = () => {
+      runResumeCheck();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
 
   useEffect(() => {
     // Trigger app_ready custom event when initialization completes (Firebase only)

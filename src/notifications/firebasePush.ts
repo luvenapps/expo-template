@@ -554,6 +554,10 @@ async function registerForWebPush(): Promise<PushRegistrationResult> {
     try {
       const existingRegistration = await navigator.serviceWorker.getRegistration('/');
       const existingSubscription = await existingRegistration?.pushManager?.getSubscription?.();
+      webRegisterLogger.debug('Fast-path status', {
+        hasActive: Boolean(existingRegistration?.active),
+        hasSubscription: Boolean(existingSubscription),
+      });
       if (existingRegistration?.active && existingSubscription) {
         webRegisterLogger.debug('Reusing cached token and active service worker with subscription');
         return { status: 'registered', token: lastLoggedWebToken };
