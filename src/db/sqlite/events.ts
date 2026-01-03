@@ -1,6 +1,9 @@
+import { createLogger } from '@/observability/logger';
+
 type ResetListener = () => void;
 
 const resetListeners = new Set<ResetListener>();
+const logger = createLogger('SQLite');
 
 export function onDatabaseReset(listener: ResetListener) {
   resetListeners.add(listener);
@@ -14,7 +17,7 @@ export function emitDatabaseReset() {
     try {
       listener();
     } catch (error) {
-      console.error('[SQLite] Database reset listener failed:', error);
+      logger.error('Database reset listener failed:', error);
     }
   });
 }

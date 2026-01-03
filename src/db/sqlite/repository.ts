@@ -1,8 +1,10 @@
 import { eq } from 'drizzle-orm';
 import type { AnySQLiteTable } from 'drizzle-orm/sqlite-core';
 import { db } from './client';
+import { createLogger } from '@/observability/logger';
 
 const now = () => new Date().toISOString();
+const logger = createLogger('Repository');
 
 export type Database = typeof db;
 
@@ -63,7 +65,7 @@ export function createRepository<
         const data = applyTimestamps(values);
         await database.insert(table).values(data as Insert);
       } catch (error) {
-        console.error('[Repository] Insert failed:', error);
+        logger.error('Insert failed:', error);
         throw mapSQLiteError(error) ?? error;
       }
     },
@@ -78,7 +80,7 @@ export function createRepository<
             set: data as Partial<Select>,
           });
       } catch (error) {
-        console.error('[Repository] Upsert failed:', error);
+        logger.error('Upsert failed:', error);
         throw mapSQLiteError(error) ?? error;
       }
     },
@@ -90,7 +92,7 @@ export function createRepository<
           .set(data as Partial<Select>)
           .where(eq(pkColumn, id as any));
       } catch (error) {
-        console.error('[Repository] Update failed:', error);
+        logger.error('Update failed:', error);
         throw mapSQLiteError(error) ?? error;
       }
     },
@@ -102,7 +104,7 @@ export function createRepository<
           .where(eq(pkColumn, id as any));
         return record ?? null;
       } catch (error) {
-        console.error('[Repository] FindById failed:', error);
+        logger.error('FindById failed:', error);
         throw mapSQLiteError(error) ?? error;
       }
     },
@@ -110,7 +112,7 @@ export function createRepository<
       try {
         return database.select().from(table);
       } catch (error) {
-        console.error('[Repository] All failed:', error);
+        logger.error('All failed:', error);
         throw mapSQLiteError(error) ?? error;
       }
     },
@@ -126,7 +128,7 @@ export function createRepository<
 
         await database.delete(table).where(eq(pkColumn, id as any));
       } catch (error) {
-        console.error('[Repository] Remove failed:', error);
+        logger.error('Remove failed:', error);
         throw mapSQLiteError(error) ?? error;
       }
     },

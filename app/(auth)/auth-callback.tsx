@@ -241,7 +241,7 @@ export default function AuthCallbackScreen() {
     }
 
     isProcessingRef.current = false;
-  }, [goBackOrHome, latestUrl, queryParams, reportError]);
+  }, [goBackOrHome, latestUrl, logger, queryParams, reportError]);
 
   useEffect(() => {
     if (Platform.OS === 'web' && typeof window !== 'undefined') {

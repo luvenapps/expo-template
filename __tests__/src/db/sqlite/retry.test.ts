@@ -47,6 +47,7 @@ describe('withDatabaseRetry', () => {
     expect(mockedResetDatabase).toHaveBeenCalledTimes(1);
     expect(consoleWarnSpy).toHaveBeenCalledWith(
       '[SQLite] Encountered stale handle. Resetting database and retrying…',
+      expect.anything(),
     );
 
     consoleWarnSpy.mockRestore();

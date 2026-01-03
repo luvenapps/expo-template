@@ -1,9 +1,11 @@
 import { Platform } from 'react-native';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { DOMAIN } from '@/config/domain.config';
+import { createLogger } from '@/observability/logger';
 
 const SCHEMA_VERSION = 1;
 let initialized = false;
+const logger = createLogger('SQLite:setup');
 
 const primaryTable = DOMAIN.entities.primary.tableName;
 const entriesTable = DOMAIN.entities.entries.tableName;
@@ -118,7 +120,7 @@ export async function ensureSqliteSchema(database: SQLiteDatabase) {
           try {
             await database.execAsync(statements[i]);
           } catch (error) {
-            console.error(`[SQLite Setup] Failed to execute statement ${i + 1}:`, error);
+            logger.error(`Failed to execute statement ${i + 1}:`, error);
             throw error;
           }
         }
@@ -137,19 +139,19 @@ export async function ensureSqliteSchema(database: SQLiteDatabase) {
         errorMessage.includes('NativeDatabase.prepareSync');
 
       if (isStaleHandle && attempt < 1) {
-        console.warn('[SQLite Setup] Stale handle detected, will retry...');
+        logger.warn('Stale handle detected, will retry...');
         continue; // Try again
       }
 
       // Not a stale handle error, or we've exhausted retries
-      console.error('[SQLite Setup] Schema initialization failed:', error);
+      logger.error('Schema initialization failed:', error);
       throw error;
     }
   }
 
   // If we get here, retries were exhausted
   if (lastError) {
-    console.error('[SQLite Setup] Schema initialization failed after retries');
+    logger.error('Schema initialization failed after retries');
     throw lastError;
   }
 }

@@ -1,4 +1,5 @@
 import { resetDatabase } from './client';
+import { createLogger } from '@/observability/logger';
 
 const STALE_HANDLE_PATTERNS = [
   'NativeDatabase.prepareSync',
@@ -6,6 +7,7 @@ const STALE_HANDLE_PATTERNS = [
   'NullPointerException',
   "Failed to run the query 'begin'",
 ];
+const logger = createLogger('SQLite');
 
 export function isStaleHandleError(error: unknown) {
   if (!(error instanceof Error)) return false;
@@ -21,12 +23,12 @@ export async function withDatabaseRetry<T>(operation: () => Promise<T>): Promise
       throw error;
     }
 
-    console.warn('[SQLite] Encountered stale handle. Resetting database and retrying…');
+    logger.warn('Encountered stale handle. Resetting database and retrying…');
     await resetDatabase();
     try {
       return await operation();
     } catch (secondError) {
-      console.error('[SQLite] Operation failed again after database reset:', secondError);
+      logger.error('Operation failed again after database reset:', secondError);
       throw secondError;
     }
   }

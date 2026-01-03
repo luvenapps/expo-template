@@ -3,6 +3,7 @@ import { DOMAIN } from '@/config/domain.config';
 import { Platform } from 'react-native';
 import { emitDatabaseReset } from './events';
 import { deviceEntity, entryEntity, outbox, primaryEntity, reminderEntity } from './schema';
+import { createLogger } from '@/observability/logger';
 
 /**
  * SQLite database instance using expo-sqlite.
@@ -22,6 +23,7 @@ import { deviceEntity, entryEntity, outbox, primaryEntity, reminderEntity } from
 let dbInstance: any = null;
 let dbPromise: Promise<any> | null = null;
 let sqliteHandle: any = null; // Keep strong reference to prevent garbage collection
+const logger = createLogger('SQLite');
 async function createDrizzleInstance() {
   const { drizzle } = await import('drizzle-orm/expo-sqlite');
   const { openDatabaseAsync } = await import('expo-sqlite');
@@ -53,7 +55,7 @@ export async function getDb() {
       try {
         return await createDrizzleInstance();
       } catch (error) {
-        console.error('[SQLite] Database initialization failed:', error);
+        logger.error('Database initialization failed:', error);
         dbPromise = null; // Reset so it can be retried
         throw error;
       }
@@ -72,7 +74,7 @@ export async function resetDatabase() {
     try {
       await sqliteHandle.closeAsync();
     } catch (error) {
-      console.warn('[SQLite] Error closing database handle during reset:', error);
+      logger.warn('Error closing database handle during reset:', error);
     }
   }
 
@@ -111,7 +113,7 @@ export async function hasData(): Promise<boolean> {
 
     return results.some((rows) => rows.length > 0);
   } catch (error) {
-    console.error('[SQLite] Error checking for data:', error);
+    logger.error('Error checking for data:', error);
     return false;
   }
 }
@@ -153,9 +155,9 @@ export async function clearAllTables() {
     } catch (error) {
       try {
         await handleToUse.execAsync('ROLLBACK');
-        console.error('[SQLite] Transaction rolled back due to error');
+        logger.error('Transaction rolled back due to error');
       } catch (rollbackError) {
-        console.warn('[SQLite] Error during rollback (handle may be stale):', rollbackError);
+        logger.warn('Error during rollback (handle may be stale):', rollbackError);
       }
       throw error;
     }
@@ -174,7 +176,7 @@ export async function clearAllTables() {
     // Emit event so listeners (like outbox) can reset their caches
     emitDatabaseReset();
   } catch (error) {
-    console.error('[SQLite] Error during database clear:', error);
+    logger.error('Error during database clear:', error);
     throw error;
   }
 }

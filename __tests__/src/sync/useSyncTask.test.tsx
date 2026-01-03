@@ -50,6 +50,8 @@ const createDeferred = <T = void,>() => {
 };
 
 describe('useSyncTask', () => {
+  const originalPlatform = Platform.OS;
+
   beforeEach(() => {
     jest.clearAllMocks();
     jest.clearAllTimers();
@@ -70,10 +72,12 @@ describe('useSyncTask', () => {
         } as any;
       },
     );
+    Object.defineProperty(Platform, 'OS', { value: 'ios', configurable: true });
   });
 
   afterEach(() => {
     addEventListenerSpy?.mockRestore();
+    Object.defineProperty(Platform, 'OS', { value: originalPlatform, configurable: true });
   });
 
   afterAll(() => {
@@ -333,6 +337,7 @@ describe('useSyncTask', () => {
       expect(mockEngine.runSync).toHaveBeenCalledTimes(1);
       expect(consoleWarnSpy).toHaveBeenCalledWith(
         expect.stringContaining('[Sync] Skipping scheduled run'),
+        expect.anything(),
       );
 
       await act(async () => {
@@ -395,6 +400,7 @@ describe('useSyncTask', () => {
       expect(BackgroundTask.registerTaskAsync).not.toHaveBeenCalled();
       expect(warnSpy).toHaveBeenCalledWith(
         '[Sync] Background tasks are disabled or restricted. Skipping registration.',
+        expect.anything(),
       );
 
       warnSpy.mockRestore();
@@ -573,7 +579,8 @@ describe('useSyncTask', () => {
         });
 
         expect(consoleWarnSpy).toHaveBeenCalledWith(
-          'Sync is not supported on web platform. Database operations require native SQLite.',
+          '[Sync] Sync is not supported on web platform. Database operations require native SQLite.',
+          expect.anything(),
         );
         expect(mockEngine.runSync).not.toHaveBeenCalled();
         expect(BackgroundTask.registerTaskAsync).not.toHaveBeenCalled();

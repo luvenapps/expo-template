@@ -5,11 +5,13 @@ import * as BackgroundTask from 'expo-background-task';
 import type { createSyncEngine } from './engine';
 import { DOMAIN } from '@/config/domain.config';
 import { SYNC } from '@/config/constants';
+import { createLogger } from '@/observability/logger';
 
 type SyncEngine = ReturnType<typeof createSyncEngine>;
 
 const BACKGROUND_TASK_NAME = DOMAIN.app.syncTask;
 const backgroundTaskHandlers = new Map<string, () => Promise<void>>();
+const logger = createLogger('Sync');
 
 type UseSyncTaskOptions = {
   engine: SyncEngine;
@@ -49,7 +51,7 @@ export function useSyncTask({
 
       if (Platform.OS === 'web') {
         if (!hasWarnedWebRef.current) {
-          console.warn(
+          logger.warn(
             'Sync is not supported on web platform. Database operations require native SQLite.',
           );
           hasWarnedWebRef.current = true;
@@ -60,9 +62,7 @@ export function useSyncTask({
       const now = Date.now();
       if (!force && cooldownUntilRef.current !== null && now < cooldownUntilRef.current) {
         const remaining = cooldownUntilRef.current - now;
-        console.warn(
-          `[Sync] Skipping scheduled run - retrying in ${Math.ceil(remaining / 1000)}s.`,
-        );
+        logger.warn(`Skipping scheduled run - retrying in ${Math.ceil(remaining / 1000)}s.`);
         return;
       }
 
@@ -180,9 +180,7 @@ export function useSyncTask({
       try {
         const status = await BackgroundTask.getStatusAsync();
         if (status !== BackgroundTask.BackgroundTaskStatus.Available) {
-          console.warn(
-            '[Sync] Background tasks are disabled or restricted. Skipping registration.',
-          );
+          logger.warn('Background tasks are disabled or restricted. Skipping registration.');
           return;
         }
 
@@ -192,7 +190,7 @@ export function useSyncTask({
           minimumInterval: backgroundInterval,
         });
       } catch (error) {
-        console.warn('[Sync] Failed to register background task:', error);
+        logger.warn('Failed to register background task:', error);
       }
     };
 

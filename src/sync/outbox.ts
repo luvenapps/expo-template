@@ -1,6 +1,7 @@
 import 'react-native-get-random-values';
 import { asc, eq, inArray, sql } from 'drizzle-orm';
 import { getDb, outbox } from '@/db/sqlite';
+import { createLogger } from '@/observability/logger';
 import { v4 as uuidv4 } from 'uuid';
 
 export type OutboxRecord = typeof outbox.$inferSelect;
@@ -19,6 +20,7 @@ const serializePayload = (payload: Record<string, unknown>) => JSON.stringify(pa
 let customDatabase: Awaited<ReturnType<typeof getDb>> | null = null;
 
 type Database = Awaited<ReturnType<typeof getDb>>;
+const logger = createLogger('Outbox');
 
 async function getDatabase() {
   return customDatabase ?? (await getDb());
@@ -99,7 +101,7 @@ export async function hasOutboxData(): Promise<boolean> {
       .limit(1);
     return (result[0]?.count ?? 0) > 0;
   } catch (error) {
-    console.error('[Outbox] Error checking for data:', error);
+    logger.error('Error checking for data:', error);
     return false;
   }
 }
