@@ -131,7 +131,14 @@ jest.mock('expo-router', () => {
   };
   MockStack.Screen.displayName = 'MockStack.Screen';
 
-  return { Stack: MockStack };
+  return {
+    Stack: MockStack,
+    useRouter: jest.fn(() => ({
+      push: jest.fn(),
+      replace: jest.fn(),
+      back: jest.fn(),
+    })),
+  };
 });
 
 jest.mock('@/db/sqlite/cleanup', () => ({
@@ -169,6 +176,16 @@ jest.mock('@/notifications', () => ({
   initializeFCMListeners: jest.fn().mockReturnValue(undefined),
 }));
 
+beforeAll(() => {
+  jest.spyOn(console, 'info').mockImplementation(() => undefined);
+  jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+  jest.spyOn(console, 'error').mockImplementation(() => undefined);
+});
+
+afterAll(() => {
+  jest.restoreAllMocks();
+});
+
 jest.mock('@/notifications/ForegroundReminderAnalyticsHost', () => ({
   ForegroundReminderAnalyticsHost: () => null,
 }));
@@ -192,7 +209,11 @@ describe('RootLayout', () => {
 
     // Suppress React act() warnings - these are expected for async state updates
     console.error = jest.fn((message) => {
-      if (message?.toString().includes('not wrapped in act')) {
+      const rendered = message?.toString() ?? '';
+      if (
+        rendered.includes('not wrapped in act') ||
+        rendered.includes('[AppProviders] Failed to read last notification response')
+      ) {
         return;
       }
       originalConsoleError(message);

@@ -16,6 +16,8 @@ import { useThemeContext } from '@/ui/theme/ThemeProvider';
 import { SoftPromptModal } from '@/ui/components/SoftPromptModal';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
+import * as Notifications from 'expo-notifications';
+import { useRouter, type Href } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { PropsWithChildren, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Platform } from 'react-native';
@@ -40,6 +42,7 @@ const appLogger = createLogger('AppProviders');
 const dbLogger = createLogger('SQLite');
 
 export function AppProviders({ children }: PropsWithChildren) {
+  const router = useRouter();
   const sessionStatus = useSessionStore((state) => state.status);
   const isAuthenticated = sessionStatus === 'authenticated';
   const syncEnabled = Platform.OS !== 'web' && isAuthenticated;
@@ -76,6 +79,41 @@ export function AppProviders({ children }: PropsWithChildren) {
       unsubscribeFCM?.();
     };
   }, [turnOnFirebase]);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      return undefined;
+    }
+
+    const handledInitialResponseRef = { current: false };
+
+    const handleNotificationResponse = (response: Notifications.NotificationResponse | null) => {
+      if (!response) return;
+      const data = response.notification.request.content.data ?? {};
+      const route = typeof data.route === 'string' ? data.route : null;
+      if (!route) return;
+      appLogger.info('Navigating from notification', { route });
+      router.push(route as Href);
+    };
+
+    Notifications.getLastNotificationResponseAsync()
+      .then((response) => {
+        if (handledInitialResponseRef.current) return;
+        handledInitialResponseRef.current = true;
+        handleNotificationResponse(response);
+      })
+      .catch((error) => {
+        appLogger.error('Failed to read last notification response', error);
+      });
+
+    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      handleNotificationResponse(response);
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [router]);
 
   useEffect(() => {
     if (Platform.OS !== 'web') {

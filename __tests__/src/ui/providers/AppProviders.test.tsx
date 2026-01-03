@@ -55,6 +55,16 @@ jest.mock('expo-notifications', () => ({
   setNotificationCategoryAsync: jest.fn(),
   setNotificationHandler: jest.fn(),
   addNotificationReceivedListener: jest.fn(() => mockNotificationSubscription),
+  addNotificationResponseReceivedListener: jest.fn(() => mockNotificationSubscription),
+  getLastNotificationResponseAsync: jest.fn().mockResolvedValue(null),
+}));
+
+jest.mock('expo-router', () => ({
+  useRouter: jest.fn(() => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    back: jest.fn(),
+  })),
 }));
 
 // Mock auth session

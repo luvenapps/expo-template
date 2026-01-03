@@ -450,6 +450,7 @@ export default function SettingsScreen() {
         id,
         title: 'Test reminder',
         body: 'This is a test reminder.',
+        data: { route: '/(tabs)/settings' },
         fireDate,
       });
 
