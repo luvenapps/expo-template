@@ -38,6 +38,32 @@ export const ANALYTICS = {
   paramLimit: 24,
 };
 
+// Observability configuration (logging + analytics sampling)
+export const OBSERVABILITY = {
+  production: {
+    errorReporting: {
+      enabled: true,
+    },
+    analytics: {
+      enabled: true,
+    },
+    appLogs: {
+      enabled: true,
+      batchSize: 50,
+      flushIntervalMs: 30_000,
+    },
+    performance: {
+      enabled: true,
+    },
+  },
+  development: {
+    errorReporting: { enabled: false },
+    analytics: { enabled: false },
+    appLogs: { enabled: false, batchSize: 50, flushIntervalMs: 30_000 },
+    performance: { enabled: false },
+  },
+};
+
 // Validation constraints
 export const VALIDATION = {
   sortOrderMin: 0,

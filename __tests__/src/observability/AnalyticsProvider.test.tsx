@@ -13,8 +13,14 @@ const mockMMKVInstance = {
   delete: jest.fn(),
 };
 
+const mockGetFirebaseAnalyticsBackend = jest.fn();
+
 jest.mock('react-native-mmkv', () => ({
   MMKV: jest.fn().mockImplementation(() => mockMMKVInstance),
+}));
+
+jest.mock('@/observability/firebaseBackend', () => ({
+  getFirebaseAnalyticsBackend: () => mockGetFirebaseAnalyticsBackend(),
 }));
 
 describe('AnalyticsProvider', () => {
@@ -49,6 +55,8 @@ describe('AnalyticsProvider', () => {
     mockMMKVInstance.getString.mockReset();
     mockMMKVInstance.set.mockReset();
     mockMMKVInstance.delete.mockReset();
+    mockGetFirebaseAnalyticsBackend.mockReset();
+    mockGetFirebaseAnalyticsBackend.mockReturnValue(null);
   });
 
   afterEach(() => {
@@ -58,6 +66,7 @@ describe('AnalyticsProvider', () => {
     (console.error as jest.Mock).mockRestore();
     (console.warn as jest.Mock).mockRestore();
     Object.defineProperty(Platform, 'OS', { value: originalPlatform, configurable: true });
+    delete process.env.EXPO_PUBLIC_TURN_ON_FIREBASE;
   });
 
   const FireEvents = () => {
@@ -156,10 +165,9 @@ describe('AnalyticsProvider', () => {
       trackPerformance: jest.fn(),
     };
 
-    // Mock the backend getter
-    jest.doMock('@/observability/firebaseBackend', () => ({
-      getFirebaseAnalyticsBackend: () => mockBackend,
-    }));
+    process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = 'true';
+    __resetAnalyticsStateForTests();
+    mockGetFirebaseAnalyticsBackend.mockReturnValue(mockBackend);
 
     const TestComponent = () => {
       const analytics = useAnalytics();

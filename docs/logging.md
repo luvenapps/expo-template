@@ -37,32 +37,40 @@ This document outlines the implementation plan for a production-grade, pluggable
 
 ## Architecture Overview
 
+### Logging vs Observability (Intentional Split)
+
+- **Logging** explains _what happened_ and _why_ during debugging (developer-facing, operational detail).
+- **Observability** measures _system health_ via structured events/errors/perf metrics.
+
+In practice:
+
+- Use `logger.debug/info/warn/error` for **logging**.
+- Use `analytics.trackEvent/trackError/trackPerformance` (or `useAnalytics()`) for **observability**.
+
 ### 1. Central Logger API
 
-**Single entry point** for all observability needs in **service layer** (non-React code):
+**Single entry point** for **logging** in the service layer (non-React code):
 
 ```typescript
 import { createLogger } from '@/observability/logger';
+import { analytics } from '@/observability/analytics';
 
 const logger = createLogger('FCM'); // Namespace-based
 
 // 1. Application logs (console + optional remote persistence)
-logger.logDebug('Token registered:', token); // Dev only
-logger.logInfo('Foreground message received'); // Dev only
-logger.logWarn('Permission denied'); // Dev + prod console
-logger.logError('Failed to initialize', error); // Always shown
+logger.debug('Token registered:', token); // Dev only
+logger.info('Foreground message received'); // Dev only
+logger.warn('Permission denied'); // Dev + prod console
+logger.error('Failed to initialize', error); // Always shown
 
-// 2. Error reporting (Crashlytics, Sentry, etc.)
-logger.reportError(error, { context: 'FCM init', userId: '123' });
+// 2. Observability (events/errors/perf)
+analytics.trackError(error, { context: 'FCM init', userId: '123' });
 
 // 3. Analytics events (Firebase Analytics, Amplitude, etc.)
-logger.trackAnalyticsEvent('push_token_registered', { platform: 'ios' });
+analytics.trackEvent('push_token_registered', { platform: 'ios' });
 
-// 4. App-specific logs (persist to Supabase or backend)
-logger.logAppEvent('user_action', { action: 'enable_push', success: true });
-
-// 5. Performance tracing
-const result = await logger.traceAsync('fcm_initialization', async () => {
+// 4. Performance tracing
+const result = await analytics.traceAsync('fcm_initialization', async () => {
   return await initializeFCM();
 });
 ```
@@ -71,7 +79,7 @@ const result = await logger.traceAsync('fcm_initialization', async () => {
 
 The logger is designed to **coexist** with the existing `AnalyticsProvider`:
 
-- **`AnalyticsProvider` (React Context)**: For UI layer analytics in React components
+- **`AnalyticsProvider` (React Context)**: For UI layer analytics in React components (thin wrapper over the same analytics helper)
 
   ```typescript
   // In React components
@@ -85,9 +93,10 @@ The logger is designed to **coexist** with the existing `AnalyticsProvider`:
   ```typescript
   // In services, utilities, background tasks
   const logger = createLogger('Sync');
-  logger.trackAnalyticsEvent('sync_completed', { recordCount: 50 });
-  logger.reportError(error, { context: 'outbox_processing' });
-  logger.traceAsync('fetch_remote_data', fetchFn);
+  logger.info('Sync finished', { recordCount: 50 });
+  analytics.trackEvent('sync_completed', { recordCount: 50 });
+  analytics.trackError(error, { context: 'outbox_processing' });
+  analytics.traceAsync('fetch_remote_data', fetchFn);
   ```
 
 Both systems will **share the same Firebase Analytics backend** (refactored from `firebaseBackend.ts`), ensuring all events go to the same destination when enabled.
@@ -240,20 +249,20 @@ All logger methods follow a consistent pattern: **always log to console in dev, 
 
 _Default behavior (no flags set):_
 
-- ✅ **All methods log to console** (debug/info/warn/error/reportError/trackAnalyticsEvent/logAppEvent/traceAsync)
-- ❌ **NO backend calls** (all backends disabled)
+- ✅ **Logger methods log to console** (`logger.debug/info/warn/error`)
+- ❌ **NO backend calls** (logging + analytics backends disabled)
 - **Purpose**: Fast, verbose, local-only debugging with full visibility
 
 _With Firebase enabled (`EXPO_PUBLIC_TURN_ON_FIREBASE=true`):_
 
-- ✅ **All methods log to console** (full visibility)
+- ✅ **Logger methods log to console** (full visibility)
 - ✅ **Firebase backends active** (Analytics, Crashlytics, Performance - all free tiers)
 - ❌ **Supabase disabled** (unless `EXPO_PUBLIC_SUPABASE_LOGS_ENABLED=true`)
 - **Purpose**: Test Firebase integration, validate event schemas
 
 _With Supabase enabled (`EXPO_PUBLIC_SUPABASE_LOGS_ENABLED=true`):_
 
-- ✅ **All methods log to console** (full visibility)
+- ✅ **Logger methods log to console** (full visibility)
 - ✅ **Supabase active** (sends to local Supabase instance via `npm run supabase:dev`)
 - ❌ **Firebase disabled** (unless `EXPO_PUBLIC_TURN_ON_FIREBASE=true`)
 - **Purpose**: Test Supabase app logs, query logs locally via Supabase Studio
@@ -261,7 +270,7 @@ _With Supabase enabled (`EXPO_PUBLIC_SUPABASE_LOGS_ENABLED=true`):_
 
 _Full stack testing (both flags set):_
 
-- ✅ **All methods log to console**
+- ✅ **Logger methods log to console**
 - ✅ **Firebase backends active**
 - ✅ **Supabase active** (local Docker)
 - **Purpose**: Test complete observability pipeline end-to-end
@@ -298,7 +307,7 @@ _Full stack testing (both flags set):_
 - `EXPO_PUBLIC_SUPABASE_LOGS_ENABLED` - Controls Supabase app logs backend
 - `EXPO_PUBLIC_ENABLE_DEBUG_LOGS` - Production override to show all console logs
 
-**Sampling & Batching Configuration**:
+**Batching Configuration**:
 
 ```typescript
 // src/config/constants.ts
@@ -306,28 +315,24 @@ export const OBSERVABILITY = {
   production: {
     errorReporting: {
       enabled: true,
-      sampleRate: 1.0, // 100% of errors
     },
     analytics: {
       enabled: true,
-      sampleRate: 1.0, // 100% of events
     },
     appLogs: {
       enabled: true,
-      sampleRate: 0.1, // 10% of logs
       batchSize: 50, // Batch 50 logs
       flushIntervalMs: 30000, // Flush every 30s
     },
     performance: {
       enabled: true,
-      sampleRate: 0.05, // 5% of traces
     },
   },
   development: {
     // All disabled except console logging
     errorReporting: { enabled: false },
     analytics: { enabled: false },
-    appLogs: { enabled: false },
+    appLogs: { enabled: false, batchSize: 50, flushIntervalMs: 30000 },
     performance: { enabled: false },
   },
 };
@@ -450,7 +455,7 @@ CREATE POLICY "Admins can read all logs"
   const webLogger = createLogger('FCM:web');
 
   // Before: console.log('[FCM] Token registered:', token);
-  // After: logger.logInfo('Token registered:', token);
+  // After: logger.info('Token registered:', token);
   ```
 
 - `src/notifications/useNotificationSettings.ts`: 4 statements
@@ -493,27 +498,19 @@ describe('Logger', () => {
   it('logs debug messages in development', () => {
     (global as any).__DEV__ = true;
     const logger = createLogger('Test');
-    logger.logDebug('test message');
+    logger.debug('test message');
     expect(consoleLogSpy).toHaveBeenCalledWith('[Test]', 'test message');
   });
 
   it('suppresses debug messages in production', () => {
     (global as any).__DEV__ = false;
     const logger = createLogger('Test');
-    logger.logDebug('test message');
+    logger.debug('test message');
     expect(consoleLogSpy).not.toHaveBeenCalled();
   });
 
   it('reports errors to Crashlytics in production', () => {
     // Mock Crashlytics backend and verify error reporting
-  });
-
-  it('traces async operations', async () => {
-    const logger = createLogger('Test');
-    const result = await logger.traceAsync('test_op', async () => {
-      return 'success';
-    });
-    expect(result).toBe('success');
   });
 });
 ```
@@ -671,144 +668,72 @@ Creates a namespaced logger instance.
 
 ```typescript
 const logger = createLogger('Auth');
-logger.logInfo('User logged in:', userId);
+logger.info('User logged in:', userId);
 ```
 
 ### Logger Methods
 
-#### logDebug(message: string, ...args: unknown[]): void
+#### debug(message: string, ...args: unknown[]): void
 
 Logs debug-level messages. Only shown in development.
 
 **Example:**
 
 ```typescript
-logger.logDebug('Processing token:', token, { metadata });
+logger.debug('Processing token:', token, { metadata });
 ```
 
-#### logInfo(message: string, ...args: unknown[]): void
+#### info(message: string, ...args: unknown[]): void
 
 Logs informational messages. Only shown in development.
 
 **Example:**
 
 ```typescript
-logger.logInfo('Sync completed successfully');
+logger.info('Sync completed successfully');
 ```
 
-#### logWarn(message: string, ...args: unknown[]): void
+#### warn(message: string, ...args: unknown[]): void
 
 Logs warning messages. Shown in development and production.
 
 **Example:**
 
 ```typescript
-logger.logWarn('Rate limit approaching', { remaining: 10 });
+logger.warn('Rate limit approaching', { remaining: 10 });
 ```
 
-#### logError(message: string, error?: Error | unknown, metadata?: Record<string, unknown>): void
+#### error(message: string, error?: Error | unknown, metadata?: Record<string, unknown>): void
 
 Logs errors. Always shown in console, reported to Crashlytics in production.
 
 **Example:**
 
 ```typescript
-logger.logError('Failed to sync', error, { userId, attemptCount: 3 });
+logger.error('Failed to sync', error, { userId, attemptCount: 3 });
 ```
 
-#### reportError(error: Error, context?: Record<string, unknown>): void
+### Analytics Helper (Service Layer)
 
-Reports errors to error tracking service (Crashlytics/Sentry).
-
-**Environment behavior:**
-
-- **Dev**: Logs to console with `[namespace]` prefix
-- **Prod**: Sends to Crashlytics (no console output)
-
-**Example:**
+Use the service-layer analytics helper for observability (events/errors/perf) outside React.
 
 ```typescript
-try {
-  await syncData();
-} catch (error) {
-  logger.reportError(error, { operation: 'sync', userId });
-}
-```
+import { analytics } from '@/observability/analytics';
 
-#### trackAnalyticsEvent(name: string, params?: Record<string, unknown>): void
+analytics.trackEvent('push_enabled', { platform: 'ios', method: 'settings' });
+analytics.trackError(error, { context: 'sync', userId });
+analytics.trackPerformance({ name: 'sync_pull', durationMs: 420 });
 
-Tracks analytics events to Firebase Analytics/Amplitude.
-
-**Environment behavior:**
-
-- **Dev**: Logs to console with event name and params
-- **Prod**: Sends to Firebase Analytics (no console output)
-
-**Example:**
-
-```typescript
-logger.trackAnalyticsEvent('push_enabled', {
-  platform: 'ios',
-  method: 'settings',
-});
-```
-
-#### logAppEvent(eventName: string, data: Record<string, unknown>): void
-
-Logs app-specific events to Supabase for product analytics.
-
-**Environment behavior:**
-
-- **Dev**: Logs to console with event name and data
-- **Prod**: Sends to Supabase (10% sampling, batched, no console output)
-
-**Example:**
-
-```typescript
-logger.logAppEvent('feature_used', {
-  feature: 'export',
-  format: 'csv',
-  recordCount: 150,
-});
-```
-
-#### traceAsync<T>(name: string, fn: () => Promise<T>): Promise<T>
-
-Traces async operations with Firebase Performance Monitoring.
-
-**Environment behavior:**
-
-- **Dev**: Logs trace start/end to console, executes function normally
-- **Prod**: Sends trace to Firebase Performance (5% sampling), executes function
-
-**Example:**
-
-```typescript
-const data = await logger.traceAsync('fetch_user_data', async () => {
+const data = await analytics.traceAsync('fetch_user_data', async () => {
   return await fetchUserData(userId);
-});
-```
-
-#### trace<T>(name: string, fn: () => T): T
-
-Traces synchronous operations with Firebase Performance Monitoring.
-
-**Environment behavior:**
-
-- **Dev**: Logs trace start/end to console, executes function normally
-- **Prod**: Sends trace to Firebase Performance (5% sampling), executes function
-
-**Example:**
-
-```typescript
-const result = logger.trace('calculate_stats', () => {
-  return calculateUserStats(data);
 });
 ```
 
 ## Integration Guidelines
 
 ### When to Use Logger vs AnalyticsProvider
+
+**Rule of thumb**: Logging is operational detail (`logger.debug/info/warn/error`); observability is metrics (`trackEvent/trackError/trackPerformance`).
 
 **Use `AnalyticsProvider` (React Context)** for:
 
@@ -834,7 +759,6 @@ function SettingsScreen() {
   const analytics = useAnalytics(); // ✅ Correct
 
   const handleToggle = () => {
-    logger.trackAnalyticsEvent('toggle_pushed'); // ❌ Wrong
     analytics.trackEvent('toggle_pushed'); // ✅ Correct
   };
 }
@@ -842,14 +766,15 @@ function SettingsScreen() {
 // ✅ DO use logger in service layer
 export async function registerForPush() {
   const logger = createLogger('FCM');
+  const analytics = require('@/observability/analytics').analytics;
 
   try {
     const token = await getToken();
-    logger.logInfo('Token registered:', token);
-    logger.trackAnalyticsEvent('push_token_registered', { platform: 'ios' });
+    logger.info('Token registered:', token);
+    analytics.trackEvent('push_token_registered', { platform: 'ios' });
     return { status: 'success', token };
   } catch (error) {
-    logger.reportError(error, { context: 'token_registration' });
+    analytics.trackError(error, { context: 'token_registration' });
     return { status: 'error' };
   }
 }
@@ -869,7 +794,7 @@ console.log('[FCM] Token registered:', token);
 
 ```typescript
 const logger = createLogger('FCM');
-logger.logInfo('Token registered:', token);
+logger.info('Token registered:', token);
 ```
 
 ### Pattern 2: Error Logging
@@ -884,7 +809,7 @@ console.error('[Sync] Failed to sync:', error);
 
 ```typescript
 const logger = createLogger('Sync');
-logger.logError('Failed to sync', error);
+logger.error('Failed to sync', error);
 ```
 
 ### Pattern 3: Debug Logging with Objects
@@ -899,7 +824,7 @@ console.log('[Auth] User state:', { uid, email, status });
 
 ```typescript
 const logger = createLogger('Auth');
-logger.logDebug('User state:', { uid, email, status });
+logger.debug('User state:', { uid, email, status });
 ```
 
 ### Pattern 4: Conditional Logging
@@ -916,7 +841,7 @@ if (__DEV__) {
 
 ```typescript
 const logger = createLogger('DB');
-logger.logDebug('Query executed:', query); // Automatically dev-only
+logger.debug('Query executed:', query); // Automatically dev-only
 ```
 
 ### Pattern 5: Analytics + Logging
@@ -932,8 +857,8 @@ analytics.trackEvent('feature_used', { feature: featureName });
 
 ```typescript
 const logger = createLogger('User');
-logger.logInfo('Feature used:', featureName);
-logger.trackAnalyticsEvent('feature_used', { feature: featureName });
+logger.info('Feature used:', featureName);
+analytics.trackEvent('feature_used', { feature: featureName });
 ```
 
 ## Troubleshooting

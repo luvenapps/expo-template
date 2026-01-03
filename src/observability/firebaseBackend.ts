@@ -6,7 +6,7 @@ import type {
   AnalyticsErrorEnvelope,
   AnalyticsEventEnvelope,
   AnalyticsPerformanceEnvelope,
-} from './AnalyticsProvider';
+} from './analyticsCore';
 
 type WebFirebaseApp = import('firebase/app').FirebaseApp;
 type WebAnalytics = import('firebase/analytics').Analytics;

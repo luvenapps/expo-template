@@ -22,6 +22,8 @@ export const DOMAIN = {
     syncTask: '__APP_NAME__-sync-task',
     storageKey: '__APP_NAME__',
     cursorStorageId: '__APP_NAME__-sync-cursors',
+    analyticsStorageKey: '__APP_NAME__-analytics-id',
+    analyticsStorageNamespace: '__APP_NAME__-analytics',
   },
 
   /**
