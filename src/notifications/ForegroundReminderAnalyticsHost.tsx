@@ -32,15 +32,6 @@ function useForegroundReminderTracking() {
         return;
       }
 
-      Notifications.scheduleNotificationAsync({
-        content: {
-          title: notification.request.content.title ?? 'Reminder',
-          body: notification.request.content.body ?? '',
-          data: { ...data, foregroundPresented: true },
-        },
-        trigger: null,
-      }).catch(() => undefined);
-
       analytics.trackEvent('notifications:foreground-fired', {
         reminderId: data.reminderId,
         itemId: data.itemId,
