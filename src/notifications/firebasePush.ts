@@ -350,11 +350,16 @@ export function setupWebForegroundMessageListener() {
             tag: payload.data?.tag || 'default',
           });
 
+          const route =
+            typeof payload.data?.route === 'string' && payload.data.route.length > 0
+              ? payload.data.route
+              : null;
           const eventPayload = {
             tag: payload.data?.tag || 'default',
             title,
             timestamp: new Date().toISOString(),
             platform: 'web' as const,
+            route,
           };
 
           emitNotificationEvent({
@@ -370,7 +375,9 @@ export function setupWebForegroundMessageListener() {
               name: 'notification:foreground:clicked',
               payload: eventPayload,
             });
-            window.focus();
+            if (route) {
+              window.location.assign(route);
+            }
             notification.close();
           };
 

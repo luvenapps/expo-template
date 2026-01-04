@@ -91,19 +91,50 @@ self.addEventListener('notificationclick', (event) => {
 
   event.notification.close();
 
+  const rawData = event.notification?.data || {};
+  let nestedData = rawData?.FCM_MSG?.data || rawData?.data || rawData;
+  if (typeof rawData?.FCM_MSG === 'string') {
+    try {
+      nestedData = JSON.parse(rawData.FCM_MSG);
+    } catch (error) {
+      console.warn('[FCM SW] Failed to parse FCM_MSG payload:', error);
+    }
+  }
+  const route =
+    (typeof nestedData?.route === 'string' && nestedData.route) ||
+    (typeof nestedData?.data?.route === 'string' && nestedData.data.route) ||
+    (typeof rawData?.route === 'string' && rawData.route) ||
+    null;
+  const payload = {
+    route,
+    notificationId:
+      (typeof nestedData?.notificationId === 'string' && nestedData.notificationId) ||
+      (typeof nestedData?.messageId === 'string' && nestedData.messageId) ||
+      event.notification?.tag ||
+      null,
+    source: 'remote',
+    platform: 'web',
+  };
+  const message = { type: 'NOTIFICATION_CLICKED', payload };
+
   // Open the app or focus existing window
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       // If a window is already open, focus it
       for (const client of clientList) {
         if (client.url.includes(self.registration.scope) && 'focus' in client) {
+          try {
+            client.postMessage(message);
+          } catch (error) {
+            console.warn('[FCM SW] Failed to post click message to client:', error);
+          }
           return client.focus();
         }
       }
 
       // Otherwise, open a new window
       if (clients.openWindow) {
-        return clients.openWindow('/');
+        return clients.openWindow(payload.route || '/');
       }
     }),
   );

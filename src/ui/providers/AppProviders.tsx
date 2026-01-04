@@ -33,6 +33,7 @@ import i18n from '@/i18n';
 import { I18nextProvider } from 'react-i18next';
 import { NOTIFICATIONS } from '@/config/constants';
 import { createLogger } from '@/observability/logger';
+import { analytics } from '@/observability/analytics';
 
 const queryClient = getQueryClient();
 const persistOptions = getQueryClientPersistOptions();
@@ -90,7 +91,21 @@ export function AppProviders({ children }: PropsWithChildren) {
     const handleNotificationResponse = (response: Notifications.NotificationResponse | null) => {
       if (!response) return;
       const data = response.notification.request.content.data ?? {};
+      const notificationId =
+        (typeof data.notificationId === 'string' && data.notificationId) ||
+        (typeof data.messageId === 'string' && data.messageId) ||
+        response.notification.request.identifier;
+      const trigger = response.notification.request.trigger as { type?: string } | null;
+      const isPush = trigger?.type === 'push';
       const route = typeof data.route === 'string' ? data.route : null;
+      if (isPush) {
+        analytics.trackEvent('notifications:push-clicked', {
+          route,
+          notificationId,
+          source: 'remote',
+          platform: Platform.OS,
+        });
+      }
       if (!route) return;
       appLogger.info('Navigating from notification', { route });
       router.push(route as Href);
@@ -138,14 +153,36 @@ export function AppProviders({ children }: PropsWithChildren) {
       runResumeCheck();
     };
 
+    const handleServiceWorkerMessage = (event: MessageEvent) => {
+      const payload = event?.data?.payload;
+      if (event?.data?.type !== 'NOTIFICATION_CLICKED' || !payload) {
+        return;
+      }
+      analytics.trackEvent('notifications:push-clicked', {
+        route: payload.route ?? null,
+        notificationId: payload.notificationId ?? null,
+        source: payload.source ?? 'remote',
+        platform: 'web',
+      });
+      if (typeof payload.route === 'string') {
+        window.location.assign(payload.route);
+      }
+    };
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleFocus);
+    if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage);
+    }
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
+      if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+        navigator.serviceWorker.removeEventListener('message', handleServiceWorkerMessage);
+      }
     };
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     // Trigger app_ready custom event when initialization completes (Firebase only)
