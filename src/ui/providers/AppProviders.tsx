@@ -32,6 +32,7 @@ import { optimizeDatabase } from '@/db/sqlite/maintenance';
 import i18n from '@/i18n';
 import { I18nextProvider } from 'react-i18next';
 import { NOTIFICATIONS } from '@/config/constants';
+import { DOMAIN } from '@/config/domain.config';
 import { createLogger } from '@/observability/logger';
 import { analytics } from '@/observability/analytics';
 
@@ -95,6 +96,9 @@ export function AppProviders({ children }: PropsWithChildren) {
         (typeof data.notificationId === 'string' && data.notificationId) ||
         (typeof data.messageId === 'string' && data.messageId) ||
         response.notification.request.identifier;
+      const reminderId = typeof data.reminderId === 'string' ? data.reminderId : null;
+      const reminderNamespace = `${DOMAIN.app.name}-reminders`;
+      const isReminder = data.namespace === reminderNamespace;
       const trigger = response.notification.request.trigger as { type?: string } | null;
       const isPush = trigger?.type === 'push';
       const route = typeof data.route === 'string' ? data.route : null;
@@ -103,6 +107,13 @@ export function AppProviders({ children }: PropsWithChildren) {
           route,
           notificationId,
           source: 'remote',
+          platform: Platform.OS,
+        });
+      } else if (isReminder && reminderId) {
+        analytics.trackEvent('reminders:clicked', {
+          reminderId,
+          route,
+          source: 'local',
           platform: Platform.OS,
         });
       }

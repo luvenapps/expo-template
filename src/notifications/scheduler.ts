@@ -7,6 +7,7 @@ import * as Notifications from 'expo-notifications';
 import dayjs from 'dayjs';
 import { Platform } from 'react-native';
 import { DOMAIN } from '@/config/domain.config';
+import { analytics } from '@/observability/analytics';
 
 export type ReminderPayload = {
   id: string;
@@ -72,7 +73,7 @@ export async function scheduleReminder(payload: ReminderPayload): Promise<string
 
   const badge = await incrementBadgeCount();
 
-  return scheduleLocalNotification({
+  const notificationId = await scheduleLocalNotification({
     title: payload.title,
     body: payload.body,
     data: {
@@ -83,4 +84,18 @@ export async function scheduleReminder(payload: ReminderPayload): Promise<string
     trigger,
     badge: badge ?? undefined,
   });
+
+  if (notificationId) {
+    const route = typeof payload.data?.route === 'string' ? payload.data.route : null;
+    analytics.trackEvent('reminders:sent', {
+      reminderId: payload.id,
+      notificationId,
+      route,
+      fireDate: payload.fireDate.toISOString(),
+      platform: Platform.OS,
+      source: 'local',
+    });
+  }
+
+  return notificationId;
 }

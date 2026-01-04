@@ -14,6 +14,7 @@ import {
   incrementBadgeCount,
 } from '@/notifications/notifications';
 import { DOMAIN } from '@/config/domain.config';
+import { analytics } from '@/observability/analytics';
 
 jest.mock('expo-notifications', () => ({
   setNotificationCategoryAsync: jest.fn(),
@@ -34,11 +35,18 @@ jest.mock('@/notifications/notifications', () => ({
   incrementBadgeCount: jest.fn(),
 }));
 
+jest.mock('@/observability/analytics', () => ({
+  analytics: {
+    trackEvent: jest.fn(),
+  },
+}));
+
 describe('scheduler', () => {
   const originalPlatform = Platform.OS;
   const incrementBadgeCountMock = incrementBadgeCount as jest.MockedFunction<
     typeof incrementBadgeCount
   >;
+  const trackEventMock = analytics.trackEvent as jest.MockedFunction<typeof analytics.trackEvent>;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -176,6 +184,7 @@ describe('scheduler', () => {
 
       expect(result).toBeNull();
       expect(ensureNotificationPermission).not.toHaveBeenCalled();
+      expect(trackEventMock).not.toHaveBeenCalled();
     });
 
     it('returns null when permission is not granted', async () => {
@@ -186,6 +195,7 @@ describe('scheduler', () => {
 
       expect(result).toBeNull();
       expect(scheduleLocalNotification).not.toHaveBeenCalled();
+      expect(trackEventMock).not.toHaveBeenCalled();
     });
 
     it('schedules notification on iOS when permission is granted', async () => {
@@ -211,6 +221,15 @@ describe('scheduler', () => {
         }),
         badge: 2,
       });
+      expect(trackEventMock).toHaveBeenCalledWith(
+        'reminders:sent',
+        expect.objectContaining({
+          reminderId: 'reminder-123',
+          notificationId: 'notification-id-123',
+          platform: 'ios',
+          source: 'local',
+        }),
+      );
     });
 
     it('schedules notification on Android with seconds trigger', async () => {
@@ -238,6 +257,15 @@ describe('scheduler', () => {
         }),
         badge: undefined,
       });
+      expect(trackEventMock).toHaveBeenCalledWith(
+        'reminders:sent',
+        expect.objectContaining({
+          reminderId: 'reminder-123',
+          notificationId: 'notification-id-456',
+          platform: 'android',
+          source: 'local',
+        }),
+      );
     });
 
     it('enforces minimum delay of 5 seconds', async () => {
