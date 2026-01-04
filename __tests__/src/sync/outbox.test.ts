@@ -253,7 +253,7 @@ describe('outbox helpers', () => {
     const result = await hasOutboxData();
     expect(result).toBe(false);
     expect(consoleErrorSpy).toHaveBeenCalledWith(
-      '[Outbox] Error checking for data:',
+      expect.stringContaining('[Outbox] Error checking for data:'),
       expect.any(Error),
     );
 

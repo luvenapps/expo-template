@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 type Logger = {
@@ -18,7 +20,12 @@ function shouldLog(level: LogLevel) {
 }
 
 export function createLogger(namespace: string): Logger {
-  const prefix = `[${namespace}]`;
+  // If you later forward logger output to analytics/crash reporting,
+  // avoid sending analyticsCore logs to prevent feedback loops.
+  const platformLabel =
+    Platform.OS === 'ios' ? 'iOS' : Platform.OS === 'android' ? 'Android' : Platform.OS;
+  const platformPrefix = Platform.OS !== 'web' ? `[${platformLabel}] ` : '';
+  const prefix = `${platformPrefix}[${namespace}]`;
 
   const log = (level: LogLevel, message: string, payload?: unknown) => {
     if (!shouldLog(level)) return;

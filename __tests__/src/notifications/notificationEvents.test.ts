@@ -99,7 +99,7 @@ describe('notificationEvents', () => {
       expect(throwingListener).toHaveBeenCalled();
       expect(normalListener).toHaveBeenCalled();
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        '[NotificationEvents] Error in entry-created listener:',
+        expect.stringContaining('[NotificationEvents] Error in entry-created listener:'),
         expect.any(Error),
       );
     });

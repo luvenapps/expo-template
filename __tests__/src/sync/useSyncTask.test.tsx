@@ -399,7 +399,9 @@ describe('useSyncTask', () => {
 
       expect(BackgroundTask.registerTaskAsync).not.toHaveBeenCalled();
       expect(warnSpy).toHaveBeenCalledWith(
-        '[Sync] Background tasks are disabled or restricted. Skipping registration.',
+        expect.stringContaining(
+          '[Sync] Background tasks are disabled or restricted. Skipping registration.',
+        ),
         expect.anything(),
       );
 
@@ -510,7 +512,7 @@ describe('useSyncTask', () => {
 
       expect(BackgroundTask.registerTaskAsync).toHaveBeenCalled();
       expect(consoleWarnSpy).toHaveBeenCalledWith(
-        '[Sync] Failed to register background task:',
+        expect.stringContaining('[Sync] Failed to register background task:'),
         expect.any(Error),
       );
 
@@ -579,7 +581,9 @@ describe('useSyncTask', () => {
         });
 
         expect(consoleWarnSpy).toHaveBeenCalledWith(
-          '[Sync] Sync is not supported on web platform. Database operations require native SQLite.',
+          expect.stringContaining(
+            '[Sync] Sync is not supported on web platform. Database operations require native SQLite.',
+          ),
           expect.anything(),
         );
         expect(mockEngine.runSync).not.toHaveBeenCalled();

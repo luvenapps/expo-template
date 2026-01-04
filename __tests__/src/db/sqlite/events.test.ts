@@ -72,7 +72,7 @@ describe('SQLite Events', () => {
       expect(errorListener).toHaveBeenCalledTimes(1);
       expect(normalListener).toHaveBeenCalledTimes(1);
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        '[SQLite] Database reset listener failed:',
+        expect.stringContaining('[SQLite] Database reset listener failed:'),
         expect.any(Error),
       );
 

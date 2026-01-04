@@ -1261,7 +1261,7 @@ describe('SettingsScreen', () => {
 
       await waitFor(() => {
         expect(consoleErrorSpy).toHaveBeenCalledWith(
-          '[Settings] Error checking database data:',
+          expect.stringContaining('[Settings] Error checking database data:'),
           expect.any(Error),
         );
       });
@@ -1433,7 +1433,7 @@ describe('SettingsScreen', () => {
       expect(mockedResetCursors).not.toHaveBeenCalled();
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        '[Settings] Clear local database failed:',
+        expect.stringContaining('[Settings] Clear local database failed:'),
         expect.any(Error),
       );
 
@@ -1524,7 +1524,7 @@ describe('SettingsScreen', () => {
       });
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        '[Settings] Optimize database failed:',
+        expect.stringContaining('[Settings] Optimize database failed:'),
         expect.any(Error),
       );
       consoleErrorSpy.mockRestore();

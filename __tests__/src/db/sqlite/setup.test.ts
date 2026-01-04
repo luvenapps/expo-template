@@ -126,7 +126,7 @@ describe('ensureSqliteSchema', () => {
 
     expect(db.getFirstAsync).toHaveBeenCalledTimes(2);
     expect(consoleWarnSpy).toHaveBeenCalledWith(
-      '[SQLite:setup] Stale handle detected, will retry...',
+      expect.stringContaining('[SQLite:setup] Stale handle detected, will retry...'),
       expect.anything(),
     );
   });
@@ -144,7 +144,7 @@ describe('ensureSqliteSchema', () => {
     await expect(ensureSqliteSchema(db as any)).rejects.toThrow('database is closed');
     expect(db.getFirstAsync).toHaveBeenCalledTimes(2); // Initial attempt + 1 retry
     expect(consoleErrorSpy).toHaveBeenCalledWith(
-      '[SQLite:setup] Schema initialization failed:',
+      expect.stringContaining('[SQLite:setup] Schema initialization failed:'),
       expect.any(Error),
     );
   });
@@ -162,7 +162,7 @@ describe('ensureSqliteSchema', () => {
     await expect(ensureSqliteSchema(db as any)).rejects.toThrow('Permission denied');
     expect(db.getFirstAsync).toHaveBeenCalledTimes(1); // No retry for non-stale errors
     expect(consoleErrorSpy).toHaveBeenCalledWith(
-      '[SQLite:setup] Schema initialization failed:',
+      expect.stringContaining('[SQLite:setup] Schema initialization failed:'),
       expect.any(Error),
     );
   });

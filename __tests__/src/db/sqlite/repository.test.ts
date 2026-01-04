@@ -238,7 +238,10 @@ describe('createRepository', () => {
       });
 
       await expect(errorRepo.insert({ id: '1' } as any)).rejects.toThrow('Database insert failed');
-      expect(consoleErrorSpy).toHaveBeenCalledWith('[Repository] Insert failed:', error);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[Repository] Insert failed:'),
+        error,
+      );
     });
 
     test('insert surfaces friendly unique constraint message', async () => {
@@ -259,7 +262,10 @@ describe('createRepository', () => {
       await expect(errorRepo.insert({ id: '1' } as any)).rejects.toThrow(
         'A record with these values already exists (items.id).',
       );
-      expect(consoleErrorSpy).toHaveBeenCalledWith('[Repository] Insert failed:', error);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[Repository] Insert failed:'),
+        error,
+      );
     });
 
     test('insert surfaces friendly not-null message', async () => {
@@ -280,7 +286,10 @@ describe('createRepository', () => {
       await expect(errorRepo.insert({ id: '1' } as any)).rejects.toThrow(
         'Required field "name" is missing.',
       );
-      expect(consoleErrorSpy).toHaveBeenCalledWith('[Repository] Insert failed:', error);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[Repository] Insert failed:'),
+        error,
+      );
     });
 
     test('insert surfaces friendly foreign key message', async () => {
@@ -301,7 +310,10 @@ describe('createRepository', () => {
       await expect(errorRepo.insert({ id: '1' } as any)).rejects.toThrow(
         'Related data is missing. Make sure the associated record exists.',
       );
-      expect(consoleErrorSpy).toHaveBeenCalledWith('[Repository] Insert failed:', error);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[Repository] Insert failed:'),
+        error,
+      );
     });
 
     test('insert surfaces friendly generic constraint message', async () => {
@@ -322,7 +334,10 @@ describe('createRepository', () => {
       await expect(errorRepo.insert({ id: '1' } as any)).rejects.toThrow(
         'Database constraint failed. Please verify your input values.',
       );
-      expect(consoleErrorSpy).toHaveBeenCalledWith('[Repository] Insert failed:', error);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[Repository] Insert failed:'),
+        error,
+      );
     });
 
     test('upsert handles errors', async () => {
@@ -341,7 +356,10 @@ describe('createRepository', () => {
       });
 
       await expect(errorRepo.upsert({ id: '1' } as any)).rejects.toThrow('Database upsert failed');
-      expect(consoleErrorSpy).toHaveBeenCalledWith('[Repository] Upsert failed:', error);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[Repository] Upsert failed:'),
+        error,
+      );
     });
 
     test('update handles errors', async () => {
@@ -362,7 +380,10 @@ describe('createRepository', () => {
       await expect(errorRepo.update('1', { value: 'test' } as any)).rejects.toThrow(
         'Database update failed',
       );
-      expect(consoleErrorSpy).toHaveBeenCalledWith('[Repository] Update failed:', error);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[Repository] Update failed:'),
+        error,
+      );
     });
 
     test('findById handles errors', async () => {
@@ -381,7 +402,10 @@ describe('createRepository', () => {
       });
 
       await expect(errorRepo.findById('1')).rejects.toThrow('Database findById failed');
-      expect(consoleErrorSpy).toHaveBeenCalledWith('[Repository] FindById failed:', error);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[Repository] FindById failed:'),
+        error,
+      );
     });
 
     test('all handles errors', async () => {
@@ -400,7 +424,10 @@ describe('createRepository', () => {
       });
 
       await expect(errorRepo.all()).rejects.toThrow('Database all failed');
-      expect(consoleErrorSpy).toHaveBeenCalledWith('[Repository] All failed:', error);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[Repository] All failed:'),
+        error,
+      );
     });
 
     test('remove handles errors with soft delete', async () => {
@@ -420,7 +447,10 @@ describe('createRepository', () => {
       });
 
       await expect(errorRepo.remove('1')).rejects.toThrow('Database remove failed');
-      expect(consoleErrorSpy).toHaveBeenCalledWith('[Repository] Remove failed:', error);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[Repository] Remove failed:'),
+        error,
+      );
     });
 
     test('remove handles errors with hard delete', async () => {
@@ -439,7 +469,10 @@ describe('createRepository', () => {
       });
 
       await expect(errorRepo.remove('1')).rejects.toThrow('Database delete failed');
-      expect(consoleErrorSpy).toHaveBeenCalledWith('[Repository] Remove failed:', error);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[Repository] Remove failed:'),
+        error,
+      );
     });
   });
 });

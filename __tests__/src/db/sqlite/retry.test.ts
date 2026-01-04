@@ -46,7 +46,9 @@ describe('withDatabaseRetry', () => {
     expect(operation).toHaveBeenCalledTimes(2);
     expect(mockedResetDatabase).toHaveBeenCalledTimes(1);
     expect(consoleWarnSpy).toHaveBeenCalledWith(
-      '[SQLite] Encountered stale handle. Resetting database and retrying…',
+      expect.stringContaining(
+        '[SQLite] Encountered stale handle. Resetting database and retrying…',
+      ),
       expect.anything(),
     );
 
@@ -97,7 +99,7 @@ describe('withDatabaseRetry', () => {
     expect(operation).toHaveBeenCalledTimes(2);
     expect(mockedResetDatabase).toHaveBeenCalledTimes(1);
     expect(consoleErrorSpy).toHaveBeenCalledWith(
-      '[SQLite] Operation failed again after database reset:',
+      expect.stringContaining('[SQLite] Operation failed again after database reset:'),
       expect.any(Error),
     );
 

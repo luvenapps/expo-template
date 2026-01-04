@@ -3,6 +3,7 @@ import { DOMAIN } from '@/config/domain.config';
 import { Platform } from 'react-native';
 import { v4 as uuidv4 } from 'uuid';
 import { getFirebaseAnalyticsBackend } from './firebaseBackend';
+import { createLogger } from './logger';
 
 export type AnalyticsEventPayload = Record<string, unknown>;
 
@@ -118,10 +119,7 @@ function loadDistinctId() {
   return generated;
 }
 
-function logToConsole(level: 'info' | 'warn' | 'error', message: string, payload?: unknown) {
-  if (!isDev) return;
-  console[level](`[Observability] ${message}`, payload ?? '');
-}
+const logger = createLogger('Observability');
 
 function ensureAnalyticsBackend() {
   if (analyticsBackend !== undefined) {
@@ -173,7 +171,7 @@ export function trackEvent(event: string, payload?: AnalyticsEventPayload) {
     timestamp: new Date().toISOString(),
     distinctId: loadDistinctId(),
   };
-  logToConsole('info', `event:${event}`, envelope);
+  logger.info(`event:${event}`, envelope);
   if (allowBackend) {
     void dispatchAnalytics(envelope, ensureAnalyticsBackend());
   }
@@ -198,7 +196,7 @@ export function trackError(error: Error | string, metadata?: AnalyticsEventPaylo
     timestamp: new Date().toISOString(),
     distinctId: loadDistinctId(),
   };
-  logToConsole('error', 'error', { ...envelope, metadata: { ...(metadata ?? {}), stack } });
+  logger.error('error', { ...envelope, metadata: { ...(metadata ?? {}), stack } });
   if (allowBackend) {
     void dispatchAnalytics(envelope, ensureAnalyticsBackend());
   }
@@ -220,7 +218,7 @@ export function trackPerformance(metric: PerformanceMetric) {
     timestamp: new Date().toISOString(),
     distinctId: loadDistinctId(),
   };
-  logToConsole('info', `perf:${metric.name}`, envelope);
+  logger.info(`perf:${metric.name}`, envelope);
   if (allowBackend) {
     void dispatchAnalytics(envelope, ensureAnalyticsBackend());
   }
