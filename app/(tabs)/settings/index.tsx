@@ -1,5 +1,6 @@
 /* istanbul ignore file */ // This file will change
 import { useSessionStore } from '@/auth/session';
+import { NOTIFICATIONS } from '@/config/constants';
 import { DOMAIN } from '@/config/domain.config';
 import { createDeviceLocal, createEntryLocal, createPrimaryEntityLocal } from '@/data';
 import { clearAllTables, getDb, hasData } from '@/db/sqlite';
@@ -9,8 +10,14 @@ import { optimizeDatabase } from '@/db/sqlite/maintenance';
 import { withDatabaseRetry } from '@/db/sqlite/retry';
 import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
 import { setLanguage, supportedLanguages } from '@/i18n';
-import { scheduleReminder } from '@/notifications/scheduler';
+import { cancelAllScheduledNotifications } from '@/notifications/notifications';
+import {
+  clearReminderSeriesConfigs,
+  scheduleReminder,
+  scheduleReminderSeries,
+} from '@/notifications/scheduler';
 import { useNotificationSettings } from '@/notifications/useNotificationSettings';
+import { createLogger } from '@/observability/logger';
 import { useSyncStore } from '@/state';
 import { pullUpdates, pushOutbox, useSync } from '@/sync';
 import { resetCursors } from '@/sync/cursors';
@@ -30,11 +37,21 @@ import { useThemeContext, type ThemeName } from '@/ui/theme/ThemeProvider';
 import { Calendar, Flame, Monitor, Moon, RefreshCw, Sun } from '@tamagui/lucide-icons';
 import { useRouter } from 'expo-router';
 import type { ComponentType } from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Linking, Platform } from 'react-native';
-import { Button, Paragraph, Progress, Switch, Text, View, XStack, YStack } from 'tamagui';
-import { createLogger } from '@/observability/logger';
+import {
+  Button,
+  Label,
+  Paragraph,
+  Progress,
+  RadioGroup,
+  Switch,
+  Text,
+  View,
+  XStack,
+  YStack,
+} from 'tamagui';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -66,6 +83,7 @@ export default function SettingsScreen() {
   const [isArchiving, setIsArchiving] = useState(false);
   const [isOptimizingDb, setIsOptimizingDb] = useState(false);
   const [archiveOffsetDays, setArchiveOffsetDays] = useState<0 | -1>(0);
+  const [testReminderCadence, setTestReminderCadence] = useState<'10s' | 'daily'>('10s');
   const [, setHasDbData] = useState(false);
   const {
     permissionStatus,
@@ -118,6 +136,7 @@ export default function SettingsScreen() {
   const { theme: themePreference, setTheme, palette } = useThemeContext();
   const accentHex = palette.accent;
   const hasSession = Boolean(session?.user?.id);
+  const reminderCadenceId = useId();
   const pushEnabled = notificationStatus === 'granted';
 
   const pushStatusText = useMemo(() => {
@@ -438,18 +457,61 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleScheduleTestReminder = async () => {
+  const handleScheduleRepeatTestReminder = async () => {
     if (!isNative) {
       setDevStatus('Test reminders require a native build.');
       return;
     }
     try {
-      const fireDate = new Date(Date.now() + 30 * 1000);
-      const id = `dev-reminder-${fireDate.getTime()}`;
-      const result = await scheduleReminder({
-        id,
+      const isDaily = testReminderCadence === 'daily';
+      // const intervalSeconds = isDaily ? 24 * 60 * 60 : 10;
+      const intervalSeconds = isDaily ? 60 * 60 : 10; //TODO: remove this test
+      const totalCount = isDaily ? undefined : 5;
+      const scheduledIds = await scheduleReminderSeries({
+        idPrefix: 'dev-reminder',
         title: 'Test reminder',
         body: 'This is a test reminder.',
+        data: { route: '/(tabs)/settings' },
+        startDate: new Date(Date.now() + intervalSeconds * 1000),
+        cadenceSeconds: intervalSeconds,
+        totalCount,
+      });
+
+      if (scheduledIds.length === 0) {
+        setDevStatus('Reminders not scheduled (permissions may be missing).');
+        return;
+      }
+
+      setDevStatus(
+        isDaily
+          ? `Scheduled ${scheduledIds.length} daily reminders (rolling ${NOTIFICATIONS.reminderSeriesDefaultCount}).`
+          : `Scheduled ${scheduledIds.length} reminders every 10 seconds.`,
+      );
+    } catch (error) {
+      const { friendly } = showFriendlyError(error, {
+        surface: 'settings.schedule-reminder',
+        suppressToast: true,
+      });
+      const message =
+        friendly.description ??
+        (friendly.descriptionKey ? t(friendly.descriptionKey) : friendly.originalMessage) ??
+        (friendly.titleKey ? t(friendly.titleKey) : t('errors.unknown.title'));
+      setDevStatus(message);
+    }
+  };
+
+  const handleScheduleOneTimeReminder = async () => {
+    if (!isNative) {
+      setDevStatus('Test reminders require a native build.');
+      return;
+    }
+    try {
+      const fireDate = new Date(Date.now() + 10 * 1000);
+      const id = `dev-reminder-once-${fireDate.getTime()}`;
+      const result = await scheduleReminder({
+        id,
+        title: 'One-time reminder',
+        body: 'This is a one-time test reminder.',
         data: { route: '/(tabs)/settings' },
         fireDate,
       });
@@ -459,10 +521,32 @@ export default function SettingsScreen() {
         return;
       }
 
-      setDevStatus('Scheduled a test reminder for 30 seconds from now.');
+      setDevStatus('Scheduled a one-time reminder for 10 seconds from now.');
     } catch (error) {
       const { friendly } = showFriendlyError(error, {
         surface: 'settings.schedule-reminder',
+        suppressToast: true,
+      });
+      const message =
+        friendly.description ??
+        (friendly.descriptionKey ? t(friendly.descriptionKey) : friendly.originalMessage) ??
+        (friendly.titleKey ? t(friendly.titleKey) : t('errors.unknown.title'));
+      setDevStatus(message);
+    }
+  };
+
+  const handleResetScheduledReminders = async () => {
+    if (!isNative) {
+      setDevStatus('Test reminders require a native build.');
+      return;
+    }
+    try {
+      await cancelAllScheduledNotifications();
+      await clearReminderSeriesConfigs();
+      setDevStatus('Cleared all scheduled reminders.');
+    } catch (error) {
+      const { friendly } = showFriendlyError(error, {
+        surface: 'settings.reset-reminders',
         suppressToast: true,
       });
       const message =
@@ -929,12 +1013,58 @@ export default function SettingsScreen() {
                   </XStack>
                   <XStack>
                     <SecondaryButton
-                      testID="dev-schedule-reminder-button"
+                      testID="dev-schedule-reminder-once-button"
                       disabled={!isNative}
-                      onPress={handleScheduleTestReminder}
+                      onPress={handleScheduleOneTimeReminder}
+                      fontSize="$3"
+                    >
+                      Schedule one-time reminder
+                    </SecondaryButton>
+                  </XStack>
+                  <XStack>
+                    <XStack width="50%" marginRight="$2">
+                      <SecondaryButton
+                        testID="dev-schedule-reminder-button"
+                        disabled={!isNative}
+                        onPress={handleScheduleRepeatTestReminder}
+                        fontSize="$3"
+                      >
+                        Schedule R.
+                      </SecondaryButton>
+                    </XStack>
+                    <XStack alignItems="center">
+                      <RadioGroup
+                        value={testReminderCadence}
+                        onValueChange={(value) => setTestReminderCadence(value as '10s' | 'daily')}
+                        aria-label="Test reminder cadence"
+                        gap="$2"
+                      >
+                        <XStack gap="$3" alignItems="center">
+                          <RadioGroup.Item value="10s" id={`${reminderCadenceId}-10s`} size="$6">
+                            <RadioGroup.Indicator />
+                          </RadioGroup.Item>
+                          <Label htmlFor={`${reminderCadenceId}-10s`}>10s</Label>
+
+                          <RadioGroup.Item
+                            value="daily"
+                            id={`${reminderCadenceId}-daily`}
+                            size="$6"
+                          >
+                            <RadioGroup.Indicator />
+                          </RadioGroup.Item>
+                          <Label htmlFor={`${reminderCadenceId}-daily`}>Daily</Label>
+                        </XStack>
+                      </RadioGroup>
+                    </XStack>
+                  </XStack>
+                  <XStack>
+                    <SecondaryButton
+                      testID="dev-reset-reminders-button"
+                      disabled={!isNative}
+                      onPress={handleResetScheduledReminders}
                       fontSize="$4"
                     >
-                      Schedule test reminder
+                      Reset scheduled reminders
                     </SecondaryButton>
                   </XStack>
                   <XStack>

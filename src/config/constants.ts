@@ -6,6 +6,7 @@ export const NOTIFICATIONS = {
     foregroundReminder: 5000,
     default: 4000,
   },
+  reminderSeriesDefaultCount: 3, // TODO: adjust to 30
 };
 
 // Sync + background task cadence

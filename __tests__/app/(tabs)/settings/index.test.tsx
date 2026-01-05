@@ -154,6 +154,13 @@ jest.mock('tamagui', () => {
   SliderComponent.TrackActive = ({ ...props }: any) => mockReact.createElement('View', props);
   SliderComponent.Thumb = ({ ...props }: any) => mockReact.createElement('View', props);
 
+  const RadioGroupComponent = ({ children, ...props }: any) =>
+    mockReact.createElement('View', props, children);
+
+  RadioGroupComponent.Item = ({ children, ...props }: any) =>
+    mockReact.createElement('View', props, children);
+  RadioGroupComponent.Indicator = ({ ...props }: any) => mockReact.createElement('View', props);
+
   return {
     View: ({ children, ...props }: any) => mockReact.createElement('View', props, children),
     YStack: ({ children, testID, ...props }: any) =>
@@ -172,6 +179,8 @@ jest.mock('tamagui', () => {
     Switch: SwitchComponent,
     Progress: ProgressComponent,
     Slider: SliderComponent,
+    RadioGroup: RadioGroupComponent,
+    Label: ({ children, ...props }: any) => mockReact.createElement('Text', props, children),
   };
 });
 

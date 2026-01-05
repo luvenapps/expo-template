@@ -26,6 +26,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { YStack } from 'tamagui';
 import { AnalyticsProvider } from '@/observability/AnalyticsProvider';
 import { ForegroundReminderAnalyticsHost } from '@/notifications/ForegroundReminderAnalyticsHost';
+import { refreshReminderSeriesWindows } from '@/notifications/scheduler';
 import { cleanupSoftDeletedRecords } from '@/db/sqlite/cleanup';
 import { archiveOldEntries } from '@/db/sqlite/archive';
 import { optimizeDatabase } from '@/db/sqlite/maintenance';
@@ -127,6 +128,29 @@ export function AppProviders({ children }: PropsWithChildren) {
       subscription.remove();
     };
   }, [router]);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      return undefined;
+    }
+
+    const refreshSeries = () => {
+      refreshReminderSeriesWindows().catch((error) => {
+        appLogger.error('Failed to refresh reminder series window', error);
+      });
+    };
+
+    refreshSeries();
+    const subscription = AppState.addEventListener?.('change', (state) => {
+      if (state === 'active') {
+        refreshSeries();
+      }
+    });
+
+    return () => {
+      subscription?.remove?.();
+    };
+  }, []);
 
   useEffect(() => {
     if (Platform.OS !== 'web') {

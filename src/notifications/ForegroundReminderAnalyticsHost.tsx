@@ -8,6 +8,7 @@ import * as Notifications from 'expo-notifications';
 
 import { useAnalytics } from '@/observability/AnalyticsProvider';
 import { DOMAIN } from '@/config/domain.config';
+import { refreshReminderSeriesWindows } from '@/notifications/scheduler';
 
 export function ForegroundReminderAnalyticsHost() {
   useForegroundReminderTracking();
@@ -37,6 +38,8 @@ function useForegroundReminderTracking() {
         itemId: data.itemId,
         platform: Platform.OS,
       });
+
+      refreshReminderSeriesWindows().catch(() => undefined);
     });
 
     return () => {

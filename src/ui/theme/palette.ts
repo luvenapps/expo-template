@@ -6,6 +6,7 @@ export type ThemeColorSet = {
   backgroundHover: string;
   backgroundPress: string;
   color: string;
+  colorPress: string;
   colorMuted: string;
   accent: string;
   accentHover: string;
@@ -29,6 +30,7 @@ export const themeColorSets: Record<ThemeVariant, ThemeColorSet> = {
     backgroundHover: '#F8FAFC',
     backgroundPress: '#E2E8F0',
     color: '#0F172A',
+    colorPress: '#475569',
     colorMuted: '#475569',
     accent: '#2563EB',
     accentHover: '#1D4ED8',
@@ -50,6 +52,7 @@ export const themeColorSets: Record<ThemeVariant, ThemeColorSet> = {
     backgroundHover: '#1C2534',
     backgroundPress: '#1F2937',
     color: '#E2E8F0',
+    colorPress: '#94A3B8',
     colorMuted: '#94A3B8',
     accent: '#60A5FA',
     accentHover: '#3B82F6',
