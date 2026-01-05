@@ -92,24 +92,11 @@ export function AppProviders({ children }: PropsWithChildren) {
     const handleNotificationResponse = (response: Notifications.NotificationResponse | null) => {
       if (!response) return;
       const data = response.notification.request.content.data ?? {};
-      const notificationId =
-        (typeof data.notificationId === 'string' && data.notificationId) ||
-        (typeof data.messageId === 'string' && data.messageId) ||
-        response.notification.request.identifier;
       const reminderId = typeof data.reminderId === 'string' ? data.reminderId : null;
       const reminderNamespace = `${DOMAIN.app.name}-reminders`;
       const isReminder = data.namespace === reminderNamespace;
-      const trigger = response.notification.request.trigger as { type?: string } | null;
-      const isPush = trigger?.type === 'push';
       const route = typeof data.route === 'string' ? data.route : null;
-      if (isPush) {
-        analytics.trackEvent('notifications:push-clicked', {
-          route,
-          notificationId,
-          source: 'remote',
-          platform: Platform.OS,
-        });
-      } else if (isReminder && reminderId) {
+      if (isReminder && reminderId) {
         analytics.trackEvent('reminders:clicked', {
           reminderId,
           route,
@@ -169,12 +156,6 @@ export function AppProviders({ children }: PropsWithChildren) {
       if (event?.data?.type !== 'NOTIFICATION_CLICKED' || !payload) {
         return;
       }
-      analytics.trackEvent('notifications:push-clicked', {
-        route: payload.route ?? null,
-        notificationId: payload.notificationId ?? null,
-        source: payload.source ?? 'remote',
-        platform: 'web',
-      });
       if (typeof payload.route === 'string') {
         window.location.assign(payload.route);
       }
