@@ -729,6 +729,47 @@ const data = await analytics.traceAsync('fetch_user_data', async () => {
 });
 ```
 
+## Current Analytics Event Inventory
+
+This list reflects the **current** `trackEvent` and `trackError` call sites in code.
+
+### Events (trackEvent)
+
+- `auth:sign_in` (payload: `method`, `status`, `code?`, `platform`)
+- `auth:sign_up` (payload: `method`, `status`, `code?`, `platform`)
+- `auth:forgot_password` (payload: `method`, `status`, `code?`, `platform`)
+- `auth:sign_out` (payload: `method`, `status`, `code?`, `platform`)
+- `iam:displayed`
+- `iam:dismissed`
+- `iam:clicked`
+- `language:changed` (payload: `from`, `to`, `platform`)
+- `theme:changed` (payload: `from`, `to`, `platform`)
+- `notifications:permission-requested` (payload: `platform`, `statusBefore`, `granted`)
+- `notifications:prompt-triggered` (payload: `platform`, `context`)
+- `notifications:push-disabled` (payload: `status`)
+- `notifications:foreground-fired` (payload: `platform`, `reminderId`, `itemId?`)
+- `notification:foreground:displayed` (payload: `platform`, `timestamp`, `title?`, `tag?`, `route?`) **web only**
+- `notification:foreground:clicked` (payload: `platform`, `timestamp`, `title?`, `tag?`, `route?`) **web only**
+- `notification:foreground:dismissed` (payload: `platform`, `timestamp`, `title?`, `tag?`, `route?`) **web only**
+- `reminders:sent` (payload: `platform`, `reminderId`, `notificationId`, `fireDate`, `route`, `source`)
+- `reminders:clicked` (payload: `platform`, `reminderId`, `notificationId?`, `route?`, `source`)
+- `reminders:created` (payload: `platform`, `reminderId`, `primaryId`, `isEnabled`, `source`)
+- `reminders:updated` (payload: `platform`, `reminderId`, `primaryId`, `isEnabled`, `source`)
+- `reminders:disabled` (payload: `platform`, `reminderId`, `primaryId`, `isEnabled`, `source`)
+- `reminders:deleted` (payload: `platform`, `reminderId`, `primaryId`, `source`)
+
+### Errors (trackError)
+
+Errors are tracked with a `source` string for analytics filtering:
+
+- `notifications:permissions`
+- `notifications:permission-sync`
+- `notifications:auto-soft`
+
+### Performance (trackPerformance)
+
+No explicit call sites yet outside `analyticsCore` helpers.
+
 ## Integration Guidelines
 
 ### When to Use Logger vs AnalyticsProvider
