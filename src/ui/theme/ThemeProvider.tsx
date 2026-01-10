@@ -2,6 +2,7 @@ import { DOMAIN } from '@/config/domain.config';
 import { themePalettes, ThemePalette } from '@/ui/theme/palette';
 import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from 'react';
 import { Appearance, Platform } from 'react-native';
+import { analytics } from '@/observability/analytics';
 
 export type ThemePreference = 'light' | 'dark' | 'system';
 export type ThemeName = ThemePreference;
@@ -119,8 +120,14 @@ export function ThemeProvider({ children }: PropsWithChildren) {
   const value = useMemo<ThemeContextValue>(() => {
     const resolvedTheme = preference === 'system' ? systemTheme : preference;
     const setPreference = (next: ThemePreference) => {
+      if (next === preference) return;
       setPreferenceState(next);
       persistPreference(next);
+      analytics.trackEvent('theme:changed', {
+        theme: next,
+        previous: preference,
+        platform: Platform.OS,
+      });
     };
 
     return {

@@ -7,6 +7,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 import { v4 as uuidv4 } from 'uuid';
 import { createLogger } from '@/observability/logger';
+import { analytics } from '@/observability/analytics';
 import { supabase } from './client';
 
 export type AuthResult = {
@@ -18,6 +19,22 @@ export type AuthResult = {
 
 const logger = createLogger('Auth');
 
+type AuthMethod = 'email' | 'google' | 'apple' | 'oauth' | 'session';
+
+function trackAuthEvent(
+  event: 'auth:sign_in' | 'auth:sign_up' | 'auth:forgot_password' | 'auth:sign_out',
+  method: AuthMethod,
+  status: 'success' | 'error',
+  code?: string,
+) {
+  analytics.trackEvent(event, {
+    method,
+    status,
+    code,
+    platform: Platform.OS,
+  });
+}
+
 export async function signInWithEmail(email: string, password: string): Promise<AuthResult> {
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
@@ -28,6 +45,7 @@ export async function signInWithEmail(email: string, password: string): Promise<
       friendly.title ??
       friendly.descriptionKey ??
       friendly.titleKey;
+    trackAuthEvent('auth:sign_in', 'email', 'error', friendly.code);
     return {
       success: false,
       error: errorMessage,
@@ -35,6 +53,7 @@ export async function signInWithEmail(email: string, password: string): Promise<
       friendlyError: friendly,
     };
   }
+  trackAuthEvent('auth:sign_in', 'email', 'success');
   return { success: true };
 }
 
@@ -52,13 +71,16 @@ function parseOAuthRedirect(url: string) {
   return { code, accessToken, refreshToken };
 }
 
-async function resolveOAuthSession(url: string): Promise<AuthResult> {
+async function resolveOAuthSession(url: string, provider: Provider): Promise<AuthResult> {
   const { code, accessToken, refreshToken } = parseOAuthRedirect(url);
+  const method: AuthMethod =
+    provider === 'google' ? 'google' : provider === 'apple' ? 'apple' : 'oauth';
 
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(url);
     if (error) {
       const friendly = resolveFriendlyError(error);
+      trackAuthEvent('auth:sign_in', method, 'error', friendly.code);
       return {
         success: false,
         error:
@@ -71,6 +93,7 @@ async function resolveOAuthSession(url: string): Promise<AuthResult> {
         friendlyError: friendly,
       };
     }
+    trackAuthEvent('auth:sign_in', method, 'success');
     return { success: true };
   }
 
@@ -82,6 +105,7 @@ async function resolveOAuthSession(url: string): Promise<AuthResult> {
 
     if (error) {
       const friendly = resolveFriendlyError(error);
+      trackAuthEvent('auth:sign_in', method, 'error', friendly.code);
       return {
         success: false,
         error:
@@ -95,10 +119,12 @@ async function resolveOAuthSession(url: string): Promise<AuthResult> {
       };
     }
 
+    trackAuthEvent('auth:sign_in', method, 'success');
     return { success: true };
   }
 
   const friendly = resolveFriendlyError(new Error('OAuth redirect missing tokens'));
+  trackAuthEvent('auth:sign_in', method, 'error', friendly.code);
   return {
     success: false,
     error:
@@ -140,6 +166,7 @@ async function signInWithAppleNative(): Promise<AuthResult> {
     if (!credential.identityToken) {
       logger.error('Apple sign-in failed: missing identity token');
       const friendly = resolveFriendlyError(new Error('Missing Apple identity token'));
+      trackAuthEvent('auth:sign_in', 'apple', 'error', friendly.code);
       return {
         success: false,
         error:
@@ -168,6 +195,7 @@ async function signInWithAppleNative(): Promise<AuthResult> {
       };
       logger.error('Apple sign-in failed during Supabase exchange', errorDetails);
       const friendly = resolveFriendlyError(error);
+      trackAuthEvent('auth:sign_in', 'apple', 'error', friendly.code);
       return {
         success: false,
         error:
@@ -181,6 +209,7 @@ async function signInWithAppleNative(): Promise<AuthResult> {
       };
     }
 
+    trackAuthEvent('auth:sign_in', 'apple', 'success');
     return { success: true };
   } catch (error) {
     const details =
@@ -199,6 +228,7 @@ async function signInWithAppleNative(): Promise<AuthResult> {
 
     logger.error('Apple sign-in failed', details);
     const friendly = resolveFriendlyError(error);
+    trackAuthEvent('auth:sign_in', 'apple', 'error', friendly.code);
     return {
       success: false,
       error:
@@ -214,6 +244,8 @@ async function signInWithAppleNative(): Promise<AuthResult> {
 }
 
 export async function signInWithOAuth(provider: Provider): Promise<AuthResult> {
+  const method: AuthMethod =
+    provider === 'google' ? 'google' : provider === 'apple' ? 'apple' : 'oauth';
   if (provider === 'apple' && Platform.OS === 'ios') {
     const isAvailable = await AppleAuthentication.isAvailableAsync().catch((error) => {
       logger.error('Apple sign-in availability check failed', {
@@ -242,6 +274,7 @@ export async function signInWithOAuth(provider: Provider): Promise<AuthResult> {
 
   if (error) {
     const friendly = resolveFriendlyError(error);
+    trackAuthEvent('auth:sign_in', method, 'error', friendly.code);
     return {
       success: false,
       error:
@@ -285,10 +318,11 @@ export async function signInWithOAuth(provider: Provider): Promise<AuthResult> {
     logger.info('OAuth browser result', result);
     if (result && typeof result === 'object' && 'type' in result) {
       if (result.type === 'success' && 'url' in result && typeof result.url === 'string') {
-        return await resolveOAuthSession(result.url);
+        return await resolveOAuthSession(result.url, provider);
       }
 
       const friendly = resolveFriendlyError(new Error('OAuth cancelled or missing redirect'));
+      trackAuthEvent('auth:sign_in', method, 'error', friendly.code);
       return {
         success: false,
         error:
@@ -306,6 +340,7 @@ export async function signInWithOAuth(provider: Provider): Promise<AuthResult> {
   } catch (browserError) {
     const message =
       browserError instanceof Error ? browserError.message : 'Unable to open sign-in window';
+    trackAuthEvent('auth:sign_in', method, 'error', 'auth.oauth.browser');
     return {
       success: false,
       error: message,
@@ -324,6 +359,7 @@ export async function signOut(): Promise<AuthResult> {
   const { error } = await supabase.auth.signOut({ scope: 'local' });
   const status = error && typeof error === 'object' && 'status' in error ? error.status : undefined;
   if (status === 401 || status === 403 || status === 404) {
+    trackAuthEvent('auth:sign_out', 'session', 'success');
     return { success: true };
   }
   if (error) {
@@ -334,6 +370,7 @@ export async function signOut(): Promise<AuthResult> {
       friendly.title ??
       friendly.descriptionKey ??
       friendly.titleKey;
+    trackAuthEvent('auth:sign_out', 'session', 'error', friendly.code);
     return {
       success: false,
       error: errorMessage,
@@ -341,6 +378,7 @@ export async function signOut(): Promise<AuthResult> {
       friendlyError: friendly,
     };
   }
+  trackAuthEvent('auth:sign_out', 'session', 'success');
   return { success: true };
 }
 
@@ -354,6 +392,7 @@ export async function signUpWithEmail(email: string, password: string): Promise<
       friendly.title ??
       friendly.descriptionKey ??
       friendly.titleKey;
+    trackAuthEvent('auth:sign_up', 'email', 'error', friendly.code);
     return {
       success: false,
       error: errorMessage,
@@ -361,6 +400,7 @@ export async function signUpWithEmail(email: string, password: string): Promise<
       friendlyError: friendly,
     };
   }
+  trackAuthEvent('auth:sign_up', 'email', 'success');
   return { success: true };
 }
 
@@ -378,6 +418,7 @@ export async function sendPasswordReset(email: string): Promise<AuthResult> {
       friendly.title ??
       friendly.descriptionKey ??
       friendly.titleKey;
+    trackAuthEvent('auth:forgot_password', 'email', 'error', friendly.code);
     return {
       success: false,
       error: errorMessage,
@@ -385,5 +426,6 @@ export async function sendPasswordReset(email: string): Promise<AuthResult> {
       friendlyError: friendly,
     };
   }
+  trackAuthEvent('auth:forgot_password', 'email', 'success');
   return { success: true };
 }

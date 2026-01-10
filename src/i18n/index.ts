@@ -3,6 +3,7 @@ import { initReactI18next } from 'react-i18next';
 import * as Localization from 'expo-localization';
 import { Platform } from 'react-native';
 import { DOMAIN } from '@/config/domain.config';
+import { analytics } from '@/observability/analytics';
 
 import en from './locales/en.json';
 import es from './locales/es.json';
@@ -87,9 +88,17 @@ export function setLanguage(lng: string) {
   if (!i18n.isInitialized) {
     initializeI18n();
   }
+  const previous = i18n.language?.split('-')[0];
   persistLanguage(lng);
   // eslint-disable-next-line import/no-named-as-default-member
   void i18n.changeLanguage(lng);
+  if (previous && previous !== lng) {
+    analytics.trackEvent('language:changed', {
+      from: previous,
+      to: lng,
+      platform: Platform.OS,
+    });
+  }
 }
 
 export const supportedLanguages = [

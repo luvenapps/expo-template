@@ -1,14 +1,23 @@
 describe('i18n', () => {
+  // Suppress console logs from logger and i18n warnings
+  const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+  const infoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
   const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
   afterEach(() => {
     jest.resetModules();
     jest.dontMock('react-native-mmkv');
     jest.dontMock('expo-localization');
+    logSpy.mockClear();
+    infoSpy.mockClear();
     warnSpy.mockClear();
   });
 
-  afterAll(() => warnSpy.mockRestore());
+  afterAll(() => {
+    logSpy.mockRestore();
+    infoSpy.mockRestore();
+    warnSpy.mockRestore();
+  });
 
   it('initializes with fallback language and returns strings', () => {
     const mod = require('@/i18n') as typeof import('@/i18n');

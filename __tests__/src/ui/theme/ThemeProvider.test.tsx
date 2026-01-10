@@ -30,8 +30,17 @@ describe('ThemeProvider', () => {
   const originalPlatform = Platform.OS;
   const originalLocalStorage = globalThis.localStorage;
 
+  // Suppress console logs from logger
+  const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+  const infoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
+  const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
   beforeEach(() => {
     jest.clearAllMocks();
+    // Re-apply console suppression after clearAllMocks
+    logSpy.mockImplementation(() => {});
+    infoSpy.mockImplementation(() => {});
+    warnSpy.mockImplementation(() => {});
     mockColorScheme = 'dark';
     mockListeners = [];
     storage = {};
@@ -76,12 +85,17 @@ describe('ThemeProvider', () => {
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
     Object.defineProperty(Platform, 'OS', {
       configurable: true,
       value: originalPlatform,
     });
     globalThis.localStorage = originalLocalStorage;
+  });
+
+  afterAll(() => {
+    logSpy.mockRestore();
+    infoSpy.mockRestore();
+    warnSpy.mockRestore();
   });
 
   const wrapper = ({ children }: PropsWithChildren) => <ThemeProvider>{children}</ThemeProvider>;

@@ -99,8 +99,7 @@ export default function SettingsScreen() {
   const notificationsBlocked = isNative
     ? permissionStatus === 'blocked' ||
       permissionStatus === 'denied' ||
-      permissionStatus === 'unavailable' ||
-      notificationStatus === 'unavailable'
+      permissionStatus === 'unavailable'
     : permissionStatus === 'blocked';
   const hasOutboxData = queueSize > 0; // Use sync store's queue size instead of manual check
   const isSeedingRef = useRef(false); // Synchronous lock to prevent rapid-clicking (state updates are async)
@@ -112,6 +111,12 @@ export default function SettingsScreen() {
   const settingsLogger = useMemo(() => createLogger('Settings'), []);
   const devPushLogger = useMemo(() => createLogger('Dev:Push'), []);
   const devNotificationsLogger = useMemo(() => createLogger('Dev:MMKV:notifications'), []);
+  const firebaseEnabled = useMemo(
+    () =>
+      process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === 'true' ||
+      process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === '1',
+    [],
+  );
   const syncDisabledMessage = !isNative
     ? t('settings.syncUnavailableWeb')
     : status !== 'authenticated'
@@ -137,16 +142,23 @@ export default function SettingsScreen() {
   const accentHex = palette.accent;
   const hasSession = Boolean(session?.user?.id);
   const reminderCadenceId = useId();
-  const pushEnabled = notificationStatus === 'granted';
+  const pushEnabled = firebaseEnabled
+    ? notificationStatus === 'granted'
+    : permissionStatus === 'granted';
 
   const pushStatusText = useMemo(() => {
     if (pushError) return pushError;
+    if (!firebaseEnabled) {
+      return permissionStatus === 'granted'
+        ? t('settings.pushStatusEnabledSimple')
+        : t('settings.pushStatusDisabledSimple');
+    }
     if (notificationStatus === 'granted') return t('settings.pushStatusEnabledSimple');
     if (notificationStatus === 'denied' || notificationStatus === 'unavailable')
       return t('settings.pushStatusDisabledSimple');
     if (notificationStatus === 'soft-declined') return t('settings.pushStatusDisabledSimple');
     return t('settings.pushStatusDisabledSimple');
-  }, [notificationStatus, pushError, t]);
+  }, [firebaseEnabled, notificationStatus, permissionStatus, pushError, t]);
 
   // cooldown info is handled internally; no inline display to avoid noise
   const streakSample = useMemo(

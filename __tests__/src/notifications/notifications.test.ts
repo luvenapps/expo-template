@@ -51,8 +51,17 @@ const setBadgeCountAsync = Notifications.setBadgeCountAsync as jest.MockedFuncti
 describe('notifications helpers', () => {
   const originalPlatform = Platform.OS;
 
+  // Suppress console logs from logger
+  const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+  const infoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
+  const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
   beforeEach(() => {
     jest.clearAllMocks();
+    // Re-apply console suppression after clearAllMocks
+    logSpy.mockImplementation(() => {});
+    infoSpy.mockImplementation(() => {});
+    warnSpy.mockImplementation(() => {});
     __resetBadgeCounterForTests();
     Object.defineProperty(Platform, 'OS', {
       value: 'ios',
@@ -65,6 +74,12 @@ describe('notifications helpers', () => {
       value: originalPlatform,
       configurable: true,
     });
+  });
+
+  afterAll(() => {
+    logSpy.mockRestore();
+    infoSpy.mockRestore();
+    warnSpy.mockRestore();
   });
 
   const grantedPermissions = (overrides: Partial<PermissionResult> = {}): PermissionResult => ({

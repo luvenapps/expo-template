@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import { analytics } from '@/observability/analytics';
 
 let pendingBadgeCounter = 0;
 
@@ -31,6 +32,11 @@ export async function ensureNotificationPermission() {
   }
 
   const requested = await Notifications.requestPermissionsAsync();
+  analytics.trackEvent('notifications:permission-requested', {
+    platform: Platform.OS,
+    statusBefore: current.status,
+    granted: requested.granted || requested.status === Notifications.PermissionStatus.GRANTED,
+  });
   return requested.granted || requested.status === Notifications.PermissionStatus.GRANTED;
 }
 
