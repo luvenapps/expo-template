@@ -10,6 +10,7 @@ import type { ReminderRecord } from '@/supabase/types';
 import { enqueueWithDatabase } from '@/sync/outbox';
 import type { LocalTableName } from '@/supabase/domain';
 import { toSnakeCase } from '@/utils/string';
+import { analytics } from '@/observability/analytics';
 import {
   assertDaysOfWeek,
   assertIsoDateTime,
@@ -82,6 +83,14 @@ export async function createReminderLocal(input: CreateReminderInput, options?: 
       version: stored.version,
     });
 
+    analytics.trackEvent('reminders:created', {
+      reminderId: stored.id,
+      primaryId: stored[FOREIGN_KEY],
+      isEnabled: stored.isEnabled,
+      platform: Platform.OS,
+      source: 'local',
+    });
+
     return stored;
   };
 
@@ -134,6 +143,17 @@ export async function updateReminderLocal(input: UpdateReminderInput) {
       version: stored.version,
     });
 
+    const wasEnabled = existing.isEnabled ?? true;
+    const isEnabled = stored.isEnabled ?? true;
+    const eventName = wasEnabled && !isEnabled ? 'reminders:disabled' : 'reminders:updated';
+    analytics.trackEvent(eventName, {
+      reminderId: stored.id,
+      primaryId: stored[FOREIGN_KEY],
+      isEnabled,
+      platform: Platform.OS,
+      source: 'local',
+    });
+
     return stored;
   });
 }
@@ -163,6 +183,13 @@ export async function deleteReminderLocal(id: string) {
       operation: 'delete',
       payload: buildRemotePayload(stored),
       version: stored.version,
+    });
+
+    analytics.trackEvent('reminders:deleted', {
+      reminderId: stored.id,
+      primaryId: stored[FOREIGN_KEY],
+      platform: Platform.OS,
+      source: 'local',
     });
 
     return stored;

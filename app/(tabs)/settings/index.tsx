@@ -2,7 +2,14 @@
 import { useSessionStore } from '@/auth/session';
 import { NOTIFICATIONS } from '@/config/constants';
 import { DOMAIN } from '@/config/domain.config';
-import { createDeviceLocal, createEntryLocal, createPrimaryEntityLocal } from '@/data';
+import {
+  createDeviceLocal,
+  createEntryLocal,
+  createPrimaryEntityLocal,
+  createReminderLocal,
+  deleteReminderLocal,
+  updateReminderLocal,
+} from '@/data';
 import { clearAllTables, getDb, hasData } from '@/db/sqlite';
 import { archiveOldEntries } from '@/db/sqlite/archive';
 import { onDatabaseReset } from '@/db/sqlite/events';
@@ -84,6 +91,11 @@ export default function SettingsScreen() {
   const [isOptimizingDb, setIsOptimizingDb] = useState(false);
   const [archiveOffsetDays, setArchiveOffsetDays] = useState<0 | -1>(0);
   const [testReminderCadence, setTestReminderCadence] = useState<'10s' | 'daily'>('10s');
+  const [devReminderAction, setDevReminderAction] = useState<
+    'create' | 'update' | 'disable' | 'delete'
+  >('create');
+  const [devReminderId, setDevReminderId] = useState<string | null>(null);
+  const [devPrimaryId, setDevPrimaryId] = useState<string | null>(null);
   const [, setHasDbData] = useState(false);
   const {
     permissionStatus,
@@ -142,6 +154,7 @@ export default function SettingsScreen() {
   const accentHex = palette.accent;
   const hasSession = Boolean(session?.user?.id);
   const reminderCadenceId = useId();
+  const reminderActionId = useId();
   const pushEnabled = firebaseEnabled
     ? notificationStatus === 'granted'
     : permissionStatus === 'granted';
@@ -476,8 +489,7 @@ export default function SettingsScreen() {
     }
     try {
       const isDaily = testReminderCadence === 'daily';
-      // const intervalSeconds = isDaily ? 24 * 60 * 60 : 10;
-      const intervalSeconds = isDaily ? 60 * 60 : 10; //TODO: remove this test
+      const intervalSeconds = isDaily ? 24 * 60 * 60 : 10;
       const totalCount = isDaily ? undefined : 5;
       const scheduledIds = await scheduleReminderSeries({
         idPrefix: 'dev-reminder',
@@ -544,6 +556,71 @@ export default function SettingsScreen() {
         (friendly.descriptionKey ? t(friendly.descriptionKey) : friendly.originalMessage) ??
         (friendly.titleKey ? t(friendly.titleKey) : t('errors.unknown.title'));
       setDevStatus(message);
+    }
+  };
+
+  const handleRunReminderAction = async () => {
+    if (!isNative) {
+      setDevStatus('Test reminders require a native build.');
+      return;
+    }
+    if (!hasSession || !session?.user?.id) {
+      setDevStatus('Sign in to create reminders.');
+      return;
+    }
+    try {
+      if (devReminderAction === 'create') {
+        let primaryId: string = devPrimaryId || '';
+        if (!primaryId) {
+          const primary = await createPrimaryEntityLocal({
+            userId: session.user.id,
+            name: 'Dev habit',
+            cadence: 'daily',
+            color: '#4C7CF3',
+          });
+          primaryId = primary.id;
+          setDevPrimaryId(primary.id);
+        }
+
+        const reminder = await createReminderLocal({
+          userId: session.user.id,
+          habitId: primaryId,
+          timeLocal: '09:00',
+          daysOfWeek: '0,1,2,3,4,5,6',
+          timezone: 'UTC',
+          isEnabled: true,
+        });
+        setDevReminderId(reminder.id);
+        setDevStatus('Created a reminder record.');
+        return;
+      }
+
+      if (!devReminderId) {
+        setDevStatus('Create a reminder first.');
+        return;
+      }
+
+      if (devReminderAction === 'update') {
+        await updateReminderLocal({
+          id: devReminderId,
+          timeLocal: '10:30',
+          daysOfWeek: '1,2,3,4,5',
+        });
+        setDevStatus('Updated the reminder record.');
+        return;
+      }
+
+      if (devReminderAction === 'disable') {
+        await updateReminderLocal({ id: devReminderId, isEnabled: false });
+        setDevStatus('Disabled the reminder record.');
+        return;
+      }
+
+      await deleteReminderLocal(devReminderId);
+      setDevReminderId(null);
+      setDevStatus('Deleted the reminder record.');
+    } catch (error) {
+      showFriendlyError(error, { surface: 'settings.reminder-action' });
     }
   };
 
@@ -1078,6 +1155,66 @@ export default function SettingsScreen() {
                     >
                       Reset scheduled reminders
                     </SecondaryButton>
+                  </XStack>
+                  <XStack>
+                    <XStack width="25%" marginRight="$2">
+                      <SecondaryButton
+                        testID="dev-run-reminder-action-button"
+                        disabled={!isNative || !hasSession}
+                        onPress={handleRunReminderAction}
+                        fontSize="$3"
+                      >
+                        R
+                      </SecondaryButton>
+                    </XStack>
+                    <XStack alignItems="center">
+                      <RadioGroup
+                        value={devReminderAction}
+                        onValueChange={(value) =>
+                          setDevReminderAction(value as 'create' | 'update' | 'disable' | 'delete')
+                        }
+                        aria-label="Reminder action"
+                        gap="$2"
+                      >
+                        <XStack gap="$3" alignItems="center">
+                          <RadioGroup.Item
+                            value="create"
+                            id={`${reminderActionId}-create`}
+                            size="$6"
+                          >
+                            <RadioGroup.Indicator />
+                          </RadioGroup.Item>
+                          <Label htmlFor={`${reminderActionId}-create`}>C</Label>
+
+                          <RadioGroup.Item
+                            value="disable"
+                            id={`${reminderActionId}-disable`}
+                            size="$6"
+                          >
+                            <RadioGroup.Indicator />
+                          </RadioGroup.Item>
+                          <Label htmlFor={`${reminderActionId}-disable`}>D</Label>
+
+                          <RadioGroup.Item
+                            value="update"
+                            id={`${reminderActionId}-update`}
+                            size="$6"
+                          >
+                            <RadioGroup.Indicator />
+                          </RadioGroup.Item>
+                          <Label htmlFor={`${reminderActionId}-update`}>U</Label>
+
+                          <RadioGroup.Item
+                            value="delete"
+                            id={`${reminderActionId}-delete`}
+                            size="$6"
+                          >
+                            <RadioGroup.Indicator />
+                          </RadioGroup.Item>
+                          <Label htmlFor={`${reminderActionId}-delete`}>DL</Label>
+                        </XStack>
+                      </RadioGroup>
+                    </XStack>
                   </XStack>
                   <XStack>
                     <SecondaryButton

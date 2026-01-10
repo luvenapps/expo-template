@@ -26,6 +26,12 @@ jest.mock('@/notifications/notificationEvents', () => ({
   emitNotificationEvent: jest.fn(),
 }));
 
+jest.mock('@/observability/analyticsCore', () => ({
+  trackEvent: jest.fn(),
+  identifyUser: jest.fn(),
+  resetAnalytics: jest.fn(),
+}));
+
 import { DOMAIN } from '@/config/domain.config';
 import { createDeviceLocal, deleteDeviceLocal, updateDeviceLocal } from '@/data/localDevices';
 import { createEntryLocal, deleteEntryLocal, updateEntryLocal } from '@/data/localEntries';
@@ -63,6 +69,7 @@ let mockDb: Record<string, unknown>;
 
 describe('local mutations enqueue outbox records', () => {
   beforeEach(() => {
+    jest.clearAllMocks();
     enqueueMock.mockReset();
     mockDb = { __db: 'mock' };
     getDbMock.mockResolvedValue(mockDb);
@@ -331,6 +338,7 @@ describe('local mutations enqueue outbox records', () => {
 
 describe('error handling and edge cases', () => {
   beforeEach(() => {
+    jest.clearAllMocks();
     enqueueMock.mockReset();
     mockDb = { __db: 'mock' };
     getDbMock.mockResolvedValue(mockDb);
