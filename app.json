@@ -63,7 +63,8 @@
       "expo-web-browser",
       "./plugins/withFirebaseCredentials.js",
       "./plugins/withFirebaseConfig.js",
-      "./plugins/withFirebaseModularHeaders.js"
+      "./plugins/withFirebaseModularHeaders.js",
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true

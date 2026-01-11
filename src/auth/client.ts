@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import Constants from 'expo-constants';
 import { DOMAIN } from '@/config/domain.config';
+import { supabaseAuthStorage } from './storage';
 
 const SUPABASE_URL =
   Constants.expoConfig?.extra?.supabaseUrl || process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -21,5 +22,6 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     persistSession: true,
     storageKey: DOMAIN.app.storageKey,
+    storage: supabaseAuthStorage,
   },
 });
