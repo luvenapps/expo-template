@@ -1,3 +1,5 @@
+import { themes } from './themes';
+
 export type ThemeVariant = 'light' | 'dark';
 
 export type ThemeColorSet = {
@@ -23,52 +25,13 @@ export type ThemeColorSet = {
   dangerBackground: string;
 };
 
-export const themeColorSets: Record<ThemeVariant, ThemeColorSet> = {
-  light: {
-    background: '#FFFFFF',
-    backgroundStrong: '#F1F5F9',
-    backgroundHover: '#F8FAFC',
-    backgroundPress: '#E2E8F0',
-    color: '#0F172A',
-    colorPress: '#475569',
-    colorMuted: '#475569',
-    accent: '#2563EB',
-    accentHover: '#1D4ED8',
-    accentPress: '#1E40AF',
-    accentMuted: '#94A3B8',
-    borderColor: '#CBD5F5',
-    borderColorPress: '#94A3B8',
-    outlineColor: '#2563EB',
-    surface: '#F8FAFC',
-    secondaryBackground: '#F1F5F9',
-    secondaryText: '#475569',
-    danger: '#DC2626',
-    dangerHover: '#B91C1C',
-    dangerBackground: '#FEE2E2',
-  },
-  dark: {
-    background: '#0F172A',
-    backgroundStrong: '#111827',
-    backgroundHover: '#1C2534',
-    backgroundPress: '#1F2937',
-    color: '#E2E8F0',
-    colorPress: '#94A3B8',
-    colorMuted: '#94A3B8',
-    accent: '#60A5FA',
-    accentHover: '#3B82F6',
-    accentPress: '#2563EB',
-    accentMuted: '#94A3B8',
-    borderColor: '#334155',
-    borderColorPress: '#1E293B',
-    outlineColor: '#60A5FA',
-    surface: '#111827',
-    secondaryBackground: '#1F2937',
-    secondaryText: '#94A3B8',
-    danger: '#FCA5A5',
-    dangerHover: '#FB7185',
-    dangerBackground: '#7F1D1D',
-  },
-};
+/**
+ * Active theme color sets
+ * Change this to use a different theme from themes.ts
+ * Available: 'default', 'nord', 'dracula', 'catppuccin', 'minimal',
+ *            'tokyoNight', 'gruvbox', 'solarized', 'oneDark', 'rosePine', 'apple', 'coinbase'
+ */
+export const themeColorSets: Record<ThemeVariant, ThemeColorSet> = themes.coinbase;
 
 export type ThemePalette = {
   background: string;
