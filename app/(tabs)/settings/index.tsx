@@ -1,4 +1,5 @@
 /* istanbul ignore file */ // This file will change
+import { clearPendingRemoteReset, deleteRemoteUserData, setPendingRemoteReset } from '@/auth/reset';
 import { useSessionStore } from '@/auth/session';
 import { NOTIFICATIONS } from '@/config/constants';
 import { DOMAIN } from '@/config/domain.config';
@@ -17,7 +18,8 @@ import { optimizeDatabase } from '@/db/sqlite/maintenance';
 import { withDatabaseRetry } from '@/db/sqlite/retry';
 import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
 import { setLanguage, supportedLanguages } from '@/i18n';
-import { cancelAllScheduledNotifications } from '@/notifications/notifications';
+import { cancelAllScheduledNotifications, resetBadgeCount } from '@/notifications/notifications';
+import { clearNotificationPreferences } from '@/notifications/preferences';
 import {
   clearReminderSeriesConfigs,
   scheduleReminder,
@@ -49,6 +51,7 @@ import { useTranslation } from 'react-i18next';
 import { Linking, Platform } from 'react-native';
 import {
   Button,
+  Dialog,
   Label,
   Paragraph,
   Progress,
@@ -89,6 +92,9 @@ export default function SettingsScreen() {
   const [isClearing, setIsClearing] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
   const [isOptimizingDb, setIsOptimizingDb] = useState(false);
+  const [isResettingAllData, setIsResettingAllData] = useState(false);
+  const [resetStatus, setResetStatus] = useState<string | null>(null);
+  const [resetModalOpen, setResetModalOpen] = useState(false);
   const [archiveOffsetDays, setArchiveOffsetDays] = useState<0 | -1>(0);
   const [testReminderCadence, setTestReminderCadence] = useState<'10s' | 'daily'>('10s');
   const [devReminderAction, setDevReminderAction] = useState<
@@ -253,6 +259,83 @@ export default function SettingsScreen() {
       router.push('/(auth)/login');
     }
   };
+
+  const resetLocalData = useCallback(async () => {
+    if (isNative) {
+      await cancelAllScheduledNotifications();
+      await clearReminderSeriesConfigs();
+      await clearAllTables();
+      resetCursors();
+      await resetBadgeCount();
+      await checkDatabaseData();
+      useSyncStore.getState().setQueueSize(0);
+    }
+    clearNotificationPreferences();
+  }, [checkDatabaseData, isNative]);
+
+  const handleResetAppData = useCallback(async () => {
+    if (isResettingAllData) return;
+
+    setResetStatus(null);
+    const userId = session?.user?.id ?? null;
+
+    if (!userId) {
+      try {
+        setIsResettingAllData(true);
+        setResetStatus(t('settings.resetInProgress'));
+        await resetLocalData();
+        setPendingRemoteReset(true);
+        setResetStatus(t('settings.resetSuccessLocal'));
+      } catch (error) {
+        settingsLogger.error('Reset local data failed:', error);
+        const { friendly } = showFriendlyError(error, {
+          surface: 'settings.reset-app',
+          suppressToast: true,
+        });
+        const message =
+          friendly.description ??
+          (friendly.descriptionKey ? t(friendly.descriptionKey) : friendly.originalMessage) ??
+          (friendly.titleKey ? t(friendly.titleKey) : t('errors.unknown.title'));
+        setResetStatus(message);
+      } finally {
+        setIsResettingAllData(false);
+        setResetModalOpen(false);
+      }
+      return;
+    }
+
+    try {
+      setIsResettingAllData(true);
+      setResetStatus(t('settings.resetInProgress'));
+      await deleteRemoteUserData(userId);
+      clearPendingRemoteReset();
+      await resetLocalData();
+      await signOut();
+      setResetStatus(t('settings.resetSuccess'));
+    } catch (error) {
+      settingsLogger.error('Reset app data failed:', error);
+      const { friendly } = showFriendlyError(error, {
+        surface: 'settings.reset-app',
+        suppressToast: true,
+      });
+      const message =
+        friendly.description ??
+        (friendly.descriptionKey ? t(friendly.descriptionKey) : friendly.originalMessage) ??
+        (friendly.titleKey ? t(friendly.titleKey) : t('errors.unknown.title'));
+      setResetStatus(message);
+    } finally {
+      setIsResettingAllData(false);
+      setResetModalOpen(false);
+    }
+  }, [
+    isResettingAllData,
+    session?.user?.id,
+    settingsLogger,
+    showFriendlyError,
+    signOut,
+    t,
+    resetLocalData,
+  ]);
 
   const handleManualSync = async () => {
     if (!canSync) {
@@ -770,8 +853,8 @@ export default function SettingsScreen() {
   ];
 
   const content = (
-    <ScreenContainer contentContainerStyle={{ flexGrow: 1, paddingBottom: 96 }}>
-      <YStack gap="$4">
+    <ScreenContainer contentContainerStyle={{ flexGrow: 1, marginBottom: 96 }}>
+      <YStack gap="$5">
         {(() => {
           const accountDescription =
             status === 'authenticated' && session?.user?.email
@@ -798,6 +881,60 @@ export default function SettingsScreen() {
             </SettingsSection>
           );
         })()}
+
+        <SettingsSection
+          title={t('settings.resetTitle')}
+          description={t('settings.resetDescription')}
+          footer={resetStatus ?? undefined}
+        >
+          <SecondaryButton
+            testID="settings-reset-app-button"
+            disabled={isResettingAllData}
+            onPress={() => setResetModalOpen(true)}
+            marginBottom="$5"
+          >
+            {isResettingAllData ? t('settings.resetInProgress') : t('settings.resetAction')}
+          </SecondaryButton>
+          <Dialog
+            modal
+            open={resetModalOpen}
+            onOpenChange={(open) => {
+              if (!isResettingAllData) {
+                setResetModalOpen(open);
+              }
+            }}
+          >
+            <Dialog.Portal>
+              <Dialog.Overlay key="reset-data-overlay" />
+              <Dialog.Content key="reset-data-content" bordered elevate>
+                <YStack gap="$3">
+                  <Dialog.Title>{t('settings.resetConfirmTitle')}</Dialog.Title>
+                  <Dialog.Description>{t('settings.resetConfirmDescription')}</Dialog.Description>
+                  <XStack gap="$3" paddingTop="$2">
+                    <SecondaryButton
+                      width="auto"
+                      flex={1}
+                      disabled={isResettingAllData}
+                      onPress={() => setResetModalOpen(false)}
+                    >
+                      {t('settings.resetCancel')}
+                    </SecondaryButton>
+                    <PrimaryButton
+                      width="auto"
+                      flex={1}
+                      backgroundColor="$dangerColor"
+                      pressStyle={{ backgroundColor: '$dangerColor' }}
+                      disabled={isResettingAllData}
+                      onPress={handleResetAppData}
+                    >
+                      {t('settings.resetConfirmAction')}
+                    </PrimaryButton>
+                  </XStack>
+                </YStack>
+              </Dialog.Content>
+            </Dialog.Portal>
+          </Dialog>
+        </SettingsSection>
 
         <SettingsSection
           title={t('settings.languageTitle')}

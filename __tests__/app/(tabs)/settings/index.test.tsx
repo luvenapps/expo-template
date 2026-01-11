@@ -161,6 +161,20 @@ jest.mock('tamagui', () => {
     mockReact.createElement('View', props, children);
   RadioGroupComponent.Indicator = ({ ...props }: any) => mockReact.createElement('View', props);
 
+  const DialogComponent = ({ children, ...props }: any) =>
+    mockReact.createElement('View', { testID: 'Dialog', ...props }, children);
+
+  DialogComponent.Portal = ({ children, ...props }: any) =>
+    mockReact.createElement('View', { testID: 'DialogPortal', ...props }, children);
+  DialogComponent.Overlay = ({ children, ...props }: any) =>
+    mockReact.createElement('View', { testID: 'DialogOverlay', ...props }, children);
+  DialogComponent.Content = ({ children, ...props }: any) =>
+    mockReact.createElement('View', { testID: 'DialogContent', ...props }, children);
+  DialogComponent.Title = ({ children, ...props }: any) =>
+    mockReact.createElement('Text', { testID: 'DialogTitle', ...props }, children);
+  DialogComponent.Description = ({ children, ...props }: any) =>
+    mockReact.createElement('Text', { testID: 'DialogDescription', ...props }, children);
+
   return {
     View: ({ children, ...props }: any) => mockReact.createElement('View', props, children),
     YStack: ({ children, testID, ...props }: any) =>
@@ -181,6 +195,7 @@ jest.mock('tamagui', () => {
     Slider: SliderComponent,
     RadioGroup: RadioGroupComponent,
     Label: ({ children, ...props }: any) => mockReact.createElement('Text', props, children),
+    Dialog: DialogComponent,
   };
 });
 

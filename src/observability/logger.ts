@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
-type Logger = {
+export type Logger = {
   debug: (message: string, payload?: unknown) => void;
   info: (message: string, payload?: unknown) => void;
   warn: (message: string, payload?: unknown) => void;

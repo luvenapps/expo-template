@@ -98,3 +98,15 @@ export function persistNotificationPreferences(preferences: NotificationPreferen
   const store = getNativeStore();
   store?.set(STORAGE_KEY, payload);
 }
+
+export function clearNotificationPreferences() {
+  if (Platform.OS === 'web') {
+    if (typeof globalThis !== 'undefined' && 'localStorage' in globalThis) {
+      globalThis.localStorage.removeItem(STORAGE_KEY);
+    }
+    return;
+  }
+
+  const store = getNativeStore();
+  store?.delete(STORAGE_KEY);
+}

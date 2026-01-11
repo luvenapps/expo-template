@@ -1,4 +1,5 @@
 import { initSessionListener, useSessionStore } from '@/auth/session';
+import { getPendingRemoteReset, runPendingRemoteReset } from '@/auth/reset';
 import {
   registerNotificationCategories,
   configureNotificationHandler,
@@ -43,6 +44,7 @@ const isWeb = Platform.OS === 'web';
 const iamLogger = createLogger('IAM');
 const appLogger = createLogger('AppProviders');
 const dbLogger = createLogger('SQLite');
+const resetLogger = createLogger('Reset');
 
 export function AppProviders({ children }: PropsWithChildren) {
   const router = useRouter();
@@ -61,7 +63,12 @@ export function AppProviders({ children }: PropsWithChildren) {
 
   useEffect(() => {
     const initialize = async () => {
-      initSessionListener();
+      initSessionListener((session) => {
+        if (getPendingRemoteReset()) {
+          resetLogger.info('Pending remote reset detected');
+        }
+        runPendingRemoteReset(session, resetLogger).catch(() => undefined);
+      });
       await Promise.all([
         registerNotificationCategories().catch(() => undefined),
         configureNotificationHandler().catch(() => undefined),
