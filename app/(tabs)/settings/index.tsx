@@ -286,6 +286,7 @@ export default function SettingsScreen() {
         await resetLocalData();
         setPendingRemoteReset(true);
         setResetStatus(t('settings.resetSuccessLocal'));
+        router.replace('/(auth)/login');
       } catch (error) {
         settingsLogger.error('Reset local data failed:', error);
         const { friendly } = showFriendlyError(error, {
@@ -312,6 +313,7 @@ export default function SettingsScreen() {
       await resetLocalData();
       await signOut();
       setResetStatus(t('settings.resetSuccess'));
+      router.replace('/(auth)/login');
     } catch (error) {
       settingsLogger.error('Reset app data failed:', error);
       const { friendly } = showFriendlyError(error, {

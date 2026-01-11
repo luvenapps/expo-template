@@ -137,7 +137,7 @@
     "resetDescription": "Delete all local and synced data and start fresh.",
     "resetAction": "Reset app data",
     "resetConfirmTitle": "Reset everything?",
-    "resetConfirmDescription": "This deletes all local data, reminders, and synced data. This cannot be undone.",
+    "resetConfirmDescription": "This deletes all local data, reminders, and synced data. This cannot be undone. Also, you will be signed out.",
     "resetConfirmAction": "Yes, reset",
     "resetCancel": "Cancel",
     "resetInProgress": "Resetting…",
