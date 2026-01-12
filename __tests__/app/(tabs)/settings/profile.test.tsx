@@ -95,6 +95,12 @@ const renderWithProviders = (component: React.ReactElement) => {
   return render(component, { wrapper: Wrapper });
 };
 
+// Helper to create mock updateUser response
+const createMockUpdateUserResponse = (user: any) => ({
+  data: { user },
+  error: null,
+});
+
 describe('ProfileScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -102,6 +108,12 @@ describe('ProfileScreen', () => {
     (useFriendlyErrorHandler as jest.Mock).mockReturnValue(mockHandleError);
     mockHandleError.mockReturnValue({
       friendly: { description: 'Test error', descriptionKey: 'errors.test' },
+    });
+
+    // Mock supabase.auth.getUser to prevent hydration calls during tests
+    (supabase.auth.getUser as jest.Mock) = jest.fn().mockResolvedValue({
+      data: { user: null },
+      error: null,
     });
   });
 
@@ -313,10 +325,20 @@ describe('ProfileScreen', () => {
 
     it('should successfully save profile changes', async () => {
       const mockSetSession = jest.fn();
-      const mockUpdateUser = jest.fn().mockResolvedValue({ error: null });
+      const updatedUser = {
+        ...mockSession.user,
+        user_metadata: {
+          ...mockSession.user.user_metadata,
+          full_name: 'Updated Name',
+        },
+      };
+      const mockUpdateUser = jest.fn().mockResolvedValue({
+        data: { user: updatedUser },
+        error: null,
+      });
       const mockGetSession = jest.fn().mockResolvedValue({
         data: {
-          session: { ...mockSession, user: { ...mockSession.user, email: 'updated@example.com' } },
+          session: { ...mockSession, user: updatedUser },
         },
       });
 
@@ -371,14 +393,18 @@ describe('ProfileScreen', () => {
     });
 
     it('should disable buttons while saving', async () => {
+      const updatedUser = {
+        ...mockSession.user,
+        user_metadata: { ...mockSession.user.user_metadata, full_name: 'New Name' },
+      };
       const mockUpdateUser = jest.fn().mockImplementation(
         () =>
           new Promise((resolve) => {
-            setTimeout(() => resolve({ error: null }), 100);
+            setTimeout(() => resolve(createMockUpdateUserResponse(updatedUser)), 100);
           }),
       );
       const mockGetSession = jest.fn().mockResolvedValue({
-        data: { session: mockSession },
+        data: { session: { ...mockSession, user: updatedUser } },
       });
 
       (supabase.auth.updateUser as jest.Mock) = mockUpdateUser;
@@ -410,9 +436,10 @@ describe('ProfileScreen', () => {
     });
 
     it('should handle email updates for email provider', async () => {
-      const mockUpdateUser = jest.fn().mockResolvedValue({ error: null });
+      const updatedUser = { ...mockSession.user, email: 'newemail@example.com' };
+      const mockUpdateUser = jest.fn().mockResolvedValue(createMockUpdateUserResponse(updatedUser));
       const mockGetSession = jest.fn().mockResolvedValue({
-        data: { session: mockSession },
+        data: { session: { ...mockSession, user: updatedUser } },
       });
 
       (supabase.auth.updateUser as jest.Mock) = mockUpdateUser;
@@ -434,9 +461,13 @@ describe('ProfileScreen', () => {
     });
 
     it('should handle phone number updates', async () => {
-      const mockUpdateUser = jest.fn().mockResolvedValue({ error: null });
+      const updatedUser = {
+        ...mockSession.user,
+        user_metadata: { ...mockSession.user.user_metadata, phone_number: '+19175551234' },
+      };
+      const mockUpdateUser = jest.fn().mockResolvedValue(createMockUpdateUserResponse(updatedUser));
       const mockGetSession = jest.fn().mockResolvedValue({
-        data: { session: mockSession },
+        data: { session: { ...mockSession, user: updatedUser } },
       });
 
       (supabase.auth.updateUser as jest.Mock) = mockUpdateUser;
@@ -650,9 +681,13 @@ describe('ProfileScreen', () => {
     });
 
     it('should save with empty phone number (clearing existing phone)', async () => {
-      const mockUpdateUser = jest.fn().mockResolvedValue({ error: null });
+      const updatedUser = {
+        ...mockSession.user,
+        user_metadata: { ...mockSession.user.user_metadata, phone_number: '' },
+      };
+      const mockUpdateUser = jest.fn().mockResolvedValue(createMockUpdateUserResponse(updatedUser));
       const mockGetSession = jest.fn().mockResolvedValue({
-        data: { session: mockSession },
+        data: { session: { ...mockSession, user: updatedUser } },
       });
 
       (supabase.auth.updateUser as jest.Mock) = mockUpdateUser;
@@ -675,9 +710,13 @@ describe('ProfileScreen', () => {
     });
 
     it('should handle US phone number without + prefix when saving', async () => {
-      const mockUpdateUser = jest.fn().mockResolvedValue({ error: null });
+      const updatedUser = {
+        ...mockSession.user,
+        user_metadata: { ...mockSession.user.user_metadata, phone_number: '+12125551234' },
+      };
+      const mockUpdateUser = jest.fn().mockResolvedValue(createMockUpdateUserResponse(updatedUser));
       const mockGetSession = jest.fn().mockResolvedValue({
-        data: { session: mockSession },
+        data: { session: { ...mockSession, user: updatedUser } },
       });
 
       (supabase.auth.updateUser as jest.Mock) = mockUpdateUser;
@@ -700,24 +739,128 @@ describe('ProfileScreen', () => {
       });
     });
 
-    it('should handle malformed phone in user profile gracefully', async () => {
-      const mockUpdateUser = jest.fn().mockResolvedValue({ error: null });
-      const mockGetSession = jest.fn().mockResolvedValue({
-        data: { session: mockSession },
-      });
-
+    it('should hydrate from user.phone field when available', () => {
       (useSessionStore as unknown as jest.Mock).mockImplementation((selector) => {
         const state = {
           session: {
             ...mockSession,
             user: {
               ...mockSession.user,
+              phone: '+14155551234', // phone field takes precedence
               user_metadata: {
                 ...mockSession.user.user_metadata,
-                phone_number: 'invalid-phone', // Malformed phone that can't be parsed
+                phone_number: '+12025551234', // This should be ignored
               },
             },
           },
+          status: 'authenticated',
+          setSession: jest.fn(),
+        };
+        return selector(state);
+      });
+
+      renderWithProviders(<ProfileScreen />);
+
+      const phoneInput = screen.getByTestId('profile-phone-input');
+      // Should use user.phone, not user_metadata.phone_number
+      expect(phoneInput.props.value).toBe('+1 415 555 1234');
+    });
+
+    it('should call getUser on mount to refresh profile', async () => {
+      const mockGetUser = jest.fn().mockResolvedValue({
+        data: { user: mockSession.user },
+        error: null,
+      });
+
+      (supabase.auth.getUser as jest.Mock) = mockGetUser;
+
+      renderWithProviders(<ProfileScreen />);
+
+      await waitFor(() => {
+        expect(mockGetUser).toHaveBeenCalled();
+      });
+    });
+
+    it('should handle getUser error gracefully', async () => {
+      const mockGetUser = jest.fn().mockResolvedValue({
+        data: { user: null },
+        error: new Error('Failed to get user'),
+      });
+
+      (supabase.auth.getUser as jest.Mock) = mockGetUser;
+
+      renderWithProviders(<ProfileScreen />);
+
+      await waitFor(() => {
+        expect(mockGetUser).toHaveBeenCalled();
+        expect(mockHandleError).toHaveBeenCalled();
+      });
+    });
+
+    it('should update session with fresh user data from getUser', async () => {
+      const mockSetSession = jest.fn();
+      const freshUser = {
+        ...mockSession.user,
+        user_metadata: { ...mockSession.user.user_metadata, full_name: 'Fresh Name' },
+      };
+      const mockGetUser = jest.fn().mockResolvedValue({
+        data: { user: freshUser },
+        error: null,
+      });
+
+      (useSessionStore as unknown as jest.Mock).mockImplementation((selector) => {
+        const state = {
+          session: mockSession,
+          status: 'authenticated',
+          setSession: mockSetSession,
+        };
+        return selector(state);
+      });
+
+      (supabase.auth.getUser as jest.Mock) = mockGetUser;
+
+      renderWithProviders(<ProfileScreen />);
+
+      await waitFor(() => {
+        expect(mockGetUser).toHaveBeenCalled();
+        expect(mockSetSession).toHaveBeenCalledWith(
+          expect.objectContaining({
+            user: freshUser,
+          }),
+        );
+      });
+
+      // Verify the form was hydrated with fresh data
+      const nameInput = screen.getByTestId('profile-name-input');
+      expect(nameInput.props.value).toBe('Fresh Name');
+    });
+
+    it('should handle malformed phone in user profile gracefully', async () => {
+      const sessionWithMalformedPhone = {
+        ...mockSession,
+        user: {
+          ...mockSession.user,
+          user_metadata: {
+            ...mockSession.user.user_metadata,
+            phone_number: 'invalid-phone', // Malformed phone that can't be parsed
+          },
+        },
+      };
+      const updatedUser = {
+        ...sessionWithMalformedPhone.user,
+        user_metadata: {
+          ...sessionWithMalformedPhone.user.user_metadata,
+          full_name: 'Updated Name',
+        },
+      };
+      const mockUpdateUser = jest.fn().mockResolvedValue(createMockUpdateUserResponse(updatedUser));
+      const mockGetSession = jest.fn().mockResolvedValue({
+        data: { session: { ...sessionWithMalformedPhone, user: updatedUser } },
+      });
+
+      (useSessionStore as unknown as jest.Mock).mockImplementation((selector) => {
+        const state = {
+          session: sessionWithMalformedPhone,
           status: 'authenticated',
           setSession: jest.fn(),
         };

@@ -3,9 +3,9 @@ import { useSessionStore } from '@/auth/session';
 import { isValidEmail } from '@/data/validation';
 import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
 import { FormField, InlineError, PrimaryButton, ScreenContainer, SecondaryButton } from '@/ui';
-import { useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { AsYouType, parsePhoneNumberFromString } from 'libphonenumber-js/min';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Paragraph, XStack, YStack } from 'tamagui';
 
@@ -32,6 +32,7 @@ export default function ProfileScreen() {
   const [emailError, setEmailError] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const hasHydratedRef = useRef(false);
 
   const profileName = useMemo(() => {
     const metadata = session?.user?.user_metadata as { full_name?: string; name?: string } | null;
@@ -41,7 +42,11 @@ export default function ProfileScreen() {
   const profileEmail = useMemo(() => session?.user?.email ?? '', [session?.user?.email]);
   const profilePhone = useMemo(() => {
     const metadata = session?.user?.user_metadata as { phone_number?: string } | null;
-    return session?.user?.phone ?? metadata?.phone_number ?? '';
+    const phoneValue = session?.user?.phone;
+    if (typeof phoneValue === 'string' && phoneValue.trim().length > 0) {
+      return phoneValue;
+    }
+    return metadata?.phone_number ?? '';
   }, [session?.user?.phone, session?.user?.user_metadata]);
   const isEmailProvider = useMemo(() => {
     const appMetadata = session?.user?.app_metadata as {
@@ -67,6 +72,55 @@ export default function ProfileScreen() {
     setEmailTouched(false);
     setEmailError(null);
   }, [profileName, profileEmail, profilePhone]);
+
+  const hydrateFromUser = useCallback(
+    (user: {
+      email?: string | null;
+      phone?: string | null;
+      user_metadata?: Record<string, unknown> | null;
+    }) => {
+      const metadata = user.user_metadata as {
+        full_name?: string;
+        name?: string;
+        phone_number?: string;
+      } | null;
+      const nextName = metadata?.full_name ?? metadata?.name ?? '';
+      const nextEmail = user.email ?? '';
+      const phoneValue =
+        typeof user.phone === 'string' && user.phone.trim().length > 0
+          ? user.phone
+          : (metadata?.phone_number ?? '');
+      if (nextName !== name) setName(nextName);
+      if (nextEmail !== email) setEmail(nextEmail);
+      if (phoneValue) {
+        const cleaned = phoneValue.replace(/[^\d+]/g, '');
+        const formatter = cleaned.startsWith('+') ? new AsYouType() : new AsYouType('US');
+        setPhoneNumber(formatter.input(cleaned));
+      } else {
+        setPhoneNumber('');
+      }
+    },
+    [email, name],
+  );
+
+  const refreshUserProfile = useCallback(async () => {
+    if (hasHydratedRef.current) return;
+    const { data, error } = await supabase.auth.getUser();
+    if (error) {
+      handleError(error, { surface: 'settings.profile', suppressToast: true });
+      return;
+    }
+    if (!data.user) return;
+    if (session) {
+      setSession({ ...session, user: data.user });
+    }
+    hydrateFromUser(data.user);
+    hasHydratedRef.current = true;
+  }, [handleError, hydrateFromUser, session, setSession]);
+
+  useEffect(() => {
+    refreshUserProfile();
+  }, [refreshUserProfile]);
 
   const resolveErrorMessage = useCallback(
     (friendly: { description?: string; descriptionKey?: string }) => {
@@ -172,14 +226,21 @@ export default function ProfileScreen() {
 
     setIsSaving(true);
     try {
-      const { error } = await supabase.auth.updateUser(updates);
+      const {
+        data: { user: updatedUser },
+        error,
+      } = await supabase.auth.updateUser(updates);
       if (error) {
         throw error;
       }
       const {
         data: { session: updatedSession },
       } = await supabase.auth.getSession();
-      setSession(updatedSession);
+      if (updatedSession && updatedUser) {
+        setSession({ ...updatedSession, user: updatedUser });
+      } else {
+        setSession(updatedSession ?? session ?? null);
+      }
       setStatusMessage(t('settings.profileSaved'));
     } catch (error) {
       const { friendly } = handleError(error, {
@@ -201,7 +262,7 @@ export default function ProfileScreen() {
     profileName,
     profilePhone,
     resolveErrorMessage,
-    session?.user,
+    session,
     setSession,
     t,
   ]);
@@ -209,6 +270,7 @@ export default function ProfileScreen() {
   if (status !== 'authenticated') {
     return (
       <ScreenContainer contentContainerStyle={{ flexGrow: 1, paddingBottom: 96 }}>
+        <Stack.Screen options={{ title: t('settings.profileTitle') }} />
         <YStack gap="$4" alignItems="center" justifyContent="center" flex={1}>
           <Paragraph fontSize="$5" fontWeight="700">
             {t('settings.profileTitle')}
@@ -226,6 +288,7 @@ export default function ProfileScreen() {
 
   return (
     <ScreenContainer contentContainerStyle={{ flexGrow: 1, paddingBottom: 96 }}>
+      <Stack.Screen options={{ title: t('settings.profileTitle') }} />
       <YStack gap="$4">
         <YStack gap="$2">
           <Paragraph fontSize="$5" fontWeight="700">
@@ -285,10 +348,16 @@ export default function ProfileScreen() {
         ) : null}
 
         <XStack gap="$3" paddingTop="$2">
-          <SecondaryButton flex={1} onPress={() => router.back()} disabled={isSaving}>
+          <SecondaryButton
+            size="$4"
+            width="auto"
+            flex={1}
+            onPress={() => router.back()}
+            disabled={isSaving}
+          >
             {t('settings.profileCancel')}
           </SecondaryButton>
-          <PrimaryButton flex={1} onPress={handleSave} disabled={isSaving}>
+          <PrimaryButton size="$4" width="auto" flex={1} onPress={handleSave} disabled={isSaving}>
             {isSaving ? t('settings.profileSaving') : t('settings.profileSave')}
           </PrimaryButton>
         </XStack>
