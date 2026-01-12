@@ -1,4 +1,4 @@
-import type { PropsWithChildren, ReactNode } from 'react';
+import { Children, Fragment, isValidElement, type PropsWithChildren, type ReactNode } from 'react';
 import { Card, Paragraph, XStack, YStack } from 'tamagui';
 
 type SettingsSectionProps = PropsWithChildren<{
@@ -22,6 +22,26 @@ export function SettingsSection({
   descriptionTestID,
   footerTestID,
 }: SettingsSectionProps) {
+  const flatten = (children: ReactNode): ReactNode[] => {
+    return Children.toArray(children).flatMap((child) => {
+      if (isValidElement(child) && child.type === Fragment) {
+        const fragmentProps = child.props as { children?: ReactNode };
+        return flatten(fragmentProps.children);
+      }
+      return child;
+    });
+  };
+
+  const wrappedChildren = flatten(children).map((child, index) => {
+    const key = isValidElement(child) ? child.key : `fallback-key-${index}`;
+
+    return (
+      <XStack key={key} width="100%">
+        {child}
+      </XStack>
+    );
+  });
+
   return (
     <Card size="$4" bordered backgroundColor="$surface" testID={testID}>
       <Card.Header padded gap="$2" alignItems="center">
@@ -49,7 +69,7 @@ export function SettingsSection({
         ) : null}
       </Card.Header>
       <YStack gap="$3" paddingHorizontal="$3" paddingBottom="$3">
-        {children}
+        {wrappedChildren}
       </YStack>
       {footer ? (
         <Card.Footer padded>

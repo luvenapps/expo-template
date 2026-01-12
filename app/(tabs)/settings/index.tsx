@@ -216,6 +216,7 @@ export default function SettingsScreen() {
           borderWidth={Platform.OS === 'web' ? 1 : undefined}
           backgroundColor={checked ? palette.accent : palette.secondaryBackground}
           pressStyle={{ opacity: 0.9 }}
+          cursor="pointer"
         >
           <Switch.Thumb borderWidth={1} borderColor="$borderColor" />
         </Switch>
@@ -871,7 +872,6 @@ export default function SettingsScreen() {
             >
               <PrimaryButton
                 testID="settings-auth-button"
-                marginBottom={isNative ? '$5' : ''}
                 disabled={isLoading}
                 onPress={handleAuthAction}
               >
@@ -881,24 +881,33 @@ export default function SettingsScreen() {
                     ? t('settings.signOut')
                     : t('settings.signIn')}
               </PrimaryButton>
+              {status === 'authenticated' ? (
+                <SecondaryButton
+                  testID="settings-profile-button"
+                  onPress={() => router.push('/(tabs)/settings/profile')}
+                >
+                  {t('settings.profileEditAction')}
+                </SecondaryButton>
+              ) : null}
             </SettingsSection>
           );
         })()}
 
         {status === 'authenticated' ? (
-          <SettingsSection
-            title={t('settings.resetTitle')}
-            description={t('settings.resetDescription')}
-            footer={resetStatus ?? undefined}
-          >
-            <SecondaryButton
-              testID="settings-reset-app-button"
-              disabled={isResettingAllData}
-              onPress={() => setResetModalOpen(true)}
-              marginBottom="$5"
+          <>
+            <SettingsSection
+              title={t('settings.resetTitle')}
+              description={t('settings.resetDescription')}
+              footer={resetStatus ?? undefined}
             >
-              {isResettingAllData ? t('settings.resetInProgress') : t('settings.resetAction')}
-            </SecondaryButton>
+              <SecondaryButton
+                testID="settings-reset-app-button"
+                disabled={isResettingAllData}
+                onPress={() => setResetModalOpen(true)}
+              >
+                {isResettingAllData ? t('settings.resetInProgress') : t('settings.resetAction')}
+              </SecondaryButton>
+            </SettingsSection>
             <Dialog
               modal
               open={resetModalOpen}
@@ -938,14 +947,14 @@ export default function SettingsScreen() {
                 </Dialog.Content>
               </Dialog.Portal>
             </Dialog>
-          </SettingsSection>
+          </>
         ) : null}
 
         <SettingsSection
           title={t('settings.languageTitle')}
           description={t('settings.languageDescription')}
         >
-          <YStack gap="$2">
+          <YStack gap="$2" width="100%">
             {supportedLanguages.map((lang) => {
               const isActive = currentLanguage === lang.code;
               return (
@@ -978,7 +987,7 @@ export default function SettingsScreen() {
         </SettingsSection>
 
         <SettingsSection title={t('settings.themeTitle')}>
-          <XStack gap="$2">
+          <XStack gap="$2" width="100%">
             {THEME_OPTIONS.map(({ value, label, Icon }) => {
               const isActive = themePreference === value;
               return (
@@ -1021,7 +1030,7 @@ export default function SettingsScreen() {
           footer={notificationsBlocked ? undefined : (notificationError ?? undefined)}
         >
           {notificationsBlocked ? (
-            <YStack gap="$2" paddingTop="$1" paddingBottom="$5">
+            <YStack gap="$2" paddingBottom={isNative ? '$5' : ''}>
               <Paragraph
                 color="$dangerColor"
                 fontSize="$4"
@@ -1041,30 +1050,23 @@ export default function SettingsScreen() {
               ) : null}
             </YStack>
           ) : (
-            <YStack gap="$4">
-              <YStack gap="$3">
-                <XStack alignItems="center" justifyContent="space-between">
-                  <YStack gap="$1" flex={1} paddingRight="$3">
-                    <Paragraph fontWeight="700">{t('settings.notificationsTitle')}</Paragraph>
-                    <Paragraph color="$colorMuted" fontSize="$3" testID="settings-push-status">
-                      {pushStatusText}
-                    </Paragraph>
-                  </YStack>
-                  {renderToggle({
-                    checked: pushEnabled,
-                    disabled: notificationsBlocked || isCheckingNotifications,
-                    onChange: async (checked) => {
-                      if (checked) {
-                        await handlePromptPush();
-                      } else {
-                        disablePushNotifications();
-                      }
-                    },
-                    testID: 'settings-push-toggle',
-                  })}
-                </XStack>
-              </YStack>
-            </YStack>
+            <XStack alignItems="center" width="100%" justifyContent="space-between">
+              <Paragraph color="$colorMuted" fontSize="$3" testID="settings-push-status">
+                {pushStatusText}
+              </Paragraph>
+              {renderToggle({
+                checked: pushEnabled,
+                disabled: notificationsBlocked || isCheckingNotifications,
+                onChange: async (checked) => {
+                  if (checked) {
+                    await handlePromptPush();
+                  } else {
+                    disablePushNotifications();
+                  }
+                },
+                testID: 'settings-push-toggle',
+              })}
+            </XStack>
           )}
         </SettingsSection>
 
@@ -1097,7 +1099,6 @@ export default function SettingsScreen() {
             >
               <XStack gap="$2" flexWrap="wrap">
                 <StatCard
-                  flex={1}
                   label={t('settings.queueSize')}
                   value={queueSize}
                   helperText={
@@ -1108,7 +1109,6 @@ export default function SettingsScreen() {
                   icon={<RefreshCw size={14} color="$accentColor" />}
                 />
                 <StatCard
-                  flex={1}
                   label={t('settings.lastSyncedLabel')}
                   value={
                     lastSyncedAt ? new Date(lastSyncedAt).toLocaleDateString() : t('settings.never')
@@ -1181,77 +1181,61 @@ export default function SettingsScreen() {
 
               {isNative && (
                 <>
-                  <XStack>
-                    <PrimaryButton
-                      testID="dev-seed-button"
-                      disabled={!hasSession || isSeeding || isSyncing}
-                      onPress={handleSeedSampleData}
-                    >
-                      {isSeeding ? 'Seeding…' : 'Seed sample data'}
-                    </PrimaryButton>
-                  </XStack>
+                  <PrimaryButton
+                    testID="dev-seed-button"
+                    disabled={!hasSession || isSeeding || isSyncing}
+                    onPress={handleSeedSampleData}
+                  >
+                    {isSeeding ? 'Seeding…' : 'Seed sample data'}
+                  </PrimaryButton>
+                  <SecondaryButton
+                    testID="dev-clear-outbox-button"
+                    disabled={!hasSession || !hasOutboxData}
+                    onPress={handleClearOutbox}
+                  >
+                    Clear outbox
+                  </SecondaryButton>
+                  <SecondaryButton
+                    testID="dev-clear-db-button"
+                    disabled={isClearing}
+                    onPress={handleClearLocalDatabase}
+                  >
+                    {isClearing ? 'Clearing…' : 'Clear local database'}
+                  </SecondaryButton>
+                  <SecondaryButton
+                    testID="dev-optimize-db-button"
+                    disabled={isOptimizingDb}
+                    onPress={handleOptimizeDatabase}
+                  >
+                    {isOptimizingDb ? 'Optimizing…' : 'Optimize database'}
+                  </SecondaryButton>
+                  <SecondaryButton onPress={() => router.push('/(tabs)/settings/database')}>
+                    View local database
+                  </SecondaryButton>
+                  <SecondaryButton
+                    testID="dev-register-push-button"
+                    disabled={!isNative}
+                    onPress={handleRegisterPush}
+                  >
+                    {t('dev.registerPush')}
+                  </SecondaryButton>
 
-                  <XStack>
-                    <SecondaryButton
-                      testID="dev-clear-outbox-button"
-                      disabled={!hasSession || !hasOutboxData}
-                      onPress={handleClearOutbox}
-                    >
-                      Clear outbox
-                    </SecondaryButton>
-                  </XStack>
-                  <XStack>
-                    <SecondaryButton
-                      testID="dev-clear-db-button"
-                      disabled={isClearing}
-                      onPress={handleClearLocalDatabase}
-                    >
-                      {isClearing ? 'Clearing…' : 'Clear local database'}
-                    </SecondaryButton>
-                  </XStack>
-                  <XStack>
-                    <SecondaryButton
-                      testID="dev-optimize-db-button"
-                      disabled={isOptimizingDb}
-                      onPress={handleOptimizeDatabase}
-                    >
-                      {isOptimizingDb ? 'Optimizing…' : 'Optimize database'}
-                    </SecondaryButton>
-                  </XStack>
-                  <XStack>
-                    <SecondaryButton onPress={() => router.push('/(tabs)/settings/database')}>
-                      View local database
-                    </SecondaryButton>
-                  </XStack>
-                  <XStack>
-                    <SecondaryButton
-                      testID="dev-register-push-button"
-                      disabled={!isNative}
-                      onPress={handleRegisterPush}
-                    >
-                      {t('dev.registerPush')}
-                    </SecondaryButton>
-                  </XStack>
-                  <XStack>
-                    <SecondaryButton
-                      testID="dev-log-push-status-button"
-                      disabled={!isNative}
-                      onPress={handleLogPushRegistrationStatus}
-                      fontSize="$3"
-                    >
-                      Log push registration status
-                    </SecondaryButton>
-                  </XStack>
-                  <XStack>
-                    <SecondaryButton
-                      testID="dev-schedule-reminder-once-button"
-                      disabled={!isNative}
-                      onPress={handleScheduleOneTimeReminder}
-                      fontSize="$3"
-                    >
-                      Schedule one-time reminder
-                    </SecondaryButton>
-                  </XStack>
+                  <SecondaryButton
+                    testID="dev-log-push-status-button"
+                    disabled={!isNative}
+                    onPress={handleLogPushRegistrationStatus}
+                    fontSize="$3"
+                  >
+                    Log push registration status
+                  </SecondaryButton>
+                  <SecondaryButton
+                    testID="dev-schedule-reminder-once-button"
+                    disabled={!isNative}
+                    onPress={handleScheduleOneTimeReminder}
+                    fontSize="$3"
+                  >
+                    Schedule one-time reminder
+                  </SecondaryButton>
                   <XStack>
                     <XStack width="50%" marginRight="$2">
                       <SecondaryButton

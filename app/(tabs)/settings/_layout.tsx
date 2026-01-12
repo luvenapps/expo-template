@@ -16,6 +16,13 @@ export default function SettingsLayout() {
           headerShown: true,
         }}
       />
+      <Stack.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          headerShown: true,
+        }}
+      />
     </Stack>
   );
 }
