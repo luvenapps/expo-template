@@ -28,8 +28,8 @@ export type ThemeColorSet = {
 /**
  * Active theme color sets
  * Change this to use a different theme from themes.ts
- * Available: 'default', 'nord', 'dracula', 'catppuccin', 'minimal',
- *            'tokyoNight', 'gruvbox', 'solarized', 'oneDark', 'rosePine', 'apple', 'coinbase'
+ * Available: 'default', 'nord', 'catppuccin',
+ *            'tokyoNight', 'gruvbox', 'rosePine', 'apple', 'coinbase'
  */
 export const themeColorSets: Record<ThemeVariant, ThemeColorSet> = themes.coinbase;
 

@@ -102,55 +102,6 @@ export const nordTheme: Record<ThemeVariant, ThemeColorSet> = {
   },
 };
 
-// Dracula - A dark theme with vibrant colors (WCAG 2.1 Level AA compliant)
-// https://draculatheme.com/spec
-export const draculaTheme: Record<ThemeVariant, ThemeColorSet> = {
-  light: {
-    background: '#F8F8F2', // Foreground
-    backgroundStrong: '#E6E6DC',
-    backgroundHover: '#F0F0EA',
-    backgroundPress: '#D9D9CF',
-    color: '#282A36', // Background
-    colorPress: '#44475A', // Current Line
-    colorMuted: '#6272A4', // Comment
-    accent: '#8BE9FD', // Cyan
-    accentHover: '#6DD9F3',
-    accentPress: '#50C9E9',
-    accentMuted: '#6272A4',
-    borderColor: '#D9D9CF',
-    borderColorPress: '#C2C2B8',
-    outlineColor: '#8BE9FD',
-    surface: '#E6E6DC',
-    secondaryBackground: '#D9D9CF',
-    secondaryText: '#6272A4',
-    danger: '#FF5555', // Red
-    dangerHover: '#FF6E6E',
-    dangerBackground: '#FFE5E5',
-  },
-  dark: {
-    background: '#282A36', // Background
-    backgroundStrong: '#21222C',
-    backgroundHover: '#343746',
-    backgroundPress: '#44475A', // Current Line
-    color: '#F8F8F2', // Foreground
-    colorPress: '#E0E0D8',
-    colorMuted: '#6272A4', // Comment
-    accent: '#8BE9FD', // Cyan
-    accentHover: '#A3EFFF',
-    accentPress: '#6DD9F3',
-    accentMuted: '#6272A4',
-    borderColor: '#44475A',
-    borderColorPress: '#565966',
-    outlineColor: '#8BE9FD',
-    surface: '#343746',
-    secondaryBackground: '#44475A',
-    secondaryText: '#F8F8F2',
-    danger: '#FF5555', // Red
-    dangerHover: '#FF6E6E',
-    dangerBackground: '#4A2828',
-  },
-};
-
 // Catppuccin Mocha - Modern pastel theme
 // https://github.com/catppuccin/catppuccin
 export const catppuccinTheme: Record<ThemeVariant, ThemeColorSet> = {
@@ -197,55 +148,6 @@ export const catppuccinTheme: Record<ThemeVariant, ThemeColorSet> = {
     danger: '#F38BA8', // Red
     dangerHover: '#F5A8BD',
     dangerBackground: '#3F2838',
-  },
-};
-
-// Minimal Tamagui - Clean grayscale with blue accent
-// https://tamagui.dev/docs/intro/themes
-export const minimalTheme: Record<ThemeVariant, ThemeColorSet> = {
-  light: {
-    background: '#FFFFFF',
-    backgroundStrong: '#F5F5F5',
-    backgroundHover: '#FAFAFA',
-    backgroundPress: '#E5E5E5',
-    color: '#000000',
-    colorPress: '#404040',
-    colorMuted: '#737373',
-    accent: '#3B82F6',
-    accentHover: '#2563EB',
-    accentPress: '#1D4ED8',
-    accentMuted: '#93C5FD',
-    borderColor: '#E5E5E5',
-    borderColorPress: '#D4D4D4',
-    outlineColor: '#3B82F6',
-    surface: '#FAFAFA',
-    secondaryBackground: '#F5F5F5',
-    secondaryText: '#737373',
-    danger: '#EF4444',
-    dangerHover: '#DC2626',
-    dangerBackground: '#FEE2E2',
-  },
-  dark: {
-    background: '#000000',
-    backgroundStrong: '#0A0A0A',
-    backgroundHover: '#171717',
-    backgroundPress: '#262626',
-    color: '#FAFAFA',
-    colorPress: '#E5E5E5',
-    colorMuted: '#A3A3A3',
-    accent: '#60A5FA',
-    accentHover: '#3B82F6',
-    accentPress: '#2563EB',
-    accentMuted: '#1E3A8A',
-    borderColor: '#262626',
-    borderColorPress: '#404040',
-    outlineColor: '#60A5FA',
-    surface: '#171717',
-    secondaryBackground: '#262626',
-    secondaryText: '#A3A3A3',
-    danger: '#F87171',
-    dangerHover: '#EF4444',
-    dangerBackground: '#7F1D1D',
   },
 };
 
@@ -344,104 +246,6 @@ export const gruvboxTheme: Record<ThemeVariant, ThemeColorSet> = {
     danger: '#FB4934', // Red bright
     dangerHover: '#CC241D', // Red
     dangerBackground: '#442E2E',
-  },
-};
-
-// Solarized - Precision colors for machines and people
-// https://ethanschoonover.com/solarized/
-export const solarizedTheme: Record<ThemeVariant, ThemeColorSet> = {
-  light: {
-    background: '#FDF6E3', // base3
-    backgroundStrong: '#EEE8D5', // base2
-    backgroundHover: '#E8E2D0',
-    backgroundPress: '#DDD7C5',
-    color: '#657B83', // base00
-    colorPress: '#586E75', // base01
-    colorMuted: '#93A1A1', // base1
-    accent: '#268BD2', // Blue
-    accentHover: '#2AA198', // Cyan
-    accentPress: '#6C71C4', // Violet
-    accentMuted: '#93A1A1',
-    borderColor: '#DDD7C5',
-    borderColorPress: '#CCC6B5',
-    outlineColor: '#268BD2',
-    surface: '#EEE8D5',
-    secondaryBackground: '#E8E2D0',
-    secondaryText: '#586E75',
-    danger: '#DC322F', // Red
-    dangerHover: '#CB4B16', // Orange
-    dangerBackground: '#FEEEED',
-  },
-  dark: {
-    background: '#002B36', // base03
-    backgroundStrong: '#073642', // base02
-    backgroundHover: '#0D4251',
-    backgroundPress: '#134E5E',
-    color: '#839496', // base0
-    colorPress: '#93A1A1', // base1
-    colorMuted: '#586E75', // base01
-    accent: '#268BD2', // Blue
-    accentHover: '#2AA198', // Cyan
-    accentPress: '#6C71C4', // Violet
-    accentMuted: '#586E75',
-    borderColor: '#0D4251',
-    borderColorPress: '#134E5E',
-    outlineColor: '#268BD2',
-    surface: '#073642',
-    secondaryBackground: '#0D4251',
-    secondaryText: '#93A1A1',
-    danger: '#DC322F', // Red
-    dangerHover: '#CB4B16', // Orange
-    dangerBackground: '#3F1E1D',
-  },
-};
-
-// One Dark - Atom's iconic dark theme
-// https://github.com/atom/one-dark-syntax
-export const oneDarkTheme: Record<ThemeVariant, ThemeColorSet> = {
-  light: {
-    background: '#FAFAFA',
-    backgroundStrong: '#F0F0F0',
-    backgroundHover: '#F5F5F5',
-    backgroundPress: '#E5E5E5',
-    color: '#383A42',
-    colorPress: '#4F525E',
-    colorMuted: '#A0A1A7',
-    accent: '#4078F2', // Blue
-    accentHover: '#0184BC', // Cyan
-    accentPress: '#3D59A1',
-    accentMuted: '#A0A1A7',
-    borderColor: '#E5E5E5',
-    borderColorPress: '#D0D0D0',
-    outlineColor: '#4078F2',
-    surface: '#F0F0F0',
-    secondaryBackground: '#E5E5E5',
-    secondaryText: '#696C77',
-    danger: '#E45649', // Red
-    dangerHover: '#CA1243',
-    dangerBackground: '#FFE5E5',
-  },
-  dark: {
-    background: '#282C34',
-    backgroundStrong: '#21252B',
-    backgroundHover: '#2C313C',
-    backgroundPress: '#3E4451',
-    color: '#ABB2BF',
-    colorPress: '#B6BDCA',
-    colorMuted: '#5C6370', // Comment
-    accent: '#61AFEF', // Blue
-    accentHover: '#56B6C2', // Cyan
-    accentPress: '#528BFF', // Accent blue
-    accentMuted: '#5C6370',
-    borderColor: '#3E4451',
-    borderColorPress: '#4B5263',
-    outlineColor: '#61AFEF',
-    surface: '#2C313C',
-    secondaryBackground: '#3E4451',
-    secondaryText: '#828997',
-    danger: '#E06C75', // Red
-    dangerHover: '#BE5046',
-    dangerBackground: '#3F2D30',
   },
 };
 
@@ -599,13 +403,9 @@ export const coinbaseTheme: Record<ThemeVariant, ThemeColorSet> = {
 export const themes = {
   default: defaultTheme,
   nord: nordTheme,
-  dracula: draculaTheme,
   catppuccin: catppuccinTheme,
-  minimal: minimalTheme,
   tokyoNight: tokyoNightTheme,
   gruvbox: gruvboxTheme,
-  solarized: solarizedTheme,
-  oneDark: oneDarkTheme,
   rosePine: rosePineTheme,
   apple: appleTheme,
   coinbase: coinbaseTheme,
