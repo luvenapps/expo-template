@@ -142,7 +142,6 @@
     "profileEmailManaged": "El correo lo gestiona tu proveedor de inicio.",
     "profileEmailInvalid": "Introduce un correo válido.",
     "profilePhoneLabel": "Teléfono",
-    "profilePhoneHelper": "Usa un número como +15551234567.",
     "profilePhoneInvalid": "Introduce un teléfono válido.",
     "profileSave": "Guardar cambios",
     "profileSaving": "Guardando…",

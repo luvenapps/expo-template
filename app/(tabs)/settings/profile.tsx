@@ -4,6 +4,7 @@ import { isValidEmail } from '@/data/validation';
 import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
 import { FormField, InlineError, PrimaryButton, ScreenContainer, SecondaryButton } from '@/ui';
 import { useRouter } from 'expo-router';
+import { AsYouType, parsePhoneNumberFromString } from 'libphonenumber-js/min';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Paragraph, XStack, YStack } from 'tamagui';
@@ -16,8 +17,6 @@ type UpdatePayload = {
   };
 };
 
-const PHONE_REGEX = /^\+?[1-9]\d{6,14}$/;
-
 export default function ProfileScreen() {
   const router = useRouter();
   const { t } = useTranslation();
@@ -29,6 +28,8 @@ export default function ProfileScreen() {
   const [email, setEmail] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
@@ -55,7 +56,16 @@ export default function ProfileScreen() {
   useEffect(() => {
     setName(profileName);
     setEmail(profileEmail);
-    setPhoneNumber(profilePhone);
+    // Format phone number on initialization
+    if (profilePhone) {
+      const cleaned = profilePhone.replace(/[^\d+]/g, '');
+      const formatter = cleaned.startsWith('+') ? new AsYouType() : new AsYouType('US');
+      setPhoneNumber(formatter.input(cleaned));
+    } else {
+      setPhoneNumber('');
+    }
+    setEmailTouched(false);
+    setEmailError(null);
   }, [profileName, profileEmail, profilePhone]);
 
   const resolveErrorMessage = useCallback(
@@ -67,6 +77,45 @@ export default function ProfileScreen() {
     [t],
   );
 
+  const validateEmail = useCallback(
+    (nextEmail: string) => {
+      if (!isEmailProvider) {
+        setEmailError(null);
+        return;
+      }
+      const trimmed = nextEmail.trim();
+      if (!trimmed) {
+        setEmailError(t('settings.profileEmailInvalid'));
+        return;
+      }
+      setEmailError(isValidEmail(trimmed) ? null : t('settings.profileEmailInvalid'));
+    },
+    [isEmailProvider, t],
+  );
+
+  const handlePhoneChange = useCallback((value: string) => {
+    const cleaned = value.replace(/[^\d+]/g, '');
+    if (!cleaned) {
+      setPhoneNumber('');
+      return;
+    }
+
+    const formatter = cleaned.startsWith('+') ? new AsYouType() : new AsYouType('US');
+    setPhoneNumber(formatter.input(cleaned));
+  }, []);
+
+  const normalizePhoneNumber = useCallback((value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return '';
+    // Remove formatting characters (spaces, dashes, parentheses)
+    const cleaned = trimmed.replace(/[\s\-()]/g, '');
+    const parsed = cleaned.startsWith('+')
+      ? parsePhoneNumberFromString(cleaned)
+      : parsePhoneNumberFromString(cleaned, 'US');
+    // Return E.164 format if parsing succeeds, empty string if it fails
+    return parsed?.number ?? '';
+  }, []);
+
   const handleSave = useCallback(async () => {
     setErrorMessage(null);
     setStatusMessage(null);
@@ -77,14 +126,22 @@ export default function ProfileScreen() {
 
     if (isEmailProvider) {
       if (!trimmedEmail || !isValidEmail(trimmedEmail)) {
-        setErrorMessage(t('settings.profileEmailInvalid'));
+        setEmailTouched(true);
+        setEmailError(t('settings.profileEmailInvalid'));
         return;
       }
     }
 
-    if (trimmedPhone && !PHONE_REGEX.test(trimmedPhone)) {
-      setErrorMessage(t('settings.profilePhoneInvalid'));
-      return;
+    if (trimmedPhone) {
+      // Remove formatting before validation
+      const cleanedPhone = trimmedPhone.replace(/[\s\-()]/g, '');
+      const parsedPhone = cleanedPhone.startsWith('+')
+        ? parsePhoneNumberFromString(cleanedPhone)
+        : parsePhoneNumberFromString(cleanedPhone, 'US');
+      if (!parsedPhone?.isValid()) {
+        setErrorMessage(t('settings.profilePhoneInvalid'));
+        return;
+      }
     }
 
     if (!session?.user) {
@@ -99,10 +156,12 @@ export default function ProfileScreen() {
     if (isEmailProvider && trimmedEmail !== profileEmail) {
       updates.email = trimmedEmail;
     }
-    if (trimmedPhone !== profilePhone) {
+    const normalizedPhone = normalizePhoneNumber(trimmedPhone);
+    const normalizedProfilePhone = normalizePhoneNumber(profilePhone);
+    if (normalizedPhone !== normalizedProfilePhone) {
       updates.data = {
         ...(updates.data ?? {}),
-        phone_number: trimmedPhone,
+        phone_number: normalizedPhone,
       };
     }
 
@@ -136,6 +195,7 @@ export default function ProfileScreen() {
     handleError,
     isEmailProvider,
     name,
+    normalizePhoneNumber,
     phoneNumber,
     profileEmail,
     profileName,
@@ -185,7 +245,16 @@ export default function ProfileScreen() {
         <FormField
           label={t('settings.profileEmailLabel')}
           value={email}
-          onChangeText={setEmail}
+          onChangeText={(value) => {
+            setEmail(value);
+            if (emailTouched) {
+              validateEmail(value);
+            }
+          }}
+          onBlur={() => {
+            setEmailTouched(true);
+            validateEmail(email);
+          }}
           autoCapitalize="none"
           autoComplete="email"
           keyboardType="email-address"
@@ -193,16 +262,18 @@ export default function ProfileScreen() {
             isEmailProvider ? t('settings.profileEmailHelper') : t('settings.profileEmailManaged')
           }
           editable={isEmailProvider}
+          errorText={isEmailProvider ? (emailError ?? undefined) : undefined}
+          borderColor={isEmailProvider && emailError ? '$dangerColor' : undefined}
+          focusStyle={isEmailProvider && emailError ? { borderColor: '$dangerColor' } : undefined}
           inputTestID="profile-email-input"
         />
         <FormField
           label={t('settings.profilePhoneLabel')}
           value={phoneNumber}
-          onChangeText={setPhoneNumber}
+          onChangeText={handlePhoneChange}
           autoCapitalize="none"
           autoComplete="tel"
           keyboardType="phone-pad"
-          helperText={t('settings.profilePhoneHelper')}
           inputTestID="profile-phone-input"
         />
 

@@ -15,6 +15,9 @@ export type FormFieldProps = InputProps & {
   labelTestID?: string;
   inputTestID?: string;
   helperTestID?: string;
+  borderColorHover?: InputProps['borderColor'];
+  borderColorPress?: InputProps['borderColor'];
+  focusStyle?: InputProps['focusStyle'];
 };
 
 export const FormField = forwardRef<React.ComponentRef<typeof Input>, FormFieldProps>(
@@ -33,7 +36,7 @@ export const FormField = forwardRef<React.ComponentRef<typeof Input>, FormFieldP
     },
     ref,
   ) {
-    const helperColor = errorText ? '$red10' : '$colorMuted';
+    const helperColor = errorText ? '$dangerColor' : '$colorMuted';
 
     return (
       <YStack gap="$2" width="100%" testID={testID}>

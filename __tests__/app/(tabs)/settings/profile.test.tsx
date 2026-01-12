@@ -61,7 +61,7 @@ jest.mock('@/ui/components/SecondaryButton', () => {
 import { supabase } from '@/auth/client';
 import { useSessionStore } from '@/auth/session';
 import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react-native';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -138,7 +138,7 @@ describe('ProfileScreen', () => {
         email: 'test@example.com',
         user_metadata: {
           full_name: 'Test User',
-          phone_number: '+1234567890',
+          phone_number: '+12025551234', // Valid US phone number (DC area code)
         },
         app_metadata: {
           provider: 'email',
@@ -173,7 +173,58 @@ describe('ProfileScreen', () => {
 
       expect(screen.getByTestId('profile-name-input').props.value).toBe('Test User');
       expect(screen.getByTestId('profile-email-input').props.value).toBe('test@example.com');
-      expect(screen.getByTestId('profile-phone-input').props.value).toBe('+1234567890');
+      expect(screen.getByTestId('profile-phone-input').props.value).toBe('+1 202 555 1234');
+    });
+
+    it('should format US phone number without country code on initialization', () => {
+      (useSessionStore as unknown as jest.Mock).mockImplementation((selector) => {
+        const state = {
+          session: {
+            ...mockSession,
+            user: {
+              ...mockSession.user,
+              user_metadata: {
+                ...mockSession.user.user_metadata,
+                phone_number: '2025551234', // US phone without + prefix
+              },
+            },
+          },
+          status: 'authenticated',
+          setSession: jest.fn(),
+        };
+        return selector(state);
+      });
+
+      renderWithProviders(<ProfileScreen />);
+
+      // Should format as US number
+      const phoneInput = screen.getByTestId('profile-phone-input');
+      expect(phoneInput.props.value).toBe('(202) 555-1234');
+    });
+
+    it('should handle empty phone number on initialization', () => {
+      (useSessionStore as unknown as jest.Mock).mockImplementation((selector) => {
+        const state = {
+          session: {
+            ...mockSession,
+            user: {
+              ...mockSession.user,
+              user_metadata: {
+                ...mockSession.user.user_metadata,
+                phone_number: '', // Empty phone
+              },
+            },
+          },
+          status: 'authenticated',
+          setSession: jest.fn(),
+        };
+        return selector(state);
+      });
+
+      renderWithProviders(<ProfileScreen />);
+
+      const phoneInput = screen.getByTestId('profile-phone-input');
+      expect(phoneInput.props.value).toBe('');
     });
 
     it('should disable email field when not using email provider', () => {
@@ -214,11 +265,11 @@ describe('ProfileScreen', () => {
 
       fireEvent.changeText(nameInput, 'New Name');
       fireEvent.changeText(emailInput, 'new@example.com');
-      fireEvent.changeText(phoneInput, '+9876543210');
+      fireEvent.changeText(phoneInput, '+19175551234'); // Valid NYC number
 
       expect(nameInput.props.value).toBe('New Name');
       expect(emailInput.props.value).toBe('new@example.com');
-      expect(phoneInput.props.value).toBe('+9876543210');
+      expect(phoneInput.props.value).toBe('+1 917 555 1234');
     });
 
     it('should show error when email is invalid', async () => {
@@ -396,12 +447,12 @@ describe('ProfileScreen', () => {
       const phoneInput = screen.getByTestId('profile-phone-input');
       const saveButton = screen.getByText('settings.profileSave');
 
-      fireEvent.changeText(phoneInput, '+9876543210');
+      fireEvent.changeText(phoneInput, '+19175551234');
       fireEvent.press(saveButton);
 
       await waitFor(() => {
         expect(mockUpdateUser).toHaveBeenCalledWith({
-          data: { phone_number: '+9876543210' },
+          data: { phone_number: '+19175551234' },
         });
       });
     });
@@ -474,6 +525,222 @@ describe('ProfileScreen', () => {
 
       await waitFor(() => {
         expect(screen.getByText('settings.profileSignInRequired')).toBeTruthy();
+      });
+    });
+
+    it('should validate email on blur', async () => {
+      renderWithProviders(<ProfileScreen />);
+
+      const emailInput = screen.getByTestId('profile-email-input');
+
+      // Type invalid email and blur
+      fireEvent.changeText(emailInput, 'invalid-email');
+      fireEvent(emailInput, 'blur');
+
+      await waitFor(() => {
+        expect(screen.getByText('settings.profileEmailInvalid')).toBeTruthy();
+      });
+    });
+
+    it('should show error when email is empty on blur', async () => {
+      renderWithProviders(<ProfileScreen />);
+
+      const emailInput = screen.getByTestId('profile-email-input');
+
+      // Clear email and blur
+      fireEvent.changeText(emailInput, '');
+      fireEvent(emailInput, 'blur');
+
+      await waitFor(() => {
+        expect(screen.getByText('settings.profileEmailInvalid')).toBeTruthy();
+      });
+    });
+
+    it('should not validate email on change before blur', () => {
+      renderWithProviders(<ProfileScreen />);
+
+      const emailInput = screen.getByTestId('profile-email-input');
+
+      // Type invalid email without blur
+      fireEvent.changeText(emailInput, 'invalid-email');
+
+      // Should not show error yet
+      expect(screen.queryByText('settings.profileEmailInvalid')).toBeNull();
+    });
+
+    it('should validate email on change after blur', async () => {
+      renderWithProviders(<ProfileScreen />);
+
+      const emailInput = screen.getByTestId('profile-email-input');
+
+      // First blur to set emailTouched
+      fireEvent(emailInput, 'blur');
+
+      // Then type invalid email
+      fireEvent.changeText(emailInput, 'invalid-email');
+
+      await waitFor(() => {
+        expect(screen.getByText('settings.profileEmailInvalid')).toBeTruthy();
+      });
+
+      // Now type valid email - should clear error
+      fireEvent.changeText(emailInput, 'valid@example.com');
+
+      await waitFor(() => {
+        expect(screen.queryByText('settings.profileEmailInvalid')).toBeNull();
+      });
+    });
+
+    it('should not validate or show errors for non-email provider', () => {
+      (useSessionStore as unknown as jest.Mock).mockImplementation((selector) => {
+        const state = {
+          session: {
+            ...mockSession,
+            user: {
+              ...mockSession.user,
+              app_metadata: { provider: 'google', providers: ['google'] },
+            },
+          },
+          status: 'authenticated',
+          setSession: jest.fn(),
+        };
+        return selector(state);
+      });
+
+      renderWithProviders(<ProfileScreen />);
+
+      // Get the email input
+      const emailInput = screen.getByTestId('profile-email-input');
+
+      // Verify field is not editable for non-email provider
+      expect(emailInput.props.editable).toBe(false);
+
+      // Force call onBlur handler directly if it exists, wrapped in act
+      act(() => {
+        if (emailInput.props.onBlur) {
+          emailInput.props.onBlur();
+        }
+      });
+
+      // Should not show any validation error for non-email provider
+      expect(screen.queryByText('settings.profileEmailInvalid')).toBeNull();
+    });
+
+    it('should clear phone number when all characters are removed', () => {
+      renderWithProviders(<ProfileScreen />);
+
+      const phoneInput = screen.getByTestId('profile-phone-input');
+
+      // Clear the phone field by typing only non-digit characters
+      fireEvent.changeText(phoneInput, '---');
+
+      expect(phoneInput.props.value).toBe('');
+    });
+
+    it('should handle empty phone number input', () => {
+      renderWithProviders(<ProfileScreen />);
+
+      const phoneInput = screen.getByTestId('profile-phone-input');
+
+      // Type and then clear
+      fireEvent.changeText(phoneInput, '+19175551234');
+      fireEvent.changeText(phoneInput, '');
+
+      expect(phoneInput.props.value).toBe('');
+    });
+
+    it('should save with empty phone number (clearing existing phone)', async () => {
+      const mockUpdateUser = jest.fn().mockResolvedValue({ error: null });
+      const mockGetSession = jest.fn().mockResolvedValue({
+        data: { session: mockSession },
+      });
+
+      (supabase.auth.updateUser as jest.Mock) = mockUpdateUser;
+      (supabase.auth.getSession as jest.Mock) = mockGetSession;
+
+      renderWithProviders(<ProfileScreen />);
+
+      const phoneInput = screen.getByTestId('profile-phone-input');
+      const saveButton = screen.getByText('settings.profileSave');
+
+      // Clear phone number
+      fireEvent.changeText(phoneInput, '');
+      fireEvent.press(saveButton);
+
+      await waitFor(() => {
+        expect(mockUpdateUser).toHaveBeenCalledWith({
+          data: { phone_number: '' },
+        });
+      });
+    });
+
+    it('should handle US phone number without + prefix when saving', async () => {
+      const mockUpdateUser = jest.fn().mockResolvedValue({ error: null });
+      const mockGetSession = jest.fn().mockResolvedValue({
+        data: { session: mockSession },
+      });
+
+      (supabase.auth.updateUser as jest.Mock) = mockUpdateUser;
+      (supabase.auth.getSession as jest.Mock) = mockGetSession;
+
+      renderWithProviders(<ProfileScreen />);
+
+      const phoneInput = screen.getByTestId('profile-phone-input');
+      const saveButton = screen.getByText('settings.profileSave');
+
+      // Type US phone without + (gets formatted by AsYouType)
+      fireEvent.changeText(phoneInput, '2125551234');
+      fireEvent.press(saveButton);
+
+      await waitFor(() => {
+        // Should normalize to E.164 format
+        expect(mockUpdateUser).toHaveBeenCalledWith({
+          data: { phone_number: '+12125551234' },
+        });
+      });
+    });
+
+    it('should handle malformed phone in user profile gracefully', async () => {
+      const mockUpdateUser = jest.fn().mockResolvedValue({ error: null });
+      const mockGetSession = jest.fn().mockResolvedValue({
+        data: { session: mockSession },
+      });
+
+      (useSessionStore as unknown as jest.Mock).mockImplementation((selector) => {
+        const state = {
+          session: {
+            ...mockSession,
+            user: {
+              ...mockSession.user,
+              user_metadata: {
+                ...mockSession.user.user_metadata,
+                phone_number: 'invalid-phone', // Malformed phone that can't be parsed
+              },
+            },
+          },
+          status: 'authenticated',
+          setSession: jest.fn(),
+        };
+        return selector(state);
+      });
+
+      (supabase.auth.updateUser as jest.Mock) = mockUpdateUser;
+      (supabase.auth.getSession as jest.Mock) = mockGetSession;
+
+      renderWithProviders(<ProfileScreen />);
+
+      const nameInput = screen.getByTestId('profile-name-input');
+      const saveButton = screen.getByText('settings.profileSave');
+
+      // Change only the name (phone stays malformed)
+      fireEvent.changeText(nameInput, 'Updated Name');
+      fireEvent.press(saveButton);
+
+      await waitFor(() => {
+        // Should save name change without crashing on malformed phone
+        expect(mockUpdateUser).toHaveBeenCalledWith({
+          data: { full_name: 'Updated Name' },
+        });
       });
     });
   });
