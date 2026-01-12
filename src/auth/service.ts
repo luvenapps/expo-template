@@ -382,8 +382,23 @@ export async function signOut(): Promise<AuthResult> {
   return { success: true };
 }
 
-export async function signUpWithEmail(email: string, password: string): Promise<AuthResult> {
-  const { error } = await supabase.auth.signUp({ email, password });
+export async function signUpWithEmail(
+  email: string,
+  password: string,
+  metadata?: { fullName?: string; phoneNumber?: string },
+): Promise<AuthResult> {
+  const data =
+    metadata && (metadata.fullName || metadata.phoneNumber)
+      ? {
+          full_name: metadata.fullName,
+          phone_number: metadata.phoneNumber,
+        }
+      : undefined;
+  const { error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: data ? { data } : undefined,
+  });
   if (error) {
     const friendly = resolveFriendlyError(error);
     const errorMessage =

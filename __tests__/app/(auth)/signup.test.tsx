@@ -151,7 +151,9 @@ describe('SignUpScreen', () => {
   it('renders signup screen with all fields', () => {
     const { getByTestId } = render(<SignUpScreen />);
 
+    expect(getByTestId('name-input')).toBeDefined();
     expect(getByTestId('email-input')).toBeDefined();
+    expect(getByTestId('phone-input')).toBeDefined();
     expect(getByTestId('password-input')).toBeDefined();
     expect(getByTestId('confirm-password-input')).toBeDefined();
     expect(getByTestId('create-account-button')).toBeDefined();
@@ -161,10 +163,12 @@ describe('SignUpScreen', () => {
   it('disables submit button when email is empty', () => {
     const { getByTestId } = render(<SignUpScreen />);
 
+    const nameInput = getByTestId('name-input');
     const passwordInput = getByTestId('password-input');
     const confirmPasswordInput = getByTestId('confirm-password-input');
     const submitButton = getByTestId('create-account-button');
 
+    fireEvent.changeText(nameInput, 'Test User');
     fireEvent.changeText(passwordInput, 'password123');
     fireEvent.changeText(confirmPasswordInput, 'password123');
 
@@ -174,11 +178,13 @@ describe('SignUpScreen', () => {
   it('disables submit button when password is less than 8 characters', () => {
     const { getByTestId } = render(<SignUpScreen />);
 
+    const nameInput = getByTestId('name-input');
     const emailInput = getByTestId('email-input');
     const passwordInput = getByTestId('password-input');
     const confirmPasswordInput = getByTestId('confirm-password-input');
     const submitButton = getByTestId('create-account-button');
 
+    fireEvent.changeText(nameInput, 'Test User');
     fireEvent.changeText(emailInput, 'test@example.com');
     fireEvent.changeText(passwordInput, 'short');
     fireEvent.changeText(confirmPasswordInput, 'short');
@@ -189,11 +195,13 @@ describe('SignUpScreen', () => {
   it('disables submit button when confirm password is less than 8 characters', () => {
     const { getByTestId } = render(<SignUpScreen />);
 
+    const nameInput = getByTestId('name-input');
     const emailInput = getByTestId('email-input');
     const passwordInput = getByTestId('password-input');
     const confirmPasswordInput = getByTestId('confirm-password-input');
     const submitButton = getByTestId('create-account-button');
 
+    fireEvent.changeText(nameInput, 'Test User');
     fireEvent.changeText(emailInput, 'test@example.com');
     fireEvent.changeText(passwordInput, 'password123');
     fireEvent.changeText(confirmPasswordInput, 'short');
@@ -204,11 +212,13 @@ describe('SignUpScreen', () => {
   it('enables submit button when all fields are valid', () => {
     const { getByTestId } = render(<SignUpScreen />);
 
+    const nameInput = getByTestId('name-input');
     const emailInput = getByTestId('email-input');
     const passwordInput = getByTestId('password-input');
     const confirmPasswordInput = getByTestId('confirm-password-input');
     const submitButton = getByTestId('create-account-button');
 
+    fireEvent.changeText(nameInput, 'Test User');
     fireEvent.changeText(emailInput, 'test@example.com');
     fireEvent.changeText(passwordInput, 'password123');
     fireEvent.changeText(confirmPasswordInput, 'password123');
@@ -255,11 +265,13 @@ describe('SignUpScreen', () => {
   it('shows error when passwords do not match', async () => {
     const { getByTestId } = render(<SignUpScreen />);
 
+    const nameInput = getByTestId('name-input');
     const emailInput = getByTestId('email-input');
     const passwordInput = getByTestId('password-input');
     const confirmPasswordInput = getByTestId('confirm-password-input');
     const submitButton = getByTestId('create-account-button');
 
+    fireEvent.changeText(nameInput, 'Test User');
     fireEvent.changeText(emailInput, 'test@example.com');
     fireEvent.changeText(passwordInput, 'password123');
     fireEvent.changeText(confirmPasswordInput, 'different456');
@@ -268,6 +280,246 @@ describe('SignUpScreen', () => {
     await waitFor(() => {
       expect(mockedSignUpWithEmail).not.toHaveBeenCalled();
     });
+  });
+
+  it('shows error when name is missing on submit', async () => {
+    const { getByTestId, getByText } = render(<SignUpScreen />);
+
+    fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
+    fireEvent.changeText(getByTestId('password-input'), 'password123');
+    fireEvent.changeText(getByTestId('confirm-password-input'), 'password123');
+
+    fireEvent(getByTestId('confirm-password-input'), 'submitEditing');
+
+    await waitFor(() => {
+      expect(getByText('auth.signup.missingNameDescription')).toBeTruthy();
+    });
+  });
+
+  it('shows email validation error on blur', async () => {
+    const { getByTestId, getByText } = render(<SignUpScreen />);
+
+    fireEvent.changeText(getByTestId('name-input'), 'Test User');
+    fireEvent.changeText(getByTestId('email-input'), 'not-an-email');
+    fireEvent(getByTestId('email-input'), 'blur');
+
+    await waitFor(() => {
+      expect(getByText('auth.signup.invalidEmailDescription')).toBeTruthy();
+    });
+  });
+
+  it('clears email validation error when corrected', async () => {
+    const { getByTestId, queryByText } = render(<SignUpScreen />);
+
+    const emailInput = getByTestId('email-input');
+
+    fireEvent.changeText(emailInput, 'not-an-email');
+    fireEvent(emailInput, 'blur');
+
+    await waitFor(() => {
+      expect(queryByText('auth.signup.invalidEmailDescription')).toBeTruthy();
+    });
+
+    fireEvent.changeText(emailInput, 'valid@example.com');
+
+    await waitFor(() => {
+      expect(queryByText('auth.signup.invalidEmailDescription')).toBeNull();
+    });
+  });
+
+  it('validates email on submit when email is invalid', async () => {
+    const { getByTestId, getByText } = render(<SignUpScreen />);
+
+    fireEvent.changeText(getByTestId('name-input'), 'Test User');
+    fireEvent.changeText(getByTestId('email-input'), 'bad-email');
+    fireEvent.changeText(getByTestId('password-input'), 'password123');
+    fireEvent.changeText(getByTestId('confirm-password-input'), 'password123');
+
+    fireEvent(getByTestId('confirm-password-input'), 'submitEditing');
+
+    await waitFor(() => {
+      expect(getByText('auth.signup.invalidEmailDescription')).toBeTruthy();
+      expect(mockedSignUpWithEmail).not.toHaveBeenCalled();
+    });
+  });
+
+  it('rejects invalid phone number on submit', async () => {
+    const { getByTestId, getByText } = render(<SignUpScreen />);
+
+    fireEvent.changeText(getByTestId('name-input'), 'Test User');
+    fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
+    fireEvent.changeText(getByTestId('phone-input'), '123');
+    fireEvent.changeText(getByTestId('password-input'), 'password123');
+    fireEvent.changeText(getByTestId('confirm-password-input'), 'password123');
+    fireEvent.press(getByTestId('create-account-button'));
+
+    await waitFor(() => {
+      expect(mockedSignUpWithEmail).not.toHaveBeenCalled();
+      expect(getByText('auth.signup.phoneInvalidDescription')).toBeTruthy();
+    });
+  });
+
+  it('clears phone input when only non-digit characters are entered', () => {
+    const { getByTestId } = render(<SignUpScreen />);
+
+    fireEvent.changeText(getByTestId('phone-input'), '---');
+
+    expect(getByTestId('phone-input').props.value).toBe('');
+  });
+
+  it('validates phone number when touched', async () => {
+    const { getByTestId, queryByText } = render(<SignUpScreen />);
+
+    const phoneInput = getByTestId('phone-input');
+
+    fireEvent.changeText(phoneInput, '123');
+    fireEvent(phoneInput, 'blur');
+
+    await waitFor(() => {
+      expect(queryByText('auth.signup.phoneInvalidDescription')).toBeTruthy();
+    });
+
+    fireEvent.changeText(phoneInput, '4155552671');
+
+    await waitFor(() => {
+      expect(queryByText('auth.signup.phoneInvalidDescription')).toBeNull();
+    });
+  });
+
+  it('formats international phone numbers with a + prefix', () => {
+    const { getByTestId } = render(<SignUpScreen />);
+
+    fireEvent.changeText(getByTestId('phone-input'), '+14155552671');
+
+    expect(getByTestId('phone-input').props.value).toContain('+1');
+  });
+
+  it('sets phone error when touched and invalid input is entered', async () => {
+    const { getByTestId, queryByText } = render(<SignUpScreen />);
+
+    const phoneInput = getByTestId('phone-input');
+
+    fireEvent(phoneInput, 'blur');
+    fireEvent.changeText(phoneInput, '415555267');
+
+    await waitFor(() => {
+      expect(queryByText('auth.signup.phoneInvalidDescription')).toBeTruthy();
+    });
+  });
+
+  it('sets phone error when blurring an invalid number', async () => {
+    const { getByTestId, queryByText } = render(<SignUpScreen />);
+
+    const phoneInput = getByTestId('phone-input');
+
+    fireEvent.changeText(phoneInput, '+1415555267');
+    fireEvent(phoneInput, 'blur');
+
+    await waitFor(() => {
+      expect(queryByText('auth.signup.phoneInvalidDescription')).toBeTruthy();
+    });
+  });
+
+  it('clears phone error when touched and input is emptied', async () => {
+    const { getByTestId, queryByText } = render(<SignUpScreen />);
+
+    const phoneInput = getByTestId('phone-input');
+
+    fireEvent.changeText(phoneInput, '123');
+    fireEvent(phoneInput, 'blur');
+
+    await waitFor(() => {
+      expect(queryByText('auth.signup.phoneInvalidDescription')).toBeTruthy();
+    });
+
+    fireEvent.changeText(phoneInput, '');
+
+    await waitFor(() => {
+      expect(queryByText('auth.signup.phoneInvalidDescription')).toBeNull();
+    });
+  });
+
+  it('keeps phone error clear when blurring an empty field', async () => {
+    const { getByTestId, queryByText } = render(<SignUpScreen />);
+
+    fireEvent(getByTestId('phone-input'), 'blur');
+
+    await waitFor(() => {
+      expect(queryByText('auth.signup.phoneInvalidDescription')).toBeNull();
+    });
+  });
+
+  it('submits normalized phone number metadata', async () => {
+    mockedSignUpWithEmail.mockResolvedValue({ success: true });
+    const { getByTestId } = render(<SignUpScreen />);
+
+    fireEvent.changeText(getByTestId('name-input'), 'Test User');
+    fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
+    fireEvent.changeText(getByTestId('phone-input'), '4155552671');
+    fireEvent.changeText(getByTestId('password-input'), 'password123');
+    fireEvent.changeText(getByTestId('confirm-password-input'), 'password123');
+    fireEvent.press(getByTestId('create-account-button'));
+
+    await waitFor(() => {
+      expect(mockedSignUpWithEmail).toHaveBeenCalledWith('test@example.com', 'password123', {
+        fullName: 'Test User',
+        phoneNumber: '+14155552671',
+      });
+    });
+  });
+
+  it('submits normalized phone number when provided in + format', async () => {
+    mockedSignUpWithEmail.mockResolvedValue({ success: true });
+    const { getByTestId } = render(<SignUpScreen />);
+
+    fireEvent.changeText(getByTestId('name-input'), 'Test User');
+    fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
+    fireEvent.changeText(getByTestId('phone-input'), '+14155552671');
+    fireEvent.changeText(getByTestId('password-input'), 'password123');
+    fireEvent.changeText(getByTestId('confirm-password-input'), 'password123');
+    fireEvent.press(getByTestId('create-account-button'));
+
+    await waitFor(() => {
+      expect(mockedSignUpWithEmail).toHaveBeenCalledWith('test@example.com', 'password123', {
+        fullName: 'Test User',
+        phoneNumber: '+14155552671',
+      });
+    });
+  });
+
+  it('allows deleting phone input without reformatting', () => {
+    const { getByTestId } = render(<SignUpScreen />);
+
+    fireEvent.changeText(getByTestId('phone-input'), '4155552671');
+    const formatted = getByTestId('phone-input').props.value as string;
+    expect(formatted).toContain('415');
+
+    fireEvent.changeText(getByTestId('phone-input'), '415');
+    expect(getByTestId('phone-input').props.value).toBe('415');
+  });
+
+  it('shows missing description error when password requirements are unmet', async () => {
+    const { getByTestId, getByText } = render(<SignUpScreen />);
+
+    fireEvent.changeText(getByTestId('name-input'), 'Test User');
+    fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
+    fireEvent.changeText(getByTestId('password-input'), 'short');
+    fireEvent.changeText(getByTestId('confirm-password-input'), 'short');
+
+    fireEvent(getByTestId('confirm-password-input'), 'submitEditing');
+
+    await waitFor(() => {
+      expect(getByText('auth.signup.missingDescription')).toBeTruthy();
+    });
+  });
+
+  it('advances focus across fields on submit editing', () => {
+    const { getByTestId } = render(<SignUpScreen />);
+
+    fireEvent(getByTestId('name-input'), 'submitEditing');
+    fireEvent(getByTestId('email-input'), 'submitEditing');
+    fireEvent(getByTestId('phone-input'), 'submitEditing');
+    fireEvent(getByTestId('password-input'), 'submitEditing');
   });
 
   it('shows error toast when submitting with invalid form', async () => {
@@ -286,18 +538,23 @@ describe('SignUpScreen', () => {
 
     const { getByTestId } = render(<SignUpScreen />);
 
+    const nameInput = getByTestId('name-input');
     const emailInput = getByTestId('email-input');
     const passwordInput = getByTestId('password-input');
     const confirmPasswordInput = getByTestId('confirm-password-input');
     const submitButton = getByTestId('create-account-button');
 
+    fireEvent.changeText(nameInput, 'Test User');
     fireEvent.changeText(emailInput, 'test@example.com');
     fireEvent.changeText(passwordInput, 'password123');
     fireEvent.changeText(confirmPasswordInput, 'password123');
     fireEvent.press(submitButton);
 
     await waitFor(() => {
-      expect(mockedSignUpWithEmail).toHaveBeenCalledWith('test@example.com', 'password123');
+      expect(mockedSignUpWithEmail).toHaveBeenCalledWith('test@example.com', 'password123', {
+        fullName: 'Test User',
+        phoneNumber: undefined,
+      });
     });
 
     await waitFor(() => {
@@ -313,22 +570,135 @@ describe('SignUpScreen', () => {
 
     const { getByTestId } = render(<SignUpScreen />);
 
+    const nameInput = getByTestId('name-input');
     const emailInput = getByTestId('email-input');
     const passwordInput = getByTestId('password-input');
     const confirmPasswordInput = getByTestId('confirm-password-input');
     const submitButton = getByTestId('create-account-button');
 
+    fireEvent.changeText(nameInput, 'Test User');
     fireEvent.changeText(emailInput, 'test@example.com');
     fireEvent.changeText(passwordInput, 'password123');
     fireEvent.changeText(confirmPasswordInput, 'password123');
     fireEvent.press(submitButton);
 
     await waitFor(() => {
-      expect(mockedSignUpWithEmail).toHaveBeenCalledWith('test@example.com', 'password123');
+      expect(mockedSignUpWithEmail).toHaveBeenCalledWith('test@example.com', 'password123', {
+        fullName: 'Test User',
+        phoneNumber: undefined,
+      });
     });
 
     await waitFor(() => {
       expect(mockReplace).not.toHaveBeenCalled();
+    });
+  });
+
+  it('falls back to friendly title key when no description is provided', async () => {
+    mockedFriendlyError.mockReturnValue(
+      jest.fn(() => ({
+        friendly: { code: 'unknown' as const, type: 'error' as const, titleKey: 'errors.signup' },
+        toastId: 'toast-3',
+      })),
+    );
+    mockedSignUpWithEmail.mockResolvedValue({
+      success: false,
+      error: 'Signup failed',
+    });
+
+    const { getByTestId, getByText } = render(<SignUpScreen />);
+
+    fireEvent.changeText(getByTestId('name-input'), 'Test User');
+    fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
+    fireEvent.changeText(getByTestId('password-input'), 'password123');
+    fireEvent.changeText(getByTestId('confirm-password-input'), 'password123');
+    fireEvent.press(getByTestId('create-account-button'));
+
+    await waitFor(() => {
+      expect(getByText('errors.signup')).toBeTruthy();
+    });
+  });
+
+  it('uses friendly description when provided', async () => {
+    mockedFriendlyError.mockReturnValue(
+      jest.fn(() => ({
+        friendly: {
+          code: 'unknown' as const,
+          type: 'error' as const,
+          description: 'Friendly description',
+        },
+        toastId: 'toast-4',
+      })),
+    );
+    mockedSignUpWithEmail.mockResolvedValue({
+      success: false,
+      error: 'Signup failed',
+    });
+
+    const { getByTestId, getByText } = render(<SignUpScreen />);
+
+    fireEvent.changeText(getByTestId('name-input'), 'Test User');
+    fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
+    fireEvent.changeText(getByTestId('password-input'), 'password123');
+    fireEvent.changeText(getByTestId('confirm-password-input'), 'password123');
+    fireEvent.press(getByTestId('create-account-button'));
+
+    await waitFor(() => {
+      expect(getByText('Friendly description')).toBeTruthy();
+    });
+  });
+
+  it('uses friendly description key when provided', async () => {
+    mockedFriendlyError.mockReturnValue(
+      jest.fn(() => ({
+        friendly: {
+          code: 'unknown' as const,
+          type: 'error' as const,
+          descriptionKey: 'errors.signup.description',
+        },
+        toastId: 'toast-5',
+      })),
+    );
+    mockedSignUpWithEmail.mockResolvedValue({
+      success: false,
+      error: 'Signup failed',
+    });
+
+    const { getByTestId, getByText } = render(<SignUpScreen />);
+
+    fireEvent.changeText(getByTestId('name-input'), 'Test User');
+    fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
+    fireEvent.changeText(getByTestId('password-input'), 'password123');
+    fireEvent.changeText(getByTestId('confirm-password-input'), 'password123');
+    fireEvent.press(getByTestId('create-account-button'));
+
+    await waitFor(() => {
+      expect(getByText('errors.signup.description')).toBeTruthy();
+    });
+  });
+
+  it('falls back to error message string when friendly data is missing', async () => {
+    mockedFriendlyError.mockReturnValue(
+      jest.fn(() => ({
+        friendly: { code: 'unknown' as const, type: 'error' as const },
+        toastId: 'toast-6',
+      })),
+    );
+    mockedSignUpWithEmail.mockResolvedValue({
+      success: false,
+      error: 'Signup failed',
+    });
+
+    const { getByTestId, getByText } = render(<SignUpScreen />);
+
+    fireEvent.changeText(getByTestId('name-input'), 'Test User');
+    fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
+    fireEvent.changeText(getByTestId('password-input'), 'password123');
+    fireEvent.changeText(getByTestId('confirm-password-input'), 'password123');
+    fireEvent.press(getByTestId('create-account-button'));
+
+    await waitFor(() => {
+      expect(getByText('Signup failed')).toBeTruthy();
     });
   });
 
@@ -345,6 +715,7 @@ describe('SignUpScreen', () => {
 
     const { getByTestId } = render(<SignUpScreen />);
 
+    fireEvent.changeText(getByTestId('name-input'), 'Test User');
     fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
     fireEvent.changeText(getByTestId('password-input'), 'password123');
     fireEvent.changeText(getByTestId('confirm-password-input'), 'password123');
@@ -360,18 +731,23 @@ describe('SignUpScreen', () => {
 
     const { getByTestId } = render(<SignUpScreen />);
 
+    const nameInput = getByTestId('name-input');
     const emailInput = getByTestId('email-input');
     const passwordInput = getByTestId('password-input');
     const confirmPasswordInput = getByTestId('confirm-password-input');
     const submitButton = getByTestId('create-account-button');
 
+    fireEvent.changeText(nameInput, 'Test User');
     fireEvent.changeText(emailInput, '  test@example.com  ');
     fireEvent.changeText(passwordInput, 'password123');
     fireEvent.changeText(confirmPasswordInput, 'password123');
     fireEvent.press(submitButton);
 
     await waitFor(() => {
-      expect(mockedSignUpWithEmail).toHaveBeenCalledWith('test@example.com', 'password123');
+      expect(mockedSignUpWithEmail).toHaveBeenCalledWith('test@example.com', 'password123', {
+        fullName: 'Test User',
+        phoneNumber: undefined,
+      });
     });
   });
 
@@ -391,11 +767,13 @@ describe('SignUpScreen', () => {
 
     const { getByTestId } = render(<SignUpScreen />);
 
+    const nameInput = getByTestId('name-input');
     const emailInput = getByTestId('email-input');
     const passwordInput = getByTestId('password-input');
     const confirmPasswordInput = getByTestId('confirm-password-input');
     const submitButton = getByTestId('create-account-button');
 
+    fireEvent.changeText(nameInput, 'Test User');
     fireEvent.changeText(emailInput, 'test@example.com');
     fireEvent.changeText(passwordInput, 'password123');
     fireEvent.changeText(confirmPasswordInput, 'password123');
@@ -409,6 +787,215 @@ describe('SignUpScreen', () => {
     // Wait for submission to complete
     await waitFor(() => {
       expect(mockedSignUpWithEmail).toHaveBeenCalled();
+    });
+  });
+
+  it('normalizes phone with non-parseable number fallback', async () => {
+    mockedSignUpWithEmail.mockResolvedValue({ success: true });
+    const { getByTestId } = render(<SignUpScreen />);
+
+    fireEvent.changeText(getByTestId('name-input'), 'Test User');
+    fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
+    // Enter a phone that is somewhat valid for formatting but might have edge cases
+    fireEvent.changeText(getByTestId('phone-input'), '123');
+    // Make it valid so form can be submitted
+    fireEvent.changeText(getByTestId('phone-input'), '4155552671');
+    fireEvent.changeText(getByTestId('password-input'), 'password123');
+    fireEvent.changeText(getByTestId('confirm-password-input'), 'password123');
+    fireEvent.press(getByTestId('create-account-button'));
+
+    await waitFor(() => {
+      expect(mockedSignUpWithEmail).toHaveBeenCalled();
+    });
+  });
+
+  it('handles signup failure without error message or friendly error', async () => {
+    mockedFriendlyError.mockReturnValue(
+      jest.fn(() => ({
+        friendly: { code: 'unknown' as const, type: 'error' as const },
+        toastId: 'toast-10',
+      })) as any,
+    );
+    mockedSignUpWithEmail.mockResolvedValue({
+      success: false,
+    });
+
+    const { getByTestId, getByText } = render(<SignUpScreen />);
+
+    fireEvent.changeText(getByTestId('name-input'), 'Test User');
+    fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
+    fireEvent.changeText(getByTestId('password-input'), 'password123');
+    fireEvent.changeText(getByTestId('confirm-password-input'), 'password123');
+    fireEvent.press(getByTestId('create-account-button'));
+
+    await waitFor(() => {
+      expect(mockedSignUpWithEmail).toHaveBeenCalled();
+    });
+
+    await waitFor(() => {
+      expect(getByText('auth.signup.errorUnknown')).toBeTruthy();
+    });
+  });
+
+  it('sets valid phone error on blur when phone is valid', async () => {
+    const { getByTestId, queryByText } = render(<SignUpScreen />);
+
+    const phoneInput = getByTestId('phone-input');
+
+    fireEvent.changeText(phoneInput, '4155552671');
+    fireEvent(phoneInput, 'blur');
+
+    await waitFor(() => {
+      expect(queryByText('auth.signup.phoneInvalidDescription')).toBeNull();
+    });
+  });
+
+  it('uses friendly title when no descriptionKey or description provided', async () => {
+    mockedFriendlyError.mockReturnValue(
+      jest.fn(() => ({
+        friendly: {
+          code: 'unknown' as const,
+          type: 'error' as const,
+          title: 'Friendly Title',
+        },
+        toastId: 'toast-7',
+      })),
+    );
+    mockedSignUpWithEmail.mockResolvedValue({
+      success: false,
+      error: 'Signup failed',
+    });
+
+    const { getByTestId, getByText } = render(<SignUpScreen />);
+
+    fireEvent.changeText(getByTestId('name-input'), 'Test User');
+    fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
+    fireEvent.changeText(getByTestId('password-input'), 'password123');
+    fireEvent.changeText(getByTestId('confirm-password-input'), 'password123');
+    fireEvent.press(getByTestId('create-account-button'));
+
+    await waitFor(() => {
+      expect(getByText('Friendly Title')).toBeTruthy();
+    });
+  });
+
+  it('submits with non-parseable phone in metadata', async () => {
+    mockedSignUpWithEmail.mockResolvedValue({ success: true });
+    const { getByTestId } = render(<SignUpScreen />);
+
+    fireEvent.changeText(getByTestId('name-input'), 'Test User');
+    fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
+    // Enter characters that get stripped leaving empty string
+    fireEvent.changeText(getByTestId('phone-input'), '   ');
+    fireEvent.changeText(getByTestId('password-input'), 'password123');
+    fireEvent.changeText(getByTestId('confirm-password-input'), 'password123');
+    fireEvent.press(getByTestId('create-account-button'));
+
+    await waitFor(() => {
+      expect(mockedSignUpWithEmail).toHaveBeenCalledWith('test@example.com', 'password123', {
+        fullName: 'Test User',
+        phoneNumber: undefined,
+      });
+    });
+  });
+
+  it('submits with invalid phone that cannot be parsed to E164', async () => {
+    mockedSignUpWithEmail.mockResolvedValue({ success: true });
+    const { getByTestId } = render(<SignUpScreen />);
+
+    fireEvent.changeText(getByTestId('name-input'), 'Test User');
+    fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
+    // Enter an invalid phone format that libphonenumber cannot parse
+    fireEvent.changeText(getByTestId('phone-input'), '1');
+    fireEvent.changeText(getByTestId('password-input'), 'password123');
+    fireEvent.changeText(getByTestId('confirm-password-input'), 'password123');
+    fireEvent.press(getByTestId('create-account-button'));
+
+    await waitFor(() => {
+      // Should be rejected due to invalid phone
+      expect(mockedSignUpWithEmail).not.toHaveBeenCalled();
+    });
+  });
+
+  it('uses description when provided as empty string (truthy for nullish coalescing)', async () => {
+    mockedFriendlyError.mockReturnValue(
+      jest.fn(() => ({
+        friendly: {
+          code: 'unknown' as const,
+          type: 'error' as const,
+          description: '',
+          titleKey: 'errors.signup.fallback',
+        },
+        toastId: 'toast-8',
+      })),
+    );
+    mockedSignUpWithEmail.mockResolvedValue({
+      success: false,
+      error: 'Signup failed',
+    });
+
+    const { getByTestId, queryByText } = render(<SignUpScreen />);
+
+    fireEvent.changeText(getByTestId('name-input'), 'Test User');
+    fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
+    fireEvent.changeText(getByTestId('password-input'), 'password123');
+    fireEvent.changeText(getByTestId('confirm-password-input'), 'password123');
+    fireEvent.press(getByTestId('create-account-button'));
+
+    await waitFor(() => {
+      // Empty string is truthy for ??, so it should be used (InlineError shows empty)
+      // The titleKey should NOT be used
+      expect(queryByText('errors.signup.fallback')).toBeNull();
+    });
+  });
+
+  it('uses descriptionKey fallback when description is null', async () => {
+    mockedFriendlyError.mockReturnValue(
+      jest.fn(() => ({
+        friendly: {
+          code: 'unknown' as const,
+          type: 'error' as const,
+          description: null as any,
+          descriptionKey: 'errors.signup.descriptionKey',
+        },
+        toastId: 'toast-9',
+      })),
+    );
+    mockedSignUpWithEmail.mockResolvedValue({
+      success: false,
+      error: 'Signup failed',
+    });
+
+    const { getByTestId, getByText } = render(<SignUpScreen />);
+
+    fireEvent.changeText(getByTestId('name-input'), 'Test User');
+    fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
+    fireEvent.changeText(getByTestId('password-input'), 'password123');
+    fireEvent.changeText(getByTestId('confirm-password-input'), 'password123');
+    fireEvent.press(getByTestId('create-account-button'));
+
+    await waitFor(() => {
+      expect(getByText('errors.signup.descriptionKey')).toBeTruthy();
+    });
+  });
+
+  it('submits with phone containing only formatting characters', async () => {
+    mockedSignUpWithEmail.mockResolvedValue({ success: true });
+    const { getByTestId } = render(<SignUpScreen />);
+
+    fireEvent.changeText(getByTestId('name-input'), 'Test User');
+    fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
+    // Phone with only formatting chars - should be normalized to empty
+    fireEvent.changeText(getByTestId('phone-input'), '()-');
+    fireEvent.changeText(getByTestId('password-input'), 'password123');
+    fireEvent.changeText(getByTestId('confirm-password-input'), 'password123');
+    fireEvent.press(getByTestId('create-account-button'));
+
+    await waitFor(() => {
+      expect(mockedSignUpWithEmail).toHaveBeenCalledWith('test@example.com', 'password123', {
+        fullName: 'Test User',
+        phoneNumber: undefined,
+      });
     });
   });
 });

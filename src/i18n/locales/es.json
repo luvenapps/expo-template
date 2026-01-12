@@ -59,6 +59,13 @@
     "signup": {
       "missingTitle": "Falta información",
       "missingDescription": "Ingresa un correo y contraseña válidos.",
+      "missingNameDescription": "Ingresa tu nombre para continuar.",
+      "invalidEmailDescription": "Ingresa un correo válido.",
+      "phoneInvalidDescription": "Ingresa un teléfono válido.",
+      "nameLabel": "Nombre",
+      "namePlaceholder": "Tu nombre",
+      "phoneLabel": "Teléfono (opcional)",
+      "phonePlaceholder": "Número de teléfono",
       "passwordMismatchTitle": "Las contraseñas no coinciden",
       "passwordMismatchDescription": "Asegúrate de que ambas contraseñas coincidan.",
       "checkEmailTitle": "Revisa tu correo",

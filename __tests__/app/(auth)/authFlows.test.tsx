@@ -104,6 +104,7 @@ describe('Auth auxiliary flows', () => {
       mockedSignUp.mockResolvedValueOnce({ success: true });
       const { getByTestId } = render(<SignUpScreen />);
 
+      fireEvent.changeText(getByTestId('name-input'), 'Test User');
       fireEvent.changeText(getByTestId('email-input'), 'new@example.com');
       fireEvent.changeText(getByTestId('password-input'), 'password123');
       fireEvent.changeText(getByTestId('confirm-password-input'), 'password123');
@@ -111,7 +112,10 @@ describe('Auth auxiliary flows', () => {
       fireEvent.press(getByTestId('create-account-button'));
 
       await waitFor(() => {
-        expect(mockedSignUp).toHaveBeenCalledWith('new@example.com', 'password123');
+        expect(mockedSignUp).toHaveBeenCalledWith('new@example.com', 'password123', {
+          fullName: 'Test User',
+          phoneNumber: undefined,
+        });
         expect(mockReplace).toHaveBeenCalledWith('/(auth)/login');
       });
     });
@@ -120,6 +124,7 @@ describe('Auth auxiliary flows', () => {
       mockedSignUp.mockResolvedValueOnce({ success: true });
       const { getByTestId } = render(<SignUpScreen />);
 
+      fireEvent.changeText(getByTestId('name-input'), 'Test User');
       fireEvent.changeText(getByTestId('email-input'), '  spaced@example.com  ');
       fireEvent.changeText(getByTestId('password-input'), 'password123');
       fireEvent.changeText(getByTestId('confirm-password-input'), 'password123');
@@ -127,13 +132,17 @@ describe('Auth auxiliary flows', () => {
       fireEvent.press(getByTestId('create-account-button'));
 
       await waitFor(() => {
-        expect(mockedSignUp).toHaveBeenCalledWith('spaced@example.com', 'password123');
+        expect(mockedSignUp).toHaveBeenCalledWith('spaced@example.com', 'password123', {
+          fullName: 'Test User',
+          phoneNumber: undefined,
+        });
       });
     });
 
     it('shows error when passwords do not match', async () => {
       const { getByTestId } = render(<SignUpScreen />);
 
+      fireEvent.changeText(getByTestId('name-input'), 'Test User');
       fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
       fireEvent.changeText(getByTestId('password-input'), 'password123');
       fireEvent.changeText(getByTestId('confirm-password-input'), 'different123');
@@ -149,6 +158,7 @@ describe('Auth auxiliary flows', () => {
       const { getByTestId } = render(<SignUpScreen />);
 
       fireEvent.changeText(getByTestId('email-input'), '');
+      fireEvent.changeText(getByTestId('name-input'), '');
       fireEvent.changeText(getByTestId('password-input'), 'short');
       fireEvent.changeText(getByTestId('confirm-password-input'), 'short');
 
@@ -162,6 +172,7 @@ describe('Auth auxiliary flows', () => {
     it('shows error when password is too short', async () => {
       const { getByTestId } = render(<SignUpScreen />);
 
+      fireEvent.changeText(getByTestId('name-input'), 'Test User');
       fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
       fireEvent.changeText(getByTestId('password-input'), 'short');
       fireEvent.changeText(getByTestId('confirm-password-input'), 'short');
@@ -181,6 +192,7 @@ describe('Auth auxiliary flows', () => {
 
       const { getByTestId } = render(<SignUpScreen />);
 
+      fireEvent.changeText(getByTestId('name-input'), 'Test User');
       fireEvent.changeText(getByTestId('email-input'), 'existing@example.com');
       fireEvent.changeText(getByTestId('password-input'), 'password123');
       fireEvent.changeText(getByTestId('confirm-password-input'), 'password123');
@@ -201,6 +213,7 @@ describe('Auth auxiliary flows', () => {
 
       const { getByTestId } = render(<SignUpScreen />);
 
+      fireEvent.changeText(getByTestId('name-input'), 'Test User');
       fireEvent.changeText(getByTestId('email-input'), 'existing@example.com');
       fireEvent.changeText(getByTestId('password-input'), 'password123');
       fireEvent.changeText(getByTestId('confirm-password-input'), 'password123');

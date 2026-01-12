@@ -1,4 +1,5 @@
 import { signUpWithEmail } from '@/auth/service';
+import { isValidEmail } from '@/data/validation';
 import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
 import {
   CaptionText,
@@ -12,6 +13,7 @@ import {
 } from '@/ui';
 import { Eye, EyeOff } from '@tamagui/lucide-icons';
 import { useRouter } from 'expo-router';
+import { AsYouType, parsePhoneNumberFromString } from 'libphonenumber-js/min';
 import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Platform, TextInput } from 'react-native';
@@ -22,24 +24,109 @@ export default function SignUpScreen() {
   const toast = useToast();
   const showFriendlyError = useFriendlyErrorHandler(toast);
 
+  const nameInputRef = useRef<TextInput>(null);
+  const emailInputRef = useRef<TextInput>(null);
+  const phoneInputRef = useRef<TextInput>(null);
   const passwordInputRef = useRef<TextInput>(null);
   const confirmInputRef = useRef<TextInput>(null);
 
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [phoneTouched, setPhoneTouched] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const { t } = useTranslation();
 
+  const trimmedName = name.trim();
+  const trimmedEmail = email.trim();
+  const trimmedPhone = phoneNumber.trim();
+  const isEmailValid = useMemo(() => isValidEmail(trimmedEmail), [trimmedEmail]);
+
   const isFormValid = useMemo(() => {
-    return email.trim() !== '' && password.trim().length >= 8 && confirmPassword.trim().length >= 8;
-  }, [email, password, confirmPassword]);
+    return (
+      trimmedName !== '' &&
+      isEmailValid &&
+      password.trim().length >= 8 &&
+      confirmPassword.trim().length >= 8
+    );
+  }, [confirmPassword, isEmailValid, password, trimmedName]);
+
+  const validateEmail = (value: string) => {
+    const nextEmail = value.trim();
+    if (!nextEmail || !isValidEmail(nextEmail)) {
+      setEmailError(t('auth.signup.invalidEmailDescription'));
+    } else {
+      setEmailError(null);
+    }
+  };
+
+  const handlePhoneChange = (value: string) => {
+    if (value.length < phoneNumber.length) {
+      setPhoneNumber(value);
+      return;
+    }
+    const cleaned = value.replace(/[^\d+]/g, '');
+    if (!cleaned) {
+      setPhoneNumber('');
+      return;
+    }
+    const formatter = cleaned.startsWith('+') ? new AsYouType() : new AsYouType('US');
+    setPhoneNumber(formatter.input(cleaned));
+  };
+
+  const parsePhoneInput = (value: string) => {
+    const cleaned = value.trim().replace(/[^\d+]/g, '');
+    if (!cleaned) return null;
+    return cleaned.startsWith('+')
+      ? parsePhoneNumberFromString(cleaned)
+      : parsePhoneNumberFromString(cleaned, 'US');
+  };
+
+  const normalizePhoneNumber = (value: string) => {
+    const cleaned = value.trim().replace(/[\s\-()]/g, '');
+    if (!cleaned) return '';
+    const parsed = cleaned.startsWith('+')
+      ? parsePhoneNumberFromString(cleaned)
+      : parsePhoneNumberFromString(cleaned, 'US');
+    return parsed?.number;
+  };
 
   const handleSubmit = async () => {
+    if (!trimmedName) {
+      setErrorMessage(t('auth.signup.missingNameDescription'));
+      setStatusMessage(null);
+      return;
+    }
+
+    if (!trimmedEmail || !isEmailValid) {
+      setEmailTouched(true);
+      validateEmail(trimmedEmail);
+      setErrorMessage(null);
+      setStatusMessage(null);
+      return;
+    }
+
+    if (trimmedPhone) {
+      const parsed = parsePhoneInput(trimmedPhone);
+      if (!parsed?.isValid()) {
+        setPhoneTouched(true);
+        setPhoneError(t('auth.signup.phoneInvalidDescription'));
+        setErrorMessage(null);
+        setStatusMessage(null);
+        return;
+      }
+      setPhoneError(null);
+    }
+
     if (!isFormValid) {
       setErrorMessage(t('auth.signup.missingDescription'));
       setStatusMessage(null);
@@ -55,7 +142,12 @@ export default function SignUpScreen() {
     setIsSubmitting(true);
     setErrorMessage(null);
     setStatusMessage(null);
-    const result = await signUpWithEmail(email.trim(), password);
+    const normalizedPhone = normalizePhoneNumber(trimmedPhone);
+    const metadata = {
+      fullName: trimmedName,
+      phoneNumber: normalizedPhone || undefined,
+    };
+    const result = await signUpWithEmail(trimmedEmail, password, metadata);
     setIsSubmitting(false);
 
     if (result.success) {
@@ -109,6 +201,22 @@ export default function SignUpScreen() {
 
             <Form width="100%" gap="$4">
               <FormField
+                ref={nameInputRef}
+                testID="name-field"
+                inputTestID="name-input"
+                label={t('auth.signup.nameLabel')}
+                placeholder={t('auth.signup.namePlaceholder')}
+                placeholderTextColor="$colorMuted"
+                autoCapitalize="words"
+                value={name}
+                required
+                onChangeText={setName}
+                onSubmitEditing={() => emailInputRef.current?.focus?.()}
+                returnKeyType="next"
+              />
+
+              <FormField
+                ref={emailInputRef}
                 testID="email-field"
                 inputTestID="email-input"
                 label={t('auth.emailLabel')}
@@ -117,7 +225,67 @@ export default function SignUpScreen() {
                 keyboardType="email-address"
                 autoCapitalize="none"
                 value={email}
-                onChangeText={setEmail}
+                required
+                errorText={emailTouched ? (emailError ?? undefined) : undefined}
+                borderColor={emailTouched && emailError ? '$dangerColor' : undefined}
+                borderColorHover={emailTouched && emailError ? '$dangerColor' : undefined}
+                borderColorPress={emailTouched && emailError ? '$dangerColor' : undefined}
+                focusStyle={
+                  emailTouched && emailError ? { borderColor: '$dangerColor' } : undefined
+                }
+                onChangeText={(value) => {
+                  setEmail(value);
+                  if (emailTouched) {
+                    validateEmail(value);
+                  }
+                }}
+                onBlur={() => {
+                  setEmailTouched(true);
+                  validateEmail(email);
+                }}
+                onSubmitEditing={() => phoneInputRef.current?.focus?.()}
+                returnKeyType="next"
+              />
+
+              <FormField
+                ref={phoneInputRef}
+                testID="phone-field"
+                inputTestID="phone-input"
+                label={t('auth.signup.phoneLabel')}
+                placeholder={t('auth.signup.phonePlaceholder')}
+                placeholderTextColor="$colorMuted"
+                keyboardType="phone-pad"
+                autoCapitalize="none"
+                value={phoneNumber}
+                errorText={phoneTouched ? (phoneError ?? undefined) : undefined}
+                borderColor={phoneTouched && phoneError ? '$dangerColor' : undefined}
+                borderColorHover={phoneTouched && phoneError ? '$dangerColor' : undefined}
+                borderColorPress={phoneTouched && phoneError ? '$dangerColor' : undefined}
+                focusStyle={
+                  phoneTouched && phoneError ? { borderColor: '$dangerColor' } : undefined
+                }
+                onChangeText={(value) => {
+                  handlePhoneChange(value);
+                  if (phoneTouched) {
+                    const parsed = parsePhoneInput(value);
+                    if (!parsed) {
+                      setPhoneError(null);
+                      return;
+                    }
+                    setPhoneError(
+                      parsed.isValid() ? null : t('auth.signup.phoneInvalidDescription'),
+                    );
+                  }
+                }}
+                onBlur={() => {
+                  setPhoneTouched(true);
+                  const parsed = parsePhoneInput(phoneNumber);
+                  if (!parsed) {
+                    setPhoneError(null);
+                    return;
+                  }
+                  setPhoneError(parsed.isValid() ? null : t('auth.signup.phoneInvalidDescription'));
+                }}
                 onSubmitEditing={() => passwordInputRef.current?.focus?.()}
                 returnKeyType="next"
               />
@@ -131,6 +299,7 @@ export default function SignUpScreen() {
                 placeholderTextColor="$colorMuted"
                 secureTextEntry={!showPassword}
                 value={password}
+                required
                 onChangeText={setPassword}
                 returnKeyType="next"
                 onSubmitEditing={() => confirmInputRef.current?.focus?.()}
@@ -164,6 +333,7 @@ export default function SignUpScreen() {
                 placeholderTextColor="$colorMuted"
                 secureTextEntry={!showConfirmPassword}
                 value={confirmPassword}
+                required
                 onChangeText={setConfirmPassword}
                 returnKeyType="done"
                 onSubmitEditing={handleSubmit}
