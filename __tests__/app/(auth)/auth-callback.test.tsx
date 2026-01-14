@@ -255,17 +255,20 @@ describe('AuthCallbackScreen - Native', () => {
 
     const { getByTestId } = render(<AuthCallbackScreen />);
 
-    await waitFor(() => {
-      expect(handleError).toHaveBeenCalledWith(
-        {
-          code: 'auth.oauth.browser',
-          titleKey: 'errors.auth.oauthBrowser.title',
-          descriptionKey: 'errors.auth.oauthBrowser.description',
-          type: 'error',
-        },
-        { surface: 'auth.callback', suppressToast: true },
-      );
-    });
+    await waitFor(
+      () => {
+        expect(handleError).toHaveBeenCalledWith(
+          {
+            code: 'auth.oauth.browser',
+            titleKey: 'errors.auth.oauthBrowser.title',
+            descriptionKey: 'errors.auth.oauthBrowser.description',
+            type: 'error',
+          },
+          { surface: 'auth.callback', suppressToast: true },
+        );
+      },
+      { timeout: 3000 },
+    );
 
     const errorElement = getByTestId('auth-callback-error');
     expect(errorElement).toBeTruthy();
@@ -317,10 +320,13 @@ describe('AuthCallbackScreen - Native', () => {
 
     const { getByTestId } = render(<AuthCallbackScreen />);
 
-    await waitFor(() => {
-      const retryButton = getByTestId('auth-callback-sign-in');
-      expect(retryButton).toBeTruthy();
-    });
+    await waitFor(
+      () => {
+        const retryButton = getByTestId('auth-callback-sign-in');
+        expect(retryButton).toBeTruthy();
+      },
+      { timeout: 3000 },
+    );
   });
 
   it('navigates to login when retry button is pressed', async () => {
@@ -338,10 +344,13 @@ describe('AuthCallbackScreen - Native', () => {
 
     const { getByTestId } = render(<AuthCallbackScreen />);
 
-    await waitFor(() => {
-      const retryButton = getByTestId('auth-callback-sign-in');
-      fireEvent.press(retryButton);
-    });
+    await waitFor(
+      () => {
+        const retryButton = getByTestId('auth-callback-sign-in');
+        fireEvent.press(retryButton);
+      },
+      { timeout: 3000 },
+    );
 
     expect(mockReplace).toHaveBeenCalledWith('/(auth)/login');
   });

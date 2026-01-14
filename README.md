@@ -465,6 +465,18 @@ This ID links your local or CI builds to your Expo project so that features like
 
 ---
 
+## 🔗 Universal Links
+
+Universal Links are configured for app-to-web handoff and deep links. Setup steps and required Apple/Android configuration live in [`docs/universal-links-setup.md`](docs/universal-links-setup.md).
+
+---
+
+## 📓 Logging & Observability
+
+Logging and analytics conventions (logger usage, analytics helpers, and backend wiring) are documented in [`docs/logging.md`](docs/logging.md) and [`docs/observability.md`](docs/observability.md).
+
+---
+
 ## ⚙️ Continuous Integration (GitHub Actions)
 
 This project includes a comprehensive GitHub Actions workflow to automate testing, linting, and building for multiple platforms. The CI pipeline runs unit tests with Jest, linting checks with ESLint, and end-to-end tests using Maestro on both iOS and Android environments. It also supports building the app for production to ensure the build process remains stable.

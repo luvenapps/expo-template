@@ -382,6 +382,47 @@ export async function signOut(): Promise<AuthResult> {
   return { success: true };
 }
 
+/**
+ * Get the appropriate redirect URL for auth callbacks based on platform
+ * @returns Redirect URL for email confirmation or password reset
+ */
+function getAuthRedirectUrl(): string {
+  const appDomain = process.env.EXPO_PUBLIC_APP_DOMAIN;
+
+  if (Platform.OS === 'web') {
+    // On web, always use HTTP(S) URLs, never custom schemes
+    if (typeof window !== 'undefined' && window.location?.origin) {
+      // Browser context: use actual origin
+      return new URL('/auth-callback', window.location.origin).toString();
+    }
+    if (appDomain) {
+      // SSR/SSG context with domain configured
+      // Support both full URLs (http://localhost:8081) and bare domains (betterhabits.com)
+      const baseUrl =
+        appDomain.startsWith('http://') || appDomain.startsWith('https://')
+          ? appDomain
+          : `https://${appDomain}`;
+      return new URL('/auth-callback', baseUrl).toString();
+    }
+    // SSR/SSG context without domain: use localhost with Expo's default port
+    // In production, EXPO_PUBLIC_APP_DOMAIN should be set
+    return 'http://localhost:8081/auth-callback';
+  }
+
+  // Native: use custom domain (Universal Links) or custom URL scheme
+  if (appDomain) {
+    // For native, only accept bare domains (for Universal Links)
+    // URLs with protocols are not valid for Universal Links
+    if (appDomain.startsWith('http://') || appDomain.startsWith('https://')) {
+      // Strip protocol for native Universal Links
+      const domainOnly = appDomain.replace(/^https?:\/\//, '');
+      return `https://${domainOnly}/auth-callback`;
+    }
+    return `https://${appDomain}/auth-callback`;
+  }
+  return Linking.createURL('auth-callback');
+}
+
 export async function signUpWithEmail(
   email: string,
   password: string,
@@ -394,10 +435,16 @@ export async function signUpWithEmail(
           phone_number: metadata.phoneNumber,
         }
       : undefined;
+
+  const redirectTo = getAuthRedirectUrl();
+
   const { error } = await supabase.auth.signUp({
     email,
     password,
-    options: data ? { data } : undefined,
+    options: {
+      ...(data ? { data } : {}),
+      emailRedirectTo: redirectTo,
+    },
   });
   if (error) {
     const friendly = resolveFriendlyError(error);
@@ -420,10 +467,7 @@ export async function signUpWithEmail(
 }
 
 export async function sendPasswordReset(email: string): Promise<AuthResult> {
-  const redirectTo =
-    Platform.OS === 'web' && typeof window !== 'undefined' && window.location?.origin
-      ? new URL('/auth-callback', window.location.origin).toString()
-      : Linking.createURL('auth-callback');
+  const redirectTo = getAuthRedirectUrl();
   const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
   if (error) {
     const friendly = resolveFriendlyError(error);

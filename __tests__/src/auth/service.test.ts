@@ -913,5 +913,131 @@ describe('auth/service', () => {
         redirectTo: 'myapp://auth-callback',
       });
     });
+
+    it('uses localhost fallback when window is undefined on web', async () => {
+      Object.defineProperty(Platform, 'OS', { value: 'web', writable: true });
+      const originalWindow = global.window;
+      const originalEnv = process.env.EXPO_PUBLIC_APP_DOMAIN;
+      // @ts-expect-error - testing undefined window
+      delete global.window;
+      delete process.env.EXPO_PUBLIC_APP_DOMAIN;
+
+      supabase.auth.signUp.mockResolvedValueOnce({ error: null });
+      await signUpWithEmail('test@example.com', 'password');
+
+      expect(supabase.auth.signUp).toHaveBeenCalledWith({
+        email: 'test@example.com',
+        password: 'password',
+        options: {
+          emailRedirectTo: 'http://localhost:8081/auth-callback',
+        },
+      });
+
+      global.window = originalWindow;
+      process.env.EXPO_PUBLIC_APP_DOMAIN = originalEnv;
+    });
+
+    it('uses EXPO_PUBLIC_APP_DOMAIN when set on web with undefined window', async () => {
+      Object.defineProperty(Platform, 'OS', { value: 'web', writable: true });
+      const originalWindow = global.window;
+      const originalEnv = process.env.EXPO_PUBLIC_APP_DOMAIN;
+      // @ts-expect-error - testing undefined window
+      delete global.window;
+      process.env.EXPO_PUBLIC_APP_DOMAIN = 'betterhabits.com';
+
+      supabase.auth.signUp.mockResolvedValueOnce({ error: null });
+      await signUpWithEmail('test@example.com', 'password');
+
+      expect(supabase.auth.signUp).toHaveBeenCalledWith({
+        email: 'test@example.com',
+        password: 'password',
+        options: {
+          emailRedirectTo: 'https://betterhabits.com/auth-callback',
+        },
+      });
+
+      global.window = originalWindow;
+      process.env.EXPO_PUBLIC_APP_DOMAIN = originalEnv;
+    });
+
+    it('uses EXPO_PUBLIC_APP_DOMAIN for native when set', async () => {
+      Object.defineProperty(Platform, 'OS', { value: 'ios', writable: true });
+      const originalEnv = process.env.EXPO_PUBLIC_APP_DOMAIN;
+      process.env.EXPO_PUBLIC_APP_DOMAIN = 'betterhabits.com';
+
+      supabase.auth.signUp.mockResolvedValueOnce({ error: null });
+      await signUpWithEmail('test@example.com', 'password');
+
+      expect(supabase.auth.signUp).toHaveBeenCalledWith({
+        email: 'test@example.com',
+        password: 'password',
+        options: {
+          emailRedirectTo: 'https://betterhabits.com/auth-callback',
+        },
+      });
+
+      process.env.EXPO_PUBLIC_APP_DOMAIN = originalEnv;
+    });
+
+    it('uses localhost for password reset when window is undefined on web', async () => {
+      Object.defineProperty(Platform, 'OS', { value: 'web', writable: true });
+      const originalWindow = global.window;
+      const originalEnv = process.env.EXPO_PUBLIC_APP_DOMAIN;
+      // @ts-expect-error - testing undefined window
+      delete global.window;
+      delete process.env.EXPO_PUBLIC_APP_DOMAIN;
+
+      supabase.auth.resetPasswordForEmail.mockResolvedValueOnce({ error: null });
+      await sendPasswordReset('test@example.com');
+
+      expect(supabase.auth.resetPasswordForEmail).toHaveBeenCalledWith('test@example.com', {
+        redirectTo: 'http://localhost:8081/auth-callback',
+      });
+
+      global.window = originalWindow;
+      process.env.EXPO_PUBLIC_APP_DOMAIN = originalEnv;
+    });
+
+    it('uses full URL with protocol when set on web with undefined window', async () => {
+      Object.defineProperty(Platform, 'OS', { value: 'web', writable: true });
+      const originalWindow = global.window;
+      const originalEnv = process.env.EXPO_PUBLIC_APP_DOMAIN;
+      // @ts-expect-error - testing undefined window
+      delete global.window;
+      process.env.EXPO_PUBLIC_APP_DOMAIN = 'http://localhost:8081';
+
+      supabase.auth.signUp.mockResolvedValueOnce({ error: null });
+      await signUpWithEmail('test@example.com', 'password');
+
+      expect(supabase.auth.signUp).toHaveBeenCalledWith({
+        email: 'test@example.com',
+        password: 'password',
+        options: {
+          emailRedirectTo: 'http://localhost:8081/auth-callback',
+        },
+      });
+
+      global.window = originalWindow;
+      process.env.EXPO_PUBLIC_APP_DOMAIN = originalEnv;
+    });
+
+    it('strips protocol for native when full URL is provided', async () => {
+      Object.defineProperty(Platform, 'OS', { value: 'ios', writable: true });
+      const originalEnv = process.env.EXPO_PUBLIC_APP_DOMAIN;
+      process.env.EXPO_PUBLIC_APP_DOMAIN = 'http://localhost:8081';
+
+      supabase.auth.signUp.mockResolvedValueOnce({ error: null });
+      await signUpWithEmail('test@example.com', 'password');
+
+      expect(supabase.auth.signUp).toHaveBeenCalledWith({
+        email: 'test@example.com',
+        password: 'password',
+        options: {
+          emailRedirectTo: 'https://localhost:8081/auth-callback',
+        },
+      });
+
+      process.env.EXPO_PUBLIC_APP_DOMAIN = originalEnv;
+    });
   });
 });

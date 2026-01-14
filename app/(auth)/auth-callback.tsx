@@ -21,6 +21,16 @@ export default function AuthCallbackScreen() {
   const hasProcessedRef = useRef(false);
   const isProcessingRef = useRef(false);
   const latestUrl = useURL();
+
+  // Log component mount to verify it's rendering
+  useEffect(() => {
+    logger.info('AuthCallback screen mounted', {
+      platform: Platform.OS,
+      hasLatestUrl: Boolean(latestUrl),
+      latestUrl,
+      params,
+    });
+  }, [logger, latestUrl, params]);
   const goBackOrHome = useCallback(() => {
     if (router.canGoBack()) {
       router.back();
@@ -71,7 +81,21 @@ export default function AuthCallbackScreen() {
     const hashParams = new URLSearchParams(webHashRef.current.replace(/^#/, ''));
     const accessToken = hashParams.get('access_token');
     const refreshToken = hashParams.get('refresh_token');
+    const errorCode = hashParams.get('error');
+    const errorDescription = hashParams.get('error_description');
     const hasHashParams = Array.from(hashParams.keys()).length > 0;
+
+    // Handle Supabase error responses
+    if (errorCode) {
+      reportError({
+        code: errorCode,
+        message: errorDescription
+          ? decodeURIComponent(errorDescription.replace(/\+/g, ' '))
+          : undefined,
+        type: 'error',
+      });
+      return;
+    }
 
     if (!accessToken || !refreshToken) {
       if (!hasHashParams) {
@@ -79,7 +103,9 @@ export default function AuthCallbackScreen() {
           data: { session },
         } = await supabase.auth.getSession();
         if (session) {
+          // Email confirmation successful - redirect to home
           window.location.replace('/');
+          return;
         }
         return;
       }
@@ -113,6 +139,7 @@ export default function AuthCallbackScreen() {
     setErrorMessage(null);
     isProcessingRef.current = true;
 
+    // On Android, check if there are actual auth params before processing
     if (Platform.OS === 'android' && !queryParams.code) {
       const url = latestUrl ?? '';
       const hasTokenInUrl =
@@ -123,6 +150,24 @@ export default function AuthCallbackScreen() {
         goBackOrHome();
         return;
       }
+    }
+
+    // On iOS, check if there's an initial URL from app launch
+    // latestUrl is only set for URL events after app is open
+    // We need to check getInitialURL() for the URL that launched the app
+    const initialUrl = latestUrl ?? (await Linking.getInitialURL());
+
+    logger.info('Checking for initial URL', {
+      latestUrl,
+      initialUrl,
+      hasQueryCode: Boolean(queryParams.code),
+    });
+
+    if (Platform.OS === 'ios' && !initialUrl && !queryParams.code) {
+      logger.info('No URL detected, redirecting home');
+      hasProcessedRef.current = true;
+      goBackOrHome();
+      return;
     }
 
     const {
@@ -150,7 +195,7 @@ export default function AuthCallbackScreen() {
       return;
     }
 
-    const initialUrl = latestUrl ?? (await Linking.getInitialURL());
+    // initialUrl is already defined above, reuse it
     const parsedInitial = initialUrl ? Linking.parse(initialUrl) : null;
     const embeddedUrl =
       parsedInitial?.queryParams && typeof parsedInitial.queryParams.url === 'string'
@@ -197,6 +242,21 @@ export default function AuthCallbackScreen() {
     const hashParams = new URLSearchParams(hash);
     const accessToken = hashParams.get('access_token');
     const refreshToken = hashParams.get('refresh_token');
+    const errorCode = hashParams.get('error');
+    const errorDescription = hashParams.get('error_description');
+
+    // Handle Supabase error responses in the hash
+    if (errorCode) {
+      hasProcessedRef.current = true;
+      reportError({
+        code: errorCode,
+        message: errorDescription
+          ? decodeURIComponent(errorDescription.replace(/\+/g, ' '))
+          : undefined,
+        type: 'error',
+      });
+      return;
+    }
 
     if (accessToken && refreshToken) {
       hasProcessedRef.current = true;
@@ -212,7 +272,42 @@ export default function AuthCallbackScreen() {
       return;
     }
 
-    if (initialUrl && (codeFromUrl || hash)) {
+    // If we have a URL but couldn't extract tokens, the session might already be set
+    // This happens with email confirmation links - Supabase processes the token server-side
+    // and the session is already available via onAuthStateChange
+    if (initialUrl) {
+      logger.info('URL present but no tokens extracted, checking for existing session');
+      // Don't error immediately - the session listener might pick it up
+      // Just wait a bit longer for the session to propagate
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        const {
+          data: { session: delayedSession },
+        } = await supabase.auth.getSession();
+        if (delayedSession) {
+          hasProcessedRef.current = true;
+          goBackOrHome();
+          return;
+        }
+      }
+    }
+
+    // Only show error if we have a URL with auth params but couldn't process them
+    // This catches: OAuth code failures, or hash fragments with malformed/incomplete tokens
+    // Note: Supabase error responses (error=...) are already handled above
+    const hasHashContent = hash && hash.length > 0;
+    const hasInvalidHash = hasHashContent && !errorCode && (!accessToken || !refreshToken);
+
+    logger.info('Error condition check', {
+      initialUrl,
+      codeFromUrl,
+      hasHashContent,
+      hasInvalidHash,
+      errorCode,
+      willError: Boolean(initialUrl && (codeFromUrl || hasInvalidHash)),
+    });
+
+    if (initialUrl && (codeFromUrl || hasInvalidHash)) {
       reportError({
         code: 'auth.oauth.browser',
         titleKey: 'errors.auth.oauthBrowser.title',
@@ -251,6 +346,8 @@ export default function AuthCallbackScreen() {
     }
   }, [handleNativeCallback, handleWebCallback]);
 
+  // On native, only render if there's an error to show
+  // Otherwise the callback happens silently in the background
   if (Platform.OS !== 'web' && !errorMessage) {
     return null;
   }
@@ -260,14 +357,14 @@ export default function AuthCallbackScreen() {
       <YStack gap="$3" alignItems="center">
         <TitleText>{t('auth.signingIn')}</TitleText>
         <InlineError message={errorMessage} testID="auth-callback-error" />
-        {errorMessage ? (
+        {errorMessage && (
           <PrimaryButton
             onPress={() => router.replace('/(auth)/login')}
             testID="auth-callback-sign-in"
           >
             {t('auth.signIn')}
           </PrimaryButton>
-        ) : null}
+        )}
       </YStack>
     </ScreenContainer>
   );
