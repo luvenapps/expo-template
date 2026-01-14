@@ -15,6 +15,7 @@ import { getQueryClient, getQueryClientPersistOptions } from '@/state';
 import { pullUpdates, pushOutbox, useSync } from '@/sync';
 import { useThemeContext } from '@/ui/theme/ThemeProvider';
 import { SoftPromptModal } from '@/ui/components/SoftPromptModal';
+import { NamePromptModal } from '@/ui/components/NamePromptModal';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import * as Notifications from 'expo-notifications';
@@ -37,6 +38,7 @@ import { NOTIFICATIONS } from '@/config/constants';
 import { DOMAIN } from '@/config/domain.config';
 import { createLogger } from '@/observability/logger';
 import { analytics } from '@/observability/analytics';
+import { getLocalName, setLocalName } from '@/auth/nameStorage';
 
 const queryClient = getQueryClient();
 const persistOptions = getQueryClientPersistOptions();
@@ -53,6 +55,8 @@ export function AppProviders({ children }: PropsWithChildren) {
   const syncEnabled = Platform.OS !== 'web' && isAuthenticated;
   const { resolvedTheme, palette } = useThemeContext();
   const [isAppReady, setIsAppReady] = useState(false);
+  const [namePromptOpen, setNamePromptOpen] = useState(false);
+  const [namePromptValue, setNamePromptValue] = useState('');
   const { tryPromptForPush, softPrompt } = useNotificationSettings();
   const turnOnFirebase = useMemo(
     () =>
@@ -64,6 +68,20 @@ export function AppProviders({ children }: PropsWithChildren) {
   useEffect(() => {
     const initialize = async () => {
       initSessionListener((session) => {
+        const metadata = session?.user?.user_metadata ?? {};
+        const metadataName =
+          typeof metadata.full_name === 'string'
+            ? metadata.full_name
+            : typeof metadata.name === 'string'
+              ? metadata.name
+              : typeof metadata.fullName === 'string'
+                ? metadata.fullName
+                : '';
+        if (metadataName.trim()) {
+          setLocalName(metadataName);
+          setNamePromptValue(metadataName);
+          setNamePromptOpen(false);
+        }
         if (getPendingRemoteReset()) {
           resetLogger.info('Pending remote reset detected');
         }
@@ -89,6 +107,21 @@ export function AppProviders({ children }: PropsWithChildren) {
       unsubscribeFCM?.();
     };
   }, [turnOnFirebase]);
+
+  useEffect(() => {
+    if (isWeb) {
+      return;
+    }
+
+    const existingName = getLocalName();
+    if (existingName?.trim()) {
+      setNamePromptValue(existingName);
+      setNamePromptOpen(false);
+      return;
+    }
+
+    setNamePromptOpen(true);
+  }, []);
 
   useEffect(() => {
     if (Platform.OS === 'web') {
@@ -340,6 +373,24 @@ export function AppProviders({ children }: PropsWithChildren) {
             onNotNow={softPrompt.onNotNow}
             onOpenChange={softPrompt.setOpen}
           />
+          {isWeb ? null : (
+            <NamePromptModal
+              open={namePromptOpen}
+              title={i18n.t('settings.namePromptTitle')}
+              message={i18n.t('settings.namePromptDescription')}
+              label={i18n.t('settings.profileNameLabel')}
+              placeholder={i18n.t('settings.namePromptPlaceholder')}
+              value={namePromptValue}
+              actionLabel={i18n.t('settings.namePromptAction')}
+              onChangeText={setNamePromptValue}
+              onSave={(nextName) => {
+                setLocalName(nextName);
+                setNamePromptValue(nextName);
+                setNamePromptOpen(false);
+              }}
+              onOpenChange={setNamePromptOpen}
+            />
+          )}
           <SafeAreaProvider>
             {isWeb && persistOptions ? (
               <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>

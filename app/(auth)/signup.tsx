@@ -1,4 +1,5 @@
 import { signUpWithEmail } from '@/auth/service';
+import { getLocalName } from '@/auth/nameStorage';
 import { isValidEmail } from '@/data/validation';
 import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
 import {
@@ -14,7 +15,7 @@ import {
 import { Eye, EyeOff } from '@tamagui/lucide-icons';
 import { useRouter } from 'expo-router';
 import { AsYouType, parsePhoneNumberFromString } from 'libphonenumber-js/min';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Platform, TextInput } from 'react-native';
 import { Card, Form, View, YStack } from 'tamagui';
@@ -45,6 +46,13 @@ export default function SignUpScreen() {
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const { t } = useTranslation();
+
+  useEffect(() => {
+    const storedName = getLocalName();
+    if (storedName && !name.trim()) {
+      setName(storedName);
+    }
+  }, [name]);
 
   const trimmedName = name.trim();
   const trimmedEmail = email.trim();

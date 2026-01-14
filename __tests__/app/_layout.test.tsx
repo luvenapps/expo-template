@@ -88,6 +88,7 @@ jest.mock('tamagui', () => {
   return {
     TamaguiProvider: ({ children }: any) => children,
     Theme: ({ children }: any) => children,
+    Text: ({ children, ...props }: any) => React.createElement('Text', props, children),
     YStack: ({ children, ...props }: any) => React.createElement('YStack', props, children),
     XStack: ({ children, ...props }: any) => React.createElement('XStack', props, children),
     Paragraph: ({ children, ...props }: any) => React.createElement('Paragraph', props, children),
@@ -107,6 +108,16 @@ jest.mock('@/ui/components/PrimaryButton', () => {
       React.createElement('PrimaryButton', props, children),
   };
 });
+
+// Mock NamePromptModal
+jest.mock('@/ui/components/NamePromptModal', () => ({
+  NamePromptModal: () => null,
+}));
+
+// Mock SoftPromptModal
+jest.mock('@/ui/components/SoftPromptModal', () => ({
+  SoftPromptModal: () => null,
+}));
 
 // Mock Tamagui fonts
 jest.mock('@tamagui/font-inter', () => ({
