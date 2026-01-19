@@ -1100,9 +1100,132 @@ describe('useNotificationSettings', () => {
     });
   });
 
-  // Note: Web-specific behavior tests are skipped because Platform.OS='web' causes
-  // the hook to set up document event listeners, which aren't available in the React Native
-  // test environment. These code paths are covered by web-specific integration tests.
+  describe('Web-specific behavior', () => {
+    it('uses web permission state when Notification is available', async () => {
+      Object.defineProperty(Platform, 'OS', { value: 'web' });
+      const originalNotification = (globalThis as { Notification?: typeof Notification })
+        .Notification;
+      const originalWindow = (globalThis as { window?: Window }).window;
+      (globalThis as { window?: Window }).window = {} as Window;
+      (globalThis as { Notification?: typeof Notification }).Notification = {
+        permission: 'granted',
+      } as typeof Notification;
+
+      const { result } = renderHook(() => useNotificationSettings());
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(result.current.permissionStatus).toBe('granted');
+
+      (globalThis as { Notification?: typeof Notification }).Notification = {
+        permission: 'denied',
+      } as typeof Notification;
+
+      await act(async () => {
+        await result.current.refreshPermissionStatus();
+      });
+
+      expect(result.current.permissionStatus).toBe('blocked');
+
+      if (originalWindow) {
+        (globalThis as { window?: Window }).window = originalWindow;
+      } else {
+        delete (globalThis as { window?: Window }).window;
+      }
+      (globalThis as { Notification?: typeof Notification }).Notification = originalNotification;
+    });
+
+    it('tracks notification events from the observability bus on web', async () => {
+      Object.defineProperty(Platform, 'OS', { value: 'web' });
+      const notificationEvents = require('@/observability/notificationEvents');
+      let webHandler: ((event: { name: string; payload: Record<string, unknown> }) => void) | null =
+        null;
+      notificationEvents.onNotificationEvent.mockImplementation((handler: any) => {
+        webHandler = handler;
+        return jest.fn();
+      });
+
+      renderHook(() => useNotificationSettings());
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      const handler = webHandler as
+        | ((event: { name: string; payload: Record<string, unknown> }) => void)
+        | null;
+      handler?.({ name: 'notifications:test', payload: { foo: 'bar' } });
+
+      expect(trackEvent).toHaveBeenCalledWith('notifications:test', { foo: 'bar' });
+    });
+
+    it('reloads the page after soft prompt allow on web', async () => {
+      Object.defineProperty(Platform, 'OS', { value: 'web' });
+      const originalWindow = (globalThis as { window?: Window }).window;
+      (globalThis as { window?: Window }).window = {
+        location: { reload: jest.fn() },
+      } as unknown as Window;
+
+      loadNotificationPreferences.mockReturnValue({
+        notificationStatus: 'unknown',
+        pushManuallyDisabled: true,
+        softDeclineCount: 0,
+        softLastDeclinedAt: 0,
+      });
+
+      ensureNotificationsEnabled.mockResolvedValue({ status: 'enabled' });
+
+      const { result } = renderHook(() => useNotificationSettings());
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      await act(async () => {
+        await result.current.softPrompt.onAllow();
+      });
+
+      expect(window.location.reload).toHaveBeenCalled();
+      expect(persistNotificationPreferences).toHaveBeenCalledWith(
+        expect.objectContaining({ pushManuallyDisabled: false }),
+      );
+
+      if (originalWindow) {
+        (globalThis as { window?: Window }).window = originalWindow;
+      } else {
+        delete (globalThis as { window?: Window }).window;
+      }
+    });
+
+    it('auto-prompts on web when permission is prompt', async () => {
+      Object.defineProperty(Platform, 'OS', { value: 'web' });
+      const originalNotification = (globalThis as { Notification?: typeof Notification })
+        .Notification;
+      (globalThis as { Notification?: typeof Notification }).Notification = {
+        permission: 'default',
+      } as typeof Notification;
+      loadNotificationPreferences.mockReturnValue({
+        notificationStatus: 'unknown',
+        pushManuallyDisabled: false,
+        softDeclineCount: 0,
+        softLastDeclinedAt: 0,
+      });
+
+      renderHook(() => useNotificationSettings());
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(trackEvent).toHaveBeenCalledWith('notifications:prompt-triggered', {
+        context: 'auto-soft',
+      });
+
+      (globalThis as { Notification?: typeof Notification }).Notification = originalNotification;
+    });
+  });
 
   describe('AppState change listener (native)', () => {
     it('refreshes permission when app becomes active', async () => {
@@ -1245,6 +1368,24 @@ describe('useNotificationSettings', () => {
       });
 
       expect(promptResult).toEqual({ status: 'error', message: 'Unexpected result status' });
+    });
+
+    it('returns unavailable when refreshPermissionStatus fails before prompting', async () => {
+      getPermissionsAsync.mockRejectedValue(new Error('no permissions'));
+
+      const { result } = renderHook(() => useNotificationSettings());
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      let promptResult;
+      await act(async () => {
+        promptResult = await result.current.tryPromptForPush({ skipSoftPrompt: true });
+      });
+
+      expect(promptResult).toEqual({ status: 'unavailable' });
+      expect(ensureNotificationsEnabled).not.toHaveBeenCalled();
     });
   });
 });
