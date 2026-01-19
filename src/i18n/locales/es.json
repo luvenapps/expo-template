@@ -12,6 +12,13 @@
     "subtitle": "Este es un nuevo comienzo. Iremos mejorando la experiencia con datos sin conexión, sincronización y visuales más pulidos.",
     "cta": "Comenzar"
   },
+  "landing": {
+    "title": "Crea hábitos que perduren con {{app}}",
+    "subtitle": "Sigue tu progreso, mantén la constancia y recibe recordatorios cuando lo necesites.",
+    "signIn": "Iniciar sesión",
+    "signUp": "Crear cuenta",
+    "enterApp": "Abrir la app"
+  },
   "tabs": {
     "home": "Inicio",
     "settings": "Configuración"

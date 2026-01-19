@@ -1,6 +1,8 @@
 import { useThemeContext } from '@/ui/theme/ThemeProvider';
 import { Home, Settings } from '@tamagui/lucide-icons';
-import { Tabs } from 'expo-router';
+import { useSessionStore } from '@/auth/session';
+import { Redirect, Tabs } from 'expo-router';
+import { Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 function TabIcon({ color, Icon }: { color: string; Icon: typeof Home }) {
@@ -10,6 +12,15 @@ function TabIcon({ color, Icon }: { color: string; Icon: typeof Home }) {
 export default function TabsLayout() {
   const { palette } = useThemeContext();
   const { t } = useTranslation();
+  const status = useSessionStore((state) => state.status);
+
+  if (Platform.OS === 'web' && status === 'unknown') {
+    return null;
+  }
+
+  if (Platform.OS === 'web' && status !== 'authenticated') {
+    return <Redirect href="/(auth)/login" />;
+  }
 
   return (
     <Tabs

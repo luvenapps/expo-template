@@ -1,11 +1,22 @@
 /* istanbul ignore file */
 import { HeaderBackButton } from '@react-navigation/elements';
-import { Stack, useRouter } from 'expo-router';
+import { useSessionStore } from '@/auth/session';
+import { Redirect, Stack, useRouter } from 'expo-router';
+import { Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 export default function AuthLayout() {
   const router = useRouter();
   const { t } = useTranslation();
+  const status = useSessionStore((state) => state.status);
+
+  if (Platform.OS === 'web' && status === 'unknown') {
+    return null;
+  }
+
+  if (Platform.OS === 'web' && status === 'authenticated') {
+    return <Redirect href="/(tabs)" />;
+  }
 
   const goBack = () => {
     if (router.canGoBack()) {

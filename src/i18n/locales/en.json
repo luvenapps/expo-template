@@ -12,6 +12,13 @@
     "subtitle": "This is a fresh start. We’ll grow the experience together as we add offline data, sync, and more polished visuals.",
     "cta": "Get Started"
   },
+  "landing": {
+    "title": "Build habits that stick with {{app}}",
+    "subtitle": "Track progress, stay consistent, and get gentle nudges when it matters.",
+    "signIn": "Sign In",
+    "signUp": "Create account",
+    "enterApp": "Open the app"
+  },
   "tabs": {
     "home": "Home",
     "settings": "Settings"

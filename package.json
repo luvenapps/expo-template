@@ -6,10 +6,10 @@
   "main": "index.js",
   "scripts": {
     "prestart": "npm run troubleshoot",
-    "start": "expo start",
+    "start": "NODE_OPTIONS='--max-old-space-size=8192' expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web",
+    "web": "npm start -- --web",
     "web:https": "npx expo export --platform web && cp public/firebase-messaging-sw.js dist/ && npx serve -s dist -l 3000 --ssl-cert ./certs/localhost+2.pem --ssl-key ./certs/localhost+2-key.pem",
     "pretest": "npm run type-check",
     "test": "jest",
