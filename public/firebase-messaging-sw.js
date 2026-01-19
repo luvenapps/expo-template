@@ -11,9 +11,41 @@ importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-comp
 let firebaseApp = null;
 let messaging = null;
 let isInitialized = false;
+let SW_DEBUG = false;
+
+const hostname = (self.location && self.location.hostname) || '';
+const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
+const isAllowedHost = hostname.endsWith('exp.direct') || hostname.endsWith('ngrok-free.dev');
+SW_DEBUG = isLocalhost || isAllowedHost;
+
+const swLog = (...args) => {
+  if (SW_DEBUG) {
+    console.log(...args);
+  }
+};
+
+const swWarn = (...args) => {
+  if (SW_DEBUG) {
+    console.warn(...args);
+  }
+};
+
+const swError = (...args) => {
+  if (SW_DEBUG) {
+    console.error(...args);
+  }
+};
 
 // Listen for messages from the main thread to initialize Firebase
 self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SET_SW_DEBUG') {
+    const nextDebug = Boolean(event.data.value);
+    if (nextDebug || SW_DEBUG) {
+      console.log('[FCM SW] Debug logging set to', nextDebug);
+    }
+    SW_DEBUG = nextDebug;
+  }
+
   if (event.data && event.data.type === 'FIREBASE_CONFIG' && !isInitialized) {
     const config = event.data.config;
 
@@ -22,7 +54,7 @@ self.addEventListener('message', (event) => {
       messaging = firebase.messaging(firebaseApp);
       isInitialized = true;
 
-      console.log('[FCM SW] Firebase initialized with config:', {
+      swLog('[FCM SW] Firebase initialized with config:', {
         projectId: config.projectId,
         messagingSenderId: config.messagingSenderId,
       });
@@ -33,8 +65,8 @@ self.addEventListener('message', (event) => {
       // - Messages with "notification" payload: Auto-displayed by Firebase (we skip them to prevent duplicates)
       // - Data-only messages: We must display manually (handled below)
       messaging.onBackgroundMessage(async (payload) => {
-        console.log('[FCM SW] Background message received:', payload);
-        console.log(
+        swLog('[FCM SW] Background message received:', payload);
+        swLog(
           '[FCM SW] Payload type:',
           payload.notification ? 'notification payload' : 'data-only',
         );
@@ -42,16 +74,14 @@ self.addEventListener('message', (event) => {
         // Skip notification payloads - Firebase SDK auto-displays them
         // This prevents duplicate notifications when using Firebase Console campaigns
         if (payload.notification) {
-          console.log(
-            '[FCM SW] Notification payload detected - Firebase will display automatically',
-          );
-          console.log('[FCM SW] Skipping manual display to prevent duplicates');
+          swLog('[FCM SW] Notification payload detected - Firebase will display automatically');
+          swLog('[FCM SW] Skipping manual display to prevent duplicates');
           return;
         }
 
         // Only display data-only messages manually
         try {
-          console.log('[FCM SW] Data-only message - displaying manually');
+          swLog('[FCM SW] Data-only message - displaying manually');
           const notificationTitle = payload.data?.title || 'Better Habits';
           const notificationBody = payload.data?.body || '';
 
@@ -64,30 +94,30 @@ self.addEventListener('message', (event) => {
             requireInteraction: false,
           };
 
-          console.log('[FCM SW] Attempting to display notification:', {
+          swLog('[FCM SW] Attempting to display notification:', {
             title: notificationTitle,
             body: notificationBody,
           });
 
           await self.registration.showNotification(notificationTitle, notificationOptions);
 
-          console.log('[FCM SW] ✅ Notification displayed successfully');
+          swLog('[FCM SW] ✅ Notification displayed successfully');
         } catch (error) {
-          console.error('[FCM SW] ❌ Failed to display notification:', error);
-          console.error('[FCM SW] Error details:', error.message, error.stack);
+          swError('[FCM SW] ❌ Failed to display notification:', error);
+          swError('[FCM SW] Error details:', error.message, error.stack);
         }
       });
 
-      console.log('[FCM SW] Background message handler registered');
+      swLog('[FCM SW] Background message handler registered');
     } catch (error) {
-      console.error('[FCM SW] Failed to initialize Firebase:', error);
+      swError('[FCM SW] Failed to initialize Firebase:', error);
     }
   }
 });
 
 // Handle notification clicks
 self.addEventListener('notificationclick', (event) => {
-  console.log('[FCM SW] Notification clicked:', event.notification);
+  swLog('[FCM SW] Notification clicked:', event.notification);
 
   event.notification.close();
 
@@ -97,7 +127,7 @@ self.addEventListener('notificationclick', (event) => {
     try {
       nestedData = JSON.parse(rawData.FCM_MSG);
     } catch (error) {
-      console.warn('[FCM SW] Failed to parse FCM_MSG payload:', error);
+      swWarn('[FCM SW] Failed to parse FCM_MSG payload:', error);
     }
   }
   const route =
@@ -126,7 +156,7 @@ self.addEventListener('notificationclick', (event) => {
           try {
             client.postMessage(message);
           } catch (error) {
-            console.warn('[FCM SW] Failed to post click message to client:', error);
+            swWarn('[FCM SW] Failed to post click message to client:', error);
           }
           return client.focus();
         }
@@ -140,4 +170,4 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-console.log('[FCM SW] Service worker loaded');
+swLog('[FCM SW] Service worker loaded');

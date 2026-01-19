@@ -22,8 +22,6 @@
         "ITSAppUsesNonExemptEncryption": false
       },
       "appleTeamId": "HWJZHVS443"
-      // Uncomment when you have a domain and set EXPO_PUBLIC_APP_DOMAIN:
-      // "associatedDomains": ["applinks:betterhabits.com"]
     },
     "android": {
       "versionCode": 1,
@@ -42,19 +40,6 @@
           "category": ["BROWSABLE", "DEFAULT"],
           "data": [{ "scheme": "__APP_NAME__" }]
         }
-        // Uncomment when you have a domain and set EXPO_PUBLIC_APP_DOMAIN:
-        // {
-        //   "action": "VIEW",
-        //   "category": ["BROWSABLE", "DEFAULT"],
-        //   "autoVerify": true,
-        //   "data": [
-        //     {
-        //       "scheme": "https",
-        //       "host": "betterhabits.com",
-        //       "pathPrefix": "/auth-callback"
-        //     }
-        //   ]
-        // }
       ]
     },
     "web": {
