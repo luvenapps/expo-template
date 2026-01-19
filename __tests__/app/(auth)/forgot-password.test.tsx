@@ -187,6 +187,17 @@ describe('ForgotPasswordScreen', () => {
     });
   });
 
+  it('shows inline error when submitting with empty email input', async () => {
+    const { getByTestId, getByText } = render(<ForgotPasswordScreen />);
+
+    const emailInput = getByTestId('email-input');
+    fireEvent(emailInput, 'submitEditing');
+
+    await waitFor(() => {
+      expect(getByText('auth.reset.missingEmailDescription')).toBeTruthy();
+    });
+  });
+
   it('shows error toast when submitting with invalid email format', async () => {
     const { getByTestId } = render(<ForgotPasswordScreen />);
 

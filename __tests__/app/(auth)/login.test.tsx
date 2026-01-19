@@ -96,6 +96,8 @@ import React from 'react';
 import LoginScreen from '../../../app/(auth)/login';
 import { useSessionStore } from '@/auth/session';
 import { Platform } from 'react-native';
+import * as validation from '@/data/validation';
+import { useThemeName } from 'tamagui';
 
 jest.mock('@/auth/session', () => ({
   useSessionStore: jest.fn(),
@@ -313,6 +315,90 @@ describe('LoginScreen', () => {
     expect(setErrorMock).toHaveBeenCalledWith('auth.login.invalidCredentials');
   });
 
+  test('uses description from raw error object when provided', async () => {
+    const signInMock = jest.fn().mockResolvedValue({
+      success: false,
+      friendlyError: { description: 'Custom friendly error' },
+    });
+    const setErrorMock = jest.fn();
+    mockedUseSessionStore.mockImplementation((selector: any) =>
+      selector({
+        signInWithEmail: signInMock,
+        signInWithOAuth: jest.fn().mockResolvedValue({ success: true }),
+        setError: setErrorMock,
+        isLoading: false,
+        error: null,
+      }),
+    );
+
+    const { getByTestId } = render(<LoginScreen />);
+    fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
+    fireEvent.changeText(getByTestId('password-input'), 'password');
+
+    await act(async () => {
+      fireEvent.press(getByTestId('sign-in-button'));
+      await waitFor(() => expect(signInMock).toHaveBeenCalled());
+    });
+
+    expect(setErrorMock).toHaveBeenCalledWith('Custom friendly error');
+  });
+
+  test('uses titleKey from raw error object when description is missing', async () => {
+    const signInMock = jest.fn().mockResolvedValue({
+      success: false,
+      friendlyError: { titleKey: 'errors.auth.failed' },
+    });
+    const setErrorMock = jest.fn();
+    mockedUseSessionStore.mockImplementation((selector: any) =>
+      selector({
+        signInWithEmail: signInMock,
+        signInWithOAuth: jest.fn().mockResolvedValue({ success: true }),
+        setError: setErrorMock,
+        isLoading: false,
+        error: null,
+      }),
+    );
+
+    const { getByTestId } = render(<LoginScreen />);
+    fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
+    fireEvent.changeText(getByTestId('password-input'), 'password');
+
+    await act(async () => {
+      fireEvent.press(getByTestId('sign-in-button'));
+      await waitFor(() => expect(signInMock).toHaveBeenCalled());
+    });
+
+    expect(setErrorMock).toHaveBeenCalledWith('errors.auth.failed');
+  });
+
+  test('uses unknown fallback when raw error object has empty fields', async () => {
+    const signInMock = jest.fn().mockResolvedValue({
+      success: false,
+      friendlyError: { descriptionKey: undefined, titleKey: undefined, description: undefined },
+    });
+    const setErrorMock = jest.fn();
+    mockedUseSessionStore.mockImplementation((selector: any) =>
+      selector({
+        signInWithEmail: signInMock,
+        signInWithOAuth: jest.fn().mockResolvedValue({ success: true }),
+        setError: setErrorMock,
+        isLoading: false,
+        error: null,
+      }),
+    );
+
+    const { getByTestId } = render(<LoginScreen />);
+    fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
+    fireEvent.changeText(getByTestId('password-input'), 'password');
+
+    await act(async () => {
+      fireEvent.press(getByTestId('sign-in-button'));
+      await waitFor(() => expect(signInMock).toHaveBeenCalled());
+    });
+
+    expect(setErrorMock).toHaveBeenCalledWith('auth.errorUnknown');
+  });
+
   test('sets raw error string when no friendly error is provided', async () => {
     const signInMock = jest.fn().mockResolvedValue({
       success: false,
@@ -406,6 +492,100 @@ describe('LoginScreen', () => {
     fireEvent.changeText(passwordInput, 'password123');
 
     expect(submitButton.props.accessibilityState?.disabled).toBe(true);
+  });
+
+  test('does not submit when form is invalid', async () => {
+    const signInMock = jest.fn().mockResolvedValue({ success: true });
+    mockedUseSessionStore.mockImplementation((selector: any) =>
+      selector({
+        signInWithEmail: signInMock,
+        signInWithOAuth: jest.fn().mockResolvedValue({ success: true }),
+        setError: jest.fn(),
+        isLoading: false,
+        error: null,
+      }),
+    );
+
+    const { getByTestId } = render(<LoginScreen />);
+
+    fireEvent.changeText(getByTestId('email-input'), 'invalid-email');
+    fireEvent.changeText(getByTestId('password-input'), 'password123');
+
+    await act(async () => {
+      getByTestId('sign-in-button').props.onPress?.();
+    });
+
+    expect(signInMock).not.toHaveBeenCalled();
+  });
+
+  test('returns early when submitting with empty fields', async () => {
+    const signInMock = jest.fn().mockResolvedValue({ success: true });
+    mockedUseSessionStore.mockImplementation((selector: any) =>
+      selector({
+        signInWithEmail: signInMock,
+        signInWithOAuth: jest.fn().mockResolvedValue({ success: true }),
+        setError: jest.fn(),
+        isLoading: false,
+        error: null,
+      }),
+    );
+
+    const { getByTestId } = render(<LoginScreen />);
+    await act(async () => {
+      getByTestId('sign-in-button').props.onPress?.();
+    });
+
+    expect(signInMock).not.toHaveBeenCalled();
+  });
+
+  test('returns early when email validation fails', async () => {
+    const signInMock = jest.fn().mockResolvedValue({ success: true });
+    const isValidEmailSpy = jest.spyOn(validation, 'isValidEmail').mockReturnValue(false);
+    mockedUseSessionStore.mockImplementation((selector: any) =>
+      selector({
+        signInWithEmail: signInMock,
+        signInWithOAuth: jest.fn().mockResolvedValue({ success: true }),
+        setError: jest.fn(),
+        isLoading: false,
+        error: null,
+      }),
+    );
+
+    const { getByTestId } = render(<LoginScreen />);
+    fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
+    fireEvent.changeText(getByTestId('password-input'), 'password');
+
+    await act(async () => {
+      getByTestId('sign-in-button').props.onPress?.();
+    });
+
+    expect(signInMock).not.toHaveBeenCalled();
+    isValidEmailSpy.mockRestore();
+  });
+
+  test('uses unknown fallback when sign in fails without error fields', async () => {
+    const signInMock = jest.fn().mockResolvedValue({ success: false });
+    const setErrorMock = jest.fn();
+    mockedUseSessionStore.mockImplementation((selector: any) =>
+      selector({
+        signInWithEmail: signInMock,
+        signInWithOAuth: jest.fn().mockResolvedValue({ success: true }),
+        setError: setErrorMock,
+        isLoading: false,
+        error: null,
+      }),
+    );
+
+    const { getByTestId } = render(<LoginScreen />);
+    fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
+    fireEvent.changeText(getByTestId('password-input'), 'password');
+
+    await act(async () => {
+      fireEvent.press(getByTestId('sign-in-button'));
+      await waitFor(() => expect(signInMock).toHaveBeenCalled());
+    });
+
+    expect(setErrorMock).toHaveBeenCalledWith('auth.errorUnknown');
   });
 
   test('handles friendly error messages from auth service', async () => {
@@ -763,6 +943,88 @@ describe('OAuth authentication', () => {
 
     expect(mockBack).not.toHaveBeenCalled();
     expect(mockReplace).not.toHaveBeenCalled();
+  });
+
+  test('sets titleKey fallback for OAuth errors', async () => {
+    const oauthMock = jest.fn().mockResolvedValue({
+      success: false,
+      friendlyError: { titleKey: 'errors.auth.failed' },
+    });
+    const setErrorMock = jest.fn();
+    mockedUseSessionStore.mockImplementation((selector: any) =>
+      selector({
+        signInWithEmail: jest.fn().mockResolvedValue({ success: true }),
+        signInWithOAuth: oauthMock,
+        setError: setErrorMock,
+        isLoading: false,
+        error: null,
+      }),
+    );
+
+    const { getByTestId } = render(<LoginScreen />);
+    await act(async () => {
+      fireEvent.press(getByTestId('oauth-google-button'));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(setErrorMock).toHaveBeenCalledWith('errors.auth.failed');
+  });
+
+  test('uses unknown fallback when OAuth fails without error fields', async () => {
+    const oauthMock = jest.fn().mockResolvedValue({ success: false });
+    const setErrorMock = jest.fn();
+    mockedUseSessionStore.mockImplementation((selector: any) =>
+      selector({
+        signInWithEmail: jest.fn().mockResolvedValue({ success: true }),
+        signInWithOAuth: oauthMock,
+        setError: setErrorMock,
+        isLoading: false,
+        error: null,
+      }),
+    );
+
+    const { getByTestId } = render(<LoginScreen />);
+    await act(async () => {
+      fireEvent.press(getByTestId('oauth-google-button'));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(setErrorMock).toHaveBeenCalledWith('auth.errorUnknown');
+  });
+
+  test('renders OAuth buttons with fallback defaults', () => {
+    const useMemoSpy = jest.spyOn(React, 'useMemo').mockImplementation((factory, deps) => {
+      const result = factory();
+      if (Array.isArray(result) && result.length && result[0]?.provider) {
+        return [
+          {
+            provider: 'google',
+            label: 'Google',
+            icon: null,
+            variant: 'google',
+          },
+        ];
+      }
+      return result;
+    });
+
+    const { getByTestId } = render(<LoginScreen />);
+    expect(getByTestId('oauth-google-button')).toBeTruthy();
+
+    useMemoSpy.mockRestore();
+  });
+
+  test('renders Apple OAuth styles in dark mode', () => {
+    const originalOS = Platform.OS;
+    Object.defineProperty(Platform, 'OS', { value: 'ios' });
+    (useThemeName as jest.Mock).mockReturnValue('dark');
+
+    const { getByTestId } = render(<LoginScreen />);
+    const appleButton = getByTestId('oauth-apple-button');
+    expect(appleButton).toBeTruthy();
+
+    Object.defineProperty(Platform, 'OS', { value: originalOS });
+    (useThemeName as jest.Mock).mockReturnValue('light');
   });
 
   test('handles OAuth sign in for Apple provider', async () => {
