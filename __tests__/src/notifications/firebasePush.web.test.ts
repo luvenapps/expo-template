@@ -1,9 +1,11 @@
 import {
   __registerForWebPush,
   __resetWebPushStateForTests,
+  ensureServiceWorkerRegistered,
   revokePushToken,
   setupWebForegroundMessageListener,
 } from '@/notifications/firebasePush';
+import { DOMAIN } from '@/config/domain.config';
 import { Platform } from 'react-native';
 
 jest.mock('firebase/app', () => {
@@ -43,6 +45,52 @@ describe('firebasePush Web', () => {
   let warnSpy: jest.SpyInstance;
   let errorSpy: jest.SpyInstance;
   let lastNotification: any;
+  const loadFreshFirebasePush = () => {
+    let module = null as unknown as typeof import('@/notifications/firebasePush');
+    jest.isolateModules(() => {
+      module =
+        require('@/notifications/firebasePush') as typeof import('@/notifications/firebasePush');
+    });
+    return module;
+  };
+  const ensureWebGlobals = () => {
+    const navigator = (global as any).navigator;
+    const windowMock = {
+      ...(global as any).window,
+      Notification: (global as any).Notification,
+      navigator,
+      focus: jest.fn(),
+    };
+    Object.defineProperty(global, 'window', {
+      value: windowMock,
+      configurable: true,
+      writable: true,
+    });
+    Object.defineProperty(global, 'navigator', {
+      value: navigator,
+      configurable: true,
+      writable: true,
+    });
+  };
+  const ensureWebConfigEnv = () => {
+    Object.assign(process.env, {
+      EXPO_PUBLIC_FIREBASE_VAPID_KEY: 'test-vapid',
+      EXPO_PUBLIC_FIREBASE_API_KEY: 'api',
+      EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: 'auth',
+      EXPO_PUBLIC_FIREBASE_PROJECT_ID: 'project',
+      EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET: 'bucket',
+      EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: 'sender',
+      EXPO_PUBLIC_FIREBASE_APP_ID: 'app',
+      EXPO_PUBLIC_TURN_ON_FIREBASE: 'true',
+    });
+  };
+  const ensureWebStorage = () => {
+    (global as any).localStorage = {
+      getItem: jest.fn(() => null),
+      removeItem: jest.fn(),
+      setItem: jest.fn(),
+    };
+  };
 
   beforeEach(() => {
     __resetWebPushStateForTests();
@@ -53,14 +101,7 @@ describe('firebasePush Web', () => {
     warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
     errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     (Platform as any).OS = 'web';
-    process.env.EXPO_PUBLIC_FIREBASE_VAPID_KEY = 'test-vapid';
-    process.env.EXPO_PUBLIC_FIREBASE_API_KEY = 'api';
-    process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN = 'auth';
-    process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID = 'project';
-    process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET = 'bucket';
-    process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID = 'sender';
-    process.env.EXPO_PUBLIC_FIREBASE_APP_ID = 'app';
-    process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = 'true';
+    ensureWebConfigEnv();
 
     lastNotification = null;
     const notificationMock = jest.fn().mockImplementation(() => {
@@ -95,20 +136,28 @@ describe('firebasePush Web', () => {
     } as any;
 
     (global as any).Notification = notificationMock;
-    (global as any).navigator = navigatorMock;
-    (global as any).window = {
-      ...(global as any).window,
-      Notification: notificationMock,
-      navigator: navigatorMock,
-      focus: jest.fn(),
-    };
+    Object.defineProperty(global, 'navigator', {
+      value: navigatorMock,
+      configurable: true,
+      writable: true,
+    });
+    ensureWebGlobals();
   });
 
   afterEach(() => {
     (Platform as any).OS = originalPlatform;
     global.Notification = originalNotification;
-    global.navigator = originalNavigator;
-    process.env = { ...originalEnv };
+    Object.defineProperty(global, 'navigator', {
+      value: originalNavigator,
+      configurable: true,
+      writable: true,
+    });
+    for (const key of Object.keys(process.env)) {
+      if (!(key in originalEnv)) {
+        delete process.env[key];
+      }
+    }
+    Object.assign(process.env, originalEnv);
     debugSpy.mockRestore();
     infoSpy.mockRestore();
     logSpy.mockRestore();
@@ -310,6 +359,33 @@ describe('firebasePush Web', () => {
   });
 
   describe('Web registration edge cases', () => {
+    it('clears cached token on import when permission is not granted', () => {
+      const removeItem = jest.fn();
+      const getItem = jest.fn(() => 'cached-token');
+      const originalLocalStorage = global.localStorage;
+      const originalNotification = global.Notification;
+
+      (global as any).localStorage = {
+        getItem,
+        removeItem,
+      };
+      const notificationMock = jest.fn() as unknown as Notification & {
+        permission: string;
+      };
+      notificationMock.permission = 'denied';
+      (global as any).Notification = notificationMock;
+
+      jest.isolateModules(() => {
+        require('@/notifications/firebasePush');
+      });
+
+      expect(getItem).toHaveBeenCalled();
+      expect(removeItem).toHaveBeenCalledWith(`${DOMAIN.app.name}-web-fcm-token`);
+
+      global.localStorage = originalLocalStorage;
+      global.Notification = originalNotification;
+    });
+
     it('returns unavailable when window is undefined', async () => {
       const originalWindow = global.window;
       delete (global as any).window;
@@ -347,6 +423,104 @@ describe('firebasePush Web', () => {
 
       const result = await __registerForWebPush();
       expect(result.status).toBe('unavailable');
+    });
+
+    it('reuses cached token when service worker and subscription are active', async () => {
+      const removeItem = jest.fn();
+      const getItem = jest.fn(() => 'cached-token');
+      const originalLocalStorage = global.localStorage;
+      const originalNotification = global.Notification;
+      const originalNavigator = global.navigator;
+      const mockGetSubscription = jest.fn().mockResolvedValue({ endpoint: 'push' });
+      const registration = {
+        active: { postMessage: jest.fn() },
+        pushManager: { getSubscription: mockGetSubscription },
+      } as any;
+
+      (global as any).localStorage = {
+        getItem,
+        removeItem,
+        setItem: jest.fn(),
+      };
+      const notificationMock = jest.fn() as unknown as Notification & {
+        permission: string;
+        requestPermission: jest.Mock<Promise<NotificationPermission>>;
+      };
+      notificationMock.permission = 'granted';
+      notificationMock.requestPermission = jest.fn(async () => 'granted');
+      (global as any).Notification = notificationMock;
+      (global as any).navigator = {
+        serviceWorker: {
+          getRegistration: jest.fn(async () => registration),
+        },
+      };
+      ensureWebGlobals();
+
+      const { getToken } = require('firebase/messaging');
+      getToken.mockClear();
+
+      const firebasePush = loadFreshFirebasePush();
+      const result = await firebasePush.__registerForWebPush();
+      expect(result).toEqual({ status: 'registered', token: 'cached-token' });
+      expect(getToken).not.toHaveBeenCalled();
+
+      global.localStorage = originalLocalStorage;
+      global.Notification = originalNotification;
+      global.navigator = originalNavigator;
+    });
+
+    it('falls through when fast-path check throws', async () => {
+      const originalLocalStorage = global.localStorage;
+      const originalNotification = global.Notification;
+      const originalNavigator = global.navigator;
+
+      (global as any).localStorage = {
+        getItem: jest.fn(() => 'cached-token'),
+        removeItem: jest.fn(),
+        setItem: jest.fn(),
+      };
+      const notificationMock = jest.fn() as unknown as Notification & {
+        permission: string;
+        requestPermission: jest.Mock<Promise<NotificationPermission>>;
+      };
+      notificationMock.permission = 'granted';
+      notificationMock.requestPermission = jest.fn(async () => 'granted');
+      (global as any).Notification = notificationMock;
+      (global as any).navigator = {
+        serviceWorker: {
+          getRegistration: jest
+            .fn()
+            .mockImplementationOnce(async () => {
+              throw new Error('boom');
+            })
+            .mockImplementation(async () => ({
+              scope: '/',
+              active: { postMessage: jest.fn() },
+            })),
+          register: jest.fn(async () => ({
+            scope: '/',
+            active: { postMessage: jest.fn() },
+          })),
+          ready: Promise.resolve({
+            scope: '/',
+            active: { postMessage: jest.fn() },
+          }),
+        },
+      };
+      ensureWebGlobals();
+
+      const { getToken } = require('firebase/messaging');
+      getToken.mockReset();
+      getToken.mockResolvedValueOnce('fresh-token');
+
+      const firebasePush = loadFreshFirebasePush();
+      const result = await firebasePush.__registerForWebPush();
+      expect(result).toEqual({ status: 'registered', token: 'fresh-token' });
+      expect(getToken).toHaveBeenCalled();
+
+      global.localStorage = originalLocalStorage;
+      global.Notification = originalNotification;
+      global.navigator = originalNavigator;
     });
   });
 
@@ -512,6 +686,209 @@ describe('firebasePush Web', () => {
 
       global.Notification = originalNotification;
       errorSpy.mockRestore();
+    });
+  });
+
+  describe('Web service worker registration paths', () => {
+    it('registers a new service worker when none exists', async () => {
+      ensureWebConfigEnv();
+      ensureWebStorage();
+      (global as any).Notification.permission = 'default';
+      (global as any).Notification.requestPermission = jest.fn(async () => 'granted');
+      ensureWebGlobals();
+      const registration = {
+        scope: '/',
+        active: { postMessage: jest.fn() },
+        installing: null,
+        waiting: null,
+      } as any;
+      (global as any).navigator.serviceWorker.getRegistration = jest.fn(async () => null);
+      (global as any).navigator.serviceWorker.register = jest.fn(async () => registration);
+      (global as any).navigator.serviceWorker.ready = Promise.resolve(registration);
+
+      const { isSupported, getToken } = require('firebase/messaging');
+      isSupported.mockResolvedValue(true);
+      getToken.mockResolvedValueOnce('web-token');
+
+      const result = await __registerForWebPush();
+      expect(result.status).toBe('registered');
+      expect((global as any).navigator.serviceWorker.register).toHaveBeenCalled();
+    });
+
+    it('waits for installing service worker to become active', async () => {
+      ensureWebConfigEnv();
+      ensureWebStorage();
+      (global as any).Notification.permission = 'default';
+      (global as any).Notification.requestPermission = jest.fn(async () => 'granted');
+      ensureWebGlobals();
+
+      const registration = {
+        scope: '/',
+        active: null,
+        installing: {},
+        waiting: null,
+      } as any;
+
+      (global as any).navigator.serviceWorker.getRegistration = jest.fn(async () => registration);
+      (global as any).navigator.serviceWorker.ready = Promise.resolve(registration);
+
+      setTimeout(() => {
+        registration.active = { postMessage: jest.fn() };
+      }, 10);
+
+      const { isSupported, getToken } = require('firebase/messaging');
+      isSupported.mockResolvedValue(true);
+      getToken.mockResolvedValueOnce('web-token');
+
+      const result = await __registerForWebPush();
+      expect(result).toEqual({ status: 'registered', token: 'web-token' });
+    });
+
+    it('returns error when no active service worker is available', async () => {
+      ensureWebConfigEnv();
+      ensureWebStorage();
+      (global as any).Notification.permission = 'default';
+      (global as any).Notification.requestPermission = jest.fn(async () => 'granted');
+      ensureWebGlobals();
+
+      const registration = {
+        scope: '/',
+        active: null,
+        installing: null,
+        waiting: null,
+      } as any;
+
+      (global as any).navigator.serviceWorker.getRegistration = jest.fn(async () => registration);
+      (global as any).navigator.serviceWorker.ready = Promise.resolve(registration);
+
+      const { isSupported } = require('firebase/messaging');
+      isSupported.mockResolvedValue(true);
+
+      const result = await __registerForWebPush();
+      expect(result).toEqual({ status: 'error', message: 'No active service worker available' });
+    });
+
+    it('returns error when service worker registration fails', async () => {
+      ensureWebConfigEnv();
+      ensureWebStorage();
+      (global as any).Notification.permission = 'default';
+      (global as any).Notification.requestPermission = jest.fn(async () => 'granted');
+      ensureWebGlobals();
+      (global as any).navigator.serviceWorker.getRegistration = jest.fn(async () => {
+        throw new Error('nope');
+      });
+
+      const { isSupported } = require('firebase/messaging');
+      isSupported.mockResolvedValue(true);
+
+      const result = await __registerForWebPush();
+      expect(result).toEqual({ status: 'error', message: 'Service worker registration failed' });
+    });
+
+    it('returns error when getToken returns no token', async () => {
+      ensureWebConfigEnv();
+      ensureWebStorage();
+      (global as any).Notification.permission = 'default';
+      (global as any).Notification.requestPermission = jest.fn(async () => 'granted');
+      ensureWebGlobals();
+      const { getToken } = require('firebase/messaging');
+      const { isSupported } = require('firebase/messaging');
+      isSupported.mockResolvedValue(true);
+      getToken.mockResolvedValueOnce('');
+
+      const result = await __registerForWebPush();
+      expect(result).toEqual({ status: 'error', message: 'No token' });
+    });
+
+    it('returns error when getToken throws', async () => {
+      ensureWebConfigEnv();
+      ensureWebStorage();
+      (global as any).Notification.permission = 'default';
+      (global as any).Notification.requestPermission = jest.fn(async () => 'granted');
+      ensureWebGlobals();
+      const { getToken } = require('firebase/messaging');
+      const { isSupported } = require('firebase/messaging');
+      isSupported.mockResolvedValue(true);
+      getToken.mockRejectedValueOnce(new Error('token boom'));
+
+      const result = await __registerForWebPush();
+      expect(result).toEqual({ status: 'error', message: 'token boom' });
+    });
+
+    it('retries when permission request throws', async () => {
+      ensureWebConfigEnv();
+      ensureWebStorage();
+      (global as any).Notification.permission = 'default';
+      const requestPermission = jest.fn<Promise<NotificationPermission>, []>(() =>
+        Promise.reject(new Error('permission boom')),
+      );
+      (global as any).Notification.requestPermission = requestPermission;
+      ensureWebGlobals();
+
+      const { isSupported, getToken } = require('firebase/messaging');
+      isSupported.mockResolvedValue(true);
+      getToken.mockReset();
+      getToken.mockResolvedValueOnce('web-token');
+
+      await expect(__registerForWebPush()).rejects.toThrow('permission boom');
+
+      requestPermission.mockResolvedValue('granted');
+      const result = await __registerForWebPush();
+      expect(result.status).toBe('registered');
+      expect(requestPermission).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('ensureServiceWorkerRegistered', () => {
+    it('returns null when not on web', async () => {
+      (Platform as any).OS = 'ios';
+      await expect(ensureServiceWorkerRegistered()).resolves.toBeNull();
+    });
+
+    it('returns null when Firebase is disabled', async () => {
+      process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = 'false';
+      await expect(ensureServiceWorkerRegistered()).resolves.toBeNull();
+    });
+
+    it('re-registers when service worker is missing', async () => {
+      ensureWebConfigEnv();
+      ensureWebStorage();
+      (Platform as any).OS = 'web';
+      (global as any).navigator.serviceWorker.getRegistration = jest.fn(async () => null);
+      (global as any).Notification.permission = 'default';
+      (global as any).Notification.requestPermission = jest.fn(async () => 'granted');
+      ensureWebGlobals();
+
+      const { isSupported, getToken } = require('firebase/messaging');
+      isSupported.mockResolvedValue(true);
+      getToken.mockResolvedValueOnce('web-token');
+
+      const result = await ensureServiceWorkerRegistered();
+      expect(result?.status).toBe('registered');
+    });
+
+    it('refreshes config when service worker is active', async () => {
+      ensureWebConfigEnv();
+      (Platform as any).OS = 'web';
+      const activeWorker = { postMessage: jest.fn() };
+      (global as any).navigator.serviceWorker.getRegistration = jest.fn(async () => ({
+        active: activeWorker,
+      }));
+      ensureWebGlobals();
+
+      const result = await ensureServiceWorkerRegistered();
+      expect(result).toBeNull();
+      expect(activeWorker.postMessage).toHaveBeenCalled();
+    });
+
+    it('returns null when service worker lookup fails', async () => {
+      (Platform as any).OS = 'web';
+      (global as any).navigator.serviceWorker.getRegistration = jest.fn(async () => {
+        throw new Error('boom');
+      });
+
+      const result = await ensureServiceWorkerRegistered();
+      expect(result).toBeNull();
     });
   });
 });

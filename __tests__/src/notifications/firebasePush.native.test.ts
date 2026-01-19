@@ -103,6 +103,14 @@ describe('firebasePush Native', () => {
   const originalConsoleError = console.error;
   const originalConsoleInfo = console.info;
   const originalEnvFlag = process.env.EXPO_PUBLIC_TURN_ON_FIREBASE;
+  const loadFreshFirebasePush = () => {
+    let module = null as unknown as typeof import('@/notifications/firebasePush');
+    jest.isolateModules(() => {
+      module =
+        require('@/notifications/firebasePush') as typeof import('@/notifications/firebasePush');
+    });
+    return module;
+  };
 
   beforeAll(() => {
     console.log = jest.fn();
@@ -474,6 +482,39 @@ describe('firebasePush Native', () => {
       // Should succeed on Android
       expect(result).toEqual({ status: 'registered', token: 'mock-token' });
     });
+
+    it('returns denied when POST_NOTIFICATIONS permission is rejected', async () => {
+      jest.doMock('react-native', () => ({
+        Platform: { OS: 'android', Version: 33 },
+        PermissionsAndroid: {
+          request: jest.fn(async () => 'denied'),
+          PERMISSIONS: { POST_NOTIFICATIONS: 'post' },
+          RESULTS: { GRANTED: 'granted', DENIED: 'denied' },
+        },
+      }));
+
+      const firebasePush = loadFreshFirebasePush();
+      const result = await firebasePush.registerForPushNotifications();
+      expect(result).toEqual({ status: 'denied' });
+      jest.dontMock('react-native');
+    });
+
+    it('continues when POST_NOTIFICATIONS permission throws', async () => {
+      const reactNative = require('react-native');
+      reactNative.Platform.Version = 33;
+      (Platform as any).Version = 33;
+      reactNative.PermissionsAndroid = {
+        request: jest.fn(async () => {
+          throw new Error('perm failed');
+        }),
+        PERMISSIONS: { POST_NOTIFICATIONS: 'post' },
+        RESULTS: { GRANTED: 'granted' },
+      };
+
+      const { registerForPushNotifications } = require('@/notifications/firebasePush');
+      const result = await registerForPushNotifications();
+      expect(result).toEqual({ status: 'registered', token: 'mock-token' });
+    });
   });
 
   describe('token caching and deduplication', () => {
@@ -521,6 +562,51 @@ describe('firebasePush Native', () => {
       // Registration should only happen once
       expect(messaging.__mock.requestPermission).toHaveBeenCalledTimes(1);
       expect(messaging.__mock.getToken).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('module init caching', () => {
+    it('returns cached native token loaded on module init', async () => {
+      Object.defineProperty(Platform, 'OS', { value: 'android', configurable: true });
+      jest.doMock('react-native-mmkv', () => ({
+        MMKV: jest.fn(() => ({
+          getString: jest.fn(() => 'cached-native-token'),
+        })),
+      }));
+
+      const firebasePush = loadFreshFirebasePush();
+
+      const messaging = jest.requireMock('@react-native-firebase/messaging');
+      messaging.__mock.requestPermission.mockClear();
+
+      const result = await firebasePush.registerForPushNotifications();
+      expect(result).toEqual({ status: 'registered', token: 'cached-native-token' });
+      expect(messaging.__mock.requestPermission).not.toHaveBeenCalled();
+      jest.dontMock('react-native-mmkv');
+    });
+
+    it('handles MMKV load failure on module init', async () => {
+      Object.defineProperty(Platform, 'OS', { value: 'android', configurable: true });
+      jest.doMock('react-native-mmkv', () => {
+        throw new Error('mmkv missing');
+      });
+
+      const firebasePush = loadFreshFirebasePush();
+      const result = await firebasePush.registerForPushNotifications();
+      expect(result.status).toBe('registered');
+      jest.dontMock('react-native-mmkv');
+    });
+  });
+
+  describe('background handler logging', () => {
+    it('logs background notification payload', () => {
+      const { setupBackgroundMessageHandler } = require('@/notifications/firebasePush');
+      const messaging = jest.requireMock('@react-native-firebase/messaging');
+      setupBackgroundMessageHandler();
+
+      const handler = messaging.__mock.getOnMessageCallback();
+      handler?.({ data: { foo: 'bar' } });
+      expect(console.info).toHaveBeenCalled();
     });
   });
 });
