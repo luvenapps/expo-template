@@ -11,6 +11,10 @@ console.warn = (...args: any[]) => {
     if (message.includes('Sync is not supported on web platform')) {
       return;
     }
+    // Suppress Firebase analytics warnings in tests (native modules unavailable)
+    if (message.includes('[Firebase]')) {
+      return;
+    }
   }
   originalWarn(...args);
 };

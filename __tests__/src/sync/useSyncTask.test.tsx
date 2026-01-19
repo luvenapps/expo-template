@@ -314,7 +314,6 @@ describe('useSyncTask', () => {
     it('should clear stale interval and listener refs when mounting disabled', async () => {
       const removeSpy = jest.fn();
       const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const React = require('react');
       const originalUseRef = React.useRef;
       let callIndex = 0;
@@ -322,11 +321,9 @@ describe('useSyncTask', () => {
       const useRefSpy = jest.spyOn(React, 'useRef').mockImplementation((initialValue: unknown) => {
         callIndex += 1;
         if (callIndex === 2) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           return { current: 123 } as any;
         }
         if (callIndex === 3) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           return { current: { remove: removeSpy } } as any;
         }
         return originalUseRef(initialValue);
@@ -424,7 +421,6 @@ describe('useSyncTask', () => {
 
     it('returns early when a queued run is already present', async () => {
       const queuedPromise = Promise.resolve();
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const React = require('react');
       const originalUseRef = React.useRef;
       let callIndex = 0;
