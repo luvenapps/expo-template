@@ -45,6 +45,7 @@
   "dependencies": {
     "@react-native-firebase/analytics": "^23.5.0",
     "@react-native-firebase/app": "^23.5.0",
+    "@react-native-firebase/crashlytics": "^23.5.0",
     "@react-native-firebase/in-app-messaging": "^23.5.0",
     "@react-native-firebase/messaging": "^23.5.0",
     "@supabase/supabase-js": "^2.76.0",

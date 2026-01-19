@@ -24,6 +24,10 @@
       "android": { "buildType": "apk" },
       "ios": { "simulator": false }
     },
+    "adhocRelease": {
+      "distribution": "internal",
+      "ios": { "buildConfiguration": "Release", "simulator": false }
+    },
     "production": {
       "channel": "production",
       "autoIncrement": true,

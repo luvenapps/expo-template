@@ -683,14 +683,14 @@ After following the quickstart, the “Continue with Apple/Google” buttons in 
 
 ### Testing on Physical Devices
 
-4. **Configure preview/staging credentials**:
+**Configure preview/staging credentials**:
 
-   ```bash
-   cp .env.preview.example .env.preview
-   # replace the Supabase + analytics values with your preview/staging project
-   ```
+```bash
+cp .env.preview.example .env.preview
+# replace the Supabase + analytics values with your preview/staging project
+```
 
-   The preview file is used when running `eas build --profile preview` (or `--profile production` once those credentials are set as EAS secrets). It mirrors `.env.prod`, but points at your staging Supabase project so internal testers don’t pollute production data.
+The preview file is used when running `eas build --profile preview` (or `--profile production` once those credentials are set as EAS secrets). It mirrors `.env.prod`, but points at your staging Supabase project so internal testers don’t pollute production data.
 
 When testing on a **physical phone or tablet**, the device needs to connect to Supabase running on your Mac. By default, `.env.local` uses `127.0.0.1` (localhost), which only works for simulators running on the same machine.
 
@@ -735,16 +735,21 @@ When testing on a **physical phone or tablet**, the device needs to connect to S
 - ⚠️ **Don't commit your local IP to git** - it's machine-specific
 - 🔄 Switch back to `127.0.0.1` when using simulators or before committing
 - 🔥 If connection fails, check macOS firewall settings for port 54321
-- 📱 Both devices must be on the same local network
 
-**Troubleshooting connection issues:**
+#### Release Build Testing (iOS + Android)
+
+Use release builds when you need production‑like behavior (Crashlytics, push handling, perf).
+
+**Android (local release on device):**
 
 ```bash
-# Check if Supabase is listening on port 54321
-lsof -i :54321
+npx expo run:android --device --variant release
+```
 
-# Test connectivity from your phone's browser
-# Open: http://YOUR_IP:54321/health
+**iOS (local release on device):**
+
+```bash
+npx expo run:ios --device --configuration Release
 ```
 
 ### Making Schema Changes

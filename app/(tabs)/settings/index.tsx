@@ -764,6 +764,26 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleTestCrashlytics = useCallback(() => {
+    if (!isNative) {
+      setDevStatus('Crashlytics requires a native build.');
+      return;
+    }
+    if (!firebaseEnabled) {
+      setDevStatus('Enable Firebase to test Crashlytics.');
+      return;
+    }
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const crashlytics = require('@react-native-firebase/crashlytics').default;
+      setDevStatus('Triggering Crashlytics test crash...');
+      crashlytics().crash();
+    } catch (error) {
+      settingsLogger.error('Crashlytics test failed:', error);
+      setDevStatus('Crashlytics test failed (see logs).');
+    }
+  }, [firebaseEnabled, isNative, settingsLogger]);
+
   const handleClearLocalDatabase = async () => {
     if (!isNative) return;
 
@@ -1349,6 +1369,16 @@ export default function SettingsScreen() {
                       fontSize="$4"
                     >
                       Log notification MMKV
+                    </SecondaryButton>
+                  </XStack>
+                  <XStack>
+                    <SecondaryButton
+                      testID="dev-crashlytics-crash-button"
+                      disabled={!isNative}
+                      onPress={handleTestCrashlytics}
+                      fontSize="$4"
+                    >
+                      Test Crashlytics (crash app)
                     </SecondaryButton>
                   </XStack>
                   <YStack gap="$2">

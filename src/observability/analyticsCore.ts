@@ -4,6 +4,8 @@ import { Platform } from 'react-native';
 import { v4 as uuidv4 } from 'uuid';
 import { getFirebaseAnalyticsBackend } from './firebaseBackend';
 import { createLogger } from './logger';
+import { getCrashlyticsBackend } from './backends/crashlyticsBackend';
+import type { ErrorReporterBackend } from './backends/types';
 
 export type AnalyticsEventPayload = Record<string, unknown>;
 
@@ -62,6 +64,7 @@ const {
 } = DOMAIN.app;
 let cachedDistinctId: string | null = null;
 let analyticsBackend: AnalyticsBackend | null | undefined;
+let crashlyticsBackend: ErrorReporterBackend | null | undefined;
 
 /* istanbul ignore next - MMKV initialization executes at module load */
 function getNativeStore() {
@@ -129,6 +132,14 @@ function ensureAnalyticsBackend() {
   return analyticsBackend;
 }
 
+function ensureCrashlyticsBackend() {
+  if (crashlyticsBackend !== undefined) {
+    return crashlyticsBackend;
+  }
+  crashlyticsBackend = getCrashlyticsBackend();
+  return crashlyticsBackend;
+}
+
 function getConfig() {
   return isDev ? OBSERVABILITY.development : OBSERVABILITY.production;
 }
@@ -187,6 +198,8 @@ export function trackError(error: Error | string, metadata?: AnalyticsEventPaylo
   }
   const message = typeof error === 'string' ? error : error.message;
   const stack = typeof error === 'string' ? undefined : error.stack;
+  const distinctId = loadDistinctId();
+  const crashlyticsError = typeof error === 'string' ? new Error(message) : error;
 
   const envelope: AnalyticsEnvelope = {
     kind: 'error',
@@ -194,11 +207,16 @@ export function trackError(error: Error | string, metadata?: AnalyticsEventPaylo
     stack,
     metadata,
     timestamp: new Date().toISOString(),
-    distinctId: loadDistinctId(),
+    distinctId,
   };
   logger.error('error', { ...envelope, metadata: { ...(metadata ?? {}), stack } });
   if (allowBackend) {
     void dispatchAnalytics(envelope, ensureAnalyticsBackend());
+    const crashBackend = ensureCrashlyticsBackend();
+    if (crashBackend) {
+      crashBackend.setUserIdentifier(distinctId);
+      crashBackend.recordError(crashlyticsError, { ...(metadata ?? {}), distinctId });
+    }
   }
 }
 
@@ -242,4 +260,5 @@ export async function traceAsync<T>(
 export function __resetAnalyticsStateForTests() {
   cachedDistinctId = null;
   analyticsBackend = undefined;
+  crashlyticsBackend = undefined;
 }
