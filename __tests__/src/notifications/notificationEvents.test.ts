@@ -72,16 +72,24 @@ describe('notificationEvents', () => {
 
   describe('emitNotificationEvent', () => {
     it('should not throw when no listeners are registered', () => {
-      expect(() => {
-        emitNotificationEvent('entry-created', 'no-listeners');
-      }).not.toThrow();
+      jest.isolateModules(() => {
+        const {
+          emitNotificationEvent: isolatedEmit,
+        } = require('@/notifications/notificationEvents');
+        expect(() => {
+          isolatedEmit('entry-created', 'no-listeners');
+        }).not.toThrow();
+      });
     });
 
     it('should return early when no listeners exist', () => {
-      // Emit event that has never had listeners registered
-      const result = emitNotificationEvent('entry-created', 'test-context');
-      // Should complete without error and return undefined (implicit)
-      expect(result).toBeUndefined();
+      jest.isolateModules(() => {
+        const {
+          emitNotificationEvent: isolatedEmit,
+        } = require('@/notifications/notificationEvents');
+        const result = isolatedEmit('entry-created', 'test-context');
+        expect(result).toBeUndefined();
+      });
     });
 
     it('should handle listener errors gracefully', () => {
