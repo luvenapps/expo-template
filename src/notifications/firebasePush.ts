@@ -65,10 +65,12 @@ if (Platform.OS !== 'web') {
 }
 
 export async function registerForPushNotifications(): Promise<PushRegistrationResult> {
+  logger.debug('registerForPushNotifications called');
   const turnOnFirebase =
     process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === 'true' ||
     process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === '1';
   if (!turnOnFirebase) {
+    logger.debug('Firebase gated off');
     webLogger.warn('Firebase is gated off (EXPO_PUBLIC_TURN_ON_FIREBASE=false)');
     return { status: 'unavailable' };
   }
@@ -78,47 +80,66 @@ export async function registerForPushNotifications(): Promise<PushRegistrationRe
   }
 
   // Native fast-path + in-flight dedupe
+  logger.debug('lastLoggedNativeToken:', lastLoggedNativeToken ? 'exists' : 'null');
   if (lastLoggedNativeToken) {
+    logger.debug('Fast-path: reusing cached token');
     return { status: 'registered', token: lastLoggedNativeToken };
   }
   if (nativeRegisterInFlight) {
+    logger.debug('Registration already in-flight, reusing promise');
     return nativeRegisterInFlight;
   }
 
   nativeRegisterInFlight = (async () => {
     try {
+      logger.debug('Loading @react-native-firebase/messaging...');
       const messagingModule = require('@react-native-firebase/messaging');
       const messaging = messagingModule.default;
       const AuthorizationStatus = messagingModule.AuthorizationStatus;
       const instance = messaging();
+      logger.debug('Firebase messaging instance created');
 
       if (Platform.OS === 'ios') {
         try {
+          logger.debug('iOS: Checking expo-notifications permission...');
           const Notifications = require('expo-notifications');
           const current = await Notifications.getPermissionsAsync();
           const granted =
             current.granted || current.status === Notifications.PermissionStatus.GRANTED;
+          logger.debug('iOS: Permission result:', {
+            granted,
+            status: current.status,
+            canAskAgain: current.canAskAgain,
+          });
 
           if (!granted) {
             if (!current.canAskAgain) {
+              logger.debug('iOS: Permission denied and cannot ask again');
               return { status: 'denied' };
             }
 
+            logger.debug('iOS: Requesting permission...');
             const requested = await Notifications.requestPermissionsAsync();
             const requestedGranted =
               requested.granted || requested.status === Notifications.PermissionStatus.GRANTED;
+            logger.debug('iOS: Request result:', {
+              granted: requestedGranted,
+              status: requested.status,
+            });
             if (!requestedGranted) {
               return { status: 'denied' };
             }
           }
         } catch (permissionError) {
-          logger.warn('iOS notification permission request failed:', permissionError);
+          logger.error('iOS: Permission check failed:', permissionError);
         }
       }
 
       // Ensure the device is registered for remote messages before requesting a token
+      logger.debug('Registering device for remote messages...');
       if (instance.registerDeviceForRemoteMessages) {
         await instance.registerDeviceForRemoteMessages();
+        logger.debug('Device registered for remote messages');
       }
 
       // For Android 13+, we need to request POST_NOTIFICATIONS permission first
@@ -146,16 +167,21 @@ export async function registerForPushNotifications(): Promise<PushRegistrationRe
         }
       }
 
+      logger.debug('Requesting FCM permission...');
       const authStatus = await instance.requestPermission();
+      logger.debug('FCM authStatus:', authStatus);
       const enabled =
         authStatus === AuthorizationStatus.AUTHORIZED ||
         authStatus === AuthorizationStatus.PROVISIONAL;
 
       if (!enabled) {
+        logger.debug('FCM permission not enabled');
         return { status: 'denied' };
       }
 
+      logger.debug('Getting FCM token...');
       const token = await instance.getToken();
+      logger.debug('Token result:', token ? 'received' : 'null');
       if (token) {
         logger.info('✅ Token registered (copy this for your backend):', token);
         lastLoggedNativeToken = token;
@@ -166,8 +192,10 @@ export async function registerForPushNotifications(): Promise<PushRegistrationRe
         }
         return { status: 'registered', token };
       }
+      logger.debug('No token received');
       return { status: 'error', message: 'No token' };
     } catch (error) {
+      logger.error('Error:', error);
       return { status: 'error', message: (error as Error).message };
     } finally {
       nativeRegisterInFlight = null;

@@ -1,3 +1,4 @@
+import { createLogger } from '@/observability/logger';
 import { Platform } from 'react-native';
 import {
   DEFAULT_NOTIFICATION_PREFERENCES,
@@ -7,6 +8,8 @@ import {
 } from './preferences';
 import * as web from './notificationPlatform.web';
 import * as native from './notificationPlatform.native';
+
+const logger = createLogger('EnsureNotif');
 
 type EnsureResult =
   | { status: 'enabled' }
@@ -23,24 +26,31 @@ export async function ensureNotificationsEnabled(options?: {
   forceRegister?: boolean;
 }): Promise<EnsureResult> {
   const prefs = loadNotificationPreferences();
+  logger.debug('Called with options:', { options, prefs });
 
   // Early returns for terminal states (unless explicitly forcing a re-register)
   if (!options?.forceRegister) {
     if (prefs.notificationStatus === 'granted') {
+      logger.debug('Early return - already granted');
       return { status: 'enabled' };
     }
     if (prefs.notificationStatus === 'denied') {
+      logger.debug('Early return - already denied');
       return { status: 'denied' };
     }
     if (prefs.notificationStatus === 'unavailable') {
+      logger.debug('Early return - unavailable');
       return { status: 'unavailable' };
     }
   }
 
   // Request OS permission (no soft prompt in Phase 1)
+  logger.debug('Calling platform.requestPermission...');
   const result = await platform.requestPermission();
+  logger.debug('platform.requestPermission result:', result);
 
   if (result.status === 'granted') {
+    logger.debug('Persisting granted status');
     persistNotificationPreferences({
       ...prefs,
       notificationStatus: 'granted',
@@ -50,6 +60,7 @@ export async function ensureNotificationsEnabled(options?: {
   }
 
   if (result.status === 'unavailable') {
+    logger.debug('Persisting unavailable status');
     persistNotificationPreferences({
       ...prefs,
       notificationStatus: 'unavailable',
@@ -58,6 +69,7 @@ export async function ensureNotificationsEnabled(options?: {
   }
 
   // Denied or error: mark as denied
+  logger.debug('Persisting denied status (result was:', result.status);
   persistNotificationPreferences({
     ...prefs,
     notificationStatus: 'denied',

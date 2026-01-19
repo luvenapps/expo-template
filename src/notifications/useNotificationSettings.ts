@@ -9,11 +9,14 @@ import {
   persistNotificationPreferences,
 } from '@/notifications/preferences';
 import { useAnalytics } from '@/observability/AnalyticsProvider';
+import { createLogger } from '@/observability/logger';
 import { onNotificationEvent } from '@/observability/notificationEvents';
 import * as Notifications from 'expo-notifications';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppState, Platform } from 'react-native';
+
+const logger = createLogger('PermSync');
 
 export type NotificationPermissionState =
   | 'granted'
@@ -132,21 +135,31 @@ export function useNotificationSettings() {
 
   // Keep preferences in sync when OS/browser permission changes (e.g., user toggles in Settings)
   useEffect(() => {
+    logger.debug('Effect triggered', {
+      permissionStatus,
+      pushManuallyDisabled: preferences.pushManuallyDisabled,
+      notificationStatus: preferences.notificationStatus,
+    });
+
     if (permissionStatus === 'granted') {
       // Respect a manual off toggle: do not auto-enable/register if the user turned notifications off in-app.
       if (preferences.pushManuallyDisabled) {
+        logger.debug('Skipping - manually disabled');
         return;
       }
 
+      logger.debug('Calling ensureNotificationsEnabled...');
       ensureNotificationsEnabled({
         context: 'permission-sync',
         skipSoftPrompt: true,
         forceRegister: true,
       })
-        .then(() => {
+        .then((result) => {
+          logger.debug('ensureNotificationsEnabled result:', result);
           setPreferences(loadNotificationPreferences());
         })
         .catch((error) => {
+          logger.error('ensureNotificationsEnabled error:', error);
           analytics.trackError(error as Error, { source: 'notifications:permission-sync' });
         });
       return;
@@ -181,7 +194,13 @@ export function useNotificationSettings() {
         return prev;
       });
     }
-  }, [analytics, permissionStatus, preferences.pushManuallyDisabled, updatePreferences]);
+  }, [
+    analytics,
+    permissionStatus,
+    preferences.pushManuallyDisabled,
+    preferences.notificationStatus,
+    updatePreferences,
+  ]);
 
   // If the OS/browser already granted permission (e.g., user toggled system settings),
   // but our stored status is not yet marked granted, register push again to obtain a token.
