@@ -2,13 +2,15 @@
 const originalWarn = console.warn;
 console.warn = (...args: any[]) => {
   const message = args[0];
-  // Suppress expo-notifications warning about Expo Go SDK 53
-  if (
-    typeof message === 'string' &&
-    message.includes('expo-notifications') &&
-    message.includes('SDK 53')
-  ) {
-    return;
+  if (typeof message === 'string') {
+    // Suppress expo-notifications warning about Expo Go SDK 53
+    if (message.includes('expo-notifications') && message.includes('SDK 53')) {
+      return;
+    }
+    // Suppress sync platform warning in tests (tests run in jsdom/node environment)
+    if (message.includes('Sync is not supported on web platform')) {
+      return;
+    }
   }
   originalWarn(...args);
 };
