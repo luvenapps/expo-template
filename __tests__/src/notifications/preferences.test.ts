@@ -2,6 +2,7 @@ import { describe, expect, it, jest, beforeEach, afterEach } from '@jest/globals
 import { Platform } from 'react-native';
 import {
   DEFAULT_NOTIFICATION_PREFERENCES,
+  clearNotificationPreferences,
   loadNotificationPreferences,
   persistNotificationPreferences,
 } from '@/notifications/preferences';
@@ -10,6 +11,7 @@ jest.mock('react-native-mmkv', () => ({
   MMKV: jest.fn().mockImplementation(() => ({
     getString: jest.fn(),
     set: jest.fn(),
+    delete: jest.fn(),
   })),
 }));
 
@@ -36,6 +38,7 @@ describe('preferences', () => {
     mockMMKV = {
       getString: jest.fn(),
       set: jest.fn(),
+      delete: jest.fn(),
     };
     MMKVModule.MMKV.mockImplementation(() => mockMMKV);
 
@@ -108,6 +111,33 @@ describe('preferences', () => {
 
       expect(result.pushManuallyDisabled).toBe(true);
       expect(result.notificationStatus).toBe('denied');
+    });
+
+    it('maps legacy enabled/unavailable statuses when notificationStatus is missing', () => {
+      Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
+      (mockLocalStorage.getItem as jest.Mock).mockReturnValue(
+        JSON.stringify({ pushOptInStatus: 'enabled' }),
+      );
+
+      const enabledResult = loadNotificationPreferences();
+      expect(enabledResult.notificationStatus).toBe('granted');
+
+      (mockLocalStorage.getItem as jest.Mock).mockReturnValue(
+        JSON.stringify({ pushOptInStatus: 'unavailable' }),
+      );
+      const unavailableResult = loadNotificationPreferences();
+      expect(unavailableResult.notificationStatus).toBe('unavailable');
+    });
+
+    it('prefers explicit notificationStatus over legacy fields', () => {
+      Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
+      (mockLocalStorage.getItem as jest.Mock).mockReturnValue(
+        JSON.stringify({ notificationStatus: 'granted', pushOptInStatus: 'denied' }),
+      );
+
+      const result = loadNotificationPreferences();
+
+      expect(result.notificationStatus).toBe('granted');
     });
 
     it('loads stored preferences from MMKV on native', () => {
@@ -236,6 +266,38 @@ describe('preferences', () => {
       };
 
       expect(() => persistNotificationPreferences(preferences)).not.toThrow();
+    });
+  });
+
+  describe('clearNotificationPreferences', () => {
+    it('removes stored preferences from localStorage on web', () => {
+      Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
+
+      clearNotificationPreferences();
+
+      expect(mockLocalStorage.removeItem).toHaveBeenCalledWith(expect.any(String));
+    });
+
+    it('removes stored preferences from MMKV on native', () => {
+      Object.defineProperty(Platform, 'OS', { value: 'ios', configurable: true });
+
+      clearNotificationPreferences();
+
+      expect(mockMMKV.delete).toHaveBeenCalledWith(expect.any(String));
+    });
+
+    it('handles missing localStorage on web gracefully', () => {
+      Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
+      const originalLocalStorage = globalThis.localStorage;
+      delete (globalThis as any).localStorage;
+
+      expect(() => clearNotificationPreferences()).not.toThrow();
+
+      Object.defineProperty(globalThis, 'localStorage', {
+        value: originalLocalStorage,
+        writable: true,
+        configurable: true,
+      });
     });
   });
 });
