@@ -139,6 +139,32 @@ describe('useSyncTask', () => {
 
       expect(mockEngine.runSync).toHaveBeenCalledTimes(2);
     });
+
+    it('clears the interval when intervalMs changes', async () => {
+      const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
+      const { rerender } = renderHook(
+        (props: { intervalMs: number }) =>
+          useSyncTask({
+            engine: mockEngine as any,
+            intervalMs: props.intervalMs,
+            autoStart: false,
+          }),
+        { initialProps: { intervalMs: 1000 } },
+      );
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      rerender({ intervalMs: 2000 });
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(clearIntervalSpy).toHaveBeenCalled();
+      clearIntervalSpy.mockRestore();
+    });
   });
 
   describe('app state change handling', () => {
@@ -178,12 +204,14 @@ describe('useSyncTask', () => {
         },
       );
 
-      // Mock legacy API - set addEventListener to a non-function to trigger else branch
+      let accessCount = 0;
       Object.defineProperty(AppState, 'addEventListener', {
-        value: undefined,
         configurable: true,
+        get: () => {
+          accessCount += 1;
+          return accessCount === 1 ? undefined : legacyAddEventListener;
+        },
       });
-      (AppState as any).addEventListener = legacyAddEventListener;
 
       renderHook(() => useSyncTask({ engine: mockEngine as any, autoStart: false }));
 
@@ -282,9 +310,152 @@ describe('useSyncTask', () => {
 
       clearIntervalSpy.mockRestore();
     });
+
+    it('should clear stale interval and listener refs when mounting disabled', async () => {
+      const removeSpy = jest.fn();
+      const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
+      const React = require('react') as typeof import('react');
+      const originalUseRef = React.useRef;
+      let callIndex = 0;
+
+      const useRefSpy = jest.spyOn(React, 'useRef').mockImplementation((initialValue) => {
+        callIndex += 1;
+        if (callIndex === 2) {
+          return { current: 123 } as React.MutableRefObject<ReturnType<typeof setInterval> | null>;
+        }
+        if (callIndex === 3) {
+          return { current: { remove: removeSpy } } as React.MutableRefObject<{
+            remove?: () => void;
+          } | null>;
+        }
+        return originalUseRef(initialValue);
+      });
+
+      renderHook(() => useSyncTask({ engine: mockEngine as any, enabled: false }));
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(clearIntervalSpy).toHaveBeenCalledWith(123);
+      expect(removeSpy).toHaveBeenCalledTimes(1);
+
+      useRefSpy.mockRestore();
+      clearIntervalSpy.mockRestore();
+    });
   });
 
   describe('run coordination & backoff', () => {
+    it('reuses queued promise when already queued', async () => {
+      const firstRun = createDeferred<void>();
+      mockEngine.runSync
+        .mockImplementationOnce(() => firstRun.promise)
+        .mockResolvedValueOnce(undefined);
+
+      const { result } = renderHook(() =>
+        useSyncTask({
+          engine: mockEngine as any,
+          enabled: true,
+          autoStart: false,
+          intervalMs: 1000,
+        }),
+      );
+
+      let queuedPromise: Promise<void> | undefined;
+
+      void result.current.triggerSync();
+      queuedPromise = result.current.triggerSync();
+
+      await act(async () => {
+        jest.advanceTimersByTime(1000);
+        await Promise.resolve();
+      });
+
+      expect(mockEngine.runSync).toHaveBeenCalledTimes(1);
+      expect(queuedPromise).toBeDefined();
+
+      await act(async () => {
+        firstRun.resolve();
+      });
+
+      await act(async () => {
+        jest.runAllTicks();
+        await Promise.resolve();
+      });
+
+      await expect(queuedPromise).resolves.toBeUndefined();
+      expect(mockEngine.runSync).toHaveBeenCalledTimes(2);
+    });
+
+    it('rejects queued promise when queued run fails', async () => {
+      const firstRun = createDeferred<void>();
+      const queuedError = new Error('boom');
+      mockEngine.runSync
+        .mockImplementationOnce(() => firstRun.promise)
+        .mockRejectedValueOnce(queuedError);
+
+      const { result } = renderHook(() =>
+        useSyncTask({ engine: mockEngine as any, enabled: true, autoStart: false }),
+      );
+
+      let queuedPromise: Promise<void> | undefined;
+
+      void result.current.triggerSync();
+      queuedPromise = result.current.triggerSync();
+      const queuedExpectation = expect(queuedPromise).rejects.toThrow('boom');
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      await act(async () => {
+        firstRun.resolve();
+      });
+
+      await act(async () => {
+        jest.runAllTicks();
+        await Promise.resolve();
+      });
+
+      await queuedExpectation;
+      expect(mockEngine.runSync).toHaveBeenCalledTimes(2);
+    });
+
+    it('returns early when a queued run is already present', async () => {
+      const queuedPromise = Promise.resolve();
+      const React = require('react') as typeof import('react');
+      const originalUseRef = React.useRef;
+      let callIndex = 0;
+
+      const useRefSpy = jest.spyOn(React, 'useRef').mockImplementation((initialValue) => {
+        callIndex += 1;
+        if (callIndex === 4) {
+          return { current: true } as React.MutableRefObject<boolean>;
+        }
+        if (callIndex === 5) {
+          return { current: true } as React.MutableRefObject<boolean>;
+        }
+        if (callIndex === 6) {
+          return { current: false } as React.MutableRefObject<boolean>;
+        }
+        if (callIndex === 8) {
+          return { current: queuedPromise } as React.MutableRefObject<Promise<void> | null>;
+        }
+        return originalUseRef(initialValue);
+      });
+
+      const { result } = renderHook(() =>
+        useSyncTask({ engine: mockEngine as any, enabled: true, autoStart: false }),
+      );
+
+      await act(async () => {
+        await result.current.triggerSync();
+      });
+
+      expect(mockEngine.runSync).not.toHaveBeenCalled();
+      useRefSpy.mockRestore();
+    });
+
     it('queues interval-based sync while another run is active', async () => {
       const firstRun = createDeferred<void>();
       mockEngine.runSync
@@ -482,6 +653,22 @@ describe('useSyncTask', () => {
 
       statusMock.mockResolvedValue(2);
     });
+
+    it('should return Success when handler is missing', async () => {
+      const { unmount } = renderHook(() =>
+        useSyncTask({ engine: mockEngine as any, enabled: true }),
+      );
+
+      await waitFor(() => {
+        expect(definedTasks[DOMAIN.app.syncTask]).toBeDefined();
+      });
+
+      unmount();
+
+      const result = await definedTasks[DOMAIN.app.syncTask]!();
+
+      expect(result).toBe(BackgroundTask.BackgroundTaskResult.Success);
+    });
   });
 
   describe('error handling', () => {
@@ -558,6 +745,22 @@ describe('useSyncTask', () => {
 
       expect(listeners.length).toBe(0);
     });
+
+    it('clears the interval on unmount', async () => {
+      const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
+      const { unmount } = renderHook(() =>
+        useSyncTask({ engine: mockEngine as any, enabled: true, intervalMs: 1000 }),
+      );
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      unmount();
+
+      expect(clearIntervalSpy).toHaveBeenCalled();
+      clearIntervalSpy.mockRestore();
+    });
   });
 
   describe('web platform handling', () => {
@@ -595,6 +798,42 @@ describe('useSyncTask', () => {
           configurable: true,
         });
         consoleWarnSpy.mockRestore();
+      }
+    });
+
+    it('should skip unregister when disabled on web', async () => {
+      const originalPlatform = Platform.OS;
+
+      try {
+        Object.defineProperty(Platform, 'OS', {
+          get: () => 'web',
+          configurable: true,
+        });
+
+        const { rerender } = renderHook(
+          (props: { enabled: boolean }) =>
+            useSyncTask({ engine: mockEngine as any, enabled: props.enabled }),
+          { initialProps: { enabled: true } },
+        );
+
+        await act(async () => {
+          await Promise.resolve();
+        });
+
+        jest.clearAllMocks();
+
+        rerender({ enabled: false });
+
+        await act(async () => {
+          await Promise.resolve();
+        });
+
+        expect(BackgroundTask.unregisterTaskAsync).not.toHaveBeenCalled();
+      } finally {
+        Object.defineProperty(Platform, 'OS', {
+          get: () => originalPlatform,
+          configurable: true,
+        });
       }
     });
   });
