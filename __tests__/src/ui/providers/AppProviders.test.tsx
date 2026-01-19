@@ -27,6 +27,58 @@ jest.mock('expo-status-bar', () => ({
   },
 }));
 
+jest.mock('@/observability/logger', () => {
+  const loggers = new Map<
+    string,
+    {
+      info: jest.Mock;
+      error: jest.Mock;
+      warn: jest.Mock;
+      debug: jest.Mock;
+    }
+  >();
+  const createLogger = jest.fn((name: string) => {
+    const logger = {
+      info: jest.fn(),
+      error: jest.fn(),
+      warn: jest.fn(),
+      debug: jest.fn(),
+    };
+    loggers.set(name, logger);
+    return logger;
+  });
+  return {
+    createLogger,
+    __mock: {
+      loggers,
+      createLogger,
+    },
+  };
+});
+
+const getLoggerMocks = () => {
+  const { __mock } = require('@/observability/logger');
+  return __mock as {
+    loggers: Map<
+      string,
+      {
+        info: jest.Mock;
+        error: jest.Mock;
+        warn: jest.Mock;
+        debug: jest.Mock;
+      }
+    >;
+    createLogger: jest.Mock;
+  };
+};
+
+const mockAnalyticsTrackEvent = jest.fn();
+jest.mock('@/observability/analytics', () => ({
+  analytics: {
+    trackEvent: (...args: unknown[]) => mockAnalyticsTrackEvent(...args),
+  },
+}));
+
 jest.mock('@/notifications', () => ({
   registerNotificationCategories: jest.fn().mockResolvedValue(undefined),
   configureNotificationHandler: jest.fn().mockResolvedValue(undefined),
@@ -51,11 +103,15 @@ jest.mock('@/db/sqlite/maintenance', () => ({
 
 // Mock expo-notifications
 const mockNotificationSubscription = { remove: jest.fn() };
+let mockNotificationResponseHandler: ((response: any) => void) | null = null;
 jest.mock('expo-notifications', () => ({
   setNotificationCategoryAsync: jest.fn(),
   setNotificationHandler: jest.fn(),
   addNotificationReceivedListener: jest.fn(() => mockNotificationSubscription),
-  addNotificationResponseReceivedListener: jest.fn(() => mockNotificationSubscription),
+  addNotificationResponseReceivedListener: jest.fn((handler) => {
+    mockNotificationResponseHandler = handler;
+    return mockNotificationSubscription;
+  }),
   getLastNotificationResponseAsync: jest.fn().mockResolvedValue(null),
 }));
 
@@ -80,6 +136,36 @@ jest.mock('@/auth/session', () => ({
   ),
 }));
 
+const mockGetPendingRemoteReset = jest.fn().mockReturnValue(false);
+const mockRunPendingRemoteReset = jest.fn().mockResolvedValue(undefined);
+jest.mock('@/auth/reset', () => ({
+  getPendingRemoteReset: () => mockGetPendingRemoteReset(),
+  runPendingRemoteReset: (...args: unknown[]) => mockRunPendingRemoteReset(...args),
+}));
+
+const mockGetLocalName = jest.fn();
+const mockSetLocalName = jest.fn();
+jest.mock('@/auth/nameStorage', () => ({
+  getLocalName: () => mockGetLocalName(),
+  setLocalName: (...args: unknown[]) => mockSetLocalName(...args),
+}));
+
+const mockEnsureServiceWorkerRegistered = jest.fn().mockResolvedValue(undefined);
+jest.mock('@/notifications/firebasePush', () => ({
+  ensureServiceWorkerRegistered: (...args: unknown[]) => mockEnsureServiceWorkerRegistered(...args),
+}));
+
+const mockOnNotificationEvent = jest.fn();
+let mockNotificationEventHandler: ((context: any) => void) | null = null;
+jest.mock('@/notifications/notificationEvents', () => ({
+  onNotificationEvent: (...args: unknown[]) => mockOnNotificationEvent(...args),
+}));
+
+const mockRefreshReminderSeriesWindows = jest.fn().mockResolvedValue(undefined);
+jest.mock('@/notifications/scheduler', () => ({
+  refreshReminderSeriesWindows: (...args: unknown[]) => mockRefreshReminderSeriesWindows(...args),
+}));
+
 // Mock sync hook - must use factory function
 jest.mock('@/sync', () => ({
   useSync: jest.fn().mockReturnValue({
@@ -96,21 +182,23 @@ jest.mock('@/sync', () => ({
 }));
 
 // Mock notification settings hook
+const mockNotificationSettingsDefault = {
+  permissionStatus: 'prompt',
+  tryPromptForPush: jest.fn(),
+  softPrompt: {
+    open: false,
+    title: 'Enable notifications?',
+    message: 'Get reminders for your habits',
+    allowLabel: 'Allow',
+    notNowLabel: 'Not now',
+    onAllow: jest.fn(),
+    onNotNow: jest.fn(),
+    setOpen: jest.fn(),
+  },
+};
+
 jest.mock('@/notifications/useNotificationSettings', () => ({
-  useNotificationSettings: jest.fn().mockReturnValue({
-    permissionStatus: 'prompt',
-    tryPromptForPush: jest.fn(),
-    softPrompt: {
-      open: false,
-      title: 'Enable notifications?',
-      message: 'Get reminders for your habits',
-      allowLabel: 'Allow',
-      notNowLabel: 'Not now',
-      onAllow: jest.fn(),
-      onNotNow: jest.fn(),
-      setOpen: jest.fn(),
-    },
-  }),
+  useNotificationSettings: jest.fn().mockReturnValue(mockNotificationSettingsDefault),
 }));
 
 // Mock ThemeProvider
@@ -176,9 +264,12 @@ jest.mock('@/ui/components/PrimaryButton', () => {
 });
 
 // Mock NamePromptModal
-jest.mock('@/ui/components/NamePromptModal', () => ({
-  NamePromptModal: () => null,
-}));
+jest.mock('@/ui/components/NamePromptModal', () => {
+  const React = jest.requireActual('react');
+  return {
+    NamePromptModal: (props: any) => React.createElement('NamePromptModal', props),
+  };
+});
 
 // Mock SoftPromptModal
 jest.mock('@/ui/components/SoftPromptModal', () => ({
@@ -216,6 +307,32 @@ describe('AppProviders', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockSessionState.status = 'unauthenticated';
+    mockGetLocalName.mockReturnValue(null);
+    mockGetPendingRemoteReset.mockReturnValue(false);
+    mockNotificationResponseHandler = null;
+    mockNotificationEventHandler = null;
+    const { loggers } = getLoggerMocks();
+    loggers.forEach((logger) => {
+      logger.info.mockClear();
+      logger.error.mockClear();
+      logger.warn.mockClear();
+      logger.debug.mockClear();
+    });
+    mockOnNotificationEvent.mockImplementation((_: string, handler: any) => {
+      mockNotificationEventHandler = handler;
+      return jest.fn();
+    });
+    const { useNotificationSettings } = require('@/notifications/useNotificationSettings');
+    useNotificationSettings.mockReturnValue({
+      ...mockNotificationSettingsDefault,
+      tryPromptForPush: jest.fn(),
+      softPrompt: {
+        ...mockNotificationSettingsDefault.softPrompt,
+        onAllow: jest.fn(),
+        onNotNow: jest.fn(),
+        setOpen: jest.fn(),
+      },
+    });
   });
 
   describe('Rendering', () => {
@@ -403,6 +520,40 @@ describe('AppProviders', () => {
   });
 
   describe('Hooks and Effects', () => {
+    it('syncs name from session metadata and handles pending reset flag', async () => {
+      const { initSessionListener } = require('@/auth/session');
+      mockGetPendingRemoteReset.mockReturnValue(true);
+
+      const { UNSAFE_root } = render(
+        <AppProviders>
+          <Text>Test</Text>
+        </AppProviders>,
+      );
+
+      const initCallback = initSessionListener.mock.calls[0][0];
+      const session = {
+        user: {
+          user_metadata: {
+            full_name: 'Test User',
+          },
+        },
+      };
+
+      initCallback(session);
+
+      await waitFor(() => {
+        expect(mockSetLocalName).toHaveBeenCalledWith('Test User');
+        expect(mockRunPendingRemoteReset).toHaveBeenCalledWith(session, expect.any(Object));
+      });
+
+      const resetLogger = getLoggerMocks().loggers.get('Reset');
+      expect(resetLogger?.info).toHaveBeenCalledWith('Pending remote reset detected');
+
+      const namePrompt = UNSAFE_root.findByType('NamePromptModal' as any);
+      expect(namePrompt.props.open).toBe(false);
+      expect(namePrompt.props.value).toBe('Test User');
+    });
+
     it('should call initSessionListener on mount', () => {
       const { initSessionListener } = require('@/auth/session');
       render(
@@ -455,6 +606,87 @@ describe('AppProviders', () => {
       expect(resetBadgeCount).toHaveBeenCalled();
     });
 
+    it('opens name prompt when no local name is stored', async () => {
+      mockGetLocalName.mockReturnValue(null);
+
+      const { UNSAFE_root } = render(
+        <AppProviders>
+          <Text>Test</Text>
+        </AppProviders>,
+      );
+
+      await waitFor(() => {
+        const namePrompt = UNSAFE_root.findByType('NamePromptModal' as any);
+        expect(namePrompt.props.open).toBe(true);
+      });
+    });
+
+    it('saves name from prompt and closes modal', async () => {
+      mockGetLocalName.mockReturnValue(null);
+
+      const { UNSAFE_root } = render(
+        <AppProviders>
+          <Text>Test</Text>
+        </AppProviders>,
+      );
+
+      const namePrompt = UNSAFE_root.findByType('NamePromptModal' as any);
+      namePrompt.props.onSave('Jane Doe');
+
+      await waitFor(() => {
+        expect(mockSetLocalName).toHaveBeenCalledWith('Jane Doe');
+        const updatedPrompt = UNSAFE_root.findByType('NamePromptModal' as any);
+        expect(updatedPrompt.props.open).toBe(false);
+        expect(updatedPrompt.props.value).toBe('Jane Doe');
+      });
+    });
+
+    it('initializes Firebase helpers when enabled and cleans up FCM listeners', async () => {
+      process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = 'true';
+      const {
+        initializeInAppMessaging,
+        initializeFCMListeners,
+        setMessageTriggers,
+      } = require('@/notifications');
+      const unsubscribe = jest.fn();
+      initializeFCMListeners.mockReturnValueOnce(unsubscribe);
+
+      const { unmount } = render(
+        <AppProviders>
+          <Text>Test</Text>
+        </AppProviders>,
+      );
+
+      await waitFor(() => {
+        expect(initializeInAppMessaging).toHaveBeenCalled();
+        expect(setMessageTriggers).toHaveBeenCalledWith({ app_ready: 'app_ready' });
+      });
+
+      unmount();
+      expect(unsubscribe).toHaveBeenCalled();
+      process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = '';
+    });
+
+    it('logs when app_ready trigger fails', async () => {
+      process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = 'true';
+      const { setMessageTriggers } = require('@/notifications');
+      const error = new Error('boom');
+      setMessageTriggers.mockRejectedValueOnce(error);
+
+      render(
+        <AppProviders>
+          <Text>Test</Text>
+        </AppProviders>,
+      );
+
+      await waitFor(() => {
+        const iamLogger = getLoggerMocks().loggers.get('IAM');
+        expect(iamLogger?.error).toHaveBeenCalledWith('Failed to trigger app_ready event:', error);
+      });
+
+      process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = '';
+    });
+
     it('skips badge reset on non-iOS platforms', () => {
       const { resetBadgeCount } = require('@/notifications');
       const { Platform } = require('react-native');
@@ -468,6 +700,36 @@ describe('AppProviders', () => {
       );
 
       expect(resetBadgeCount).not.toHaveBeenCalled();
+      Object.defineProperty(Platform, 'OS', { value: originalOS, configurable: true });
+    });
+
+    it('resets badge count when app becomes active on iOS', () => {
+      const { AppState } = require('react-native');
+      const { Platform } = require('react-native');
+      const { resetBadgeCount } = require('@/notifications');
+      const mockAddEventListener = jest.fn().mockImplementation((_: string, handler: any) => ({
+        remove: jest.fn(),
+        handler,
+      }));
+      const originalAdd = AppState.addEventListener;
+      const originalOS = Platform.OS;
+      Object.defineProperty(Platform, 'OS', { value: 'ios', configurable: true });
+      AppState.addEventListener = mockAddEventListener;
+
+      render(
+        <AppProviders>
+          <Text>Test</Text>
+        </AppProviders>,
+      );
+
+      resetBadgeCount.mockClear();
+      const handler = mockAddEventListener.mock.calls[
+        mockAddEventListener.mock.calls.length - 1
+      ]?.[1] as ((state: string) => void) | undefined;
+      handler?.('active');
+      expect(resetBadgeCount).toHaveBeenCalledTimes(1);
+
+      AppState.addEventListener = originalAdd;
       Object.defineProperty(Platform, 'OS', { value: originalOS, configurable: true });
     });
 
@@ -504,6 +766,322 @@ describe('AppProviders', () => {
 
       await waitFor(() => {
         expect(optimizeDatabase).toHaveBeenCalled();
+      });
+    });
+
+    it('logs cleanup failure errors', async () => {
+      const { cleanupSoftDeletedRecords } = require('@/db/sqlite/cleanup');
+      const error = new Error('cleanup failed');
+      cleanupSoftDeletedRecords.mockRejectedValueOnce(error);
+
+      render(
+        <AppProviders>
+          <Text>Test</Text>
+        </AppProviders>,
+      );
+
+      await waitFor(() => {
+        const dbLogger = getLoggerMocks().loggers.get('SQLite');
+        expect(dbLogger?.error).toHaveBeenCalledWith('Soft-delete cleanup failed:', error);
+      });
+    });
+
+    it('logs archive failure errors', async () => {
+      const { cleanupSoftDeletedRecords } = require('@/db/sqlite/cleanup');
+      const { archiveOldEntries } = require('@/db/sqlite/archive');
+      const error = new Error('archive failed');
+      cleanupSoftDeletedRecords.mockResolvedValueOnce(0);
+      archiveOldEntries.mockRejectedValueOnce(error);
+
+      render(
+        <AppProviders>
+          <Text>Test</Text>
+        </AppProviders>,
+      );
+
+      await waitFor(() => {
+        const dbLogger = getLoggerMocks().loggers.get('SQLite');
+        expect(dbLogger?.error).toHaveBeenCalledWith('Archive routine failed:', error);
+      });
+    });
+
+    it('logs when reminder series refresh fails', async () => {
+      const error = new Error('refresh failed');
+      mockRefreshReminderSeriesWindows.mockRejectedValueOnce(error);
+
+      render(
+        <AppProviders>
+          <Text>Test</Text>
+        </AppProviders>,
+      );
+
+      await waitFor(() => {
+        const appLogger = getLoggerMocks().loggers.get('AppProviders');
+        expect(appLogger?.error).toHaveBeenCalledWith(
+          'Failed to refresh reminder series window',
+          error,
+        );
+      });
+    });
+
+    it('refreshes reminder series window on app active', async () => {
+      const { AppState } = require('react-native');
+      const mockAddEventListener = jest.fn().mockImplementation((_: string, handler: any) => ({
+        remove: jest.fn(),
+        handler,
+      }));
+      const originalAdd = AppState.addEventListener;
+      AppState.addEventListener = mockAddEventListener;
+
+      render(
+        <AppProviders>
+          <Text>Test</Text>
+        </AppProviders>,
+      );
+
+      await waitFor(() => {
+        expect(mockRefreshReminderSeriesWindows).toHaveBeenCalled();
+      });
+
+      const handler = mockAddEventListener.mock.calls[0]?.[1] as
+        | ((state: string) => void)
+        | undefined;
+      handler?.('active');
+      await waitFor(() => {
+        expect(mockRefreshReminderSeriesWindows).toHaveBeenCalledTimes(2);
+      });
+
+      AppState.addEventListener = originalAdd;
+    });
+
+    it('skips cleanup when last run is recent', async () => {
+      const { useSync } = require('@/sync');
+      const { cleanupSoftDeletedRecords } = require('@/db/sqlite/cleanup');
+      const nowSpy = jest.spyOn(Date, 'now');
+      nowSpy.mockReturnValueOnce(1000);
+      nowSpy.mockReturnValueOnce(2000);
+
+      useSync
+        .mockReturnValueOnce({ status: 'idle', queueSize: 0 })
+        .mockReturnValueOnce({ status: 'paused', queueSize: 0 });
+
+      const { rerender } = render(
+        <AppProviders>
+          <Text>Test</Text>
+        </AppProviders>,
+      );
+
+      await waitFor(() => {
+        expect(cleanupSoftDeletedRecords).toHaveBeenCalledTimes(1);
+      });
+
+      rerender(
+        <AppProviders>
+          <Text>Test</Text>
+        </AppProviders>,
+      );
+
+      expect(cleanupSoftDeletedRecords).toHaveBeenCalledTimes(1);
+      nowSpy.mockRestore();
+    });
+
+    it('skips cleanup when sync is busy', () => {
+      const { useSync } = require('@/sync');
+      const { cleanupSoftDeletedRecords } = require('@/db/sqlite/cleanup');
+      cleanupSoftDeletedRecords.mockClear();
+      useSync.mockReturnValue({
+        status: 'syncing',
+        queueSize: 0,
+        lastSyncedAt: null,
+        lastError: null,
+        triggerSync: jest.fn(),
+      });
+
+      render(
+        <AppProviders>
+          <Text>Test</Text>
+        </AppProviders>,
+      );
+
+      expect(cleanupSoftDeletedRecords).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Notifications', () => {
+    it('tracks reminder clicks and navigates when a route is provided', async () => {
+      const { useRouter } = require('expo-router');
+      const push = jest.fn();
+      useRouter.mockReturnValue({ push, replace: jest.fn(), back: jest.fn() });
+      const { getLastNotificationResponseAsync } = require('expo-notifications');
+      const { DOMAIN } = require('@/config/domain.config');
+
+      getLastNotificationResponseAsync.mockResolvedValueOnce({
+        notification: {
+          request: {
+            content: {
+              data: {
+                reminderId: 'reminder-1',
+                namespace: `${DOMAIN.app.name}-reminders`,
+                route: '/(tabs)/settings',
+              },
+            },
+          },
+        },
+      });
+
+      render(
+        <AppProviders>
+          <Text>Test</Text>
+        </AppProviders>,
+      );
+
+      await waitFor(() => {
+        expect(mockAnalyticsTrackEvent).toHaveBeenCalledWith('reminders:clicked', {
+          reminderId: 'reminder-1',
+          route: '/(tabs)/settings',
+          source: 'local',
+          platform: 'ios',
+        });
+        expect(push).toHaveBeenCalledWith('/(tabs)/settings');
+      });
+    });
+
+    it('logs an error when last notification response fails', async () => {
+      const { getLastNotificationResponseAsync } = require('expo-notifications');
+      const error = new Error('fail');
+      getLastNotificationResponseAsync.mockRejectedValueOnce(error);
+
+      render(
+        <AppProviders>
+          <Text>Test</Text>
+        </AppProviders>,
+      );
+
+      await waitFor(() => {
+        const appLogger = getLoggerMocks().loggers.get('AppProviders');
+        expect(appLogger?.error).toHaveBeenCalledWith(
+          'Failed to read last notification response',
+          error,
+        );
+      });
+    });
+
+    it('does not navigate when notification has no route', async () => {
+      const { useRouter } = require('expo-router');
+      const push = jest.fn();
+      useRouter.mockReturnValue({ push, replace: jest.fn(), back: jest.fn() });
+      const { getLastNotificationResponseAsync } = require('expo-notifications');
+
+      getLastNotificationResponseAsync.mockResolvedValueOnce({
+        notification: {
+          request: {
+            content: {
+              data: { reminderId: 'reminder-1' },
+            },
+          },
+        },
+      });
+
+      render(
+        <AppProviders>
+          <Text>Test</Text>
+        </AppProviders>,
+      );
+
+      await waitFor(() => {
+        expect(push).not.toHaveBeenCalled();
+      });
+    });
+
+    it('handles notification responses from listeners', async () => {
+      const { useRouter } = require('expo-router');
+      const push = jest.fn();
+      useRouter.mockReturnValue({ push, replace: jest.fn(), back: jest.fn() });
+
+      render(
+        <AppProviders>
+          <Text>Test</Text>
+        </AppProviders>,
+      );
+
+      mockNotificationResponseHandler?.({
+        notification: {
+          request: {
+            content: {
+              data: { route: '/(tabs)/settings' },
+            },
+          },
+        },
+      });
+
+      await waitFor(() => {
+        expect(push).toHaveBeenCalledWith('/(tabs)/settings');
+      });
+    });
+
+    it('triggers soft prompt when first entry event fires', async () => {
+      const { useNotificationSettings } = require('@/notifications/useNotificationSettings');
+      const tryPromptForPush = jest.fn().mockResolvedValue(undefined);
+      useNotificationSettings.mockReturnValue({
+        permissionStatus: 'prompt',
+        tryPromptForPush,
+        softPrompt: {
+          open: false,
+          title: 'Enable notifications?',
+          message: 'Get reminders for your habits',
+          allowLabel: 'Allow',
+          notNowLabel: 'Not now',
+          onAllow: jest.fn(),
+          onNotNow: jest.fn(),
+          setOpen: jest.fn(),
+        },
+      });
+
+      render(
+        <AppProviders>
+          <Text>Test</Text>
+        </AppProviders>,
+      );
+
+      mockNotificationEventHandler?.({ source: 'test' });
+
+      await waitFor(() => {
+        expect(tryPromptForPush).toHaveBeenCalledWith({ context: { source: 'test' } });
+      });
+    });
+
+    it('logs when soft prompt trigger fails', async () => {
+      const { useNotificationSettings } = require('@/notifications/useNotificationSettings');
+      const tryPromptForPush = jest.fn().mockRejectedValue(new Error('fail'));
+      useNotificationSettings.mockReturnValue({
+        permissionStatus: 'prompt',
+        tryPromptForPush,
+        softPrompt: {
+          open: false,
+          title: 'Enable notifications?',
+          message: 'Get reminders for your habits',
+          allowLabel: 'Allow',
+          notNowLabel: 'Not now',
+          onAllow: jest.fn(),
+          onNotNow: jest.fn(),
+          setOpen: jest.fn(),
+        },
+      });
+
+      render(
+        <AppProviders>
+          <Text>Test</Text>
+        </AppProviders>,
+      );
+
+      mockNotificationEventHandler?.({ source: 'test' });
+
+      await waitFor(() => {
+        const appLogger = getLoggerMocks().loggers.get('AppProviders');
+        expect(appLogger?.error).toHaveBeenCalledWith(
+          'Failed to trigger push prompt:',
+          expect.any(Error),
+        );
       });
     });
   });
@@ -619,6 +1197,135 @@ describe('AppProviders', () => {
       );
 
       expect(getByText('Platform test')).toBeDefined();
+    });
+
+    it('registers web resume checks and navigates on service worker click', async () => {
+      const { Platform } = require('react-native');
+      const originalOS = Platform.OS;
+      Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
+
+      const originalDocument = (global as { document?: Document }).document;
+      if (!originalDocument) {
+        (global as { document?: unknown }).document = {
+          visibilityState: 'visible',
+          addEventListener: jest.fn(),
+          removeEventListener: jest.fn(),
+        };
+      }
+      const doc = (global as { document: Document }).document;
+      const originalVisibility = doc.visibilityState;
+      Object.defineProperty(doc, 'visibilityState', {
+        value: 'visible',
+        configurable: true,
+      });
+
+      const originalWindow = (global as { window?: Window }).window;
+      if (!originalWindow) {
+        (global as { window?: unknown }).window = {
+          addEventListener: jest.fn(),
+          removeEventListener: jest.fn(),
+          location: { assign: jest.fn() },
+        };
+      }
+      if (typeof window.addEventListener !== 'function') {
+        Object.defineProperty(window, 'addEventListener', {
+          value: jest.fn(),
+          configurable: true,
+        });
+      }
+      if (typeof window.removeEventListener !== 'function') {
+        Object.defineProperty(window, 'removeEventListener', {
+          value: jest.fn(),
+          configurable: true,
+        });
+      }
+      const originalLocation = window.location;
+      Object.defineProperty(window, 'location', {
+        value: { assign: jest.fn() },
+        configurable: true,
+      });
+
+      let swMessageHandler: ((event: MessageEvent) => void) | null = null;
+
+      const docAddSpy = jest
+        .spyOn(document, 'addEventListener')
+        .mockImplementation(() => undefined);
+
+      const winAddSpy = jest.spyOn(window, 'addEventListener').mockImplementation(() => undefined);
+
+      const originalNavigator = (global as { navigator?: Navigator }).navigator;
+      if (!originalNavigator) {
+        (global as { navigator?: unknown }).navigator = {};
+      }
+      const originalServiceWorker = navigator.serviceWorker;
+      (navigator as any).serviceWorker = {
+        addEventListener: (_: string, handler: any) => {
+          swMessageHandler = handler;
+        },
+        removeEventListener: jest.fn(),
+      };
+
+      jest.resetModules();
+      jest.doMock('react', () => React);
+      const { Platform: WebPlatform } = require('react-native');
+      Object.defineProperty(WebPlatform, 'OS', { value: 'web', configurable: true });
+      const WebProvider = require('@/ui/providers/AppProviders')
+        .AppProviders as typeof AppProviders;
+
+      const { unmount } = render(
+        <WebProvider>
+          <React.Fragment>
+            <Text>Web</Text>
+          </React.Fragment>
+        </WebProvider>,
+      );
+
+      await waitFor(() => {
+        expect(docAddSpy).toHaveBeenCalled();
+        expect(winAddSpy).toHaveBeenCalled();
+      });
+
+      const visibilityHandler = docAddSpy.mock.calls.find(
+        ([event]) => event === 'visibilitychange',
+      )?.[1] as (() => void) | undefined;
+      const focusHandler = winAddSpy.mock.calls.find(([event]) => event === 'focus')?.[1] as
+        | (() => void)
+        | undefined;
+      visibilityHandler?.();
+      focusHandler?.();
+
+      await waitFor(() => {
+        expect(mockEnsureServiceWorkerRegistered).toHaveBeenCalled();
+      });
+
+      (swMessageHandler as ((event: MessageEvent) => void) | null)?.({
+        data: { type: 'NOTIFICATION_CLICKED', payload: { route: '/settings' } },
+      } as MessageEvent);
+
+      expect(window.location.assign).toHaveBeenCalledWith('/settings');
+
+      unmount();
+      docAddSpy.mockRestore();
+      winAddSpy.mockRestore();
+      Object.defineProperty(WebPlatform, 'OS', { value: originalOS, configurable: true });
+      Object.defineProperty(doc, 'visibilityState', {
+        value: originalVisibility,
+        configurable: true,
+      });
+      (navigator as any).serviceWorker = originalServiceWorker;
+      Object.defineProperty(window, 'location', {
+        value: originalLocation,
+        configurable: true,
+      });
+      if (!originalWindow) {
+        delete (global as { window?: Window }).window;
+      }
+      if (!originalNavigator) {
+        delete (global as { navigator?: Navigator }).navigator;
+      }
+      if (!originalDocument) {
+        delete (global as { document?: Document }).document;
+      }
     });
   });
 
