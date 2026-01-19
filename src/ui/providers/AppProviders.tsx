@@ -1,44 +1,44 @@
-import { initSessionListener, useSessionStore } from '@/auth/session';
+import { getLocalName, setLocalName } from '@/auth/nameStorage';
 import { getPendingRemoteReset, runPendingRemoteReset } from '@/auth/reset';
+import { initSessionListener, useSessionStore } from '@/auth/session';
+import { NOTIFICATIONS } from '@/config/constants';
+import { DOMAIN } from '@/config/domain.config';
+import { archiveOldEntries } from '@/db/sqlite/archive';
+import { cleanupSoftDeletedRecords } from '@/db/sqlite/cleanup';
+import { optimizeDatabase } from '@/db/sqlite/maintenance';
+import i18n from '@/i18n';
 import {
-  registerNotificationCategories,
   configureNotificationHandler,
-  resetBadgeCount,
-  initializeInAppMessaging,
-  setMessageTriggers,
   initializeFCMListeners,
+  initializeInAppMessaging,
+  registerNotificationCategories,
+  resetBadgeCount,
+  setMessageTriggers,
 } from '@/notifications';
 import { ensureServiceWorkerRegistered } from '@/notifications/firebasePush';
+import { ForegroundReminderAnalyticsHost } from '@/notifications/ForegroundReminderAnalyticsHost';
 import { onNotificationEvent } from '@/notifications/notificationEvents';
+import { refreshReminderSeriesWindows } from '@/notifications/scheduler';
 import { useNotificationSettings } from '@/notifications/useNotificationSettings';
+import { analytics } from '@/observability/analytics';
+import { AnalyticsProvider } from '@/observability/AnalyticsProvider';
+import { createLogger } from '@/observability/logger';
 import { getQueryClient, getQueryClientPersistOptions } from '@/state';
 import { pullUpdates, pushOutbox, useSync } from '@/sync';
-import { useThemeContext } from '@/ui/theme/ThemeProvider';
-import { SoftPromptModal } from '@/ui/components/SoftPromptModal';
 import { NamePromptModal } from '@/ui/components/NamePromptModal';
+import { SoftPromptModal } from '@/ui/components/SoftPromptModal';
+import { useThemeContext } from '@/ui/theme/ThemeProvider';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import * as Notifications from 'expo-notifications';
 import { useRouter, type Href } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { PropsWithChildren, useEffect, useMemo, useRef, useState } from 'react';
+import { I18nextProvider } from 'react-i18next';
 import { AppState, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { YStack } from 'tamagui';
-import { AnalyticsProvider } from '@/observability/AnalyticsProvider';
-import { ForegroundReminderAnalyticsHost } from '@/notifications/ForegroundReminderAnalyticsHost';
-import { refreshReminderSeriesWindows } from '@/notifications/scheduler';
-import { cleanupSoftDeletedRecords } from '@/db/sqlite/cleanup';
-import { archiveOldEntries } from '@/db/sqlite/archive';
-import { optimizeDatabase } from '@/db/sqlite/maintenance';
-import i18n from '@/i18n';
-import { I18nextProvider } from 'react-i18next';
-import { NOTIFICATIONS } from '@/config/constants';
-import { DOMAIN } from '@/config/domain.config';
-import { createLogger } from '@/observability/logger';
-import { analytics } from '@/observability/analytics';
-import { getLocalName, setLocalName } from '@/auth/nameStorage';
 
 const queryClient = getQueryClient();
 const persistOptions = getQueryClientPersistOptions();
@@ -87,6 +87,7 @@ export function AppProviders({ children }: PropsWithChildren) {
         }
         runPendingRemoteReset(session, resetLogger).catch(() => undefined);
       });
+
       await Promise.all([
         registerNotificationCategories().catch(() => undefined),
         configureNotificationHandler().catch(() => undefined),

@@ -580,6 +580,24 @@ describe('AppProviders', () => {
       });
     });
 
+    it('registers notification categories and handlers on mount', async () => {
+      const {
+        registerNotificationCategories,
+        configureNotificationHandler,
+      } = require('@/notifications');
+
+      render(
+        <AppProviders>
+          <Text>Test</Text>
+        </AppProviders>,
+      );
+
+      await waitFor(() => {
+        expect(registerNotificationCategories).toHaveBeenCalled();
+        expect(configureNotificationHandler).toHaveBeenCalled();
+      });
+    });
+
     it('should enable sync when user is authenticated on native platforms', () => {
       mockSessionState.status = 'authenticated';
       const { useSync } = require('@/sync');
@@ -621,6 +639,22 @@ describe('AppProviders', () => {
       });
     });
 
+    it('skips name prompt when local name is stored', async () => {
+      mockGetLocalName.mockReturnValue('Local Name');
+
+      const { UNSAFE_root } = render(
+        <AppProviders>
+          <Text>Test</Text>
+        </AppProviders>,
+      );
+
+      await waitFor(() => {
+        const namePrompt = UNSAFE_root.findByType('NamePromptModal' as any);
+        expect(namePrompt.props.open).toBe(false);
+        expect(namePrompt.props.value).toBe('Local Name');
+      });
+    });
+
     it('saves name from prompt and closes modal', async () => {
       mockGetLocalName.mockReturnValue(null);
 
@@ -645,6 +679,8 @@ describe('AppProviders', () => {
       process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = 'true';
       const {
         initializeInAppMessaging,
+        registerNotificationCategories,
+        configureNotificationHandler,
         initializeFCMListeners,
         setMessageTriggers,
       } = require('@/notifications');
@@ -658,6 +694,8 @@ describe('AppProviders', () => {
       );
 
       await waitFor(() => {
+        expect(registerNotificationCategories).toHaveBeenCalled();
+        expect(configureNotificationHandler).toHaveBeenCalled();
         expect(initializeInAppMessaging).toHaveBeenCalled();
         expect(setMessageTriggers).toHaveBeenCalledWith({ app_ready: 'app_ready' });
       });
@@ -769,9 +807,54 @@ describe('AppProviders', () => {
       });
     });
 
+    it('skips optimization when called twice within the same window', async () => {
+      const { cleanupSoftDeletedRecords } = require('@/db/sqlite/cleanup');
+      const { archiveOldEntries } = require('@/db/sqlite/archive');
+      const { optimizeDatabase } = require('@/db/sqlite/maintenance');
+      const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(86_400_000 + 1_000);
+      mockSessionState.status = 'authenticated';
+      cleanupSoftDeletedRecords.mockResolvedValueOnce(2);
+      archiveOldEntries.mockResolvedValueOnce(1);
+
+      render(
+        <AppProviders>
+          <Text>Test</Text>
+        </AppProviders>,
+      );
+
+      try {
+        await waitFor(() => {
+          expect(optimizeDatabase).toHaveBeenCalledTimes(1);
+        });
+      } finally {
+        nowSpy.mockRestore();
+      }
+    });
+
+    it('logs when optimization fails', async () => {
+      const { cleanupSoftDeletedRecords } = require('@/db/sqlite/cleanup');
+      const { optimizeDatabase } = require('@/db/sqlite/maintenance');
+      const error = new Error('optimize failed');
+      mockSessionState.status = 'authenticated';
+      cleanupSoftDeletedRecords.mockResolvedValueOnce(1);
+      optimizeDatabase.mockRejectedValueOnce(error);
+
+      render(
+        <AppProviders>
+          <Text>Test</Text>
+        </AppProviders>,
+      );
+
+      await waitFor(() => {
+        const dbLogger = getLoggerMocks().loggers.get('SQLite');
+        expect(dbLogger?.error).toHaveBeenCalledWith('Optimization routine failed:', error);
+      });
+    });
+
     it('logs cleanup failure errors', async () => {
       const { cleanupSoftDeletedRecords } = require('@/db/sqlite/cleanup');
       const error = new Error('cleanup failed');
+      mockSessionState.status = 'authenticated';
       cleanupSoftDeletedRecords.mockRejectedValueOnce(error);
 
       render(
@@ -790,6 +873,7 @@ describe('AppProviders', () => {
       const { cleanupSoftDeletedRecords } = require('@/db/sqlite/cleanup');
       const { archiveOldEntries } = require('@/db/sqlite/archive');
       const error = new Error('archive failed');
+      mockSessionState.status = 'authenticated';
       cleanupSoftDeletedRecords.mockResolvedValueOnce(0);
       archiveOldEntries.mockRejectedValueOnce(error);
 
@@ -1297,6 +1381,11 @@ describe('AppProviders', () => {
       await waitFor(() => {
         expect(mockEnsureServiceWorkerRegistered).toHaveBeenCalled();
       });
+
+      (swMessageHandler as ((event: MessageEvent) => void) | null)?.({
+        data: { type: 'PING' },
+      } as MessageEvent);
+      expect(window.location.assign).not.toHaveBeenCalled();
 
       (swMessageHandler as ((event: MessageEvent) => void) | null)?.({
         data: { type: 'NOTIFICATION_CLICKED', payload: { route: '/settings' } },
