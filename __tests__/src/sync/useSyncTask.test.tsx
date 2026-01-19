@@ -314,19 +314,20 @@ describe('useSyncTask', () => {
     it('should clear stale interval and listener refs when mounting disabled', async () => {
       const removeSpy = jest.fn();
       const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
-      const React = require('react') as typeof import('react');
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const React = require('react');
       const originalUseRef = React.useRef;
       let callIndex = 0;
 
-      const useRefSpy = jest.spyOn(React, 'useRef').mockImplementation((initialValue) => {
+      const useRefSpy = jest.spyOn(React, 'useRef').mockImplementation((initialValue: unknown) => {
         callIndex += 1;
         if (callIndex === 2) {
-          return { current: 123 } as React.MutableRefObject<ReturnType<typeof setInterval> | null>;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          return { current: 123 } as any;
         }
         if (callIndex === 3) {
-          return { current: { remove: removeSpy } } as React.MutableRefObject<{
-            remove?: () => void;
-          } | null>;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          return { current: { remove: removeSpy } } as any;
         }
         return originalUseRef(initialValue);
       });
@@ -423,23 +424,24 @@ describe('useSyncTask', () => {
 
     it('returns early when a queued run is already present', async () => {
       const queuedPromise = Promise.resolve();
-      const React = require('react') as typeof import('react');
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const React = require('react');
       const originalUseRef = React.useRef;
       let callIndex = 0;
 
-      const useRefSpy = jest.spyOn(React, 'useRef').mockImplementation((initialValue) => {
+      const useRefSpy = jest.spyOn(React, 'useRef').mockImplementation((initialValue: unknown) => {
         callIndex += 1;
         if (callIndex === 4) {
-          return { current: true } as React.MutableRefObject<boolean>;
+          return { current: true };
         }
         if (callIndex === 5) {
-          return { current: true } as React.MutableRefObject<boolean>;
+          return { current: true };
         }
         if (callIndex === 6) {
-          return { current: false } as React.MutableRefObject<boolean>;
+          return { current: false };
         }
         if (callIndex === 8) {
-          return { current: queuedPromise } as React.MutableRefObject<Promise<void> | null>;
+          return { current: queuedPromise };
         }
         return originalUseRef(initialValue);
       });
