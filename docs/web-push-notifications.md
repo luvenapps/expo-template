@@ -154,6 +154,28 @@ Same as cURL, but use a GUI:
 3. **Expected**: No notification (service worker only runs when app is open in background)
    - Note: True background push (app completely closed) requires persistent service worker setup
 
+### Debug logging (service worker)
+
+Service worker logs are gated by hostname and can be toggled at runtime.
+
+**Enable logs from the page console:**
+
+```js
+navigator.serviceWorker?.ready.then((reg) => {
+  reg.active?.postMessage({ type: 'SET_SW_DEBUG', value: true });
+});
+```
+
+**Disable logs:**
+
+```js
+navigator.serviceWorker?.ready.then((reg) => {
+  reg.active?.postMessage({ type: 'SET_SW_DEBUG', value: false });
+});
+```
+
+Logs appear in dev console.
+
 ## Troubleshooting
 
 ### Important: Token Behavior on Web
