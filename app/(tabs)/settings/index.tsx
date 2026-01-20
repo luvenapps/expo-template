@@ -130,6 +130,7 @@ export default function SettingsScreen() {
   const settingsLogger = useMemo(() => createLogger('Settings'), []);
   const devPushLogger = useMemo(() => createLogger('Dev:Push'), []);
   const devNotificationsLogger = useMemo(() => createLogger('Dev:MMKV:notifications'), []);
+  const devMmkvLogger = useMemo(() => createLogger('Dev:MMKV'), []);
   const firebaseEnabled = useMemo(
     () =>
       process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === 'true' ||
@@ -760,13 +761,75 @@ export default function SettingsScreen() {
           store.getBoolean(key) ??
           store.getBuffer?.(key)?.toString('utf-8') ??
           null;
-        devNotificationsLogger.info(`${key}:`, value);
+        let displayValue = value;
+        if (typeof value === 'string') {
+          try {
+            displayValue = JSON.parse(value);
+          } catch {
+            displayValue = value;
+          }
+        }
+        devNotificationsLogger.info(`${key}:`, displayValue);
       });
 
       setDevStatus('Notification MMKV store logged to console.');
     } catch (error) {
       devNotificationsLogger.error('Failed to log store:', error);
       setDevStatus('Failed to read notification store (see console).');
+    }
+  };
+
+  const handleLogAllMmkvStores = () => {
+    if (!isNative) return;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { MMKV } = require('react-native-mmkv');
+      const stores = [
+        { id: `${DOMAIN.app.name}-notifications`, label: 'notifications' },
+        {
+          id: `${DOMAIN.app.storageKey}-notification-preferences`,
+          label: 'notification-preferences',
+        },
+        { id: DOMAIN.app.cursorStorageId, label: 'sync-cursors' },
+        { id: `${DOMAIN.app.cursorStorageId}-i18n`, label: 'i18n' },
+        { id: `${DOMAIN.app.storageKey}-theme-preference`, label: 'theme' },
+        { id: `${DOMAIN.app.storageKey}-profile`, label: 'profile' },
+        { id: `${DOMAIN.app.storageKey}-reset`, label: 'reset' },
+        { id: DOMAIN.app.analyticsStorageNamespace, label: 'analytics' },
+        { id: 'debug-logs', label: 'debug-logs' },
+      ];
+
+      let totalKeys = 0;
+      stores.forEach(({ id, label }) => {
+        const store = new MMKV({ id });
+        const keys = store.getAllKeys();
+        devMmkvLogger.info(`[${label}] keys:`, keys);
+        totalKeys += keys.length;
+        keys.forEach((key: string) => {
+          const value =
+            store.getString(key) ??
+            store.getNumber(key) ??
+            store.getBoolean(key) ??
+            store.getBuffer?.(key)?.toString('utf-8') ??
+            null;
+          let displayValue = value;
+          if (typeof value === 'string') {
+            try {
+              displayValue = JSON.parse(value);
+            } catch {
+              displayValue = value;
+            }
+          }
+          devMmkvLogger.info(`[${label}] ${key}:`, displayValue);
+        });
+      });
+
+      setDevStatus(
+        totalKeys === 0 ? 'All MMKV stores are empty.' : 'MMKV stores logged to console.',
+      );
+    } catch (error) {
+      devMmkvLogger.error('Failed to log MMKV stores:', error);
+      setDevStatus('Failed to read MMKV stores (see console).');
     }
   };
 
@@ -1375,6 +1438,15 @@ export default function SettingsScreen() {
                       fontSize="$4"
                     >
                       Log notification MMKV
+                    </SecondaryButton>
+                  </XStack>
+                  <XStack>
+                    <SecondaryButton
+                      testID="dev-log-mmkv-stores-button"
+                      onPress={handleLogAllMmkvStores}
+                      fontSize="$4"
+                    >
+                      Log all MMKV stores
                     </SecondaryButton>
                   </XStack>
                   <XStack>

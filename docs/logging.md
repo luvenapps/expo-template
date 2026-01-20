@@ -257,10 +257,10 @@ _With Firebase enabled (`EXPO_PUBLIC_TURN_ON_FIREBASE=true`):_
 
 - ✅ **Logger methods log to console** (full visibility)
 - ✅ **Firebase backends active** (Analytics, Crashlytics, Performance - all free tiers)
-- ❌ **Supabase disabled** (unless `EXPO_PUBLIC_SUPABASE_LOGS_ENABLED=true`)
+- ❌ **Supabase disabled** (unless enabled in configuration)
 - **Purpose**: Test Firebase integration, validate event schemas
 
-_With Supabase enabled (`EXPO_PUBLIC_SUPABASE_LOGS_ENABLED=true`):_
+_With Supabase enabled:_
 
 - ✅ **Logger methods log to console** (full visibility)
 - ✅ **Supabase active** (sends to local Supabase instance via `npm run supabase:dev`)
@@ -281,31 +281,43 @@ _Full stack testing (both flags set):_
 - ✅ **Backend calls**: All methods send to their respective backends (when enabled)
   - Error reporting to Crashlytics (100% sampling, requires `EXPO_PUBLIC_TURN_ON_FIREBASE=true`)
   - Analytics events to Firebase Analytics (100%, requires `EXPO_PUBLIC_TURN_ON_FIREBASE=true`)
-  - App logs to Supabase (10% sampling, batched, requires `EXPO_PUBLIC_SUPABASE_LOGS_ENABLED=true`)
+  - App logs to Supabase (10% sampling, batched)
   - Performance traces (5% sampling, requires `EXPO_PUBLIC_TURN_ON_FIREBASE=true`)
 - **Purpose**: Remote monitoring, low overhead, cost-effective
 
 **Configuration Summary**:
 
-| Environment         | `EXPO_PUBLIC_TURN_ON_FIREBASE` | `EXPO_PUBLIC_SUPABASE_LOGS_ENABLED` | Console    | Firebase | Supabase         |
-| ------------------- | ------------------------------ | ----------------------------------- | ---------- | -------- | ---------------- |
-| Dev (default)       | `false`                        | `false`                             | All        | ❌       | ❌               |
-| Dev (Firebase only) | `true`                         | `false`                             | All        | ✅ Free  | ❌               |
-| Dev (Supabase only) | `false`                        | `true`                              | All        | ❌       | ✅ Local         |
-| Dev (full stack)    | `true`                         | `true`                              | All        | ✅ Free  | ✅ Local         |
-| Prod                | `true`                         | `true`                              | Warn/Error | ✅       | ✅ (10% sampled) |
+| Environment         | `EXPO_PUBLIC_TURN_ON_FIREBASE` | Console    | Firebase | Supabase         |
+| ------------------- | ------------------------------ | ---------- | -------- | ---------------- |
+| Dev (default)       | `false`                        | All        | ❌       | ❌               |
+| Dev (Firebase only) | `true`                         | All        | ✅ Free  | ❌               |
+| Dev (Supabase only) | `false`                        | All        | ❌       | ✅ Local         |
+| Dev (full stack)    | `true`                         | All        | ✅ Free  | ✅ Local         |
+| Prod                | `true`                         | Warn/Error | ✅       | ✅ (10% sampled) |
 
-**Production Debug Override** (`EXPO_PUBLIC_ENABLE_DEBUG_LOGS=true`):
+**Runtime Debug Toggle** (deep link or global helper):
 
-- ✅ All logs to console (debug/info/warn/error)
+- ✅ All logs to console (debug/info/warn/error) once enabled
 - ✅ All production backends still active
-- **Purpose**: Diagnose production-only issues
+- **Purpose**: Diagnose production-only issues without rebuilding
+- **Deep links**:
+  - Native: `betterhabits://debug-logs?enabled=true` (or `false` to disable)
+  - Web: `https://<host>/?debug-logs=true` (or `false`)
+- **Global helper** (in the console): `globalThis.__SET_DEBUG_LOGS__(true|false)`
+- **Persistence**: Stored in localStorage (web) and MMKV (native)
+
+**Mobile Log Viewing**
+
+- **iOS (device)**: Xcode → Window → Devices and Simulators → select device → **Open Console**. Use search to filter (e.g., `PermSync`, `FCM`, `Observability`).
+- **Android (device)**: Connect via USB and run:
+
+```bash
+adb logcat | grep -i "betterhabits\\|PermSync\\|FCM\\|Observability"
+```
 
 **Environment Flags**:
 
 - `EXPO_PUBLIC_TURN_ON_FIREBASE` - Controls Firebase backends (Analytics, Crashlytics, Performance)
-- `EXPO_PUBLIC_SUPABASE_LOGS_ENABLED` - Controls Supabase app logs backend
-- `EXPO_PUBLIC_ENABLE_DEBUG_LOGS` - Production override to show all console logs
 
 **Batching Configuration**:
 
@@ -604,7 +616,7 @@ describe('Logger', () => {
 - [ ] Firebase Performance traces recorded (5% sampling)
 - [ ] All debug/info logs suppressed in production
 - [ ] Warn/error logs appear in console (dev + prod)
-- [ ] Override works: `EXPO_PUBLIC_ENABLE_DEBUG_LOGS=true`
+- [ ] Debug toggle works (deep link or `__SET_DEBUG_LOGS__`)
 - [ ] All 1059+ tests pass
 - [ ] No ESLint errors
 - [ ] Type checking passes
@@ -649,7 +661,7 @@ describe('Logger', () => {
 - **Graceful degradation**: Logger works even if backends fail to initialize
 - **Sampling**: Reduces costs and overhead (10% app logs, 5% traces in prod)
 - **Batching**: Reduces network calls (50 logs per batch, 30s flush interval)
-- **Environment variables**: `EXPO_PUBLIC_ENABLE_DEBUG_LOGS=true` for production debugging
+- **Debug toggle**: Deep link or `__SET_DEBUG_LOGS__` enables console logs in production
 - **Firebase flag**: Existing `EXPO_PUBLIC_TURN_ON_FIREBASE` controls all Firebase backends
 
 ## API Reference
@@ -908,7 +920,7 @@ analytics.trackEvent('feature_used', { feature: featureName });
 
 **Issue**: Debug/info logs not showing in production builds.
 
-**Solution**: This is expected behavior. Use `EXPO_PUBLIC_ENABLE_DEBUG_LOGS=true` to enable debug logs in production for troubleshooting.
+**Solution**: This is expected behavior. Enable logs via deep link (`debug-logs?enabled=true`) or `globalThis.__SET_DEBUG_LOGS__(true)` while debugging.
 
 ### Errors not appearing in Crashlytics
 
