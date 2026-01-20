@@ -134,9 +134,11 @@ const mockedUseURL = Linking.useURL as jest.MockedFunction<typeof Linking.useURL
 // Suppress act() warnings
 const originalError = console.error;
 const originalInfo = console.info;
+const originalWarn = console.warn;
 
 beforeAll(() => {
   console.info = jest.fn();
+  console.warn = jest.fn();
   console.error = (...args: any[]) => {
     if (
       typeof args[0] === 'string' &&
@@ -151,6 +153,7 @@ beforeAll(() => {
 afterAll(() => {
   console.error = originalError;
   console.info = originalInfo;
+  console.warn = originalWarn;
 });
 
 describe('AuthCallbackScreen - Native', () => {
