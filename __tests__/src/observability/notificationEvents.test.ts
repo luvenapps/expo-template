@@ -10,7 +10,7 @@ describe('notificationEvents', () => {
     const event: ForegroundNotificationEvent = {
       name: 'notification:foreground:displayed',
       payload: {
-        tag: 'habits',
+        tag: 'entries',
         title: 'Hello',
         timestamp: '2025-01-01T00:00:00.000Z',
         platform: 'web',
@@ -30,7 +30,7 @@ describe('notificationEvents', () => {
     const event: ForegroundNotificationEvent = {
       name: 'notification:foreground:clicked',
       payload: {
-        tag: 'habits',
+        tag: 'entries',
         title: 'Click',
         timestamp: '2025-01-01T00:00:00.000Z',
         platform: 'web',

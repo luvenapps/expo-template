@@ -39,7 +39,7 @@ jest.mock('@/notifications/useNotificationSettings', () => ({
     softPrompt: {
       open: false,
       title: 'Enable notifications?',
-      message: 'Get reminders for your habits',
+      message: 'Get reminders',
       allowLabel: 'Allow',
       notNowLabel: 'Not now',
       onAllow: jest.fn(),

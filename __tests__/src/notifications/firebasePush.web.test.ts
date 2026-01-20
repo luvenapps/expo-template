@@ -1,3 +1,4 @@
+import { DOMAIN } from '@/config/domain.config';
 import {
   __registerForWebPush,
   __resetWebPushStateForTests,
@@ -5,7 +6,6 @@ import {
   revokePushToken,
   setupWebForegroundMessageListener,
 } from '@/notifications/firebasePush';
-import { DOMAIN } from '@/config/domain.config';
 import { Platform } from 'react-native';
 
 jest.mock('firebase/app', () => {
@@ -317,13 +317,13 @@ describe('firebasePush Web', () => {
 
     handler({
       notification: { title: 'Hello', body: 'World' },
-      data: { tag: 'habits' },
+      data: { tag: 'entries' },
     });
 
     expect(emitNotificationEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         name: 'notification:foreground:displayed',
-        payload: expect.objectContaining({ tag: 'habits', title: 'Hello' }),
+        payload: expect.objectContaining({ tag: 'entries', title: 'Hello' }),
       }),
     );
 
@@ -333,7 +333,7 @@ describe('firebasePush Web', () => {
     expect(emitNotificationEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         name: 'notification:foreground:clicked',
-        payload: expect.objectContaining({ tag: 'habits', title: 'Hello' }),
+        payload: expect.objectContaining({ tag: 'entries', title: 'Hello' }),
       }),
     );
 
@@ -346,14 +346,14 @@ describe('firebasePush Web', () => {
     emitNotificationEvent.mockClear();
     handler({
       notification: { title: 'Later', body: 'Reminder' },
-      data: { tag: 'habits' },
+      data: { tag: 'entries' },
     });
     lastNotification?.onclose?.();
 
     expect(emitNotificationEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         name: 'notification:foreground:dismissed',
-        payload: expect.objectContaining({ tag: 'habits', title: 'Later' }),
+        payload: expect.objectContaining({ tag: 'entries', title: 'Later' }),
       }),
     );
   });
