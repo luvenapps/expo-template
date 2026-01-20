@@ -4,10 +4,10 @@ This guide explains how to enable Universal Links for seamless deep linking in y
 
 ## Current State
 
-The app currently uses custom URL schemes (`betterhabits://`) which work but have limitations:
+The app currently uses custom URL schemes (`youdomain://`) which work but have limitations:
 
 - iOS Safari blocks automatic redirects from web→app
-- User must manually tap "Open in BetterHabits"
+- User must manually tap "Open in youdomain"
 - Email confirmation requires manual sign-in after verification
 
 ## What Universal Links Enable
@@ -21,7 +21,7 @@ With a domain, the app will use `https://yourdomain.com` links that:
 
 ## Prerequisites
 
-1. **A domain you control** (e.g., `betterhabits.com`)
+1. **A domain you control** (e.g., `youdomain.com`)
 2. **Ability to host files** at `https://yourdomain.com/.well-known/`
 3. **Apple Developer Account** (for iOS Universal Links)
 
@@ -32,7 +32,7 @@ With a domain, the app will use `https://yourdomain.com` links that:
 Add to your `.env.prod` (or `.env.local` for testing):
 
 ```bash
-EXPO_PUBLIC_APP_DOMAIN=betterhabits.com
+EXPO_PUBLIC_APP_DOMAIN=youdomain.com
 ```
 
 ### 2. Update app.json
@@ -44,7 +44,7 @@ Uncomment the Universal Links configuration:
 ```json
 {
   "ios": {
-    "associatedDomains": ["applinks:betterhabits.com"]
+    "associatedDomains": ["applinks:youdomain.com"]
   }
 }
 ```
@@ -62,7 +62,7 @@ Uncomment the Universal Links configuration:
         "data": [
           {
             "scheme": "https",
-            "host": "betterhabits.com",
+            "host": "youdomain.com",
             "pathPrefix": "/auth-callback"
           }
         ]
@@ -74,7 +74,7 @@ Uncomment the Universal Links configuration:
 
 ### 3. Create Apple App Site Association File
 
-Create a file at `https://betterhabits.com/.well-known/apple-app-site-association` (no file extension):
+Create a file at `https://youdomain.com/.well-known/apple-app-site-association` (no file extension):
 
 ```json
 {
@@ -82,7 +82,7 @@ Create a file at `https://betterhabits.com/.well-known/apple-app-site-associatio
     "apps": [],
     "details": [
       {
-        "appID": "HWJZHVS443.com.luvenapps.betterhabits",
+        "appID": "HWJZHVS443.com.luvenapps.youdomain",
         "paths": ["/auth-callback", "/reset-password", "/*"]
       }
     ]
@@ -93,13 +93,13 @@ Create a file at `https://betterhabits.com/.well-known/apple-app-site-associatio
 **Important:**
 
 - Replace `HWJZHVS443` with your Apple Team ID
-- Replace `com.luvenapps.betterhabits` with your bundle identifier
+- Replace `com.luvenapps.youdomain` with your bundle identifier
 - Serve with `Content-Type: application/json`
 - Must be accessible over HTTPS (no redirects)
 
 ### 4. Create Android Asset Links File
 
-Create a file at `https://betterhabits.com/.well-known/assetlinks.json`:
+Create a file at `https://youdomain.com/.well-known/assetlinks.json`:
 
 ```json
 [
@@ -107,7 +107,7 @@ Create a file at `https://betterhabits.com/.well-known/assetlinks.json`:
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "com.luvenapps.betterhabits",
+      "package_name": "com.luvenapps.youdomain",
       "sha256_cert_fingerprints": ["YOUR_SHA256_CERTIFICATE_FINGERPRINT"]
     }
   }
@@ -130,8 +130,8 @@ In your Supabase Dashboard → Authentication → URL Configuration:
 
 **Add redirect URLs:**
 
-- `https://betterhabits.com/**`
-- Keep `betterhabits://**` as fallback
+- `https://youdomain.com/**`
+- Keep `youdomain://**` as fallback
 
 ### 6. Rebuild Your App
 
@@ -154,16 +154,16 @@ npm run ios    # or npm run android
 
 **iOS Universal Links:**
 
-1. Open https://betterhabits.com/.well-known/apple-app-site-association in Safari
+1. Open https://youdomain.com/.well-known/apple-app-site-association in Safari
 2. Verify it returns valid JSON (no 404)
-3. Test link: https://betterhabits.com/auth-callback
-   - Long-press → Should show "Open in BetterHabits"
+3. Test link: https://youdomain.com/auth-callback
+   - Long-press → Should show "Open in youdomain"
 
 **Android App Links:**
 
-1. Visit https://betterhabits.com/.well-known/assetlinks.json
+1. Visit https://youdomain.com/.well-known/assetlinks.json
 2. Verify valid JSON
-3. Test with: `adb shell am start -W -a android.intent.action.VIEW -d "https://betterhabits.com/auth-callback"`
+3. Test with: `adb shell am start -W -a android.intent.action.VIEW -d "https://youdomain.com/auth-callback"`
 
 ## Troubleshooting
 
@@ -172,14 +172,14 @@ npm run ios    # or npm run android
 1. **Check association file:**
 
    ```bash
-   curl https://betterhabits.com/.well-known/apple-app-site-association
+   curl https://youdomain.com/.well-known/apple-app-site-association
    ```
 
    Should return JSON (not HTML)
 
 2. **Verify domain in app:**
    - Xcode → Signing & Capabilities → Associated Domains
-   - Should list: `applinks:betterhabits.com`
+   - Should list: `applinks:youdomain.com`
 
 3. **Clear iOS cache:**
    - Delete app
@@ -202,7 +202,7 @@ npm run ios    # or npm run android
 2. **Test with ADB:**
 
    ```bash
-   adb shell am start -W -a android.intent.action.VIEW -d "https://betterhabits.com/auth-callback"
+   adb shell am start -W -a android.intent.action.VIEW -d "https://youdomain.com/auth-callback"
    ```
 
 3. **Check certificate fingerprint:**

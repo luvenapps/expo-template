@@ -141,7 +141,11 @@ export interface AppLogsBackend {
 // Performance Backend
 export interface PerformanceBackend {
   startTrace(name: string): PerformanceTrace;
-  recordTrace(name: string, durationMs: number, metadata?: Record<string, unknown>): void;
+  recordTrace(
+    name: string,
+    durationMs: number,
+    metadata?: Record<string, unknown>
+  ): void;
 }
 
 export interface PerformanceTrace {
@@ -227,7 +231,11 @@ export interface PerformanceTrace {
        };
      }
 
-     recordTrace(name: string, durationMs: number, metadata?: Record<string, unknown>): void {
+     recordTrace(
+       name: string,
+       durationMs: number,
+       metadata?: Record<string, unknown>
+     ): void {
        // Custom metric recording
        perf().putMetric(name, durationMs);
      }
@@ -301,7 +309,7 @@ _Full stack testing (both flags set):_
 - ✅ All production backends still active
 - **Purpose**: Diagnose production-only issues without rebuilding
 - **Deep links**:
-  - Native: `betterhabits://debug-logs?enabled=true` (or `false` to disable)
+  - Native: `youdomain://debug-logs?enabled=true` (or `false` to disable)
   - Web: `https://<host>/?debug-logs=true` (or `false`)
 - **Global helper** (in the console): `globalThis.__SET_DEBUG_LOGS__(true|false)`
 - **Persistence**: Stored in localStorage (web) and MMKV (native)
@@ -312,7 +320,7 @@ _Full stack testing (both flags set):_
 - **Android (device)**: Connect via USB and run:
 
 ```bash
-adb logcat | grep -i "betterhabits\\|PermSync\\|FCM\\|Observability"
+adb logcat | grep -i "youdomain\\|PermSync\\|FCM\\|Observability"
 ```
 
 **Environment Flags**:

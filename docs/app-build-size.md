@@ -7,16 +7,16 @@ Keeping the Better Habits binaries small helps installs finish quickly and keeps
 1. Run the desired build profile:
 
    ```bash
-   eas build --platform ios --profile production --local --output build/betterhabits.ipa
-   eas build --platform android --profile production --local --output build/betterhabits.aab
+   eas build --platform ios --profile production --local --output build/youdomain.ipa
+   eas build --platform android --profile production --local --output build/youdomain.aab
    ```
 
 2. Inspect the artifacts:
 
    ```bash
    # Report size in MB
-   node scripts/report-build-size.mjs build/betterhabits.ipa
-   node scripts/report-build-size.mjs build/betterhabits.aab
+   node scripts/report-build-size.mjs build/youdomain.ipa
+   node scripts/report-build-size.mjs build/youdomain.aab
    ```
 
 3. Target budgets:
