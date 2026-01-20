@@ -1,5 +1,5 @@
 /* istanbul ignore file */
-/* eslint-disable betterhabits/require-friendly-error-handler */
+/* eslint-disable currentapp/require-friendly-error-handler */
 import { DOMAIN } from '@/config/domain.config';
 import { getDb } from '@/db/sqlite';
 import {

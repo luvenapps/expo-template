@@ -71,6 +71,7 @@ jest.mock('react-i18next', () => ({
 }));
 
 import { supabase } from '@/auth/client';
+import { DOMAIN } from '@/config/domain.config';
 import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import * as Linking from 'expo-linking';
@@ -95,7 +96,12 @@ jest.mock('@/errors/useFriendlyErrorHandler', () => ({
 jest.mock('expo-linking', () => ({
   createURL: jest.fn(),
   getInitialURL: jest.fn(() => Promise.resolve(null)),
-  parse: jest.fn(() => ({ queryParams: {}, scheme: 'betterhabits', hostname: '', path: '' })),
+  parse: jest.fn(() => ({
+    queryParams: {},
+    scheme: require('@/config/domain.config').DOMAIN.app.name,
+    hostname: '',
+    path: 'auth-callback',
+  })),
   useURL: jest.fn(() => null),
 }));
 
@@ -130,6 +136,7 @@ const mockedGetInitialURL = Linking.getInitialURL as jest.MockedFunction<
   typeof Linking.getInitialURL
 >;
 const mockedUseURL = Linking.useURL as jest.MockedFunction<typeof Linking.useURL>;
+const authCallbackUrl = `${DOMAIN.app.name}://auth-callback`;
 
 // Suppress act() warnings
 const originalError = console.error;
@@ -182,7 +189,7 @@ describe('AuthCallbackScreen - Native', () => {
     mockParse.mockReset();
     mockParse.mockReturnValue({
       queryParams: {},
-      scheme: 'betterhabits',
+      scheme: DOMAIN.app.name,
       hostname: '',
       path: 'auth-callback',
     });
@@ -212,7 +219,7 @@ describe('AuthCallbackScreen - Native', () => {
 
   it('exchanges code for session on native with valid code', async () => {
     mockUseLocalSearchParams.mockReturnValue({ code: 'auth-code-123' });
-    mockedCreateURL.mockReturnValue('betterhabits://auth-callback?code=auth-code-123');
+    mockedCreateURL.mockReturnValue(`${authCallbackUrl}?code=auth-code-123`);
     mockedExchangeCodeForSession.mockResolvedValue({ data: { session: {} }, error: null } as any);
 
     render(<AuthCallbackScreen />);
@@ -222,14 +229,14 @@ describe('AuthCallbackScreen - Native', () => {
         queryParams: { code: 'auth-code-123' },
       });
       expect(mockedExchangeCodeForSession).toHaveBeenCalledWith(
-        'betterhabits://auth-callback?code=auth-code-123',
+        `${authCallbackUrl}?code=auth-code-123`,
       );
     });
   });
 
   it('navigates to tabs after successful code exchange', async () => {
     mockUseLocalSearchParams.mockReturnValue({ code: 'auth-code-123' });
-    mockedCreateURL.mockReturnValue('betterhabits://auth-callback?code=auth-code-123');
+    mockedCreateURL.mockReturnValue(`${authCallbackUrl}?code=auth-code-123`);
     mockedExchangeCodeForSession.mockResolvedValue({ data: { session: {} }, error: null } as any);
 
     render(<AuthCallbackScreen />);
@@ -242,7 +249,7 @@ describe('AuthCallbackScreen - Native', () => {
   it('replaces to tabs when canGoBack is false after successful code exchange', async () => {
     mockCanGoBack.mockReturnValue(false);
     mockUseLocalSearchParams.mockReturnValue({ code: 'auth-code-456' });
-    mockedCreateURL.mockReturnValue('betterhabits://auth-callback?code=auth-code-456');
+    mockedCreateURL.mockReturnValue(`${authCallbackUrl}?code=auth-code-456`);
     mockedExchangeCodeForSession.mockResolvedValue({ data: { session: {} }, error: null } as any);
 
     render(<AuthCallbackScreen />);
@@ -255,7 +262,7 @@ describe('AuthCallbackScreen - Native', () => {
 
   it('shows error when code is missing', async () => {
     mockUseLocalSearchParams.mockReturnValue({});
-    mockedGetInitialURL.mockResolvedValue('betterhabits://auth-callback#access_token=');
+    mockedGetInitialURL.mockResolvedValue(`${authCallbackUrl}#access_token=`);
     const handleError = jest.fn(() => ({
       toastId: 'toast-1',
       friendly: {
@@ -290,7 +297,7 @@ describe('AuthCallbackScreen - Native', () => {
 
   it('shows error when code exchange fails', async () => {
     mockUseLocalSearchParams.mockReturnValue({ code: 'auth-code-123' });
-    mockedCreateURL.mockReturnValue('betterhabits://auth-callback?code=auth-code-123');
+    mockedCreateURL.mockReturnValue(`${authCallbackUrl}?code=auth-code-123`);
     const authError = { message: 'Invalid code', status: 400 };
     mockedExchangeCodeForSession.mockResolvedValue({ data: null, error: authError } as any);
 
@@ -320,7 +327,7 @@ describe('AuthCallbackScreen - Native', () => {
 
   it('shows retry button when error occurs', async () => {
     mockUseLocalSearchParams.mockReturnValue({});
-    mockedGetInitialURL.mockResolvedValue('betterhabits://auth-callback#access_token=');
+    mockedGetInitialURL.mockResolvedValue(`${authCallbackUrl}#access_token=`);
     const handleError = jest.fn(() => ({
       toastId: 'toast-1',
       friendly: {
@@ -345,7 +352,7 @@ describe('AuthCallbackScreen - Native', () => {
 
   it('navigates to login when retry button is pressed', async () => {
     mockUseLocalSearchParams.mockReturnValue({});
-    mockedGetInitialURL.mockResolvedValue('betterhabits://auth-callback#access_token=');
+    mockedGetInitialURL.mockResolvedValue(`${authCallbackUrl}#access_token=`);
     const handleError = jest.fn(() => ({
       toastId: 'toast-1',
       friendly: {
@@ -371,7 +378,7 @@ describe('AuthCallbackScreen - Native', () => {
 
   it('processes callback only once with duplicate renders', async () => {
     mockUseLocalSearchParams.mockReturnValue({ code: 'auth-code-123' });
-    mockedCreateURL.mockReturnValue('betterhabits://auth-callback?code=auth-code-123');
+    mockedCreateURL.mockReturnValue(`${authCallbackUrl}?code=auth-code-123`);
     mockedExchangeCodeForSession.mockResolvedValue({ data: { session: {} }, error: null } as any);
 
     const { rerender } = render(<AuthCallbackScreen />);
@@ -385,7 +392,7 @@ describe('AuthCallbackScreen - Native', () => {
 
   it('handles array values in query params', async () => {
     mockUseLocalSearchParams.mockReturnValue({ code: ['auth-code-123', 'extra'] });
-    mockedCreateURL.mockReturnValue('betterhabits://auth-callback?code=auth-code-123');
+    mockedCreateURL.mockReturnValue(`${authCallbackUrl}?code=auth-code-123`);
     mockedExchangeCodeForSession.mockResolvedValue({ data: { session: {} }, error: null } as any);
 
     render(<AuthCallbackScreen />);
@@ -414,22 +421,22 @@ describe('AuthCallbackScreen - Native', () => {
   it('handles code from initial URL', async () => {
     mockUseLocalSearchParams.mockReturnValue({});
     mockedGetSession.mockResolvedValue({ data: { session: null }, error: null } as any);
-    mockedGetInitialURL.mockResolvedValue('betterhabits://auth-callback?code=auth-code-456');
+    mockedGetInitialURL.mockResolvedValue(`${authCallbackUrl}?code=auth-code-456`);
     const mockParse = Linking.parse as jest.MockedFunction<typeof Linking.parse>;
     mockParse.mockReturnValue({
       queryParams: { code: 'auth-code-456' },
-      scheme: 'betterhabits',
+      scheme: DOMAIN.app.name,
       hostname: '',
       path: 'auth-callback',
     });
-    mockedCreateURL.mockReturnValue('betterhabits://auth-callback?code=auth-code-456');
+    mockedCreateURL.mockReturnValue(`${authCallbackUrl}?code=auth-code-456`);
     mockedExchangeCodeForSession.mockResolvedValue({ data: { session: {} }, error: null } as any);
 
     render(<AuthCallbackScreen />);
 
     await waitFor(() => {
       expect(mockedExchangeCodeForSession).toHaveBeenCalledWith(
-        'betterhabits://auth-callback?code=auth-code-456',
+        `${authCallbackUrl}?code=auth-code-456`,
       );
       expect(mockBack).toHaveBeenCalled();
     });
@@ -438,30 +445,30 @@ describe('AuthCallbackScreen - Native', () => {
   it('handles embedded URL with code', async () => {
     mockUseLocalSearchParams.mockReturnValue({});
     mockedGetSession.mockResolvedValue({ data: { session: null }, error: null } as any);
-    const encodedUrl = encodeURIComponent('betterhabits://auth-callback?code=embedded-code');
-    mockedGetInitialURL.mockResolvedValue(`betterhabits://auth-callback?url=${encodedUrl}`);
+    const encodedUrl = encodeURIComponent(`${authCallbackUrl}?code=embedded-code`);
+    mockedGetInitialURL.mockResolvedValue(`${authCallbackUrl}?url=${encodedUrl}`);
     const mockParse = Linking.parse as jest.MockedFunction<typeof Linking.parse>;
     mockParse
       .mockReturnValueOnce({
         queryParams: { url: encodedUrl },
-        scheme: 'betterhabits',
+        scheme: DOMAIN.app.name,
         hostname: '',
         path: 'auth-callback',
       })
       .mockReturnValueOnce({
         queryParams: { code: 'embedded-code' },
-        scheme: 'betterhabits',
+        scheme: DOMAIN.app.name,
         hostname: '',
         path: 'auth-callback',
       });
-    mockedCreateURL.mockReturnValue('betterhabits://auth-callback?code=embedded-code');
+    mockedCreateURL.mockReturnValue(`${authCallbackUrl}?code=embedded-code`);
     mockedExchangeCodeForSession.mockResolvedValue({ data: { session: {} }, error: null } as any);
 
     render(<AuthCallbackScreen />);
 
     await waitFor(() => {
       expect(mockedExchangeCodeForSession).toHaveBeenCalledWith(
-        'betterhabits://auth-callback?code=embedded-code',
+        `${authCallbackUrl}?code=embedded-code`,
       );
       expect(mockBack).toHaveBeenCalled();
     });
@@ -471,12 +478,12 @@ describe('AuthCallbackScreen - Native', () => {
     mockUseLocalSearchParams.mockReturnValue({});
     mockedGetSession.mockResolvedValue({ data: { session: null }, error: null } as any);
     mockedGetInitialURL.mockResolvedValue(
-      'betterhabits://auth-callback#access_token=token-abc&refresh_token=refresh-xyz',
+      `${authCallbackUrl}#access_token=token-abc&refresh_token=refresh-xyz`,
     );
     const mockParse = Linking.parse as jest.MockedFunction<typeof Linking.parse>;
     mockParse.mockReturnValue({
       queryParams: {},
-      scheme: 'betterhabits',
+      scheme: DOMAIN.app.name,
       hostname: '',
       path: 'auth-callback',
     });
@@ -497,12 +504,12 @@ describe('AuthCallbackScreen - Native', () => {
     mockUseLocalSearchParams.mockReturnValue({});
     mockedGetSession.mockResolvedValue({ data: { session: null }, error: null } as any);
     mockedGetInitialURL.mockResolvedValue(
-      'betterhabits://auth-callback#access_token=token-abc&refresh_token=refresh-xyz',
+      `${authCallbackUrl}#access_token=token-abc&refresh_token=refresh-xyz`,
     );
     const mockParse = Linking.parse as jest.MockedFunction<typeof Linking.parse>;
     mockParse.mockReturnValue({
       queryParams: {},
-      scheme: 'betterhabits',
+      scheme: DOMAIN.app.name,
       hostname: '',
       path: 'auth-callback',
     });
@@ -537,7 +544,7 @@ describe('AuthCallbackScreen - Native', () => {
     Object.defineProperty(Platform, 'OS', { value: 'android', writable: true });
 
     mockUseLocalSearchParams.mockReturnValue({});
-    mockedGetInitialURL.mockResolvedValue('betterhabits://auth-callback');
+    mockedGetInitialURL.mockResolvedValue(authCallbackUrl);
     mockedGetSession.mockResolvedValue({ data: { session: null }, error: null } as any);
 
     render(<AuthCallbackScreen />);
@@ -552,12 +559,12 @@ describe('AuthCallbackScreen - Native', () => {
   it('handles hash error responses in native callback', async () => {
     mockUseLocalSearchParams.mockReturnValue({});
     mockedGetInitialURL.mockResolvedValue(
-      'betterhabits://auth-callback#error=access_denied&error_description=Email+not+verified',
+      `${authCallbackUrl}#error=access_denied&error_description=Email+not+verified`,
     );
     const mockParse = Linking.parse as jest.MockedFunction<typeof Linking.parse>;
     mockParse.mockReturnValue({
       queryParams: {},
-      scheme: 'betterhabits',
+      scheme: DOMAIN.app.name,
       hostname: '',
       path: 'auth-callback',
     });
@@ -591,11 +598,11 @@ describe('AuthCallbackScreen - Native', () => {
   it('navigates back when session appears during initial URL wait', async () => {
     jest.useFakeTimers();
     mockUseLocalSearchParams.mockReturnValue({});
-    mockedGetInitialURL.mockResolvedValue('betterhabits://auth-callback');
+    mockedGetInitialURL.mockResolvedValue(authCallbackUrl);
     const mockParse = Linking.parse as jest.MockedFunction<typeof Linking.parse>;
     mockParse.mockReturnValue({
       queryParams: {},
-      scheme: 'betterhabits',
+      scheme: DOMAIN.app.name,
       hostname: '',
       path: 'auth-callback',
     });
@@ -619,9 +626,9 @@ describe('AuthCallbackScreen - Native', () => {
 
   it('falls back to android navigation after retry loop', async () => {
     Object.defineProperty(Platform, 'OS', { value: 'android', writable: true });
-    mockedUseURL.mockReturnValue('betterhabits://auth-callback?code=');
+    mockedUseURL.mockReturnValue(`${authCallbackUrl}?code=`);
     mockUseLocalSearchParams.mockReturnValue({});
-    mockedGetInitialURL.mockResolvedValue('betterhabits://auth-callback');
+    mockedGetInitialURL.mockResolvedValue(authCallbackUrl);
     mockedGetSession.mockResolvedValue({ data: { session: null }, error: null } as any);
 
     const timeoutSpy = jest
@@ -644,7 +651,7 @@ describe('AuthCallbackScreen - Native', () => {
   it('handles exchangeCodeForSession error when processing URL code', async () => {
     mockUseLocalSearchParams.mockReturnValue({ code: 'invalid-code' });
     mockedGetSession.mockResolvedValue({ data: { session: null }, error: null } as any);
-    mockedCreateURL.mockReturnValue('betterhabits://auth-callback?code=invalid-code');
+    mockedCreateURL.mockReturnValue(`${authCallbackUrl}?code=invalid-code`);
     const authError = { message: 'Code expired', status: 400 };
     mockedExchangeCodeForSession.mockResolvedValue({ data: null, error: authError } as any);
 
@@ -724,7 +731,7 @@ describe('AuthCallbackScreen - Web', () => {
     mockParse.mockReset();
     mockParse.mockReturnValue({
       queryParams: {},
-      scheme: 'betterhabits',
+      scheme: DOMAIN.app.name,
       hostname: '',
       path: 'auth-callback',
     });
@@ -936,14 +943,14 @@ describe('AuthCallbackScreen - Error Message Display', () => {
     mockedGetInitialURL.mockClear();
     mockedGetSession.mockResolvedValue({ data: { session: null }, error: null } as any);
     mockedGetInitialURL.mockResolvedValue(
-      'betterhabits://auth-callback#error=access_denied&error_description=Email+not+verified',
+      `${authCallbackUrl}#error=access_denied&error_description=Email+not+verified`,
     );
     mockedUseURL.mockReturnValue(null);
     const mockParse = Linking.parse as jest.MockedFunction<typeof Linking.parse>;
     mockParse.mockReset();
     mockParse.mockReturnValue({
       queryParams: {},
-      scheme: 'betterhabits',
+      scheme: DOMAIN.app.name,
       hostname: '',
       path: 'auth-callback',
     });

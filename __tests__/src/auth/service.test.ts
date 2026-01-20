@@ -943,7 +943,7 @@ describe('auth/service', () => {
       const originalEnv = process.env.EXPO_PUBLIC_APP_DOMAIN;
       // @ts-expect-error - testing undefined window
       delete global.window;
-      process.env.EXPO_PUBLIC_APP_DOMAIN = 'betterhabits.com';
+      process.env.EXPO_PUBLIC_APP_DOMAIN = 'app-web-site.com';
 
       supabase.auth.signUp.mockResolvedValueOnce({ error: null });
       await signUpWithEmail('test@example.com', 'password');
@@ -952,7 +952,7 @@ describe('auth/service', () => {
         email: 'test@example.com',
         password: 'password',
         options: {
-          emailRedirectTo: 'https://betterhabits.com/auth-callback',
+          emailRedirectTo: 'https://app-web-site.com/auth-callback',
         },
       });
 
@@ -963,7 +963,7 @@ describe('auth/service', () => {
     it('uses EXPO_PUBLIC_APP_DOMAIN for native when set', async () => {
       Object.defineProperty(Platform, 'OS', { value: 'ios', writable: true });
       const originalEnv = process.env.EXPO_PUBLIC_APP_DOMAIN;
-      process.env.EXPO_PUBLIC_APP_DOMAIN = 'betterhabits.com';
+      process.env.EXPO_PUBLIC_APP_DOMAIN = 'app-web-site.com';
 
       supabase.auth.signUp.mockResolvedValueOnce({ error: null });
       await signUpWithEmail('test@example.com', 'password');
@@ -972,7 +972,7 @@ describe('auth/service', () => {
         email: 'test@example.com',
         password: 'password',
         options: {
-          emailRedirectTo: 'https://betterhabits.com/auth-callback',
+          emailRedirectTo: 'https://app-web-site.com/auth-callback',
         },
       });
 

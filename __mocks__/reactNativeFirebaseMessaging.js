@@ -1,4 +1,3 @@
-/* eslint-env jest */
 const AuthorizationStatus = {
   AUTHORIZED: 1,
   PROVISIONAL: 2,

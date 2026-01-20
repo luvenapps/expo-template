@@ -1,4 +1,6 @@
 import { resolveFriendlyError, type FriendlyError } from '@/errors/friendly';
+import { analytics } from '@/observability/analytics';
+import { createLogger } from '@/observability/logger';
 import type { Provider } from '@supabase/supabase-js';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Crypto from 'expo-crypto';
@@ -6,8 +8,6 @@ import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 import { v4 as uuidv4 } from 'uuid';
-import { createLogger } from '@/observability/logger';
-import { analytics } from '@/observability/analytics';
 import { supabase } from './client';
 
 export type AuthResult = {
@@ -397,7 +397,7 @@ function getAuthRedirectUrl(): string {
     }
     if (appDomain) {
       // SSR/SSG context with domain configured
-      // Support both full URLs (http://localhost:8081) and bare domains (betterhabits.com)
+      // Support both full URLs (http://localhost:8081) and bare domains (example.com)
       const baseUrl =
         appDomain.startsWith('http://') || appDomain.startsWith('https://')
           ? appDomain

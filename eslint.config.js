@@ -31,14 +31,14 @@ module.exports = defineConfig([
   {
     files: ['app/**/*.{ts,tsx}', 'src/**/*.{ts,tsx}'],
     plugins: {
-      betterhabits: {
+      currentapp: {
         rules: {
           'require-friendly-error-handler': requireFriendlyErrorHandler,
         },
       },
     },
     rules: {
-      'betterhabits/require-friendly-error-handler': 'warn',
+      'currentapp/require-friendly-error-handler': 'warn',
     },
   },
   // Jest globals for test files

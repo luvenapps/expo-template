@@ -108,8 +108,10 @@ describe('logger', () => {
 
     expect(getDebugLogsEnabled()).toBe(true);
 
+    const { DOMAIN } = require('@/config/domain.config') as typeof import('@/config/domain.config');
+    const storageKey = `${DOMAIN.app.storageKey}-debug-logs-enabled`;
     storageListeners[0]?.({
-      key: 'betterhabits-debug-logs-enabled',
+      key: storageKey,
       newValue: 'false',
     } as StorageEvent);
 
@@ -138,7 +140,9 @@ describe('logger', () => {
     expect(getDebugLogsEnabled()).toBe(true);
 
     setDebugLogsEnabled(false);
-    expect(set).toHaveBeenCalledWith('betterhabits-debug-logs-enabled', 'false');
+    const { DOMAIN } = require('@/config/domain.config') as typeof import('@/config/domain.config');
+    const storageKey = `${DOMAIN.app.storageKey}-debug-logs-enabled`;
+    expect(set).toHaveBeenCalledWith(storageKey, 'false');
   });
 
   it('handles localStorage failures on web', () => {
@@ -175,7 +179,11 @@ describe('logger', () => {
     jest.doMock('react-native', () => ({
       Platform: { OS: 'ios' },
       Linking: {
-        getInitialURL: jest.fn().mockResolvedValue('betterhabits://debug-logs?enabled=false'),
+        getInitialURL: jest
+          .fn()
+          .mockResolvedValue(
+            `${require('@/config/domain.config').DOMAIN.app.name}://debug-logs?enabled=false`,
+          ),
         addEventListener: jest.fn(),
       },
     }));
@@ -200,7 +208,9 @@ describe('logger', () => {
     jest.doMock('react-native', () => ({
       Platform: { OS: 'ios' },
       Linking: {
-        getInitialURL: jest.fn().mockResolvedValue('betterhabits://debug-logs'),
+        getInitialURL: jest
+          .fn()
+          .mockResolvedValue(`${require('@/config/domain.config').DOMAIN.app.name}://debug-logs`),
         addEventListener: jest.fn(),
       },
     }));
