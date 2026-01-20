@@ -1,9 +1,10 @@
 /* istanbul ignore file */
 import { DOMAIN } from '@/config/domain.config';
+import { createLogger } from '@/observability/logger';
 import { Platform } from 'react-native';
 import { emitDatabaseReset } from './events';
 import { deviceEntity, entryEntity, outbox, primaryEntity, reminderEntity } from './schema';
-import { createLogger } from '@/observability/logger';
+import { ensureSqliteSchema, resetSchemaInitialization } from './setup';
 
 /**
  * SQLite database instance using expo-sqlite.

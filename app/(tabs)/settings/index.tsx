@@ -678,7 +678,7 @@ export default function SettingsScreen() {
 
         const reminder = await createReminderLocal({
           userId: session.user.id,
-          habitId: primaryId,
+          [DOMAIN.entities.reminders.foreignKey]: primaryId,
           timeLocal: '09:00',
           daysOfWeek: '0,1,2,3,4,5,6',
           timezone: 'UTC',
