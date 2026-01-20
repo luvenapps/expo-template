@@ -1,7 +1,7 @@
 import { DOMAIN } from '@/config/domain.config';
 import { Platform } from 'react-native';
 
-export type NotificationStatus = 'unknown' | 'soft-declined' | 'granted' | 'denied' | 'unavailable';
+import { NOTIFICATION_STATUS, type NotificationStatus } from '@/notifications/status';
 
 export type NotificationPreferences = {
   /** User explicitly toggled notifications off in-app (even if OS permission is granted) */
@@ -34,13 +34,13 @@ function getNativeStore() {
 function mapLegacyStatus(status: string | undefined): NotificationStatus {
   switch (status) {
     case 'enabled':
-      return 'granted';
+      return NOTIFICATION_STATUS.GRANTED;
     case 'denied':
-      return 'denied';
+      return NOTIFICATION_STATUS.DENIED;
     case 'unavailable':
-      return 'unavailable';
+      return NOTIFICATION_STATUS.UNAVAILABLE;
     default:
-      return 'unknown';
+      return NOTIFICATION_STATUS.UNKNOWN;
   }
 }
 

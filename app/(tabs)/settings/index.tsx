@@ -25,6 +25,7 @@ import {
   scheduleReminder,
   scheduleReminderSeries,
 } from '@/notifications/scheduler';
+import { NOTIFICATION_PERMISSION_STATE, NOTIFICATION_STATUS } from '@/notifications/status';
 import { useNotificationSettings } from '@/notifications/useNotificationSettings';
 import { createLogger } from '@/observability/logger';
 import { useSyncStore } from '@/state';
@@ -115,10 +116,10 @@ export default function SettingsScreen() {
   // Consider block state primarily from current OS/browser permission.
   // On web, a granted browser permission should always show the toggle even if prefs lag behind.
   const notificationsBlocked = isNative
-    ? permissionStatus === 'blocked' ||
-      permissionStatus === 'denied' ||
-      permissionStatus === 'unavailable'
-    : permissionStatus === 'blocked';
+    ? permissionStatus === NOTIFICATION_PERMISSION_STATE.BLOCKED ||
+      permissionStatus === NOTIFICATION_PERMISSION_STATE.DENIED ||
+      permissionStatus === NOTIFICATION_PERMISSION_STATE.UNAVAILABLE
+    : permissionStatus === NOTIFICATION_PERMISSION_STATE.BLOCKED;
   const hasOutboxData = queueSize > 0; // Use sync store's queue size instead of manual check
   const isSeedingRef = useRef(false); // Synchronous lock to prevent rapid-clicking (state updates are async)
   const isClearingRef = useRef(false); // Synchronous lock for clear operations
@@ -162,20 +163,25 @@ export default function SettingsScreen() {
   const reminderCadenceId = useId();
   const reminderActionId = useId();
   const pushEnabled = firebaseEnabled
-    ? notificationStatus === 'granted'
-    : permissionStatus === 'granted';
+    ? notificationStatus === NOTIFICATION_STATUS.GRANTED
+    : permissionStatus === NOTIFICATION_PERMISSION_STATE.GRANTED;
 
   const pushStatusText = useMemo(() => {
     if (pushError) return pushError;
     if (!firebaseEnabled) {
-      return permissionStatus === 'granted'
+      return permissionStatus === NOTIFICATION_PERMISSION_STATE.GRANTED
         ? t('settings.pushStatusEnabledSimple')
         : t('settings.pushStatusDisabledSimple');
     }
-    if (notificationStatus === 'granted') return t('settings.pushStatusEnabledSimple');
-    if (notificationStatus === 'denied' || notificationStatus === 'unavailable')
+    if (notificationStatus === NOTIFICATION_STATUS.GRANTED)
+      return t('settings.pushStatusEnabledSimple');
+    if (
+      notificationStatus === NOTIFICATION_STATUS.DENIED ||
+      notificationStatus === NOTIFICATION_STATUS.UNAVAILABLE
+    )
       return t('settings.pushStatusDisabledSimple');
-    if (notificationStatus === 'soft-declined') return t('settings.pushStatusDisabledSimple');
+    if (notificationStatus === NOTIFICATION_STATUS.SOFT_DECLINED)
+      return t('settings.pushStatusDisabledSimple');
     return t('settings.pushStatusDisabledSimple');
   }, [firebaseEnabled, notificationStatus, permissionStatus, pushError, t]);
 
@@ -384,7 +390,7 @@ export default function SettingsScreen() {
       return;
     }
 
-    if (result.status === 'denied') {
+    if (result.status === NOTIFICATION_STATUS.DENIED) {
       toast.show({
         type: 'info',
         title: t('settings.pushUnavailableTitle'),
@@ -531,7 +537,7 @@ export default function SettingsScreen() {
       setDevStatus('Push token requested (check console for logs).');
       return;
     }
-    if (result.status === 'denied') {
+    if (result.status === NOTIFICATION_STATUS.DENIED) {
       setDevStatus('Push permission denied. Enable in system settings.');
       return;
     }

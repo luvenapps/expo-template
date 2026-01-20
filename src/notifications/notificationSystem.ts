@@ -1,8 +1,12 @@
 import { createLogger } from '@/observability/logger';
+import {
+  NOTIFICATION_PLATFORM_STATUS,
+  NOTIFICATION_STATUS,
+  type NotificationStatus,
+} from '@/notifications/status';
 import { Platform } from 'react-native';
 import {
   DEFAULT_NOTIFICATION_PREFERENCES,
-  NotificationStatus,
   loadNotificationPreferences,
   persistNotificationPreferences,
 } from './preferences';
@@ -30,15 +34,15 @@ export async function ensureNotificationsEnabled(options?: {
 
   // Early returns for terminal states (unless explicitly forcing a re-register)
   if (!options?.forceRegister) {
-    if (prefs.notificationStatus === 'granted') {
+    if (prefs.notificationStatus === NOTIFICATION_STATUS.GRANTED) {
       logger.debug('Early return - already granted');
       return { status: 'enabled' };
     }
-    if (prefs.notificationStatus === 'denied') {
+    if (prefs.notificationStatus === NOTIFICATION_STATUS.DENIED) {
       logger.debug('Early return - already denied');
       return { status: 'denied' };
     }
-    if (prefs.notificationStatus === 'unavailable') {
+    if (prefs.notificationStatus === NOTIFICATION_STATUS.UNAVAILABLE) {
       logger.debug('Early return - unavailable');
       return { status: 'unavailable' };
     }
@@ -49,21 +53,21 @@ export async function ensureNotificationsEnabled(options?: {
   const result = await platform.requestPermission();
   logger.debug('platform.requestPermission result:', result);
 
-  if (result.status === 'granted') {
+  if (result.status === NOTIFICATION_PLATFORM_STATUS.GRANTED) {
     logger.debug('Persisting granted status');
     persistNotificationPreferences({
       ...prefs,
-      notificationStatus: 'granted',
+      notificationStatus: NOTIFICATION_STATUS.GRANTED,
       pushManuallyDisabled: false,
     });
     return { status: 'enabled' };
   }
 
-  if (result.status === 'unavailable') {
+  if (result.status === NOTIFICATION_PLATFORM_STATUS.UNAVAILABLE) {
     logger.debug('Persisting unavailable status');
     persistNotificationPreferences({
       ...prefs,
-      notificationStatus: 'unavailable',
+      notificationStatus: NOTIFICATION_STATUS.UNAVAILABLE,
     });
     return { status: 'unavailable', message: result.message };
   }
@@ -72,7 +76,7 @@ export async function ensureNotificationsEnabled(options?: {
   logger.debug('Persisting denied status (result was:', result.status);
   persistNotificationPreferences({
     ...prefs,
-    notificationStatus: 'denied',
+    notificationStatus: NOTIFICATION_STATUS.DENIED,
     pushManuallyDisabled: false,
   });
 
@@ -88,7 +92,7 @@ export async function revokeNotifications() {
   await platform.revokePermission();
   persistNotificationPreferences({
     ...DEFAULT_NOTIFICATION_PREFERENCES,
-    notificationStatus: 'unknown',
+    notificationStatus: NOTIFICATION_STATUS.UNKNOWN,
   });
 }
 

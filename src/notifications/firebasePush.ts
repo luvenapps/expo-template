@@ -1,6 +1,7 @@
 import { DOMAIN } from '@/config/domain.config';
 import { createLogger } from '@/observability/logger';
 import { emitNotificationEvent } from '@/observability/notificationEvents';
+import { WEB_NOTIFICATION_PERMISSION } from '@/notifications/status';
 import { Platform } from 'react-native';
 
 export type PushRegistrationResult =
@@ -42,7 +43,10 @@ if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
     lastLoggedWebToken = localStorage.getItem(WEB_TOKEN_STORAGE_KEY);
 
     // If the current page session does not have permission, clear any cached token/state
-    if ('Notification' in window && Notification.permission !== 'granted') {
+    if (
+      'Notification' in window &&
+      Notification.permission !== WEB_NOTIFICATION_PERMISSION.GRANTED
+    ) {
       lastLoggedWebToken = null;
       localStorage.removeItem(WEB_TOKEN_STORAGE_KEY);
     }
@@ -368,7 +372,10 @@ export function setupWebForegroundMessageListener() {
       webLogger.debug('Displaying notification:', { title, body });
 
       // Always display in foreground (Firebase doesn't auto-display)
-      if ('Notification' in window && Notification.permission === 'granted') {
+      if (
+        'Notification' in window &&
+        Notification.permission === WEB_NOTIFICATION_PERMISSION.GRANTED
+      ) {
         try {
           const notification = new Notification(title, {
             body,
@@ -572,7 +579,7 @@ async function registerForWebPush(): Promise<PushRegistrationResult> {
   }
 
   // If permission was revoked in the browser, drop any cached token so we fetch a fresh one
-  if (Notification.permission !== 'granted') {
+  if (Notification.permission !== WEB_NOTIFICATION_PERMISSION.GRANTED) {
     lastLoggedWebToken = null;
     try {
       localStorage.removeItem(WEB_TOKEN_STORAGE_KEY);
@@ -585,7 +592,7 @@ async function registerForWebPush(): Promise<PushRegistrationResult> {
 
   // Fast-path: if permission is already granted, a service worker is active, and we have a
   // cached token, avoid re-registering and reuse the existing token.
-  if (Notification.permission === 'granted' && lastLoggedWebToken) {
+  if (Notification.permission === WEB_NOTIFICATION_PERMISSION.GRANTED && lastLoggedWebToken) {
     try {
       const existingRegistration = await navigator.serviceWorker.getRegistration('/');
       const existingSubscription = await existingRegistration?.pushManager?.getSubscription?.();
@@ -605,10 +612,12 @@ async function registerForWebPush(): Promise<PushRegistrationResult> {
   webRegisterSessionPromise = (async () => {
     webRegisterLogger.debug('Checking Notification.permission:', Notification.permission);
     const permission =
-      Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
+      Notification.permission === WEB_NOTIFICATION_PERMISSION.GRANTED
+        ? WEB_NOTIFICATION_PERMISSION.GRANTED
+        : await Notification.requestPermission();
 
     webRegisterLogger.debug('Permission result:', permission);
-    if (permission !== 'granted') {
+    if (permission !== WEB_NOTIFICATION_PERMISSION.GRANTED) {
       // Clear cached token when the browser denies permission
       lastLoggedWebToken = null;
       try {

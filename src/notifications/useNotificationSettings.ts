@@ -8,6 +8,12 @@ import {
   loadNotificationPreferences,
   persistNotificationPreferences,
 } from '@/notifications/preferences';
+import {
+  NOTIFICATION_PERMISSION_STATE,
+  NOTIFICATION_STATUS,
+  WEB_NOTIFICATION_PERMISSION,
+  type NotificationPermissionState,
+} from '@/notifications/status';
 import { useAnalytics } from '@/observability/AnalyticsProvider';
 import { createLogger } from '@/observability/logger';
 import { onNotificationEvent } from '@/observability/notificationEvents';
@@ -18,53 +24,57 @@ import { AppState, Platform } from 'react-native';
 
 const logger = createLogger('PermSync');
 
-export type NotificationPermissionState =
-  | 'granted'
-  | 'prompt'
-  | 'denied'
-  | 'blocked'
-  | 'unavailable';
-
 function mapPermission(
   status: Notifications.NotificationPermissionsStatus,
   platform: typeof Platform.OS,
 ): NotificationPermissionState {
   if (platform === 'web') {
-    const permission = typeof Notification !== 'undefined' ? Notification.permission : 'default';
-    if (permission === 'granted') return 'granted';
-    if (permission === 'denied') return 'blocked';
-    return 'prompt';
+    const permission =
+      typeof Notification !== 'undefined'
+        ? Notification.permission
+        : WEB_NOTIFICATION_PERMISSION.DEFAULT;
+    if (permission === WEB_NOTIFICATION_PERMISSION.GRANTED) {
+      return NOTIFICATION_PERMISSION_STATE.GRANTED;
+    }
+    if (permission === WEB_NOTIFICATION_PERMISSION.DENIED) {
+      return NOTIFICATION_PERMISSION_STATE.BLOCKED;
+    }
+    return NOTIFICATION_PERMISSION_STATE.PROMPT;
   }
 
   if (status.granted || status.status === Notifications.PermissionStatus.GRANTED) {
-    return 'granted';
+    return NOTIFICATION_PERMISSION_STATE.GRANTED;
   }
 
   if (status.status === Notifications.PermissionStatus.DENIED && !status.canAskAgain) {
-    return 'blocked';
+    return NOTIFICATION_PERMISSION_STATE.BLOCKED;
   }
 
   if (status.status === Notifications.PermissionStatus.DENIED) {
-    return 'denied';
+    return NOTIFICATION_PERMISSION_STATE.DENIED;
   }
 
-  return 'prompt';
+  return NOTIFICATION_PERMISSION_STATE.PROMPT;
 }
 
 function getInitialWebPermissionStatus(): NotificationPermissionState {
-  if (Platform.OS !== 'web') return 'unavailable';
+  if (Platform.OS !== 'web') return NOTIFICATION_PERMISSION_STATE.UNAVAILABLE;
 
   try {
     if (typeof window === 'undefined' || typeof Notification === 'undefined') {
-      return 'prompt';
+      return NOTIFICATION_PERMISSION_STATE.PROMPT;
     }
 
     const permission = Notification.permission;
-    if (permission === 'granted') return 'granted';
-    if (permission === 'denied') return 'blocked';
-    return 'prompt';
+    if (permission === WEB_NOTIFICATION_PERMISSION.GRANTED) {
+      return NOTIFICATION_PERMISSION_STATE.GRANTED;
+    }
+    if (permission === WEB_NOTIFICATION_PERMISSION.DENIED) {
+      return NOTIFICATION_PERMISSION_STATE.BLOCKED;
+    }
+    return NOTIFICATION_PERMISSION_STATE.PROMPT;
   } catch {
-    return 'prompt';
+    return NOTIFICATION_PERMISSION_STATE.PROMPT;
   }
 }
 
@@ -75,7 +85,7 @@ export function useNotificationSettings() {
     loadNotificationPreferences(),
   );
   const [permissionStatus, setPermissionStatus] = useState<NotificationPermissionState>(() =>
-    Platform.OS === 'web' ? getInitialWebPermissionStatus() : 'prompt',
+    Platform.OS === 'web' ? getInitialWebPermissionStatus() : NOTIFICATION_PERMISSION_STATE.PROMPT,
   );
   const [error, setError] = useState<string | null>(null);
   const [pushError, setPushError] = useState<string | null>(null);
@@ -106,10 +116,12 @@ export function useNotificationSettings() {
       if (Platform.OS === 'web') {
         const permission =
           typeof Notification !== 'undefined' ? Notification.permission : 'default';
-        let mapped: NotificationPermissionState = 'prompt';
-        if (permission === 'granted') mapped = 'granted';
-        else if (permission === 'denied') mapped = 'blocked';
-        else mapped = 'prompt';
+        let mapped: NotificationPermissionState = NOTIFICATION_PERMISSION_STATE.PROMPT;
+        if (permission === WEB_NOTIFICATION_PERMISSION.GRANTED) {
+          mapped = NOTIFICATION_PERMISSION_STATE.GRANTED;
+        } else if (permission === WEB_NOTIFICATION_PERMISSION.DENIED) {
+          mapped = NOTIFICATION_PERMISSION_STATE.BLOCKED;
+        } else mapped = NOTIFICATION_PERMISSION_STATE.PROMPT;
         setPermissionStatus(mapped);
         return mapped;
       }
@@ -121,7 +133,10 @@ export function useNotificationSettings() {
     } catch (permissionError) {
       setError(t('notifications.permissionReadError'));
       analytics.trackError(permissionError as Error, { source: 'notifications:permissions' });
-      const fallbackStatus = Platform.OS === 'web' ? 'prompt' : 'unavailable';
+      const fallbackStatus =
+        Platform.OS === 'web'
+          ? NOTIFICATION_PERMISSION_STATE.PROMPT
+          : NOTIFICATION_PERMISSION_STATE.UNAVAILABLE;
       setPermissionStatus(fallbackStatus);
       return fallbackStatus;
     } finally {
@@ -141,7 +156,7 @@ export function useNotificationSettings() {
       notificationStatus: preferences.notificationStatus,
     });
 
-    if (permissionStatus === 'granted') {
+    if (permissionStatus === NOTIFICATION_PERMISSION_STATE.GRANTED) {
       // Respect a manual off toggle: do not auto-enable/register if the user turned notifications off in-app.
       if (preferences.pushManuallyDisabled) {
         logger.debug('Skipping - manually disabled');
@@ -165,30 +180,36 @@ export function useNotificationSettings() {
       return;
     }
 
-    if (permissionStatus === 'blocked' || permissionStatus === 'denied') {
+    if (
+      permissionStatus === NOTIFICATION_PERMISSION_STATE.BLOCKED ||
+      permissionStatus === NOTIFICATION_PERMISSION_STATE.DENIED
+    ) {
       // OS explicitly denied/blocked: mark as denied and turn off local reminders
       updatePreferences((prev) => ({
         ...prev,
-        notificationStatus: 'denied',
+        notificationStatus: NOTIFICATION_STATUS.DENIED,
       }));
       return;
     }
 
-    if (permissionStatus === 'prompt') {
+    if (permissionStatus === NOTIFICATION_PERMISSION_STATE.PROMPT) {
       // Permission reset to default: keep soft-decline history, only reset hard-denial state.
       updatePreferences((prev) => {
-        if (prev.notificationStatus === 'soft-declined') return prev;
-        if (prev.notificationStatus === 'unknown') return prev;
-        if (prev.notificationStatus === 'denied' || prev.notificationStatus === 'unavailable') {
+        if (prev.notificationStatus === NOTIFICATION_STATUS.SOFT_DECLINED) return prev;
+        if (prev.notificationStatus === NOTIFICATION_STATUS.UNKNOWN) return prev;
+        if (
+          prev.notificationStatus === NOTIFICATION_STATUS.DENIED ||
+          prev.notificationStatus === NOTIFICATION_STATUS.UNAVAILABLE
+        ) {
           return {
             ...prev,
-            notificationStatus: 'unknown',
+            notificationStatus: NOTIFICATION_STATUS.UNKNOWN,
           };
         }
-        if (prev.notificationStatus === 'granted') {
+        if (prev.notificationStatus === NOTIFICATION_STATUS.GRANTED) {
           return {
             ...prev,
-            notificationStatus: 'unknown',
+            notificationStatus: NOTIFICATION_STATUS.UNKNOWN,
           };
         }
         return prev;
@@ -205,8 +226,8 @@ export function useNotificationSettings() {
   // If the OS/browser already granted permission (e.g., user toggled system settings),
   // but our stored status is not yet marked granted, register push again to obtain a token.
   useEffect(() => {
-    if (permissionStatus !== 'granted') return;
-    if (preferences.notificationStatus === 'granted') return;
+    if (permissionStatus !== NOTIFICATION_PERMISSION_STATE.GRANTED) return;
+    if (preferences.notificationStatus === NOTIFICATION_STATUS.GRANTED) return;
     if (preferences.pushManuallyDisabled) return;
 
     ensureNotificationsEnabled({
@@ -282,7 +303,7 @@ export function useNotificationSettings() {
     const now = Date.now();
     updatePreferences((prev) => ({
       ...prev,
-      notificationStatus: 'soft-declined',
+      notificationStatus: NOTIFICATION_STATUS.SOFT_DECLINED,
       softDeclineCount: prev.softDeclineCount + 1,
       softLastDeclinedAt: now,
     }));
@@ -303,10 +324,13 @@ export function useNotificationSettings() {
       });
 
       // If the OS still reports blocked/denied/unavailable, surface that immediately.
-      if (latestPermission === 'blocked' || latestPermission === 'denied') {
+      if (
+        latestPermission === NOTIFICATION_PERMISSION_STATE.BLOCKED ||
+        latestPermission === NOTIFICATION_PERMISSION_STATE.DENIED
+      ) {
         return { status: 'denied' as const };
       }
-      if (latestPermission === 'unavailable') {
+      if (latestPermission === NOTIFICATION_PERMISSION_STATE.UNAVAILABLE) {
         return { status: 'unavailable' as const };
       }
 
@@ -316,7 +340,11 @@ export function useNotificationSettings() {
         preferences.softLastDeclinedAt &&
         now - preferences.softLastDeclinedAt < NOTIFICATIONS.softDeclineCooldownMs;
 
-      if (latestPermission === 'prompt' && !skipSoftPrompt && !softCooldownActive) {
+      if (
+        latestPermission === NOTIFICATION_PERMISSION_STATE.PROMPT &&
+        !skipSoftPrompt &&
+        !softCooldownActive
+      ) {
         setSoftPromptContext(context);
         setSoftPromptOpen(true);
         return { status: 'soft-prompt' as const };
@@ -358,7 +386,7 @@ export function useNotificationSettings() {
       }
 
       // If notifications already enabled, or other statuses, surface appropriate responses
-      if (preferences.notificationStatus === 'granted') {
+      if (preferences.notificationStatus === NOTIFICATION_STATUS.GRANTED) {
         return { status: 'already-enabled' as const };
       }
 
@@ -376,9 +404,9 @@ export function useNotificationSettings() {
   // Auto-show the soft prompt on first load (or after cooldown) when OS/browser is still in
   // prompt/default state. Relies on tryPromptForPush to enforce cooldown/attempts.
   useEffect(() => {
-    if (permissionStatus !== 'prompt') return;
+    if (permissionStatus !== NOTIFICATION_PERMISSION_STATE.PROMPT) return;
     if (preferences.pushManuallyDisabled) return;
-    if (preferences.notificationStatus === 'granted') return;
+    if (preferences.notificationStatus === NOTIFICATION_STATUS.GRANTED) return;
 
     const now = Date.now();
     const last = lastAutoSoftPromptRef.current;
@@ -401,7 +429,7 @@ export function useNotificationSettings() {
     await revokeNotifications();
     updatePreferences((prev) => ({
       ...prev,
-      notificationStatus: 'unknown',
+      notificationStatus: NOTIFICATION_STATUS.UNKNOWN,
       pushManuallyDisabled: true,
     }));
     analytics.trackEvent('notifications:push-disabled', { status: 'revoked' });
@@ -409,9 +437,9 @@ export function useNotificationSettings() {
 
   useEffect(() => {
     if (
-      permissionStatus === 'blocked' ||
-      permissionStatus === 'denied' ||
-      permissionStatus === 'unavailable'
+      permissionStatus === NOTIFICATION_PERMISSION_STATE.BLOCKED ||
+      permissionStatus === NOTIFICATION_PERMISSION_STATE.DENIED ||
+      permissionStatus === NOTIFICATION_PERMISSION_STATE.UNAVAILABLE
     ) {
       setPushError(null);
     }
