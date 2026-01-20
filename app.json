@@ -21,7 +21,7 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
-      "appleTeamId": "HWJZHVS443"
+      "appleTeamId": ""
     },
     "android": {
       "versionCode": 1,
@@ -61,8 +61,6 @@
       "expo-localization",
       "expo-apple-authentication",
       "expo-web-browser",
-      "@react-native-firebase/app",
-      "@react-native-firebase/crashlytics",
       "./plugins/withFirebaseCredentials.js",
       "./plugins/withFirebaseConfig.js",
       "./plugins/withFirebaseModularHeaders.js",
