@@ -1,4 +1,11 @@
 // Mock expo-router
+const mockSessionStatus = jest.fn(() => 'authenticated');
+
+jest.mock('@/auth/session', () => ({
+  useSessionStore: (selector: (state: { status: string }) => unknown) =>
+    selector({ status: mockSessionStatus() }),
+}));
+
 jest.mock('expo-router', () => {
   const mockReact = jest.requireActual('react');
 
@@ -16,7 +23,9 @@ jest.mock('expo-router', () => {
 
   Tabs.Screen = Screen;
 
-  return { Tabs };
+  const Redirect = ({ href }: { href: string }) => href;
+
+  return { Tabs, Redirect };
 });
 
 // Mock ThemeProvider
@@ -26,17 +35,26 @@ jest.mock('@/ui/theme/ThemeProvider', () => ({
 
 import { useThemeContext } from '@/ui/theme/ThemeProvider';
 import { render } from '@testing-library/react-native';
+import { Platform } from 'react-native';
 import TabsLayout from '../../../app/(tabs)/_layout';
 
 const mockUseThemeContext = useThemeContext as jest.Mock;
 
 describe('TabsLayout', () => {
+  const originalPlatform = Platform.OS;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    Object.defineProperty(Platform, 'OS', { value: 'ios', configurable: true });
+    mockSessionStatus.mockReturnValue('authenticated');
     mockUseThemeContext.mockReturnValue({
       resolvedTheme: 'light',
       palette: { accent: '#2563EB', accentMuted: '#94A3B8' },
     });
+  });
+
+  afterEach(() => {
+    Object.defineProperty(Platform, 'OS', { value: originalPlatform, configurable: true });
   });
 
   describe('Theme Colors', () => {
@@ -205,6 +223,24 @@ describe('TabsLayout', () => {
       const screenNames = screens.map((s: any) => s.props.name);
       expect(screenNames).toContain('index');
       expect(screenNames).toContain('settings');
+    });
+  });
+
+  describe('Web Guard', () => {
+    it('returns null on web while session is unknown', () => {
+      mockSessionStatus.mockReturnValue('unknown');
+      Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
+
+      const result = render(<TabsLayout />);
+      expect(result.toJSON()).toBeNull();
+    });
+
+    it('redirects unauthenticated web users to login', () => {
+      mockSessionStatus.mockReturnValue('unauthenticated');
+      Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
+
+      const result = render(<TabsLayout />);
+      expect(result.toJSON()).toMatchInlineSnapshot(`"/(auth)/login"`);
     });
   });
 });
