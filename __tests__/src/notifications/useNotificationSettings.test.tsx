@@ -88,6 +88,7 @@ const getPermissionsAsync = expoNotifications.getPermissionsAsync as jest.Mocked
 describe('useNotificationSettings', () => {
   const originalPlatform = Platform.OS;
   const originalConsoleLog = console.log;
+  const originalConsoleError = console.error;
   const trackEvent = jest.fn();
   const trackError = jest.fn();
   let appStateSpy: jest.SpyInstance;
@@ -95,6 +96,7 @@ describe('useNotificationSettings', () => {
 
   beforeEach(() => {
     console.log = jest.fn();
+    console.error = jest.fn();
     jest.clearAllMocks();
     mockT.mockClear();
     trackEvent.mockClear();
@@ -135,6 +137,7 @@ describe('useNotificationSettings', () => {
     jest.useRealTimers();
     (Date.now as unknown as jest.Mock)?.mockRestore?.();
     console.log = originalConsoleLog;
+    console.error = originalConsoleError;
   });
 
   it('loads preferences and evaluates permission status on mount', async () => {
@@ -276,10 +279,10 @@ describe('useNotificationSettings', () => {
   });
 
   it('allows prompting for push when under limits', async () => {
-    // Mock permission as prompt so useEffect doesn't interfere
+    // Mock permission as granted so auto-soft prompt doesn't interfere
     getPermissionsAsync.mockResolvedValue({
-      granted: false,
-      status: 'undetermined' as any,
+      granted: true,
+      status: expoNotifications.PermissionStatus.GRANTED,
       canAskAgain: true,
     });
 
@@ -444,9 +447,16 @@ describe('useNotificationSettings', () => {
   describe('tryPromptForPush', () => {
     it('triggers prompt when no attempts made yet', async () => {
       // Mock permission as prompt so early return doesn't trigger
+      loadNotificationPreferences.mockReturnValue({
+        notificationStatus: 'granted',
+        pushManuallyDisabled: false,
+        softDeclineCount: 0,
+        softLastDeclinedAt: 0,
+      });
+
       getPermissionsAsync.mockResolvedValue({
-        granted: false,
-        status: 'undetermined' as any,
+        granted: true,
+        status: expoNotifications.PermissionStatus.GRANTED,
         canAskAgain: true,
       });
       ensureNotificationsEnabled.mockResolvedValue({ status: 'enabled' });
@@ -529,9 +539,16 @@ describe('useNotificationSettings', () => {
 
     it('returns unavailable when push notifications not configured', async () => {
       // Mock permission as prompt so early return doesn't trigger
+      loadNotificationPreferences.mockReturnValue({
+        notificationStatus: 'granted',
+        pushManuallyDisabled: false,
+        softDeclineCount: 0,
+        softLastDeclinedAt: 0,
+      });
+
       getPermissionsAsync.mockResolvedValue({
-        granted: false,
-        status: 'undetermined' as any,
+        granted: true,
+        status: expoNotifications.PermissionStatus.GRANTED,
         canAskAgain: true,
       });
       ensureNotificationsEnabled.mockResolvedValue({ status: 'unavailable' });
@@ -606,7 +623,7 @@ describe('useNotificationSettings', () => {
 
     it('defaults context to manual when not provided', async () => {
       loadNotificationPreferences.mockReturnValue({
-        notificationStatus: 'unknown',
+        notificationStatus: 'granted',
         pushManuallyDisabled: false,
         softDeclineCount: 0,
         softLastDeclinedAt: 0,
@@ -677,15 +694,15 @@ describe('useNotificationSettings', () => {
 
     it('skips soft prompt when skipSoftPrompt is true', async () => {
       loadNotificationPreferences.mockReturnValue({
-        notificationStatus: 'unknown',
+        notificationStatus: 'granted',
         pushManuallyDisabled: false,
         softDeclineCount: 0,
         softLastDeclinedAt: 0,
       });
 
       getPermissionsAsync.mockResolvedValue({
-        granted: false,
-        status: 'undetermined' as any,
+        granted: true,
+        status: expoNotifications.PermissionStatus.GRANTED,
         canAskAgain: true,
       });
 
@@ -1224,6 +1241,64 @@ describe('useNotificationSettings', () => {
       });
 
       (globalThis as { Notification?: typeof Notification }).Notification = originalNotification;
+    });
+
+    it('auto-prompts on iOS when permission is prompt', async () => {
+      Object.defineProperty(Platform, 'OS', { value: 'ios' });
+
+      loadNotificationPreferences.mockReturnValue({
+        notificationStatus: 'unknown',
+        pushManuallyDisabled: false,
+        softDeclineCount: 0,
+        softLastDeclinedAt: 0,
+      });
+
+      getPermissionsAsync.mockResolvedValue({
+        granted: false,
+        status: 'undetermined' as any,
+        canAskAgain: true,
+      });
+
+      const { result } = renderHook(() => useNotificationSettings());
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(result.current.permissionStatus).toBe('prompt');
+      expect(trackEvent).toHaveBeenCalledWith('notifications:prompt-triggered', {
+        context: 'auto-soft',
+      });
+      expect(result.current.softPrompt.open).toBe(true);
+    });
+
+    it('auto-prompts on Android when permission is prompt', async () => {
+      Object.defineProperty(Platform, 'OS', { value: 'android' });
+
+      loadNotificationPreferences.mockReturnValue({
+        notificationStatus: 'unknown',
+        pushManuallyDisabled: false,
+        softDeclineCount: 0,
+        softLastDeclinedAt: 0,
+      });
+
+      getPermissionsAsync.mockResolvedValue({
+        granted: false,
+        status: 'undetermined' as any,
+        canAskAgain: true,
+      });
+
+      const { result } = renderHook(() => useNotificationSettings());
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(result.current.permissionStatus).toBe('prompt');
+      expect(trackEvent).toHaveBeenCalledWith('notifications:prompt-triggered', {
+        context: 'auto-soft',
+      });
+      expect(result.current.softPrompt.open).toBe(true);
     });
   });
 

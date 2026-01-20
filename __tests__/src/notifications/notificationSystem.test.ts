@@ -41,8 +41,10 @@ const {
 
 describe('notificationSystem', () => {
   let mockNow: number;
+  const originalConsoleLog = console.log;
 
   beforeEach(() => {
+    console.log = jest.fn();
     jest.clearAllMocks();
     mockNow = Date.now();
     jest.spyOn(Date, 'now').mockReturnValue(mockNow);
@@ -58,6 +60,7 @@ describe('notificationSystem', () => {
 
   afterEach(() => {
     (Date.now as unknown as jest.Mock)?.mockRestore?.();
+    console.log = originalConsoleLog;
   });
 
   describe('ensureNotificationsEnabled', () => {

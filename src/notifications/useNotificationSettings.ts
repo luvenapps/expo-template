@@ -336,14 +336,15 @@ export function useNotificationSettings() {
       });
 
       // Reload persisted preferences after the unified API updates them
-      setPreferences(loadNotificationPreferences());
+      const latestPreferences = loadNotificationPreferences();
+      setPreferences(latestPreferences);
 
       if (result.status === 'enabled') {
         // Clear manual-off flag now that the user has re-enabled notifications.
-        updatePreferences((prev) => ({
-          ...prev,
+        updatePreferences({
+          ...latestPreferences,
           pushManuallyDisabled: false,
-        }));
+        });
         return { status: 'triggered' as const, registered: true };
       }
       if (result.status === 'denied') {
@@ -375,9 +376,9 @@ export function useNotificationSettings() {
   // Auto-show the soft prompt on first load (or after cooldown) when OS/browser is still in
   // prompt/default state. Relies on tryPromptForPush to enforce cooldown/attempts.
   useEffect(() => {
-    if (Platform.OS !== 'web' && NOTIFICATIONS.initialSoftPromptTrigger !== 'app-install') return;
     if (permissionStatus !== 'prompt') return;
     if (preferences.pushManuallyDisabled) return;
+    if (preferences.notificationStatus === 'granted') return;
 
     const now = Date.now();
     const last = lastAutoSoftPromptRef.current;
@@ -387,7 +388,13 @@ export function useNotificationSettings() {
     tryPromptForPush({ context: 'auto-soft', skipSoftPrompt: false }).catch((error) => {
       analytics.trackError(error as Error, { source: 'notifications:auto-soft' });
     });
-  }, [analytics, permissionStatus, preferences.pushManuallyDisabled, tryPromptForPush]);
+  }, [
+    analytics,
+    permissionStatus,
+    preferences.notificationStatus,
+    preferences.pushManuallyDisabled,
+    tryPromptForPush,
+  ]);
 
   const disablePushNotifications = useCallback(async () => {
     setPushError(null);
