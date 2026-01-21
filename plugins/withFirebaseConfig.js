@@ -23,6 +23,7 @@ module.exports = function withFirebaseConfig(config) {
   const next = withPlugins(config, [
     [
       '@react-native-firebase/app',
+      '@react-native-firebase/crashlytics',
       {
         ios: { googleServicesFile: './credentials/GoogleService-Info.plist' },
         android: { googleServicesFile: './credentials/google-services.json' },

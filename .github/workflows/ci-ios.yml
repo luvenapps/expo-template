@@ -55,12 +55,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-
   ios-hosted:
     name: Build • E2E (iOS) - Hosted MacOS
     if: vars.USE_SELF_HOSTED != 'true'
     runs-on: macos-latest
-    timeout-minutes: 90
+    timeout-minutes: 45
     defaults:
       run:
         working-directory: expo-template-testing
@@ -126,7 +125,7 @@ jobs:
 
       - name: Make CI scripts executable
         run: chmod +x .github/scripts/*.sh
-        
+
       - name: Setup Fastlane
         shell: bash
         run: .github/scripts/setup_fastlane.sh  "${{ env.FASTLANE_VERSION }}"
@@ -151,48 +150,6 @@ jobs:
       - name: Setup Maestro
         shell: bash
         run: .github/scripts/setup_maestro.sh "${{ env.MAESTRO_VERSION }}"
-
-      - name: Generate fake Firebase credentials for CI
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p credentials
-
-          # Minimal valid GoogleService-Info.plist for iOS
-          cat > credentials/GoogleService-Info.plist << 'PLIST'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>API_KEY</key>
-            <string>fake-api-key</string>
-            <key>GCM_SENDER_ID</key>
-            <string>000000000000</string>
-            <key>PLIST_VERSION</key>
-            <string>1</string>
-            <key>BUNDLE_ID</key>
-            <string>com.example.app</string>
-            <key>PROJECT_ID</key>
-            <string>fake-project-id</string>
-            <key>STORAGE_BUCKET</key>
-            <string>fake-project-id.appspot.com</string>
-            <key>IS_ADS_ENABLED</key>
-            <false/>
-            <key>IS_ANALYTICS_ENABLED</key>
-            <false/>
-            <key>IS_APPINVITE_ENABLED</key>
-            <false/>
-            <key>IS_GCM_ENABLED</key>
-            <true/>
-            <key>IS_SIGNIN_ENABLED</key>
-            <true/>
-            <key>GOOGLE_APP_ID</key>
-            <string>1:000000000000:ios:0000000000000000000000</string>
-          </dict>
-          </plist>
-          PLIST
-
-          echo "✅ Generated fake GoogleService-Info.plist for CI"
 
       - name: Inject EAS projectId, slug and owner into app.json
         shell: bash
@@ -276,7 +233,7 @@ jobs:
           APP=$(find extracted_app -type d -name "*.app" -maxdepth 6 | head -n1 || true)
           echo "app=$APP" >> $GITHUB_OUTPUT
           [ -n "$APP" ] || (echo "No .app found after extracting $ARTIFACT_TAR"; ls -alh extracted_app || true; exit 1)
-          
+
       - name: Save the tar.gz iOS app
         if: steps.ios_cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
@@ -324,4 +281,3 @@ jobs:
         run: |
           echo "🧹 Cleaning hosted workspace (removing iOS build artifacts and E2E outputs)..."
           rm -rf ios/build e2e-artifacts || true
-
