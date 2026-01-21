@@ -5,10 +5,6 @@ const { Buffer } = require('buffer');
 const fs = require('fs');
 const path = require('path');
 
-const TURN_ON_FIREBASE =
-  process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === 'true' ||
-  process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === '1';
-
 function isActualBuild() {
   // Check if we're in a build context
   // In CI: EXPO_TOKEN is set as a secret throughout the entire EAS build
@@ -41,10 +37,6 @@ function detectPlatform() {
 }
 
 function generateCredentials(projectRoot) {
-  if (!TURN_ON_FIREBASE) {
-    return;
-  }
-
   const platform = detectPlatform();
   const credentialsDir = path.join(projectRoot, 'credentials');
 

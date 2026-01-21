@@ -1,15 +1,15 @@
 # Firebase Setup
 
-## 0. Toggle gating (EXPO_PUBLIC_TURN_ON_FIREBASE)
+## 0. Runtime toggle (EXPO_PUBLIC_TURN_ON_FIREBASE)
 
-Firebase native config (plist/json + plugins) is gated by the `EXPO_PUBLIC_TURN_ON_FIREBASE` env var. It defaults to **disabled**. Set it to `true` in the relevant `.env` when you want Firebase wired and rebuild native apps:
+Firebase runtime behavior (analytics, crashlytics, performance, messaging) is controlled by `EXPO_PUBLIC_TURN_ON_FIREBASE`. It defaults to **disabled**. Set it to `true` in the relevant `.env` when you want Firebase events to flow:
 
 ```
 EXPO_PUBLIC_TURN_ON_FIREBASE=true
 ```
 
-Local: set in `.env.local` and rebuild (prebuild/run or EAS).  
-CI/EAS: set as an env/secret before the build.
+Local: set in `.env.local` and restart Metro (rebuild native apps only if you changed native config).  
+CI/EAS: set as an env/secret for the runtime behavior you want.
 
 ## 1. Create the project
 
@@ -58,7 +58,7 @@ Inside the same Firebase project, register each platform:
   - `GOOGLE_SERVICE_INFO_PLIST_B64` — base64 of `credentials/GoogleService-Info.plist`
   - `GOOGLE_SERVICES_JSON_B64` — base64 of `credentials/google-services.json`
   - Decode them in your workflow (already wired) so native builds have the files.
-- With gating: set `EXPO_PUBLIC_TURN_ON_FIREBASE=true` for build jobs that need Firebase; leave it unset/false for test-only jobs.
+- Native builds always require the credentials files (even if Firebase runtime is off).
 
 ## 4. Verify locally
 

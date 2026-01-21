@@ -101,10 +101,12 @@ The logger is designed to **coexist** with the existing `AnalyticsProvider`:
 
 Both systems will **share the same Firebase Analytics backend** (refactored from `firebaseBackend.ts`), ensuring all events go to the same destination when enabled.
 
-**Important**: Both respect the `EXPO_PUBLIC_TURN_ON_FIREBASE` flag:
+**Important**: Both respect the `EXPO_PUBLIC_TURN_ON_FIREBASE` runtime flag:
 
-- When `EXPO_PUBLIC_TURN_ON_FIREBASE=false` (default in dev): Neither sends to Firebase Analytics
-- When `EXPO_PUBLIC_TURN_ON_FIREBASE=true` (production or testing): Both send to Firebase Analytics
+- When `EXPO_PUBLIC_TURN_ON_FIREBASE=false`: Neither sends to Firebase Analytics
+- When `EXPO_PUBLIC_TURN_ON_FIREBASE=true`: Both send to Firebase Analytics
+
+_Note: Native builds still require Firebase credentials even when the runtime flag is off._
 
 This gives you:
 
@@ -303,6 +305,8 @@ _Full stack testing (both flags set):_
 | Dev (full stack)    | `true`                         | All        | ✅ Free  | ✅ Local         |
 | Prod                | `true`                         | Warn/Error | ✅       | ✅ (10% sampled) |
 
+_Note: Firebase credentials must be present for native builds regardless of the runtime flag._
+
 **Runtime Debug Toggle** (deep link or global helper):
 
 - ✅ All logs to console (debug/info/warn/error) once enabled
@@ -325,7 +329,7 @@ adb logcat | grep -i "youdomain\\|PermSync\\|FCM\\|Observability"
 
 **Environment Flags**:
 
-- `EXPO_PUBLIC_TURN_ON_FIREBASE` - Controls Firebase backends (Analytics, Crashlytics, Performance)
+- `EXPO_PUBLIC_TURN_ON_FIREBASE` - Controls Firebase backends at runtime (Analytics, Crashlytics, Performance)
 
 **Batching Configuration**:
 
