@@ -153,6 +153,47 @@ jobs:
         shell: bash
         run: .github/scripts/setup_maestro.sh "${{ env.MAESTRO_VERSION }}"
 
+      - name: Generate fake Firebase credentials for CI
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p credentials
+
+          # Minimal valid google-services.json for Android
+          cat > credentials/google-services.json << 'JSON'
+          {
+            "project_info": {
+              "project_number": "000000000000",
+              "project_id": "fake-project-id",
+              "storage_bucket": "fake-project-id.appspot.com"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+                  "android_client_info": {
+                    "package_name": "com.example.app"
+                  }
+                },
+                "oauth_client": [],
+                "api_key": [
+                  {
+                    "current_key": "fake-api-key"
+                  }
+                ],
+                "services": {
+                  "appinvite_service": {
+                    "other_platform_oauth_client": []
+                  }
+                }
+              }
+            ],
+            "configuration_version": "1"
+          }
+          JSON
+
+          echo "✅ Generated fake google-services.json for CI"
+
       - name: Inject EAS projectId, slug and owner into app.json
         shell: bash
         run: |
