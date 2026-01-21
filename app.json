@@ -61,9 +61,6 @@
       "expo-localization",
       "expo-apple-authentication",
       "expo-web-browser",
-      "./plugins/withFirebaseCredentials.js",
-      "./plugins/withFirebaseConfig.js",
-      "./plugins/withFirebaseModularHeaders.js",
       "expo-secure-store"
     ],
     "experiments": {
