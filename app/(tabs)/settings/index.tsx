@@ -17,6 +17,8 @@ import { onDatabaseReset } from '@/db/sqlite/events';
 import { optimizeDatabase } from '@/db/sqlite/maintenance';
 import { withDatabaseRetry } from '@/db/sqlite/retry';
 import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
+import { DEFAULT_FLAGS, getSource } from '@/featureFlags';
+import { useFeatureFlag } from '@/featureFlags/useFeatureFlag';
 import { setLanguage, supportedLanguages } from '@/i18n';
 import { cancelAllScheduledNotifications, resetBadgeCount } from '@/notifications/notifications';
 import { clearNotificationPreferences } from '@/notifications/preferences';
@@ -1495,6 +1497,37 @@ export default function SettingsScreen() {
                   </YStack>
                 </>
               )}
+
+              <YStack
+                key="feature-flags-debug"
+                gap="$2"
+                marginTop="$4"
+                paddingTop="$4"
+                borderTopWidth={1}
+                borderTopColor="$borderColor"
+              >
+                <Text fontWeight="600" fontSize="$4" marginBottom="$2">
+                  Feature Flags
+                </Text>
+                {Object.keys(DEFAULT_FLAGS).map((flagKey) => {
+                  const typedKey = flagKey as keyof typeof DEFAULT_FLAGS;
+                  const defaultValue = DEFAULT_FLAGS[typedKey];
+                  // eslint-disable-next-line react-hooks/rules-of-hooks
+                  const { value } = useFeatureFlag(typedKey, defaultValue);
+                  const source = getSource(typedKey);
+
+                  return (
+                    <XStack key={flagKey} justifyContent="space-between" alignItems="center">
+                      <Text fontSize="$3" color="$colorMuted" marginRight="$2">
+                        {flagKey}:
+                      </Text>
+                      <Text fontSize="$3" color="$accentColor" fontWeight="600">
+                        {String(value)} ({typeof value}) [{source}]
+                      </Text>
+                    </XStack>
+                  );
+                })}
+              </YStack>
             </SettingsSection>
           </>
         ) : null}

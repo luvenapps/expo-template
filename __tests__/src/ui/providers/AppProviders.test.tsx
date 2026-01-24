@@ -124,7 +124,7 @@ jest.mock('expo-router', () => ({
 }));
 
 // Mock auth session
-const mockSessionState = {
+const mockSessionState: { status: string; session: any } = {
   status: 'unauthenticated',
   session: null,
 };
@@ -199,6 +199,20 @@ const mockNotificationSettingsDefault = {
 
 jest.mock('@/notifications/useNotificationSettings', () => ({
   useNotificationSettings: jest.fn().mockReturnValue(mockNotificationSettingsDefault),
+}));
+
+const mockFeatureFlagClient = {
+  ready: jest.fn().mockResolvedValue(undefined),
+  getStatus: jest.fn().mockReturnValue('ready'),
+  getFlag: jest.fn().mockReturnValue(false),
+  setContext: jest.fn().mockResolvedValue(undefined),
+  refresh: jest.fn().mockResolvedValue(undefined),
+  subscribe: jest.fn(() => jest.fn()),
+  destroy: jest.fn(),
+};
+
+jest.mock('@/featureFlags', () => ({
+  getFeatureFlagClient: jest.fn(() => mockFeatureFlagClient),
 }));
 
 // Mock ThemeProvider
@@ -307,6 +321,7 @@ describe('AppProviders', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockSessionState.status = 'unauthenticated';
+    mockSessionState.session = null;
     mockGetLocalName.mockReturnValue(null);
     mockGetPendingRemoteReset.mockReturnValue(false);
     mockNotificationResponseHandler = null;
@@ -322,6 +337,7 @@ describe('AppProviders', () => {
       mockNotificationEventHandler = handler;
       return jest.fn();
     });
+    mockFeatureFlagClient.setContext.mockClear();
     const { useNotificationSettings } = require('@/notifications/useNotificationSettings');
     useNotificationSettings.mockReturnValue({
       ...mockNotificationSettingsDefault,
@@ -598,6 +614,46 @@ describe('AppProviders', () => {
       });
     });
 
+    it('skips in-app messaging initialization when firebase is disabled', async () => {
+      const { initializeInAppMessaging } = require('@/notifications');
+
+      render(
+        <AppProviders>
+          <Text>Test</Text>
+        </AppProviders>,
+      );
+
+      await waitFor(() => {
+        expect(initializeInAppMessaging).not.toHaveBeenCalled();
+      });
+    });
+
+    it('handles notification initialization failures', async () => {
+      const {
+        registerNotificationCategories,
+        configureNotificationHandler,
+        initializeInAppMessaging,
+      } = require('@/notifications');
+      process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = 'true';
+      registerNotificationCategories.mockRejectedValueOnce(new Error('categories failed'));
+      configureNotificationHandler.mockRejectedValueOnce(new Error('handler failed'));
+      initializeInAppMessaging.mockRejectedValueOnce(new Error('iam failed'));
+
+      render(
+        <AppProviders>
+          <Text>Test</Text>
+        </AppProviders>,
+      );
+
+      await waitFor(() => {
+        expect(registerNotificationCategories).toHaveBeenCalled();
+        expect(configureNotificationHandler).toHaveBeenCalled();
+        expect(initializeInAppMessaging).toHaveBeenCalled();
+      });
+
+      process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = '';
+    });
+
     it('should enable sync when user is authenticated on native platforms', () => {
       mockSessionState.status = 'authenticated';
       const { useSync } = require('@/sync');
@@ -652,6 +708,69 @@ describe('AppProviders', () => {
         const namePrompt = UNSAFE_root.findByType('NamePromptModal' as any);
         expect(namePrompt.props.open).toBe(false);
         expect(namePrompt.props.value).toBe('Local Name');
+      });
+    });
+
+    it('sets feature flag context for anonymous users', async () => {
+      render(
+        <AppProviders>
+          <Text>Test</Text>
+        </AppProviders>,
+      );
+
+      await waitFor(() => {
+        expect(mockFeatureFlagClient.setContext).toHaveBeenCalledWith({ isAnonymous: true });
+      });
+    });
+
+    it('sets feature flag context from session metadata', async () => {
+      mockSessionState.status = 'authenticated';
+      mockSessionState.session = {
+        user: {
+          id: 'user-1',
+          email: 'user@example.com',
+          user_metadata: {
+            fullName: 'Full Name',
+          },
+        },
+      };
+
+      render(
+        <AppProviders>
+          <Text>Test</Text>
+        </AppProviders>,
+      );
+
+      await waitFor(() => {
+        expect(mockFeatureFlagClient.setContext).toHaveBeenCalledWith({
+          id: 'user-1',
+          email: 'user@example.com',
+          name: 'Full Name',
+        });
+      });
+    });
+
+    it('swallows feature flag context failures', async () => {
+      mockSessionState.status = 'authenticated';
+      mockSessionState.session = {
+        user: {
+          id: 'user-2',
+          email: 'user2@example.com',
+          user_metadata: {
+            full_name: 'User Two',
+          },
+        },
+      };
+      mockFeatureFlagClient.setContext.mockRejectedValueOnce(new Error('context failed'));
+
+      render(
+        <AppProviders>
+          <Text>Test</Text>
+        </AppProviders>,
+      );
+
+      await waitFor(() => {
+        expect(mockFeatureFlagClient.setContext).toHaveBeenCalled();
       });
     });
 

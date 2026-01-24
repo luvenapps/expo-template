@@ -66,7 +66,58 @@ Inside the same Firebase project, register each platform:
 2. Open the app (native + web) and trigger a few actions (e.g., toggles in Settings). In the Firebase Console → Analytics → DebugView you should see events like `notifications:reminders` and IAM lifecycle events (`iam:displayed`, `iam:clicked`, `iam:dismissed`) appear almost immediately.
 3. For Android push: tap **Settings → Developer Utilities → Register push token (Android)** to log the FCM token in Metro, then in Firebase Console → Cloud Messaging use “Send test message” with that token (notification message). Foreground and background delivery should work; iOS/web push are deferred to Stage 11.
 
-## 5. Next steps
+## 5. Remote Config (Feature Flags)
+
+Remote Config provides feature flags with real-time updates. It shares the same runtime toggle (`EXPO_PUBLIC_TURN_ON_FIREBASE`).
+
+### Console Setup
+
+1. In Firebase Console, go to **Remote Config** (under Build or Engage).
+2. Click **Create configuration** if this is the first time.
+3. Add parameters matching `DEFAULT_FLAGS` in `src/featureFlags/types.ts`:
+   - `flag_example` → `false` (boolean)
+   - `flag_new_ui` → `false` (boolean)
+4. Click **Publish changes**.
+
+### Adding New Flags
+
+1. Add the flag to `DEFAULT_FLAGS` in `src/featureFlags/types.ts`:
+   ```ts
+   export const DEFAULT_FLAGS = {
+     flag_example: false,
+     flag_new_ui: false,
+     flag_your_new_feature: false, // Add here
+   } as const;
+   ```
+2. Add the same parameter in Firebase Console with a default value.
+3. Use in code:
+
+   ```ts
+   import { useFeatureFlag } from '@/featureFlags/useFeatureFlag';
+
+   const { value: enabled } = useFeatureFlag('flag_your_new_feature', false);
+   ```
+
+### Real-Time Updates
+
+- Changes published in Firebase Console are pushed to the app within seconds (while foregrounded).
+- No app update required to toggle flags.
+- Requires `@react-native-firebase/remote-config` >= 18.0.0 for real-time; older versions fall back to foreground refresh.
+
+### Web Fallback
+
+Remote Config is **disabled on web** (`Platform.OS === 'web'`). The fallback provider returns `DEFAULT_FLAGS` values. If you need web support, consider implementing the Firebase JS SDK integration separately.
+
+### Testing Locally
+
+1. Ensure `EXPO_PUBLIC_TURN_ON_FIREBASE=true` in `.env.local`.
+2. Run the app on iOS/Android simulator.
+3. Change a flag value in Firebase Console and publish.
+4. The app should reflect the change within a few seconds (check console logs for `[FeatureFlags] Real-time update`).
+
+For detailed implementation, see [docs/feature-flags.md](./feature-flags.md).
+
+## 6. Next steps
 
 - Keep Firebase credentials up to date whenever you rotate keys or add new environments. For web, ensure `.env.local` reflects the latest Expo config values.
 - Revisit this doc whenever you rotate Firebase credentials or add additional apps/environments.

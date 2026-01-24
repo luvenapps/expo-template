@@ -19,6 +19,17 @@ console.warn = (...args: any[]) => {
   originalWarn(...args);
 };
 
+// Mock feature flags types to include test flag
+jest.mock('@/featureFlags/types', () => {
+  const actual = jest.requireActual('@/featureFlags/types');
+  return {
+    ...actual,
+    DEFAULT_FLAGS: {
+      test_feature_flag: false,
+    },
+  };
+});
+
 // Mock Supabase globally for all tests
 jest.mock('@supabase/supabase-js', () => ({
   createClient: jest.fn(() => ({

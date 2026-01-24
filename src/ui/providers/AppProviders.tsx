@@ -20,6 +20,7 @@ import { ForegroundReminderAnalyticsHost } from '@/notifications/ForegroundRemin
 import { onNotificationEvent } from '@/notifications/notificationEvents';
 import { refreshReminderSeriesWindows } from '@/notifications/scheduler';
 import { useNotificationSettings } from '@/notifications/useNotificationSettings';
+import { getFeatureFlagClient } from '@/featureFlags';
 import { analytics } from '@/observability/analytics';
 import { AnalyticsProvider } from '@/observability/AnalyticsProvider';
 import { createLogger } from '@/observability/logger';
@@ -51,6 +52,7 @@ const resetLogger = createLogger('Reset');
 export function AppProviders({ children }: PropsWithChildren) {
   const router = useRouter();
   const sessionStatus = useSessionStore((state) => state.status);
+  const session = useSessionStore((state) => state.session);
   const isAuthenticated = sessionStatus === 'authenticated';
   const syncEnabled = Platform.OS !== 'web' && isAuthenticated;
   const { resolvedTheme, palette } = useThemeContext();
@@ -108,6 +110,32 @@ export function AppProviders({ children }: PropsWithChildren) {
       unsubscribeFCM?.();
     };
   }, [turnOnFirebase]);
+
+  useEffect(() => {
+    const client = getFeatureFlagClient();
+    if (!session?.user) {
+      client.setContext({ isAnonymous: true }).catch(() => undefined);
+      return;
+    }
+
+    const metadata = session.user.user_metadata ?? {};
+    const name =
+      typeof metadata.full_name === 'string'
+        ? metadata.full_name
+        : typeof metadata.name === 'string'
+          ? metadata.name
+          : typeof metadata.fullName === 'string'
+            ? metadata.fullName
+            : undefined;
+
+    client
+      .setContext({
+        id: session.user.id,
+        email: session.user.email ?? undefined,
+        name,
+      })
+      .catch(() => undefined);
+  }, [session?.user]);
 
   useEffect(() => {
     if (isWeb) {
