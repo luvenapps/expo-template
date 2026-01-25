@@ -98,22 +98,35 @@ Remote Config provides feature flags with real-time updates. It shares the same 
    const { value: enabled } = useFeatureFlag('flag_your_new_feature', false);
    ```
 
+### Platform Support
+
+| Platform | Implementation  | Real-time updates       |
+| -------- | --------------- | ----------------------- |
+| iOS      | RNFirebase SDK  | Yes                     |
+| Android  | RNFirebase SDK  | Yes                     |
+| Web      | Firebase JS SDK | No (poll on foreground) |
+
+Web uses the Firebase JS SDK, which does not expose the real-time update listener. The app refreshes on foreground to pick up changes.
+
 ### Real-Time Updates
 
-- Changes published in Firebase Console are pushed to the app within seconds (while foregrounded).
-- No app update required to toggle flags.
+- iOS/Android receive push-based updates via `onConfigUpdated`, then call `activate()` to apply them.
+- When the app returns to the foreground, it performs a guarded refresh to catch missed updates.
 - Requires `@react-native-firebase/remote-config` >= 18.0.0 for real-time; older versions fall back to foreground refresh.
 
-### Web Fallback
+### Caching and Fetch Intervals
 
-Remote Config is **disabled on web** (`Platform.OS === 'web'`). The fallback provider returns `DEFAULT_FLAGS` values. If you need web support, consider implementing the Firebase JS SDK integration separately.
+- The SDK caches values on device (UserDefaults/SharedPreferences on native; IndexedDB/localStorage on web, depending on browser).
+- Minimum fetch interval (`MIN_FETCH_INTERVAL_MS`) is 0 in dev and 60s in prod.
+- Foreground refresh is rate-limited (`MIN_FOREGROUND_REFRESH_MS`) to avoid spamming fetches.
 
 ### Testing Locally
 
 1. Ensure `EXPO_PUBLIC_TURN_ON_FIREBASE=true` in `.env.local`.
-2. Run the app on iOS/Android simulator.
+2. Run the app on iOS/Android simulator or Web.
 3. Change a flag value in Firebase Console and publish.
-4. The app should reflect the change within a few seconds (check console logs for `[FeatureFlags] Real-time update`).
+4. Native: the app should reflect the change within a few seconds (check console logs for `[FeatureFlags] Real-time update`).
+5. Web: reload or background/foreground the tab to pick up the new values.
 
 For detailed implementation, see [docs/feature-flags.md](./feature-flags.md).
 

@@ -1,5 +1,5 @@
 import { createLogger } from '@/observability/logger';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import {
   DEFAULT_FLAGS,
   FeatureFlagClient,
@@ -26,13 +26,123 @@ type RemoteConfigModule = {
   onConfigUpdated?: (listener: (event?: { updatedKeys?: string[] }) => void) => () => void;
 };
 
-function getRemoteConfig(): RemoteConfigModule | null {
+const webConfig = {
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID,
+};
+
+function hasCompleteWebConfig() {
+  return Object.values(webConfig).every((value) => typeof value === 'string' && value.length > 0);
+}
+
+function getNativeRemoteConfig(): RemoteConfigModule | null {
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const remoteConfig = require('@react-native-firebase/remote-config').default;
     return remoteConfig();
   } catch (error) {
-    logger.warn('Remote Config not available, using defaults', error);
+    logger.warn('Native Remote Config not available, using defaults', error);
+    return null;
+  }
+}
+
+function getWebRemoteConfig(onAppCreated?: (app: unknown) => void): RemoteConfigModule | null {
+  if (typeof window === 'undefined') {
+    logger.warn('Web Remote Config not available (no window)');
+    return null;
+  }
+
+  if (!hasCompleteWebConfig()) {
+    logger.warn('Web config incomplete, Remote Config disabled', {
+      hasApiKey: !!webConfig.apiKey,
+      hasProjectId: !!webConfig.projectId,
+      hasAppId: !!webConfig.appId,
+    });
+    return null;
+  }
+
+  try {
+    const { initializeApp, getApps, deleteApp } =
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require('firebase/app') as typeof import('firebase/app');
+    const {
+      getRemoteConfig: getWebRC,
+      fetchAndActivate: webFetchAndActivate,
+      activate: webActivate,
+      getValue: webGetValue,
+    } =
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require('firebase/remote-config') as typeof import('firebase/remote-config');
+
+    // Delete existing apps on dev hot reload to force re-initialization
+    if (__DEV__) {
+      const existingApps = getApps();
+      for (const app of existingApps) {
+        try {
+          deleteApp(app as Parameters<typeof deleteApp>[0]);
+          logger.debug('Deleted existing Firebase app for hot reload');
+        } catch (error) {
+          logger.debug('Could not delete Firebase app (might be in use)', error);
+        }
+      }
+    }
+
+    // Create fresh Firebase app
+    const firebaseApp = initializeApp(webConfig);
+    if (onAppCreated) {
+      onAppCreated(firebaseApp);
+    }
+    const rc = getWebRC(firebaseApp);
+
+    logger.debug('Web Remote Config initialized', {
+      projectId: webConfig.projectId,
+      appId: webConfig.appId,
+    });
+
+    // Set minimum fetch interval
+    rc.settings.minimumFetchIntervalMillis = MIN_FETCH_INTERVAL_MS;
+
+    // Wrapper to normalize web API to match native API
+    const wrapper: RemoteConfigModule = {
+      setConfigSettings: async (settings) => {
+        rc.settings.minimumFetchIntervalMillis = settings.minimumFetchIntervalMillis;
+      },
+      setDefaults: async (defaults) => {
+        // Web SDK expects Record<string, string | number | boolean>
+        // Convert complex objects to JSON strings
+        const webDefaults: Record<string, string | number | boolean> = {};
+        for (const [key, value] of Object.entries(defaults)) {
+          if (typeof value === 'object' && value !== null) {
+            webDefaults[key] = JSON.stringify(value);
+          } else {
+            webDefaults[key] = value as string | number | boolean;
+          }
+        }
+        rc.defaultConfig = webDefaults;
+      },
+      fetchAndActivate: () => webFetchAndActivate(rc),
+      activate: () => webActivate(rc),
+      getValue: (key: string) => {
+        const value = webGetValue(rc, key);
+        return {
+          asBoolean: () => value.asBoolean(),
+          asNumber: () => value.asNumber(),
+          asString: () => value.asString(),
+          getSource: () => value.getSource() as 'default' | 'remote' | 'static',
+        };
+      },
+      // Web SDK doesn't support real-time updates, so this is optional
+      onConfigUpdated: undefined,
+    };
+
+    return wrapper;
+  } catch (error) {
+    logger.warn('Web Remote Config initialization failed', error);
     return null;
   }
 }
@@ -81,6 +191,7 @@ export function createFirebaseProvider(): FeatureFlagClient {
   let readyPromise: Promise<void> | null = null;
   let lastUpdateTimestamp = 0;
   let isProcessingUpdate = false;
+  let firebaseAppToCleanup: unknown | null = null; // Store app for cleanup on web
 
   const notifyListeners = (changedKeys?: FeatureFlagKey[]) => {
     if (isDestroyed) {
@@ -100,16 +211,32 @@ export function createFirebaseProvider(): FeatureFlagClient {
       return;
     }
 
-    if (context === 'foreground' && Date.now() - lastFetchTimestamp < MIN_FOREGROUND_REFRESH_MS) {
+    const timeSinceLastFetch = Date.now() - lastFetchTimestamp;
+    if (context === 'foreground' && timeSinceLastFetch < MIN_FOREGROUND_REFRESH_MS) {
       logger.debug('Skipping foreground refresh (too recent)');
       return;
     }
 
     try {
+      logger.debug(`Starting fetch (context: ${context})`);
       const activated = await remoteConfig.fetchAndActivate();
       lastFetchTimestamp = Date.now();
+
+      // Log all flag values after fetch to diagnose issue
+      const flagStatus = Object.keys(DEFAULT_FLAGS).map((key) => {
+        const value = remoteConfig!.getValue(key);
+        return {
+          key,
+          value: value.asString(),
+          source: value.getSource(),
+        };
+      });
+
       if (activated) {
+        logger.info('Remote Config updated with new values', { flags: flagStatus });
         notifyListeners();
+      } else {
+        logger.info('Remote Config fetch completed, no new values', { flags: flagStatus });
       }
     } catch (error) {
       logger.warn('Foreground refresh failed, using cached/defaults', error);
@@ -117,11 +244,20 @@ export function createFirebaseProvider(): FeatureFlagClient {
   };
 
   const initialize = async () => {
-    logger.info('Initializing Firebase Remote Config');
-    remoteConfig = getRemoteConfig();
+    logger.info('Initializing Firebase Remote Config', {
+      platform: Platform.OS,
+      defaults: DEFAULT_FLAGS,
+    });
+    remoteConfig =
+      Platform.OS === 'web'
+        ? getWebRemoteConfig((app) => {
+            firebaseAppToCleanup = app;
+          })
+        : getNativeRemoteConfig();
     if (!remoteConfig) {
       status = 'ready';
       logger.warn('Remote Config module not available');
+      notifyListeners(); // Notify hooks that we're ready (using defaults only)
       return;
     }
 
@@ -130,12 +266,20 @@ export function createFirebaseProvider(): FeatureFlagClient {
       await remoteConfig.setConfigSettings({
         minimumFetchIntervalMillis: MIN_FETCH_INTERVAL_MS,
       });
+
+      // Try to activate any previously cached values before fetching
+      const cacheActivated = await remoteConfig.activate();
+      logger.debug(`Cache activation result: ${cacheActivated}`);
+
+      // Attempt to fetch fresh values (will use cache if offline)
       await refresh('startup');
       status = 'ready';
       logger.info('Remote Config initialized successfully');
+      notifyListeners(); // Notify hooks that status is now 'ready' and values are available
     } catch (error) {
       status = 'ready';
       logger.warn('Remote Config init failed, using cached/defaults', error);
+      notifyListeners(); // Notify hooks even on error (status is 'ready', using defaults)
     }
   };
 
@@ -275,6 +419,18 @@ export function createFirebaseProvider(): FeatureFlagClient {
       realTimeUnsubscribe?.();
       appStateSubscription?.remove?.();
       listeners.clear();
+
+      // Cleanup Firebase app on web
+      if (Platform.OS === 'web' && firebaseAppToCleanup) {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          const { deleteApp } = require('firebase/app') as typeof import('firebase/app');
+          deleteApp(firebaseAppToCleanup as Parameters<typeof deleteApp>[0]);
+          logger.debug('Firebase app cleaned up on destroy');
+        } catch (error) {
+          logger.debug('Could not delete Firebase app on destroy', error);
+        }
+      }
     },
   };
 }

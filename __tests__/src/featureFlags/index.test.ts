@@ -30,6 +30,7 @@ describe('featureFlags index', () => {
         ready: jest.fn().mockResolvedValue(undefined),
         getStatus: jest.fn().mockReturnValue('ready'),
         getFlag: jest.fn().mockReturnValue(true),
+        getSource: jest.fn().mockReturnValue('default'),
         setContext: jest.fn().mockResolvedValue(undefined),
         refresh: jest.fn().mockResolvedValue(undefined),
         subscribe: jest.fn(() => jest.fn()),
@@ -58,6 +59,7 @@ describe('featureFlags index', () => {
         ready: jest.fn().mockResolvedValue(undefined),
         getStatus: jest.fn().mockReturnValue('ready'),
         getFlag: jest.fn().mockReturnValue(true),
+        getSource: jest.fn().mockReturnValue('default'),
         setContext: jest.fn().mockResolvedValue(undefined),
         refresh: jest.fn().mockResolvedValue(undefined),
         subscribe: jest.fn(() => jest.fn()),
@@ -90,6 +92,7 @@ describe('featureFlags index', () => {
           ready: jest.fn().mockRejectedValue(new Error('ready failed')),
           getStatus: jest.fn().mockReturnValue('ready'),
           getFlag: jest.fn().mockReturnValue(true),
+          getSource: jest.fn().mockReturnValue('default'),
           setContext: jest.fn().mockResolvedValue(undefined),
           refresh: jest.fn().mockResolvedValue(undefined),
           subscribe: jest.fn(() => jest.fn()),
@@ -108,7 +111,7 @@ describe('featureFlags index', () => {
     });
   });
 
-  it('uses fallback provider on web even when runtime flag is on', () => {
+  it('uses firebase provider on web when runtime flag is on', () => {
     process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = 'true';
 
     jest.isolateModules(() => {
@@ -120,6 +123,7 @@ describe('featureFlags index', () => {
         ready: jest.fn().mockResolvedValue(undefined),
         getStatus: jest.fn().mockReturnValue('ready'),
         getFlag: jest.fn().mockReturnValue(true),
+        getSource: jest.fn().mockReturnValue('default'),
         setContext: jest.fn().mockResolvedValue(undefined),
         refresh: jest.fn().mockResolvedValue(undefined),
         subscribe: jest.fn(() => jest.fn()),
@@ -127,9 +131,7 @@ describe('featureFlags index', () => {
       };
 
       const mockFallback = jest.fn(() => mockClient);
-      const mockFirebase = jest.fn(() => {
-        throw new Error('Firebase provider should not be initialized on web');
-      });
+      const mockFirebase = jest.fn(() => mockClient);
       jest.doMock('@/featureFlags/providers/fallback', () => ({
         createFallbackProvider: mockFallback,
       }));
@@ -141,7 +143,62 @@ describe('featureFlags index', () => {
       __setFeatureFlagClientForTests(null);
       const client = getFeatureFlagClient();
       expect(client).toBe(mockClient);
-      expect(mockFirebase).not.toHaveBeenCalled();
+      expect(mockFirebase).toHaveBeenCalled();
     });
+  });
+
+  it('cleans up client on hot reload dispose and accept', () => {
+    const runtime = globalThis as typeof globalThis & { __DEV__?: boolean };
+    const originalDev = runtime.__DEV__;
+    runtime.__DEV__ = true;
+    const mockClient = {
+      ready: jest.fn().mockResolvedValue(undefined),
+      getStatus: jest.fn().mockReturnValue('ready'),
+      getFlag: jest.fn().mockReturnValue(true),
+      getSource: jest.fn().mockReturnValue('default'),
+      setContext: jest.fn().mockResolvedValue(undefined),
+      refresh: jest.fn().mockResolvedValue(undefined),
+      subscribe: jest.fn(() => jest.fn()),
+      destroy: jest.fn(),
+    };
+
+    const hot = {
+      dispose: jest.fn(),
+      accept: jest.fn(),
+    };
+
+    jest.isolateModules(() => {
+      const {
+        __setFeatureFlagClientForTests,
+        __setupHotReloadForTests,
+      } = require('@/featureFlags');
+      __setFeatureFlagClientForTests(mockClient);
+      __setupHotReloadForTests(hot);
+    });
+
+    const disposeCallback = hot.dispose.mock.calls[0][0];
+    disposeCallback();
+    expect(mockClient.destroy).toHaveBeenCalledTimes(1);
+
+    // Re-seed client for accept path
+    const hotSecond = {
+      dispose: jest.fn(),
+      accept: jest.fn(),
+    };
+
+    jest.isolateModules(() => {
+      const {
+        __setFeatureFlagClientForTests,
+        __setupHotReloadForTests,
+      } = require('@/featureFlags');
+      __setFeatureFlagClientForTests(mockClient);
+      __setupHotReloadForTests(hotSecond);
+    });
+
+    const acceptCallback = hotSecond.accept.mock.calls[0][0];
+    acceptCallback();
+    expect(mockClient.destroy).toHaveBeenCalledTimes(2);
+
+    runtime.__DEV__ = originalDev;
   });
 });

@@ -1,13 +1,17 @@
 import { useEffect, useRef, useSyncExternalStore } from 'react';
-import { getFeatureFlagClient, getFlag, getStatus } from './index';
-import { FeatureFlagKey, FeatureFlagStatus, FeatureFlagValue } from './types';
+import { getFeatureFlagClient, getFlag, getSource, getStatus } from './index';
+import { FeatureFlagKey, FeatureFlagSource, FeatureFlagStatus, FeatureFlagValue } from './types';
 
 export function useFeatureFlag<T extends FeatureFlagValue>(
   key: FeatureFlagKey,
   fallback: T,
-): { value: T; status: FeatureFlagStatus } {
+): { value: T; status: FeatureFlagStatus; source: FeatureFlagSource } {
   const client = getFeatureFlagClient();
-  const snapshotRef = useRef<{ status: FeatureFlagStatus; value: T } | null>(null);
+  const snapshotRef = useRef<{
+    status: FeatureFlagStatus;
+    value: T;
+    source: FeatureFlagSource;
+  } | null>(null);
 
   useEffect(() => {
     client.ready().catch(() => undefined);
@@ -23,28 +27,40 @@ export function useFeatureFlag<T extends FeatureFlagValue>(
     () => {
       const nextStatus = getStatus();
       const nextValue = getFlag(key, fallback);
+      const nextSource = getSource(key);
       const current = snapshotRef.current;
-      if (current && Object.is(current.status, nextStatus) && Object.is(current.value, nextValue)) {
+      if (
+        current &&
+        Object.is(current.status, nextStatus) &&
+        Object.is(current.value, nextValue) &&
+        Object.is(current.source, nextSource)
+      ) {
         return current;
       }
-      const nextSnapshot = { status: nextStatus, value: nextValue as T };
+      const nextSnapshot = { status: nextStatus, value: nextValue as T, source: nextSource };
       snapshotRef.current = nextSnapshot;
       return nextSnapshot;
     },
     () => {
       const nextStatus = getStatus();
       const nextValue = getFlag(key, fallback);
+      const nextSource = getSource(key);
       const current = snapshotRef.current;
-      if (current && Object.is(current.status, nextStatus) && Object.is(current.value, nextValue)) {
+      if (
+        current &&
+        Object.is(current.status, nextStatus) &&
+        Object.is(current.value, nextValue) &&
+        Object.is(current.source, nextSource)
+      ) {
         return current;
       }
-      const nextSnapshot = { status: nextStatus, value: nextValue as T };
+      const nextSnapshot = { status: nextStatus, value: nextValue as T, source: nextSource };
       snapshotRef.current = nextSnapshot;
       return nextSnapshot;
     },
   );
 
-  return { value: snapshot.value as T, status: snapshot.status };
+  return { value: snapshot.value as T, status: snapshot.status, source: snapshot.source };
 }
 
 export function useFeatureFlagsReady(): { ready: boolean; status: FeatureFlagStatus } {

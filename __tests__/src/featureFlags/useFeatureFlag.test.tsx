@@ -16,6 +16,7 @@ describe('useFeatureFlag', () => {
     const { result } = renderHook(() => useFeatureFlag('test_feature_flag', true));
 
     expect(result.current.value).toBe(false);
+    expect(result.current.source).toBe('default');
 
     act(() => {
       set('test_feature_flag', true);
@@ -97,6 +98,7 @@ describe('useFeatureFlag', () => {
     const { result } = renderHook(() => useFeatureFlag('test_feature_flag', false));
     await act(async () => {});
     expect(result.current.value).toBe(true);
+    expect(result.current.source).toBe('default');
 
     const { result: readyResult } = renderHook(() => useFeatureFlagsReady());
     await act(async () => {});

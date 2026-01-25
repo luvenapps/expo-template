@@ -1,14 +1,14 @@
 # Feature Flags
 
-This document explains how feature flags work in the app. For Firebase setup instructions, see [firebase-setup.md](./firebase-setup.md#5-remote-config-feature-flags).
+This document explains the provider-agnostic feature flag system. For Firebase Remote Config setup and implementation details, see [firebase-setup.md](./firebase-setup.md#5-remote-config-feature-flags).
 
 ## Overview
 
-Feature flags allow toggling features remotely without app updates. The system uses:
+Feature flags allow toggling features remotely without app updates. The system uses a provider-agnostic interface that supports multiple implementations:
 
-- **Firebase Remote Config** for real-time flag delivery (when enabled)
-- **Code defaults** as fallback (when Firebase is disabled or unavailable)
-- **Provider-agnostic interface** to allow swapping implementations (e.g., LaunchDarkly)
+- **Remote Config provider** (default when enabled via `EXPO_PUBLIC_TURN_ON_FIREBASE`)
+- **Fallback provider** (code defaults only)
+- **Extensible** - can swap to other providers (e.g., LaunchDarkly, Split.io)
 
 ## Architecture
 
@@ -26,10 +26,10 @@ src/featureFlags/
 
 The system chooses a provider based on `EXPO_PUBLIC_TURN_ON_FIREBASE`:
 
-| Environment Variable                 | Provider Used | Behavior                             |
-| ------------------------------------ | ------------- | ------------------------------------ |
-| `EXPO_PUBLIC_TURN_ON_FIREBASE=true`  | Firebase      | Real-time updates from Remote Config |
-| `EXPO_PUBLIC_TURN_ON_FIREBASE=false` | Fallback      | Returns `DEFAULT_FLAGS` values       |
+| Environment Variable                 | Provider Used | Behavior                       |
+| ------------------------------------ | ------------- | ------------------------------ |
+| `EXPO_PUBLIC_TURN_ON_FIREBASE=true`  | Remote Config | Uses the configured provider   |
+| `EXPO_PUBLIC_TURN_ON_FIREBASE=false` | Fallback      | Returns `DEFAULT_FLAGS` values |
 
 ### Key Components
 
@@ -40,51 +40,34 @@ The system chooses a provider based on `EXPO_PUBLIC_TURN_ON_FIREBASE`:
 | `useFeatureFlag` hook         | React hook for consuming flags with automatic re-renders |
 | `getFlag()` function          | Synchronous flag access for non-React code               |
 
-## Real-Time Updates
-
-When Firebase is enabled, the app receives flag changes instantly via `onConfigUpdated`.
-
-### How It Works
-
-```
-┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
-│ Firebase Console│────▶│ Firebase Backend │────▶│ App (foreground)│
-│ Publish change  │     │ Push invalidation│     │ onConfigUpdated │
-└─────────────────┘     └──────────────────┘     └────────┬────────┘
-                                                          │
-                                                          ▼
-                                                 ┌─────────────────┐
-                                                 │ activate() +    │
-                                                 │ notify listeners│
-                                                 └─────────────────┘
-```
-
-1. You publish a flag change in Firebase Console
-2. Firebase backend pushes an invalidation signal to connected apps
-3. The SDK auto-fetches the new config
-4. The app calls `activate()` to apply the new values
-5. React components re-render with updated flag values
-
-### Foreground/Background Behavior
-
-- **Foreground**: Real-time listener is active; updates arrive within seconds
-- **Background**: Listener pauses automatically (SDK behavior)
-- **Return to foreground**: App refreshes flags to catch any changes missed while backgrounded
-
 ## Adding New Flags
 
 1. **Add to `DEFAULT_FLAGS`** in [src/featureFlags/types.ts](../src/featureFlags/types.ts):
-   - Key must be a valid identifier (e.g., `flag_your_feature`)
-   - Value is the default when Firebase is unavailable
 
-2. **Add to Firebase Console**:
-   - Go to Remote Config → Add parameter
-   - Use the same key name
-   - Set the default value
+   ```typescript
+   export const DEFAULT_FLAGS = {
+     test_feature_flag: false,
+     new_onboarding_flow: true,
+     max_items_per_page: 20,
+     flag_your_feature: false, // Add here
+   } as const;
+   ```
+
+2. **Add to your provider** (e.g., Firebase Console for Firebase provider)
 
 3. **Use in code**:
-   - React: `useFeatureFlag('flag_your_feature', false)`
-   - Non-React: `getFlag('flag_your_feature', false)`
+
+   ```typescript
+   // In React components
+   import { useFeatureFlag } from '@/featureFlags/useFeatureFlag';
+
+   const { value: enabled, status } = useFeatureFlag('flag_your_feature', false);
+
+   // Outside React
+   import { getFlag } from '@/featureFlags';
+
+   const enabled = getFlag('flag_your_feature', false);
+   ```
 
 ## Usage Patterns
 
@@ -92,77 +75,210 @@ When Firebase is enabled, the app receives flag changes instantly via `onConfigU
 
 Use the `useFeatureFlag` hook for automatic re-renders when flags change:
 
-- Returns `{ value, status }` where status is `'loading' | 'ready' | 'error'`
-- Show loading state while flags initialize
-- Falls back to provided default if flag is missing
+```typescript
+import { useFeatureFlag } from '@/featureFlags/useFeatureFlag';
+
+function MyComponent() {
+  const { value: enabled, status } = useFeatureFlag('new_onboarding_flow', false);
+
+  if (status === 'loading') {
+    return <LoadingSpinner />;
+  }
+
+  return enabled ? <NewOnboarding /> : <OldOnboarding />;
+}
+```
+
+**Returns**:
+
+- `value` - The flag value (boolean, string, number, or object)
+- `status` - `'loading'` | `'ready'` | `'error'`
 
 ### Outside React
 
 Use the `getFlag()` function for synchronous access:
 
-- Returns the fallback value if flags aren't ready
-- Suitable for services, utilities, and initialization code
+```typescript
+import { getFlag } from '@/featureFlags';
+
+// In services, utilities, initialization code
+const maxItems = getFlag('max_items_per_page', 20);
+```
+
+**Note**: Returns the fallback value if flags aren't ready yet.
 
 ### Waiting for Flags to Load
 
-Use `useFeatureFlagsReady` hook when you need to block rendering until flags are available.
+Use `useFeatureFlagsReady` when you need to block rendering until flags are available:
 
-## Key Implementation Notes
+```typescript
+import { useFeatureFlagsReady } from '@/featureFlags/useFeatureFlag';
 
-| Concern                            | How It's Handled                                                           |
-| ---------------------------------- | -------------------------------------------------------------------------- |
-| **`onConfigUpdated` availability** | Wrapped in try-catch; falls back to foreground-only refresh if unavailable |
-| **`activate()` required**          | Called explicitly after every real-time update event                       |
-| **Foreground refresh rate limit**  | 1-minute minimum prevents throttling on rapid resume                       |
-| **Listeners registered once**      | Guards prevent duplicate subscriptions                                     |
-| **Cleanup**                        | `destroy()` removes all listeners when provider is no longer needed        |
-| **iOS fetch errors (~10%)**        | Logged as warning, doesn't crash — foreground refresh is backup            |
+function App() {
+  const { ready, status } = useFeatureFlagsReady();
 
-## Limitations
+  if (!ready) {
+    return <SplashScreen />;
+  }
 
-| Limitation                                                | Mitigation                                                      |
-| --------------------------------------------------------- | --------------------------------------------------------------- |
-| Foreground only                                           | AppState listener refreshes on foreground return (rate-limited) |
-| 20M concurrent connections per project                    | Unlikely to hit for most apps                                   |
-| Requires `@react-native-firebase/remote-config` >= 18.0.0 | Graceful fallback if unavailable                                |
-| iOS intermittent fetch failures                           | Defaults/cached values used                                     |
-| Web not supported                                         | Fallback provider returns `DEFAULT_FLAGS` on web                |
+  return <MainApp />;
+}
+```
+
+## Status Management
+
+The feature flag client progresses through these states:
+
+| Status    | Meaning                                             |
+| --------- | --------------------------------------------------- |
+| `loading` | Client is initializing, values may not be final     |
+| `ready`   | Client initialized, values are available            |
+| `error`   | Initialization failed (falls back to code defaults) |
+
+**Best practices**:
+
+- Show loading UI while `status === 'loading'`
+- Proceed with flag values when `status === 'ready'`
+- Gracefully handle `error` status (defaults are still available)
+
+## Manual Refresh
+
+Force the client to fetch fresh values:
+
+```typescript
+import { getFeatureFlagClient } from '@/featureFlags';
+
+const client = getFeatureFlagClient();
+await client.refresh();
+```
+
+**Use cases**:
+
+- User-triggered refresh
+- After authentication changes
+- Debugging/testing
 
 ## Testing
 
 ### Unit Tests
 
-- Mock the feature flag client in `__tests__/setup.ts`
-- Create test-specific providers with flag overrides
-- Test both loading and ready states
+Mock the feature flag client for tests:
 
-### Manual Testing
+```typescript
+import { __setFeatureFlagClientForTests } from '@/featureFlags';
+import { createMockProvider } from '@/featureFlags/testing';
 
-1. Ensure `EXPO_PUBLIC_TURN_ON_FIREBASE=true` in `.env.local`
-2. Run the app on iOS/Android simulator
-3. Change a flag value in Firebase Console and publish
-4. The app should reflect the change within seconds
-5. Check console logs for `[FeatureFlags] Real-time update`
+describe('MyFeature', () => {
+  afterEach(() => {
+    __setFeatureFlagClientForTests(null);
+  });
 
-### Testing Without Firebase
+  it('works with feature enabled', () => {
+    const { client } = createMockProvider({ my_feature: true });
+    __setFeatureFlagClientForTests(client);
 
-Set `EXPO_PUBLIC_TURN_ON_FIREBASE=false` to use the fallback provider. All flags return their `DEFAULT_FLAGS` values.
+    // Test with my_feature enabled
+  });
 
-## Dev vs Prod Configuration
+  it('works with feature disabled', () => {
+    const { client } = createMockProvider({ my_feature: false });
+    __setFeatureFlagClientForTests(client);
 
-**Option 1: Separate Firebase projects (recommended)**
+    // Test with my_feature disabled
+  });
+});
+```
 
-- Use different `google-services.json` / `GoogleService-Info.plist` per environment
-- Configure via `app.json` or EAS build profiles
-- Complete isolation between environments
+### Dynamic Flag Changes in Tests
 
-**Option 2: Single project with conditions**
+```typescript
+it('responds to flag changes', () => {
+  const { client, set } = createMockProvider({ my_feature: false });
+  __setFeatureFlagClientForTests(client);
 
-- Use Remote Config conditions based on app version or custom signals
-- Less isolation but simpler setup
+  const { result } = renderHook(() => useFeatureFlag('my_feature', false));
+  expect(result.current.value).toBe(false);
+
+  act(() => {
+    set('my_feature', true);
+  });
+
+  expect(result.current.value).toBe(true);
+});
+```
+
+### Testing Different States
+
+```typescript
+it('handles loading state', () => {
+  const { client } = createMockProvider({}, 'loading');
+  __setFeatureFlagClientForTests(client);
+
+  const { result } = renderHook(() => useFeatureFlag('my_feature', false));
+  expect(result.current.status).toBe('loading');
+});
+
+it('handles ready state', () => {
+  const { client } = createMockProvider({}, 'ready');
+  __setFeatureFlagClientForTests(client);
+
+  const { result } = renderHook(() => useFeatureFlag('my_feature', false));
+  expect(result.current.status).toBe('ready');
+});
+```
+
+## Provider Interface
+
+To implement a custom provider, implement the `FeatureFlagClient` interface:
+
+```typescript
+export interface FeatureFlagClient {
+  ready(): Promise<void>;
+  getStatus(): FeatureFlagStatus;
+  getFlag<T extends FeatureFlagValue>(key: FeatureFlagKey, fallback: T): T;
+  setContext(context?: UserContext): Promise<void>;
+  refresh(): Promise<void>;
+  subscribe(listener: (key?: FeatureFlagKey) => void): () => void;
+  destroy(): void;
+}
+```
+
+### Key Methods
+
+| Method         | Purpose                                                       |
+| -------------- | ------------------------------------------------------------- |
+| `ready()`      | Async initialization, resolves when client is ready           |
+| `getStatus()`  | Returns current status: `'loading'` \| `'ready'` \| `'error'` |
+| `getFlag()`    | Synchronously get flag value with fallback                    |
+| `getSource()`  | Get source of flag value                                      |
+| `setContext()` | Update user context for targeting (provider-specific)         |
+| `refresh()`    | Force fetch fresh values from remote                          |
+| `subscribe()`  | Subscribe to flag changes, returns unsubscribe function       |
+| `destroy()`    | Cleanup resources, remove listeners                           |
+
+### Subscriber Pattern
+
+Providers must notify subscribers when flags change:
+
+```typescript
+const listeners = new Set<(key?: FeatureFlagKey) => void>();
+
+// Notify all listeners
+listeners.forEach((listener) => listener());
+
+// Notify listeners for specific key
+listeners.forEach((listener) => listener('my_feature'));
+
+// Subscribe returns unsubscribe function
+subscribe: (listener) => {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+};
+```
 
 ## Related Documentation
 
-- [Firebase Setup](./firebase-setup.md) - Full Firebase configuration including Remote Config
-- [Firebase Remote Config docs](https://firebase.google.com/docs/remote-config)
-- [Real-time Remote Config](https://firebase.google.com/docs/remote-config/ios/real-time)
+- [Firebase Setup](./firebase-setup.md#5-remote-config-feature-flags) - Firebase Remote Config implementation details
+- [Firebase Remote Config docs](https://firebase.google.com/docs/remote-config) - Official Firebase documentation

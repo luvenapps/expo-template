@@ -17,7 +17,7 @@ import { onDatabaseReset } from '@/db/sqlite/events';
 import { optimizeDatabase } from '@/db/sqlite/maintenance';
 import { withDatabaseRetry } from '@/db/sqlite/retry';
 import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
-import { DEFAULT_FLAGS, getSource } from '@/featureFlags';
+import { DEFAULT_FLAGS } from '@/featureFlags';
 import { useFeatureFlag } from '@/featureFlags/useFeatureFlag';
 import { setLanguage, supportedLanguages } from '@/i18n';
 import { cancelAllScheduledNotifications, resetBadgeCount } from '@/notifications/notifications';
@@ -1513,8 +1513,7 @@ export default function SettingsScreen() {
                   const typedKey = flagKey as keyof typeof DEFAULT_FLAGS;
                   const defaultValue = DEFAULT_FLAGS[typedKey];
                   // eslint-disable-next-line react-hooks/rules-of-hooks
-                  const { value } = useFeatureFlag(typedKey, defaultValue);
-                  const source = getSource(typedKey);
+                  const { value, source } = useFeatureFlag(typedKey, defaultValue);
 
                   return (
                     <XStack key={flagKey} justifyContent="space-between" alignItems="center">

@@ -12,6 +12,9 @@ jest.mock('@/observability/logger', () => ({
 const appStateListeners: ((state: string) => void)[] = [];
 
 jest.mock('react-native', () => ({
+  Platform: {
+    OS: 'ios',
+  },
   AppState: {
     addEventListener: jest.fn((_event: string, listener: (state: string) => void) => {
       appStateListeners.push(listener);
@@ -81,6 +84,7 @@ jest.mock('@react-native-firebase/remote-config', () => ({
         asBoolean: () => true,
         asNumber: () => 42,
         asString: () => mockRawStringValue,
+        getSource: () => 'default',
       })),
       onConfigUpdated: mockOnConfigUpdatedAvailable
         ? jest.fn((listener) => {
@@ -349,9 +353,14 @@ describe('featureFlags firebase provider', () => {
     const provider = createFirebaseProvider();
     await provider.ready();
 
+    mockLogger.debug.mockClear(); // Clear initialization debug logs
+
     await provider.setContext({ id: 'user-1' });
     await provider.setContext({ id: 'user-2' });
 
+    expect(mockLogger.debug).toHaveBeenCalledWith(
+      'Remote Config ignores user context (SDK has no per-user targeting).',
+    );
     expect(mockLogger.debug).toHaveBeenCalledTimes(1);
   });
 
@@ -446,5 +455,337 @@ describe('featureFlags firebase provider', () => {
     await provider.ready();
 
     expect(appStateListeners.length).toBe(0);
+  });
+
+  it('tests getSource when remoteConfig is null', () => {
+    mockShouldThrowRemoteConfig = true;
+    const provider = createFirebaseProvider();
+    const source = provider.getSource('test_feature_flag');
+    expect(source).toBe('default');
+    mockShouldThrowRemoteConfig = false;
+  });
+
+  it('tests getSource when getValue throws', () => {
+    const provider = createFirebaseProvider();
+
+    return provider.ready().then(() => {
+      // Mock getValue to throw
+      if (remoteConfigState.instance) {
+        remoteConfigState.instance.getValue.mockImplementationOnce(() => {
+          throw new Error('getValue failed');
+        });
+      }
+
+      const source = provider.getSource('test_feature_flag');
+      expect(source).toBe('default');
+    });
+  });
+
+  it('ignores concurrent real-time updates', async () => {
+    const provider = createFirebaseProvider();
+    await provider.ready();
+
+    const listener = jest.fn();
+    provider.subscribe(listener);
+
+    // First update - should process
+    const firstUpdatePromise = remoteConfigState.listener?.({ updatedKeys: ['test_feature_flag'] });
+
+    // Second update while first is processing - should be ignored
+    const secondUpdatePromise = remoteConfigState.listener?.({
+      updatedKeys: ['test_feature_flag'],
+    });
+
+    await Promise.all([firstUpdatePromise, secondUpdatePromise]);
+
+    // Only one update should have been processed
+    expect(mockLogger.debug).toHaveBeenCalledWith('Ignoring concurrent real-time update');
+  });
+
+  it('ignores duplicate real-time updates within 500ms', async () => {
+    const provider = createFirebaseProvider();
+    await provider.ready();
+
+    const listener = jest.fn();
+    provider.subscribe(listener);
+
+    // First update
+    await remoteConfigState.listener?.({ updatedKeys: ['test_feature_flag'] });
+
+    // Second update immediately after (within 500ms) - should be ignored
+    await remoteConfigState.listener?.({ updatedKeys: ['test_feature_flag'] });
+
+    expect(mockLogger.debug).toHaveBeenCalledWith(
+      'Ignoring duplicate real-time update (too recent)',
+    );
+  });
+
+  it('does not notify listeners when destroyed during real-time update', async () => {
+    const provider = createFirebaseProvider();
+    await provider.ready();
+
+    const listener = jest.fn();
+    provider.subscribe(listener);
+
+    // Destroy the provider
+    provider.destroy();
+
+    // Try to trigger a real-time update - should not notify
+    await remoteConfigState.listener?.({ updatedKeys: ['test_feature_flag'] });
+
+    // Listener should not be called because provider is destroyed
+    expect(listener).not.toHaveBeenCalled();
+  });
+
+  it('tests getSource returns value from remote config', async () => {
+    const provider = createFirebaseProvider();
+    await provider.ready();
+
+    // Mock getValue to return a source
+    if (remoteConfigState.instance) {
+      remoteConfigState.instance.getValue.mockImplementationOnce(() => ({
+        asBoolean: jest.fn(),
+        asNumber: jest.fn(),
+        asString: jest.fn(),
+        getSource: jest.fn(() => 'remote'),
+      }));
+    }
+
+    const source = provider.getSource('test_feature_flag');
+    expect(source).toBe('remote');
+  });
+
+  it('logs when fetch completes with no new values', async () => {
+    const provider = createFirebaseProvider();
+    await provider.ready();
+
+    mockLogger.info.mockClear();
+    mockFetchShouldReturnFalse = true;
+    await provider.refresh();
+
+    expect(mockLogger.info).toHaveBeenCalledWith(
+      'Remote Config fetch completed, no new values',
+      expect.any(Object),
+    );
+    provider.destroy();
+  });
+
+  it('uses web remote config when Platform.OS is web', async () => {
+    const warnSpy = mockLogger.warn;
+    const debugSpy = mockLogger.debug;
+    const infoSpy = mockLogger.info;
+
+    const envBackup = { ...process.env };
+    process.env.EXPO_PUBLIC_FIREBASE_API_KEY = 'api';
+    process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN = 'auth';
+    process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID = 'project';
+    process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET = 'bucket';
+    process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID = 'sender';
+    process.env.EXPO_PUBLIC_FIREBASE_APP_ID = 'app';
+    process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID = 'measure';
+
+    const deleteApp = jest.fn();
+    const getApps = jest.fn(() => [{ name: 'app-1' }, { name: 'app-2' }]);
+    const initializeApp = jest.fn(() => ({ name: 'app-1' }));
+    const getRemoteConfig = jest.fn(() => ({
+      settings: { minimumFetchIntervalMillis: 0 },
+      defaultConfig: {},
+    }));
+    const webFetchAndActivate = jest.fn().mockResolvedValue(true);
+    const webActivate = jest.fn().mockResolvedValue(true);
+    const webGetValue = jest.fn(() => ({
+      asBoolean: () => true,
+      asNumber: () => 7,
+      asString: () => 'ok',
+      getSource: () => 'remote',
+    }));
+
+    const webDefaultsSet: Record<string, string | number | boolean> = {};
+
+    getRemoteConfig.mockImplementation(() => ({
+      settings: { minimumFetchIntervalMillis: 0 },
+      defaultConfig: webDefaultsSet,
+    }));
+
+    const originalWindow = globalThis.window;
+    (globalThis as unknown as { window?: Window }).window = {
+      location: { href: 'http://localhost' },
+    } as Window;
+
+    jest.resetModules();
+    jest.doMock('@/observability/logger', () => ({
+      createLogger: () => mockLogger,
+    }));
+    jest.doMock('react-native', () => ({
+      Platform: { OS: 'web' },
+      AppState: {
+        addEventListener: jest.fn((_event: string, listener: (state: string) => void) => {
+          appStateListeners.push(listener);
+          return { remove: jest.fn() };
+        }),
+      },
+    }));
+    jest.doMock('firebase/app', () => ({
+      initializeApp,
+      getApps,
+      deleteApp,
+    }));
+    jest.doMock('firebase/remote-config', () => ({
+      getRemoteConfig,
+      fetchAndActivate: webFetchAndActivate,
+      activate: webActivate,
+      getValue: webGetValue,
+    }));
+
+    const { createFirebaseProvider: createProvider } = require('@/featureFlags/providers/firebase');
+    const provider = createProvider();
+    await provider.ready();
+    await provider.refresh();
+    await provider.setContext({ id: 'user-1' });
+
+    expect(initializeApp).toHaveBeenCalled();
+    expect(getRemoteConfig).toHaveBeenCalled();
+    expect(webFetchAndActivate).toHaveBeenCalled();
+    expect(webActivate).toHaveBeenCalled();
+    expect(debugSpy).toHaveBeenCalledWith('Web Remote Config initialized', {
+      projectId: 'project',
+      appId: 'app',
+    });
+    expect(infoSpy).toHaveBeenCalledWith('Remote Config initialized successfully');
+    expect(warnSpy).not.toHaveBeenCalledWith('Web Remote Config not available (no window)');
+
+    provider.destroy();
+    expect(deleteApp).toHaveBeenCalled();
+
+    process.env = envBackup;
+    (globalThis as unknown as { window?: Window }).window = originalWindow;
+  });
+
+  it('returns null for web remote config when window is missing', async () => {
+    const envBackup = { ...process.env };
+    process.env.EXPO_PUBLIC_FIREBASE_API_KEY = 'api';
+    process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN = 'auth';
+    process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID = 'project';
+    process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET = 'bucket';
+    process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID = 'sender';
+    process.env.EXPO_PUBLIC_FIREBASE_APP_ID = 'app';
+    process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID = 'measure';
+
+    const originalWindow = globalThis.window;
+    (globalThis as unknown as { window?: Window }).window = undefined;
+
+    jest.resetModules();
+    jest.doMock('@/observability/logger', () => ({
+      createLogger: () => mockLogger,
+    }));
+    jest.doMock('react-native', () => ({
+      Platform: { OS: 'web' },
+      AppState: {
+        addEventListener: jest.fn((_event: string, listener: (state: string) => void) => {
+          appStateListeners.push(listener);
+          return { remove: jest.fn() };
+        }),
+      },
+    }));
+    jest.doMock('firebase/app', () => ({}));
+    jest.doMock('firebase/remote-config', () => ({}));
+
+    const { createFirebaseProvider: createProvider } = require('@/featureFlags/providers/firebase');
+    const provider = createProvider();
+    await provider.ready();
+
+    expect(mockLogger.warn).toHaveBeenCalledWith('Web Remote Config not available (no window)');
+
+    process.env = envBackup;
+    (globalThis as unknown as { window?: Window }).window = originalWindow;
+  });
+
+  it('returns null for web remote config with incomplete config', async () => {
+    const envBackup = { ...process.env };
+    process.env.EXPO_PUBLIC_FIREBASE_API_KEY = '';
+    process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID = '';
+    process.env.EXPO_PUBLIC_FIREBASE_APP_ID = '';
+
+    const originalWindow = globalThis.window;
+    (globalThis as unknown as { window?: Window }).window = {
+      location: { href: 'http://localhost' },
+    } as Window;
+
+    jest.resetModules();
+    jest.doMock('@/observability/logger', () => ({
+      createLogger: () => mockLogger,
+    }));
+    jest.doMock('react-native', () => ({
+      Platform: { OS: 'web' },
+      AppState: {
+        addEventListener: jest.fn((_event: string, listener: (state: string) => void) => {
+          appStateListeners.push(listener);
+          return { remove: jest.fn() };
+        }),
+      },
+    }));
+    jest.doMock('firebase/app', () => ({}));
+    jest.doMock('firebase/remote-config', () => ({}));
+
+    const { createFirebaseProvider: createProvider } = require('@/featureFlags/providers/firebase');
+    const provider = createProvider();
+    await provider.ready();
+
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      'Web config incomplete, Remote Config disabled',
+      expect.objectContaining({
+        hasApiKey: false,
+        hasProjectId: false,
+        hasAppId: false,
+      }),
+    );
+
+    process.env = envBackup;
+    (globalThis as unknown as { window?: Window }).window = originalWindow;
+  });
+
+  it('handles web remote config init failures', async () => {
+    const envBackup = { ...process.env };
+    process.env.EXPO_PUBLIC_FIREBASE_API_KEY = 'api';
+    process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN = 'auth';
+    process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID = 'project';
+    process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET = 'bucket';
+    process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID = 'sender';
+    process.env.EXPO_PUBLIC_FIREBASE_APP_ID = 'app';
+    process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID = 'measure';
+
+    const originalWindow = globalThis.window;
+    (globalThis as unknown as { window?: Window }).window = {
+      location: { href: 'http://localhost' },
+    } as Window;
+
+    jest.resetModules();
+    jest.doMock('@/observability/logger', () => ({
+      createLogger: () => mockLogger,
+    }));
+    jest.doMock('react-native', () => ({
+      Platform: { OS: 'web' },
+      AppState: {
+        addEventListener: jest.fn((_event: string, listener: (state: string) => void) => {
+          appStateListeners.push(listener);
+          return { remove: jest.fn() };
+        }),
+      },
+    }));
+    jest.doMock('firebase/app', () => {
+      throw new Error('boom');
+    });
+
+    const { createFirebaseProvider: createProvider } = require('@/featureFlags/providers/firebase');
+    const provider = createProvider();
+    await provider.ready();
+
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      'Web Remote Config initialization failed',
+      expect.any(Error),
+    );
+
+    process.env = envBackup;
+    (globalThis as unknown as { window?: Window }).window = originalWindow;
   });
 });

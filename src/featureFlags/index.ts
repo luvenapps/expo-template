@@ -1,7 +1,5 @@
-import { Platform } from 'react-native';
 import { createFallbackProvider } from './providers/fallback';
 import { createFirebaseProvider } from './providers/firebase';
-import { DEFAULT_FLAGS } from './types';
 import type {
   FeatureFlagClient,
   FeatureFlagKey,
@@ -9,8 +7,40 @@ import type {
   FeatureFlagStatus,
   FeatureFlagValue,
 } from './types';
+import { DEFAULT_FLAGS } from './types';
 
 let client: FeatureFlagClient | null = null;
+
+type HotModule = {
+  dispose: (callback: () => void) => void;
+  accept: (callback?: () => void) => void;
+};
+
+function setupHotReload(hot?: HotModule) {
+  if (!__DEV__ || !hot) {
+    return;
+  }
+
+  // Clean up on dispose (before hot reload)
+  hot.dispose(() => {
+    if (client) {
+      client.destroy();
+      client = null;
+    }
+  });
+
+  // Accept hot updates and force re-initialization
+  hot.accept(() => {
+    // Force re-initialization on hot reload
+    if (client) {
+      client.destroy();
+      client = null;
+    }
+  });
+}
+
+// Handle hot reload cleanup
+setupHotReload((module as unknown as { hot?: HotModule }).hot);
 
 function isFirebaseRuntimeEnabled() {
   return (
@@ -21,22 +51,8 @@ function isFirebaseRuntimeEnabled() {
 
 export function getFeatureFlagClient(): FeatureFlagClient {
   if (!client) {
-    const useFirebase = isFirebaseRuntimeEnabled() && Platform.OS !== 'web';
-    const newClient = useFirebase ? createFirebaseProvider() : createFallbackProvider();
-
-    // Clean up old client on hot reload (dev only)
-    if (
-      __DEV__ &&
-      (module as unknown as { hot?: { dispose: (callback: () => void) => void } }).hot
-    ) {
-      (module as unknown as { hot: { dispose: (callback: () => void) => void } }).hot.dispose(
-        () => {
-          newClient.destroy();
-        },
-      );
-    }
-
-    client = newClient;
+    const useFirebase = isFirebaseRuntimeEnabled();
+    client = useFirebase ? createFirebaseProvider() : createFallbackProvider();
     client.ready().catch(() => undefined);
   }
   return client;
@@ -59,5 +75,10 @@ export function __setFeatureFlagClientForTests(nextClient: FeatureFlagClient | n
   client = nextClient;
 }
 
+/** @internal */
+export function __setupHotReloadForTests(hot?: HotModule) {
+  setupHotReload(hot);
+}
+
 export { DEFAULT_FLAGS };
-export type { FeatureFlagKey, FeatureFlagValue, FeatureFlagSource };
+export type { FeatureFlagKey, FeatureFlagSource, FeatureFlagValue };
