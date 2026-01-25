@@ -33,6 +33,24 @@ function trackAuthEvent(
     code,
     platform: Platform.OS,
   });
+
+  if (event === 'auth:sign_in') {
+    // GA sign in alias
+    analytics.trackEvent('login', {
+      method,
+      status,
+      platform: Platform.OS,
+    });
+  }
+
+  if (event === 'auth:sign_up') {
+    // GA sign up alias
+    analytics.trackEvent('sign_up', {
+      method,
+      status,
+      platform: Platform.OS,
+    });
+  }
 }
 
 export async function signInWithEmail(email: string, password: string): Promise<AuthResult> {
