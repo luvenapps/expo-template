@@ -16,8 +16,7 @@
     "title": "Build habits that stick with {{app}}",
     "subtitle": "Track progress, stay consistent, and get gentle nudges when it matters.",
     "signIn": "Sign In",
-    "signUp": "Create account",
-    "enterApp": "Open the app"
+    "signUp": "Create account"
   },
   "tabs": {
     "home": "Home",

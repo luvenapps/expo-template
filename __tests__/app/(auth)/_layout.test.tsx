@@ -20,6 +20,7 @@ jest.mock('expo-router', () => {
       back: jest.fn(),
       replace: jest.fn(),
     })),
+    usePathname: jest.fn(() => '/auth-callback'),
   };
 });
 

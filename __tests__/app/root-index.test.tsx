@@ -58,14 +58,4 @@ describe('RootRedirect', () => {
     expect(mockPush).toHaveBeenCalledWith('/(auth)/login');
     expect(mockPush).toHaveBeenCalledWith('/(auth)/signup');
   });
-
-  test('renders enter app button on web when authenticated', () => {
-    mockStatus = 'authenticated';
-    Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
-
-    const { getByText } = render(<RootRedirect />);
-    fireEvent.press(getByText('landing.enterApp'));
-
-    expect(mockPush).toHaveBeenCalledWith('/(tabs)');
-  });
 });

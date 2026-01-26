@@ -2,8 +2,8 @@ import { useSessionStore } from '@/auth/session';
 import { DOMAIN } from '@/config/domain.config';
 import { PrimaryButton, ScreenContainer, SecondaryButton, SubtitleText, TitleText } from '@/ui';
 import { Redirect, useRouter } from 'expo-router';
-import { Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { Platform } from 'react-native';
 
 export default function RootRedirect() {
   const status = useSessionStore((state) => state.status);
@@ -14,9 +14,9 @@ export default function RootRedirect() {
     return null;
   }
 
-  if (Platform.OS === 'web') {
-    const isAuthenticated = status === 'authenticated';
+  const isAuthenticated = status === 'authenticated';
 
+  if (Platform.OS === 'web' && !isAuthenticated) {
     return (
       <ScreenContainer gap="$4" alignItems="center">
         <TitleText textAlign="center">
@@ -29,20 +29,12 @@ export default function RootRedirect() {
           {t('landing.subtitle')}
         </SubtitleText>
 
-        {isAuthenticated ? (
-          <PrimaryButton width="100%" onPress={() => router.push('/(tabs)')}>
-            {t('landing.enterApp')}
-          </PrimaryButton>
-        ) : (
-          <>
-            <PrimaryButton width="100%" onPress={() => router.push('/(auth)/login')}>
-              {t('landing.signIn')}
-            </PrimaryButton>
-            <SecondaryButton width="100%" onPress={() => router.push('/(auth)/signup')}>
-              {t('landing.signUp')}
-            </SecondaryButton>
-          </>
-        )}
+        <PrimaryButton width="100%" onPress={() => router.push('/(auth)/login')}>
+          {t('landing.signIn')}
+        </PrimaryButton>
+        <SecondaryButton width="100%" onPress={() => router.push('/(auth)/signup')}>
+          {t('landing.signUp')}
+        </SecondaryButton>
       </ScreenContainer>
     );
   }

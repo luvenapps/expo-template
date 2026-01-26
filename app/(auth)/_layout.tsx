@@ -1,7 +1,7 @@
 /* istanbul ignore file */
 import { HeaderBackButton } from '@react-navigation/elements';
 import { useSessionStore } from '@/auth/session';
-import { Redirect, Stack, useRouter } from 'expo-router';
+import { Redirect, Stack, usePathname, useRouter } from 'expo-router';
 import { Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -9,12 +9,13 @@ export default function AuthLayout() {
   const router = useRouter();
   const { t } = useTranslation();
   const status = useSessionStore((state) => state.status);
+  const pathname = usePathname();
 
   if (Platform.OS === 'web' && status === 'unknown') {
     return null;
   }
 
-  if (Platform.OS === 'web' && status === 'authenticated') {
+  if (Platform.OS === 'web' && status === 'authenticated' && pathname !== '/auth-callback') {
     return <Redirect href="/(tabs)" />;
   }
 

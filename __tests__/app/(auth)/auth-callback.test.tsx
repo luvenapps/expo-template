@@ -73,6 +73,7 @@ jest.mock('react-i18next', () => ({
 import { supabase } from '@/auth/client';
 import { DOMAIN } from '@/config/domain.config';
 import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
+import { analytics } from '@/observability/analytics';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import * as Linking from 'expo-linking';
 import React from 'react';
@@ -91,6 +92,12 @@ jest.mock('@/auth/client', () => ({
 
 jest.mock('@/errors/useFriendlyErrorHandler', () => ({
   useFriendlyErrorHandler: jest.fn(),
+}));
+
+jest.mock('@/observability/analytics', () => ({
+  analytics: {
+    trackEvent: jest.fn(),
+  },
 }));
 
 jest.mock('expo-linking', () => ({
@@ -197,6 +204,7 @@ describe('AuthCallbackScreen - Native', () => {
     mockedGetSession.mockResolvedValue({ data: { session: null }, error: null } as any);
     mockedGetInitialURL.mockResolvedValue(null);
     mockedUseURL.mockReturnValue(null);
+    (analytics.trackEvent as jest.Mock).mockClear();
     // Default mock for exchangeCodeForSession
     mockedExchangeCodeForSession.mockResolvedValue({ data: { session: {} }, error: null } as any);
     mockedFriendlyError.mockReturnValue(
@@ -243,6 +251,16 @@ describe('AuthCallbackScreen - Native', () => {
 
     await waitFor(() => {
       expect(mockBack).toHaveBeenCalled();
+    });
+    expect(analytics.trackEvent).toHaveBeenCalledWith('auth:sign_in', {
+      method: 'oauth',
+      status: 'success',
+      platform: 'ios',
+    });
+    expect(analytics.trackEvent).toHaveBeenCalledWith('login', {
+      method: 'oauth',
+      status: 'success',
+      platform: 'ios',
     });
   });
 
@@ -741,6 +759,7 @@ describe('AuthCallbackScreen - Web', () => {
     mockWindowHistory.replaceState.mockClear();
     // Default mock for setSession
     mockedSetSession.mockResolvedValue({ data: { session: {} }, error: null } as any);
+    (analytics.trackEvent as jest.Mock).mockClear();
     mockedFriendlyError.mockReturnValue(
       jest.fn(() => ({
         toastId: 'toast-1',
@@ -778,18 +797,28 @@ describe('AuthCallbackScreen - Web', () => {
     });
   });
 
-  it('redirects to home after successful session on web', async () => {
+  it('redirects to tabs after successful session on web', async () => {
     mockWindowLocation.hash = '#access_token=token123&refresh_token=refresh456';
     mockedSetSession.mockResolvedValue({ data: { session: {} }, error: null } as any);
 
     render(<AuthCallbackScreen />);
 
     await waitFor(() => {
-      expect(mockWindowLocation.replace).toHaveBeenCalledWith('/');
+      expect(mockWindowLocation.replace).toHaveBeenCalledWith('/(tabs)');
+    });
+    expect(analytics.trackEvent).toHaveBeenCalledWith('auth:sign_in', {
+      method: 'oauth',
+      status: 'success',
+      platform: 'web',
+    });
+    expect(analytics.trackEvent).toHaveBeenCalledWith('login', {
+      method: 'oauth',
+      status: 'success',
+      platform: 'web',
     });
   });
 
-  it('redirects when no hash params but existing session on web', async () => {
+  it('redirects to tabs when no hash params but existing session on web', async () => {
     mockWindowLocation.hash = '';
     mockedGetSession.mockResolvedValue({
       data: { session: { user: { id: '123' } } },
@@ -799,7 +828,17 @@ describe('AuthCallbackScreen - Web', () => {
     render(<AuthCallbackScreen />);
 
     await waitFor(() => {
-      expect(mockWindowLocation.replace).toHaveBeenCalledWith('/');
+      expect(mockWindowLocation.replace).toHaveBeenCalledWith('/(tabs)');
+    });
+    expect(analytics.trackEvent).toHaveBeenCalledWith('auth:sign_in', {
+      method: 'session',
+      status: 'success',
+      platform: 'web',
+    });
+    expect(analytics.trackEvent).toHaveBeenCalledWith('login', {
+      method: 'session',
+      status: 'success',
+      platform: 'web',
     });
   });
 

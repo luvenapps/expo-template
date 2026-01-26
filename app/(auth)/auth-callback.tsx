@@ -1,6 +1,8 @@
 import { supabase } from '@/auth/client';
-import { InlineError, PrimaryButton, ScreenContainer, TitleText } from '@/ui';
+import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
+import { analytics } from '@/observability/analytics';
 import { createLogger } from '@/observability/logger';
+import { InlineError, PrimaryButton, ScreenContainer, TitleText } from '@/ui';
 import * as Linking from 'expo-linking';
 import { useURL } from 'expo-linking';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -8,7 +10,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Platform } from 'react-native';
 import { YStack } from 'tamagui';
-import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
 
 export default function AuthCallbackScreen() {
   const logger = useMemo(() => createLogger('AuthCallback'), []);
@@ -20,6 +21,7 @@ export default function AuthCallbackScreen() {
   const webHashRef = useRef<string | null>(null);
   const hasProcessedRef = useRef(false);
   const isProcessingRef = useRef(false);
+  const hasLoggedSignInRef = useRef(false);
   const latestUrl = useURL();
 
   // Log component mount to verify it's rendering
@@ -65,6 +67,35 @@ export default function AuthCallbackScreen() {
     [handleFriendlyError, t],
   );
 
+  const trackAuthSignIn = useCallback((method: 'oauth' | 'session') => {
+    if (hasLoggedSignInRef.current) {
+      return;
+    }
+    hasLoggedSignInRef.current = true;
+    analytics.trackEvent('auth:sign_in', {
+      method,
+      status: 'success',
+      platform: Platform.OS,
+    });
+    analytics.trackEvent('login', {
+      method,
+      status: 'success',
+      platform: Platform.OS,
+    });
+  }, []);
+
+  const redirectWebHome = useCallback(async () => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    // Small delay so analytics events can flush before navigation.
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    if (typeof window.location?.replace === 'function') {
+      window.location.replace('/(tabs)');
+    }
+  }, []);
+
   const handleWebCallback = useCallback(async () => {
     if (typeof window === 'undefined' || hasProcessedRef.current) {
       return;
@@ -103,8 +134,9 @@ export default function AuthCallbackScreen() {
           data: { session },
         } = await supabase.auth.getSession();
         if (session) {
+          trackAuthSignIn('session');
           // Email confirmation successful - redirect to home
-          window.location.replace('/');
+          await redirectWebHome();
           return;
         }
         return;
@@ -128,8 +160,9 @@ export default function AuthCallbackScreen() {
       return;
     }
 
-    window.location.replace('/');
-  }, [reportError]);
+    trackAuthSignIn('oauth');
+    await redirectWebHome();
+  }, [reportError, redirectWebHome, trackAuthSignIn]);
 
   const handleNativeCallback = useCallback(async () => {
     if (hasProcessedRef.current || isProcessingRef.current) {
@@ -191,6 +224,7 @@ export default function AuthCallbackScreen() {
         reportError(error);
         return;
       }
+      trackAuthSignIn('oauth');
       goBackOrHome();
       return;
     }
@@ -235,6 +269,7 @@ export default function AuthCallbackScreen() {
         reportError(error);
         return;
       }
+      trackAuthSignIn('oauth');
       goBackOrHome();
       return;
     }
@@ -268,6 +303,7 @@ export default function AuthCallbackScreen() {
         reportError(error);
         return;
       }
+      trackAuthSignIn('oauth');
       goBackOrHome();
       return;
     }
@@ -336,7 +372,7 @@ export default function AuthCallbackScreen() {
     }
 
     isProcessingRef.current = false;
-  }, [goBackOrHome, latestUrl, logger, queryParams, reportError]);
+  }, [goBackOrHome, latestUrl, logger, queryParams, reportError, trackAuthSignIn]);
 
   useEffect(() => {
     if (Platform.OS === 'web' && typeof window !== 'undefined') {

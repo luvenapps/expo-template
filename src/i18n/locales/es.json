@@ -16,8 +16,7 @@
     "title": "Crea hábitos que perduren con {{app}}",
     "subtitle": "Sigue tu progreso, mantén la constancia y recibe recordatorios cuando lo necesites.",
     "signIn": "Iniciar sesión",
-    "signUp": "Crear cuenta",
-    "enterApp": "Abrir la app"
+    "signUp": "Crear cuenta"
   },
   "tabs": {
     "home": "Inicio",

@@ -114,6 +114,32 @@ Web uses the Firebase JS SDK, which does not expose the real-time update listene
 - When the app returns to the foreground, it performs a guarded refresh to catch missed updates.
 - Requires `@react-native-firebase/remote-config` >= 18.0.0 for real-time; older versions fall back to foreground refresh.
 
+Flow:
+
+```
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│ Firebase Console│────▶│ Firebase Backend │────▶│ App (foreground)│
+│ Publish change  │     │ Push invalidation│     │ onConfigUpdated │
+└─────────────────┘     └──────────────────┘     └────────┬────────┘
+                                                          │
+                                                          ▼
+                                                 ┌─────────────────┐
+                                                 │ activate() +    │
+                                                 │ notify listeners│
+                                                 └─────────────────┘
+
+```
+
+#### Limitations
+
+| Limitation                                                | Mitigation                                                      |
+| --------------------------------------------------------- | --------------------------------------------------------------- |
+| Foreground only                                           | AppState listener refreshes on foreground return (rate-limited) |
+| 20M concurrent connections per project                    | Unlikely to hit for most apps                                   |
+| Requires `@react-native-firebase/remote-config` >= 18.0.0 | Graceful fallback if unavailable                                |
+| iOS intermittent fetch failures                           | Defaults/cached values used                                     |
+| Web has no real-time listener                             | Foreground refresh to pick up changes                           |
+
 ### Caching and Fetch Intervals
 
 - The SDK caches values on device (UserDefaults/SharedPreferences on native; IndexedDB/localStorage on web, depending on browser).
