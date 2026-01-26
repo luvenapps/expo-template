@@ -59,6 +59,7 @@ import {
   Paragraph,
   Progress,
   RadioGroup,
+  Spinner,
   Switch,
   Text,
   View,
@@ -97,6 +98,7 @@ export default function SettingsScreen() {
   const [isOptimizingDb, setIsOptimizingDb] = useState(false);
   const [isResettingAllData, setIsResettingAllData] = useState(false);
   const [resetStatus, setResetStatus] = useState<string | null>(null);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [archiveOffsetDays, setArchiveOffsetDays] = useState<0 | -1>(0);
   const [testReminderCadence, setTestReminderCadence] = useState<'10s' | 'daily'>('10s');
@@ -138,6 +140,10 @@ export default function SettingsScreen() {
       process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === 'true' ||
       process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === '1',
     [],
+  );
+  const { value: test_feature_flag } = useFeatureFlag(
+    'test_feature_flag' as keyof typeof DEFAULT_FLAGS,
+    false,
   );
   const syncDisabledMessage = !isNative
     ? t('settings.syncUnavailableWeb')
@@ -264,7 +270,12 @@ export default function SettingsScreen() {
 
   const handleAuthAction = async () => {
     if (status === 'authenticated') {
-      await signOut();
+      setIsSigningOut(true);
+      try {
+        await signOut();
+      } finally {
+        setIsSigningOut(false);
+      }
       if (Platform.OS === 'web') {
         router.replace('/');
       }
@@ -320,6 +331,7 @@ export default function SettingsScreen() {
 
     try {
       setIsResettingAllData(true);
+      setIsSigningOut(true);
       setResetStatus(t('settings.resetInProgress'));
       await deleteRemoteUserData(userId);
       clearPendingRemoteReset();
@@ -341,6 +353,7 @@ export default function SettingsScreen() {
     } finally {
       setIsResettingAllData(false);
       setResetModalOpen(false);
+      setIsSigningOut(false);
     }
   }, [
     isResettingAllData,
@@ -1034,7 +1047,11 @@ export default function SettingsScreen() {
                         disabled={isResettingAllData}
                         onPress={handleResetAppData}
                       >
-                        {t('settings.resetConfirmAction')}
+                        {isResettingAllData ? (
+                          <Spinner size="small" color="$dangerColor" />
+                        ) : (
+                          t('settings.resetConfirmAction')
+                        )}
                       </PrimaryButton>
                     </XStack>
                   </YStack>
@@ -1509,7 +1526,11 @@ export default function SettingsScreen() {
                 borderTopWidth={1}
                 borderTopColor="$borderColor"
               >
-                <Text fontWeight="600" fontSize="$4" marginBottom="$2">
+                <Text
+                  fontWeight="600"
+                  fontSize={Platform.OS === 'web' ? '$5' : '$4'}
+                  marginBottom="$2"
+                >
                   Feature Flags
                 </Text>
                 {Object.keys(DEFAULT_FLAGS).map((flagKey) => {
@@ -1520,15 +1541,44 @@ export default function SettingsScreen() {
 
                   return (
                     <XStack key={flagKey} justifyContent="space-between" alignItems="center">
-                      <Text fontSize="$3" color="$colorMuted" marginRight="$2">
+                      <Text
+                        fontSize={Platform.OS === 'web' ? '$4' : '$3'}
+                        color="$colorMuted"
+                        marginRight="$2"
+                      >
                         {flagKey}:
                       </Text>
-                      <Text fontSize="$3" color="$accentColor" fontWeight="600">
+                      <Text
+                        fontSize={Platform.OS === 'web' ? '$4' : '$3'}
+                        color="$accentColor"
+                        fontWeight="600"
+                      >
                         {String(value)} ({typeof value}) [{source}]
                       </Text>
                     </XStack>
                   );
                 })}
+              </YStack>
+              <YStack
+                key="feature-flag-example"
+                gap="$2"
+                marginTop="$4"
+                paddingTop="$4"
+                borderTopWidth={1}
+                borderTopColor="$borderColor"
+              >
+                <Text
+                  fontWeight="600"
+                  fontSize={Platform.OS === 'web' ? '$5' : '$4'}
+                  marginBottom="$2"
+                >
+                  Feature Flags example
+                </Text>
+                <Text>
+                  {test_feature_flag
+                    ? 'This text will show based on the "test_feature_flag" feature flag'
+                    : 'There is nothing to show'}
+                </Text>
               </YStack>
             </SettingsSection>
           </>
@@ -1549,6 +1599,20 @@ export default function SettingsScreen() {
   return (
     <>
       {content}
+      {isSigningOut || isResettingAllData ? (
+        <View
+          position="absolute"
+          top={0}
+          right={0}
+          bottom={0}
+          left={0}
+          alignItems="center"
+          justifyContent="center"
+          backgroundColor="rgba(0,0,0,0.2)"
+        >
+          <Spinner size="large" color="$accentColor" />
+        </View>
+      ) : null}
       <ToastContainer messages={toast.messages} dismiss={toast.dismiss} />
     </>
   );

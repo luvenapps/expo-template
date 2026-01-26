@@ -1,3 +1,43 @@
+// Mock auth/reset module
+jest.mock('@/auth/reset', () => ({
+  clearPendingRemoteReset: jest.fn(),
+  deleteRemoteUserData: jest.fn(() => Promise.resolve()),
+  setPendingRemoteReset: jest.fn(),
+}));
+
+// Mock feature flags
+jest.mock('@/featureFlags/useFeatureFlag', () => ({
+  useFeatureFlag: jest.fn((key, defaultValue) => ({ value: defaultValue, source: 'default' })),
+}));
+
+// Mock logger
+jest.mock('@/observability/logger', () => ({
+  createLogger: jest.fn((namespace: string) => ({
+    info: jest.fn((...args: any[]) => console.log(`[${namespace}]`, ...args)),
+    warn: jest.fn((...args: any[]) => console.warn(`[${namespace}]`, ...args)),
+    error: jest.fn((...args: any[]) => console.error(`[${namespace}]`, ...args)),
+    debug: jest.fn((...args: any[]) => console.debug(`[${namespace}]`, ...args)),
+  })),
+}));
+
+const originalConsoleError = console.error;
+beforeAll(() => {
+  console.error = jest.fn();
+});
+
+afterAll(() => {
+  console.error = originalConsoleError;
+});
+
+// Mock state/sync store
+jest.mock('@/state', () => ({
+  useSyncStore: {
+    getState: jest.fn(() => ({
+      setQueueSize: jest.fn(),
+    })),
+  },
+}));
+
 // Mock expo-router
 const mockPush = jest.fn();
 
@@ -89,6 +129,18 @@ jest.mock('@/notifications/useNotificationSettings', () => ({
 // Mock auth session
 jest.mock('@/auth/session', () => ({
   useSessionStore: jest.fn(),
+}));
+
+jest.mock('@/errors/useFriendlyErrorHandler', () => ({
+  useFriendlyErrorHandler: jest.fn(() => (error: any) => ({
+    friendly: {
+      title: error?.message || 'Error',
+      description: undefined,
+      originalMessage: error?.message || 'Unknown error',
+      titleKey: undefined,
+      descriptionKey: undefined,
+    },
+  })),
 }));
 
 jest.mock('@/sync', () => ({
@@ -196,6 +248,8 @@ jest.mock('tamagui', () => {
     RadioGroup: RadioGroupComponent,
     Label: ({ children, ...props }: any) => mockReact.createElement('Text', props, children),
     Dialog: DialogComponent,
+    Spinner: ({ size, color, ...props }: any) =>
+      mockReact.createElement('View', { testID: 'spinner', size, color, ...props }),
   };
 });
 
@@ -464,6 +518,72 @@ jest.mock('@tamagui/lucide-icons', () => ({
     return mockReact.createElement('View', { testID: 'chevron-up-icon', size, color });
   },
 }));
+
+// Mock UI components
+jest.mock('@/ui', () => {
+  const mockReact = jest.requireActual('react');
+
+  return {
+    ScreenContainer: ({ children, ...props }: any) =>
+      mockReact.createElement('View', props, children),
+    PrimaryButton: ({ children, onPress, disabled, testID, ...props }: any) =>
+      mockReact.createElement(
+        'TouchableOpacity',
+        { onPress, disabled, testID, ...props },
+        mockReact.createElement('Text', {}, children),
+      ),
+    SecondaryButton: ({ children, onPress, disabled, testID, ...props }: any) =>
+      mockReact.createElement(
+        'TouchableOpacity',
+        { onPress, disabled, testID, ...props },
+        mockReact.createElement('Text', {}, children),
+      ),
+    SettingsSection: ({
+      children,
+      title,
+      description,
+      footer,
+      testID,
+      footerTestID,
+      descriptionTestID,
+    }: any) =>
+      mockReact.createElement(
+        'View',
+        { testID },
+        [
+          mockReact.createElement('Text', { key: 'title' }, title),
+          description &&
+            mockReact.createElement(
+              'Text',
+              { key: 'desc', testID: descriptionTestID },
+              description,
+            ),
+          children,
+          footer &&
+            mockReact.createElement('Text', { key: 'footer', testID: footerTestID }, footer),
+        ].filter(Boolean),
+      ),
+    StatCard: ({ label, value, helperText, icon }: any) =>
+      mockReact.createElement(
+        'View',
+        {},
+        icon,
+        mockReact.createElement('Text', {}, label),
+        mockReact.createElement('Text', {}, value),
+        helperText && mockReact.createElement('Text', {}, helperText),
+      ),
+    StreakChart: ({ data, formatDayLabel, formatPercentLabel }: any) =>
+      mockReact.createElement('View', {}, mockReact.createElement('Text', {}, 'StreakChart')),
+    CalendarHeatmap: ({ weeks, values }: any) =>
+      mockReact.createElement('View', {}, mockReact.createElement('Text', {}, 'CalendarHeatmap')),
+    ToastContainer: ({ messages, dismiss }: any) => mockReact.createElement('View', {}),
+    useToast: () => ({
+      messages: [],
+      show: jest.fn(),
+      dismiss: jest.fn(),
+    }),
+  };
+});
 
 jest.mock('expo-notifications', () => ({
   getPermissionsAsync: jest.fn(() =>
@@ -1285,7 +1405,8 @@ describe('SettingsScreen', () => {
 
       await waitFor(() => {
         expect(consoleErrorSpy).toHaveBeenCalledWith(
-          expect.stringContaining('[Settings] Error checking database data:'),
+          '[Settings]',
+          'Error checking database data:',
           expect.any(Error),
         );
       });
@@ -1457,7 +1578,8 @@ describe('SettingsScreen', () => {
       expect(mockedResetCursors).not.toHaveBeenCalled();
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('[Settings] Clear local database failed:'),
+        '[Settings]',
+        'Clear local database failed:',
         expect.any(Error),
       );
 
@@ -1548,7 +1670,8 @@ describe('SettingsScreen', () => {
       });
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('[Settings] Optimize database failed:'),
+        '[Settings]',
+        'Optimize database failed:',
         expect.any(Error),
       );
       consoleErrorSpy.mockRestore();

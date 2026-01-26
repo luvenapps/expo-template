@@ -497,6 +497,7 @@ export default function LoginScreen() {
       </Card>
     </ScreenContainer>
   );
+
   return (
     <>
       {content}

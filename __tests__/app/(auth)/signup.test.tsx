@@ -95,9 +95,25 @@ import SignUpScreen from '../../../app/(auth)/signup';
 import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
 import { TamaguiProvider, Theme } from 'tamagui';
 import { tamaguiConfig } from '../../../tamagui.config';
+import { getLocalName } from '@/auth/nameStorage';
 
 jest.mock('@/auth/service', () => ({
   signUpWithEmail: jest.fn(),
+}));
+
+const mockSignInWithOAuth = jest.fn();
+let mockStatus = 'unauthenticated';
+
+jest.mock('@/auth/session', () => ({
+  useSessionStore: (selector: any) =>
+    selector({
+      signInWithOAuth: mockSignInWithOAuth,
+      status: mockStatus,
+    }),
+}));
+
+jest.mock('@/auth/nameStorage', () => ({
+  getLocalName: jest.fn(),
 }));
 
 jest.mock('@/errors/useFriendlyErrorHandler', () => ({
@@ -106,12 +122,14 @@ jest.mock('@/errors/useFriendlyErrorHandler', () => ({
 
 const mockReplace = jest.fn();
 const mockPush = jest.fn();
+const mockBack = jest.fn();
 const mockCanGoBack = jest.fn(() => true);
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({
     replace: mockReplace,
     push: mockPush,
+    back: mockBack,
   }),
   useNavigation: () => ({
     canGoBack: mockCanGoBack,
@@ -122,6 +140,7 @@ const mockedSignUpWithEmail = signUpWithEmail as jest.MockedFunction<typeof sign
 const mockedFriendlyError = useFriendlyErrorHandler as jest.MockedFunction<
   typeof useFriendlyErrorHandler
 >;
+const mockedGetLocalName = getLocalName as jest.MockedFunction<typeof getLocalName>;
 
 // Helper to render components with Tamagui providers
 const renderWithProviders = (component: React.ReactElement) => {
@@ -154,6 +173,11 @@ describe('SignUpScreen', () => {
   beforeEach(() => {
     mockReplace.mockClear();
     mockPush.mockClear();
+    mockBack.mockClear();
+    mockCanGoBack.mockReturnValue(true);
+    mockSignInWithOAuth.mockClear();
+    mockStatus = 'unauthenticated';
+    mockedGetLocalName.mockReset();
     mockedSignUpWithEmail.mockClear();
     mockedFriendlyError.mockReturnValue(
       jest.fn(() => ({
@@ -173,6 +197,59 @@ describe('SignUpScreen', () => {
     expect(getByTestId('confirm-password-input')).toBeDefined();
     expect(getByTestId('create-account-button')).toBeDefined();
     expect(getByTestId('sign-in-button')).toBeDefined();
+  });
+
+  it('prefills name when stored name exists', async () => {
+    mockedGetLocalName.mockReturnValue('Stored Name');
+
+    const { getByTestId } = renderWithProviders(<SignUpScreen />);
+
+    await waitFor(() => {
+      expect(getByTestId('name-input').props.value).toBe('Stored Name');
+    });
+  });
+
+  it('navigates back when authenticated and navigation can go back', async () => {
+    mockStatus = 'authenticated';
+    mockCanGoBack.mockReturnValue(true);
+
+    renderWithProviders(<SignUpScreen />);
+
+    await waitFor(() => {
+      expect(mockBack).toHaveBeenCalled();
+    });
+  });
+
+  it('replaces with tabs when authenticated and navigation cannot go back', async () => {
+    mockStatus = 'authenticated';
+    mockCanGoBack.mockReturnValue(false);
+
+    renderWithProviders(<SignUpScreen />);
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/(tabs)');
+    });
+  });
+
+  it('shows friendly message when OAuth sign-in fails', async () => {
+    const friendlyHandler = jest.fn(() => ({
+      friendly: { code: 'unknown' as const, type: 'error' as const, description: 'OAuth failed' },
+      toastId: 'toast-oauth',
+    }));
+    mockedFriendlyError.mockReturnValue(friendlyHandler);
+    mockSignInWithOAuth.mockResolvedValue({
+      success: false,
+      error: 'OAuth error',
+    });
+
+    const { getByTestId, getByText } = renderWithProviders(<SignUpScreen />);
+
+    fireEvent.press(getByTestId('oauth-google-button'));
+
+    await waitFor(() => {
+      expect(mockSignInWithOAuth).toHaveBeenCalledWith('google');
+      expect(getByText('OAuth failed')).toBeTruthy();
+    });
   });
 
   it('disables submit button when email is empty', () => {
