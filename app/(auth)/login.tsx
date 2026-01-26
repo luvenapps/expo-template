@@ -61,9 +61,8 @@ export default function LoginScreen() {
     }
 
     hasNavigatedRef.current = true;
-    if (Platform.OS !== 'web') {
-      setShowRedirectSpinner(true);
-    }
+
+    setShowRedirectSpinner(true);
 
     if (navigation.canGoBack()) {
       router.back();
@@ -74,9 +73,8 @@ export default function LoginScreen() {
 
   const handleAuthError = useCallback(
     (rawError: unknown) => {
-      if (Platform.OS !== 'web') {
-        setShowRedirectSpinner(false);
-      }
+      setShowRedirectSpinner(false);
+
       // Fast-path for string or partial objects we get back from auth service/tests
       if (typeof rawError === 'string') {
         setError(rawError);
@@ -122,41 +120,35 @@ export default function LoginScreen() {
     /* istanbul ignore next -- guarded by disabled button; covered via UI paths */
     if (!isFormValid) return;
 
-    if (Platform.OS !== 'web') {
-      setShowRedirectSpinner(true);
-    }
+    setShowRedirectSpinner(true);
+
     const result = await signInWithEmail(email, password);
     if (result.success) {
-      if (Platform.OS !== 'web') {
-        setShowRedirectSpinner(true);
-      }
+      setShowRedirectSpinner(true);
+
       // Clear fields and error on successful login
       setEmail('');
       setPassword('');
       setShowPassword(false);
       setError(null);
     } else {
-      if (Platform.OS !== 'web') {
-        setShowRedirectSpinner(false);
-      }
+      setShowRedirectSpinner(false);
+
       handleAuthError(result.friendlyError ?? result.error ?? t('auth.errorUnknown'));
     }
   };
 
   const handleOAuthSignIn = async (provider: 'apple' | 'google') => {
-    if (Platform.OS !== 'web') {
-      setShowRedirectSpinner(true);
-    }
+    setShowRedirectSpinner(true);
+
     const result = await signInWithOAuth(provider);
     if (result.success) {
-      if (Platform.OS !== 'web') {
-        setShowRedirectSpinner(true);
-      }
+      setShowRedirectSpinner(true);
+
       setError(null);
     } else {
-      if (Platform.OS !== 'web') {
-        setShowRedirectSpinner(false);
-      }
+      setShowRedirectSpinner(false);
+
       handleAuthError(result.friendlyError ?? result.error ?? t('auth.errorUnknown'));
     }
   };

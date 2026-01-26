@@ -62,9 +62,9 @@ export default function SignUpScreen() {
     }
 
     hasNavigatedRef.current = true;
-    if (Platform.OS !== 'web') {
-      setShowRedirectSpinner(true);
-    }
+
+    setShowRedirectSpinner(true);
+
     if (navigation.canGoBack()) {
       router.back();
     } else {
@@ -134,16 +134,14 @@ export default function SignUpScreen() {
   };
 
   const handleOAuthSignIn = async (provider: 'apple' | 'google') => {
-    if (Platform.OS !== 'web') {
-      setShowRedirectSpinner(true);
-    }
+    setShowRedirectSpinner(true);
+
     const result = await signInWithOAuth(provider);
     if (result.success) {
       setErrorMessage(null);
     } else {
-      if (Platform.OS !== 'web') {
-        setShowRedirectSpinner(false);
-      }
+      setShowRedirectSpinner(false);
+
       const { friendly } = showFriendlyError(
         result.friendlyError ?? result.error ?? t('auth.signup.errorUnknown'),
         { surface: 'auth.signup.oauth' },
@@ -331,9 +329,9 @@ export default function SignUpScreen() {
     }
 
     setIsSubmitting(true);
-    if (Platform.OS !== 'web') {
-      setShowRedirectSpinner(true);
-    }
+
+    setShowRedirectSpinner(true);
+
     setErrorMessage(null);
     setStatusMessage(null);
     const normalizedPhone = normalizePhoneNumber(trimmedPhone);
@@ -348,9 +346,8 @@ export default function SignUpScreen() {
       setStatusMessage(t('auth.signup.checkEmailDescription'));
       router.replace('/(auth)/login');
     } else {
-      if (Platform.OS !== 'web') {
-        setShowRedirectSpinner(false);
-      }
+      setShowRedirectSpinner(false);
+
       const { friendly } = showFriendlyError(
         result.friendlyError ?? result.error ?? t('auth.signup.errorUnknown'),
         { surface: 'auth.signup.email' },
@@ -666,7 +663,12 @@ export default function SignUpScreen() {
 
             <Separator marginTop={Platform.OS === 'web' ? '$0' : '$4'}></Separator>
 
-            <YStack width="100%" alignItems="center" gap="$2" marginBottom="$2">
+            <YStack
+              width="100%"
+              alignItems="center"
+              gap="$2"
+              marginBottom={Platform.OS === 'web' ? -10 : '$4'}
+            >
               <CaptionText color="$colorMuted">{t('auth.signup.hasAccountPrompt')}</CaptionText>
               <PrimaryButton
                 testID="sign-in-button"
