@@ -303,6 +303,7 @@ describe('AppProviders', () => {
   const originalConsoleInfo = console.info;
   const originalConsoleWarn = console.warn;
   const originalConsoleError = console.error;
+  const originalFirebaseToggle = process.env.EXPO_PUBLIC_TURN_ON_FIREBASE;
 
   beforeAll(() => {
     console.log = jest.fn();
@@ -320,6 +321,7 @@ describe('AppProviders', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = '';
     mockSessionState.status = 'unauthenticated';
     mockSessionState.session = null;
     mockGetLocalName.mockReturnValue(null);
@@ -349,6 +351,10 @@ describe('AppProviders', () => {
         setOpen: jest.fn(),
       },
     });
+  });
+
+  afterEach(() => {
+    process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = originalFirebaseToggle;
   });
 
   describe('Rendering', () => {
