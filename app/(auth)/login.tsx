@@ -20,7 +20,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { useTranslation } from 'react-i18next';
 import { Platform, TextInput } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import { Button, Card, Form, Separator, View, YStack, useThemeName } from 'tamagui';
+import { Button, Card, Form, Separator, Spinner, View, YStack, useThemeName } from 'tamagui';
 
 export default function LoginScreen() {
   const navigation = useNavigation<NavigationProp<ParamListBase>>();
@@ -36,6 +36,7 @@ export default function LoginScreen() {
   const error = useSessionStore((state) => state.error);
   const status = useSessionStore((state) => state.status);
   const hasNavigatedRef = useRef(false);
+  const [showRedirectSpinner, setShowRedirectSpinner] = useState(false);
   const toast = useToast();
   const handleFriendlyError = useFriendlyErrorHandler();
   const { t } = useTranslation();
@@ -60,6 +61,10 @@ export default function LoginScreen() {
     }
 
     hasNavigatedRef.current = true;
+    if (Platform.OS !== 'web') {
+      setShowRedirectSpinner(true);
+    }
+
     if (navigation.canGoBack()) {
       router.back();
     } else {
@@ -69,6 +74,9 @@ export default function LoginScreen() {
 
   const handleAuthError = useCallback(
     (rawError: unknown) => {
+      if (Platform.OS !== 'web') {
+        setShowRedirectSpinner(false);
+      }
       // Fast-path for string or partial objects we get back from auth service/tests
       if (typeof rawError === 'string') {
         setError(rawError);
@@ -114,31 +122,41 @@ export default function LoginScreen() {
     /* istanbul ignore next -- guarded by disabled button; covered via UI paths */
     if (!isFormValid) return;
 
+    if (Platform.OS !== 'web') {
+      setShowRedirectSpinner(true);
+    }
     const result = await signInWithEmail(email, password);
     if (result.success) {
+      if (Platform.OS !== 'web') {
+        setShowRedirectSpinner(true);
+      }
       // Clear fields and error on successful login
       setEmail('');
       setPassword('');
       setShowPassword(false);
       setError(null);
-
-      if (navigation.canGoBack()) {
-        hasNavigatedRef.current = true;
-        router.back();
-      } else {
-        hasNavigatedRef.current = true;
-        router.replace('/(tabs)');
-      }
     } else {
+      if (Platform.OS !== 'web') {
+        setShowRedirectSpinner(false);
+      }
       handleAuthError(result.friendlyError ?? result.error ?? t('auth.errorUnknown'));
     }
   };
 
   const handleOAuthSignIn = async (provider: 'apple' | 'google') => {
+    if (Platform.OS !== 'web') {
+      setShowRedirectSpinner(true);
+    }
     const result = await signInWithOAuth(provider);
     if (result.success) {
+      if (Platform.OS !== 'web') {
+        setShowRedirectSpinner(true);
+      }
       setError(null);
     } else {
+      if (Platform.OS !== 'web') {
+        setShowRedirectSpinner(false);
+      }
       handleAuthError(result.friendlyError ?? result.error ?? t('auth.errorUnknown'));
     }
   };
@@ -487,10 +505,24 @@ export default function LoginScreen() {
       </Card>
     </ScreenContainer>
   );
-
   return (
     <>
       {content}
+      {showRedirectSpinner ? (
+        <View
+          position="absolute"
+          top={0}
+          right={0}
+          bottom={0}
+          left={0}
+          alignItems="center"
+          justifyContent="center"
+          backgroundColor="rgba(0,0,0,0.2)"
+          pointerEvents="auto"
+        >
+          <Spinner size="large" color="$accentColor" />
+        </View>
+      ) : null}
       <ToastContainer messages={toast.messages} dismiss={toast.dismiss} />
     </>
   );

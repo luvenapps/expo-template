@@ -207,27 +207,49 @@ describe('LoginScreen', () => {
   });
 
   test('navigates back on successful login', async () => {
-    const signInMock = jest.fn().mockResolvedValue({ success: true });
-    mockedUseSessionStore.mockImplementation((selector: any) =>
-      selector({
-        signInWithEmail: signInMock,
-        signInWithOAuth: jest.fn().mockResolvedValue({ success: true }),
-        setError: jest.fn(),
-        isLoading: false,
-        error: null,
-      }),
-    );
+    mockCanGoBack.mockReturnValue(true);
 
-    const { getByTestId } = renderWithProviders(<LoginScreen />);
+    const mockStore = {
+      signInWithEmail: jest.fn(),
+      signInWithOAuth: jest.fn().mockResolvedValue({ success: true }),
+      setError: jest.fn(),
+      isLoading: false,
+      error: null,
+      status: 'unauthenticated' as 'unauthenticated' | 'authenticated',
+    };
+
+    mockStore.signInWithEmail.mockImplementation(async () => {
+      mockStore.status = 'authenticated';
+      return { success: true };
+    });
+
+    mockedUseSessionStore.mockImplementation((selector: any) => selector(mockStore));
+
+    const { getByTestId, rerender } = renderWithProviders(<LoginScreen />);
 
     fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
     fireEvent.changeText(getByTestId('password-input'), 'password');
 
+    fireEvent.press(getByTestId('sign-in-button'));
+
+    // Wait for signIn to complete
     await act(async () => {
-      fireEvent.press(getByTestId('sign-in-button'));
-      await waitFor(() => {
-        expect(mockBack).toHaveBeenCalled();
-      });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    // Trigger re-render with updated status to simulate Zustand update
+    await act(async () => {
+      rerender(
+        <TamaguiProvider config={tamaguiConfig}>
+          <Theme name="light">
+            <LoginScreen />
+          </Theme>
+        </TamaguiProvider>,
+      );
+    });
+
+    await waitFor(() => {
+      expect(mockBack).toHaveBeenCalled();
     });
 
     expect(mockReplace).not.toHaveBeenCalled();
@@ -470,16 +492,48 @@ describe('LoginScreen', () => {
 
   test('replaces to tabs when no history exists', async () => {
     mockCanGoBack.mockReturnValue(false);
-    const { getByTestId } = renderWithProviders(<LoginScreen />);
+
+    const mockStore = {
+      signInWithEmail: jest.fn(),
+      signInWithOAuth: jest.fn().mockResolvedValue({ success: true }),
+      setError: jest.fn(),
+      isLoading: false,
+      error: null,
+      status: 'unauthenticated' as 'unauthenticated' | 'authenticated',
+    };
+
+    mockStore.signInWithEmail.mockImplementation(async () => {
+      mockStore.status = 'authenticated';
+      return { success: true };
+    });
+
+    mockedUseSessionStore.mockImplementation((selector: any) => selector(mockStore));
+
+    const { getByTestId, rerender } = renderWithProviders(<LoginScreen />);
 
     fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
     fireEvent.changeText(getByTestId('password-input'), 'password');
 
+    fireEvent.press(getByTestId('sign-in-button'));
+
+    // Wait for signIn to complete
     await act(async () => {
-      fireEvent.press(getByTestId('sign-in-button'));
-      await waitFor(() => {
-        expect(mockReplace).toHaveBeenCalledWith('/(tabs)');
-      });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    // Trigger re-render with updated status to simulate Zustand update
+    await act(async () => {
+      rerender(
+        <TamaguiProvider config={tamaguiConfig}>
+          <Theme name="light">
+            <LoginScreen />
+          </Theme>
+        </TamaguiProvider>,
+      );
+    });
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/(tabs)');
     });
 
     expect(mockBack).not.toHaveBeenCalled();

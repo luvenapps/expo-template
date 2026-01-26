@@ -22,7 +22,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Platform, TextInput } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import { Button, Card, Form, Separator, View, YStack, useThemeName } from 'tamagui';
+import { Button, Card, Form, Separator, Spinner, View, YStack, useThemeName } from 'tamagui';
 
 export default function SignUpScreen() {
   const navigation = useNavigation<NavigationProp<ParamListBase>>();
@@ -53,6 +53,7 @@ export default function SignUpScreen() {
   const [emailError, setEmailError] = useState<string | null>(null);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [showRedirectSpinner, setShowRedirectSpinner] = useState(false);
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -61,6 +62,9 @@ export default function SignUpScreen() {
     }
 
     hasNavigatedRef.current = true;
+    if (Platform.OS !== 'web') {
+      setShowRedirectSpinner(true);
+    }
     if (navigation.canGoBack()) {
       router.back();
     } else {
@@ -130,10 +134,16 @@ export default function SignUpScreen() {
   };
 
   const handleOAuthSignIn = async (provider: 'apple' | 'google') => {
+    if (Platform.OS !== 'web') {
+      setShowRedirectSpinner(true);
+    }
     const result = await signInWithOAuth(provider);
     if (result.success) {
       setErrorMessage(null);
     } else {
+      if (Platform.OS !== 'web') {
+        setShowRedirectSpinner(false);
+      }
       const { friendly } = showFriendlyError(
         result.friendlyError ?? result.error ?? t('auth.signup.errorUnknown'),
         { surface: 'auth.signup.oauth' },
@@ -321,6 +331,9 @@ export default function SignUpScreen() {
     }
 
     setIsSubmitting(true);
+    if (Platform.OS !== 'web') {
+      setShowRedirectSpinner(true);
+    }
     setErrorMessage(null);
     setStatusMessage(null);
     const normalizedPhone = normalizePhoneNumber(trimmedPhone);
@@ -335,6 +348,9 @@ export default function SignUpScreen() {
       setStatusMessage(t('auth.signup.checkEmailDescription'));
       router.replace('/(auth)/login');
     } else {
+      if (Platform.OS !== 'web') {
+        setShowRedirectSpinner(false);
+      }
       const { friendly } = showFriendlyError(
         result.friendlyError ?? result.error ?? t('auth.signup.errorUnknown'),
         { surface: 'auth.signup.email' },
@@ -663,6 +679,20 @@ export default function SignUpScreen() {
           </YStack>
         </Card>
       </ScreenContainer>
+      {showRedirectSpinner ? (
+        <View
+          position="absolute"
+          top={0}
+          right={0}
+          bottom={0}
+          left={0}
+          alignItems="center"
+          justifyContent="center"
+          backgroundColor="rgba(0,0,0,0.2)"
+        >
+          <Spinner size="large" color="$accentColor" />
+        </View>
+      ) : null}
     </>
   );
 }
