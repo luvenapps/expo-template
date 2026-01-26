@@ -23,4 +23,11 @@ describe('featureFlags fallback provider', () => {
 
     expect(value).toBe('fallback');
   });
+
+  it('returns default flags and default source', () => {
+    const provider = createFallbackProvider();
+
+    expect(provider.getFlag('test_feature_flag', false)).toBe(false);
+    expect(provider.getSource('test_feature_flag')).toBe('default');
+  });
 });
