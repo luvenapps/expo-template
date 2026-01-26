@@ -62,7 +62,7 @@ jobs:
     name: Build • E2E (Android) - Hosted Ubuntu
     if: vars.USE_SELF_HOSTED != 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
     defaults:
       run:
         working-directory: expo-template-testing
