@@ -3,6 +3,8 @@ import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import SignUpScreen from '../../../app/(auth)/signup';
 import ForgotPasswordScreen from '../../../app/(auth)/forgot-password';
 import { signUpWithEmail, sendPasswordReset } from '@/auth/service';
+import { TamaguiProvider, Theme } from 'tamagui';
+import { tamaguiConfig } from '../../../tamagui.config';
 
 // Mock react-native-safe-area-context
 jest.mock('react-native-safe-area-context', () => ({
@@ -25,6 +27,7 @@ jest.mock('@tamagui/lucide-icons', () => ({
 }));
 
 jest.mock('tamagui', () => {
+  const actual = jest.requireActual('tamagui');
   const React = jest.requireActual('react');
   const { View, Text, TextInput, TouchableOpacity } = jest.requireActual('react-native');
 
@@ -56,6 +59,7 @@ jest.mock('tamagui', () => {
   );
 
   return {
+    ...actual,
     Input,
     Button,
     Card: createForwarded(View),
@@ -93,6 +97,15 @@ jest.mock('react-i18next', () => ({
 const mockedSignUp = signUpWithEmail as jest.Mock;
 const mockedPasswordReset = sendPasswordReset as jest.Mock;
 
+// Helper to render components with Tamagui providers
+const renderWithProviders = (component: React.ReactElement) => {
+  return render(
+    <TamaguiProvider config={tamaguiConfig}>
+      <Theme name="light">{component}</Theme>
+    </TamaguiProvider>,
+  );
+};
+
 describe('Auth auxiliary flows', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -102,7 +115,7 @@ describe('Auth auxiliary flows', () => {
   describe('SignUpScreen', () => {
     it('submits sign up form successfully', async () => {
       mockedSignUp.mockResolvedValueOnce({ success: true });
-      const { getByTestId } = render(<SignUpScreen />);
+      const { getByTestId } = renderWithProviders(<SignUpScreen />);
 
       fireEvent.changeText(getByTestId('name-input'), 'Test User');
       fireEvent.changeText(getByTestId('email-input'), 'new@example.com');
@@ -122,7 +135,7 @@ describe('Auth auxiliary flows', () => {
 
     it('trims whitespace from email before submission', async () => {
       mockedSignUp.mockResolvedValueOnce({ success: true });
-      const { getByTestId } = render(<SignUpScreen />);
+      const { getByTestId } = renderWithProviders(<SignUpScreen />);
 
       fireEvent.changeText(getByTestId('name-input'), 'Test User');
       fireEvent.changeText(getByTestId('email-input'), '  spaced@example.com  ');
@@ -140,7 +153,7 @@ describe('Auth auxiliary flows', () => {
     });
 
     it('shows error when passwords do not match', async () => {
-      const { getByTestId } = render(<SignUpScreen />);
+      const { getByTestId } = renderWithProviders(<SignUpScreen />);
 
       fireEvent.changeText(getByTestId('name-input'), 'Test User');
       fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
@@ -155,7 +168,7 @@ describe('Auth auxiliary flows', () => {
     });
 
     it('shows error when form is incomplete', async () => {
-      const { getByTestId } = render(<SignUpScreen />);
+      const { getByTestId } = renderWithProviders(<SignUpScreen />);
 
       fireEvent.changeText(getByTestId('email-input'), '');
       fireEvent.changeText(getByTestId('name-input'), '');
@@ -170,7 +183,7 @@ describe('Auth auxiliary flows', () => {
     });
 
     it('shows error when password is too short', async () => {
-      const { getByTestId } = render(<SignUpScreen />);
+      const { getByTestId } = renderWithProviders(<SignUpScreen />);
 
       fireEvent.changeText(getByTestId('name-input'), 'Test User');
       fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
@@ -190,7 +203,7 @@ describe('Auth auxiliary flows', () => {
         error: 'User already exists',
       });
 
-      const { getByTestId } = render(<SignUpScreen />);
+      const { getByTestId } = renderWithProviders(<SignUpScreen />);
 
       fireEvent.changeText(getByTestId('name-input'), 'Test User');
       fireEvent.changeText(getByTestId('email-input'), 'existing@example.com');
@@ -211,7 +224,7 @@ describe('Auth auxiliary flows', () => {
         friendlyError: 'This email is already registered',
       });
 
-      const { getByTestId } = render(<SignUpScreen />);
+      const { getByTestId } = renderWithProviders(<SignUpScreen />);
 
       fireEvent.changeText(getByTestId('name-input'), 'Test User');
       fireEvent.changeText(getByTestId('email-input'), 'existing@example.com');
@@ -227,7 +240,7 @@ describe('Auth auxiliary flows', () => {
     });
 
     it('toggles password visibility', () => {
-      const { getByTestId } = render(<SignUpScreen />);
+      const { getByTestId } = renderWithProviders(<SignUpScreen />);
 
       const passwordField = getByTestId('password-input');
       const toggleButton = getByTestId('toggle-password-visibility');
@@ -245,7 +258,7 @@ describe('Auth auxiliary flows', () => {
     });
 
     it('toggles confirm password visibility', () => {
-      const { getByTestId } = render(<SignUpScreen />);
+      const { getByTestId } = renderWithProviders(<SignUpScreen />);
 
       const confirmPasswordField = getByTestId('confirm-password-input');
       const toggleButton = getByTestId('toggle-confirm-password-visibility');
@@ -263,7 +276,7 @@ describe('Auth auxiliary flows', () => {
     });
 
     it('navigates to login screen when sign in button is pressed', () => {
-      const { getByTestId } = render(<SignUpScreen />);
+      const { getByTestId } = renderWithProviders(<SignUpScreen />);
 
       fireEvent.press(getByTestId('sign-in-button'));
 
@@ -274,7 +287,7 @@ describe('Auth auxiliary flows', () => {
   describe('ForgotPasswordScreen', () => {
     it('submits forgot password form successfully', async () => {
       mockedPasswordReset.mockResolvedValueOnce({ success: true });
-      const { getByTestId } = render(<ForgotPasswordScreen />);
+      const { getByTestId } = renderWithProviders(<ForgotPasswordScreen />);
 
       fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
       fireEvent.press(getByTestId('send-reset-link-button'));
@@ -287,7 +300,7 @@ describe('Auth auxiliary flows', () => {
 
     it('trims whitespace from email before submission', async () => {
       mockedPasswordReset.mockResolvedValueOnce({ success: true });
-      const { getByTestId } = render(<ForgotPasswordScreen />);
+      const { getByTestId } = renderWithProviders(<ForgotPasswordScreen />);
 
       fireEvent.changeText(getByTestId('email-input'), '  spaced@example.com  ');
       fireEvent.press(getByTestId('send-reset-link-button'));
@@ -298,7 +311,7 @@ describe('Auth auxiliary flows', () => {
     });
 
     it('shows error when email is empty', async () => {
-      const { getByTestId } = render(<ForgotPasswordScreen />);
+      const { getByTestId } = renderWithProviders(<ForgotPasswordScreen />);
 
       fireEvent.changeText(getByTestId('email-input'), '');
       fireEvent.press(getByTestId('send-reset-link-button'));
@@ -309,7 +322,7 @@ describe('Auth auxiliary flows', () => {
     });
 
     it('shows error when email is only whitespace', async () => {
-      const { getByTestId } = render(<ForgotPasswordScreen />);
+      const { getByTestId } = renderWithProviders(<ForgotPasswordScreen />);
 
       fireEvent.changeText(getByTestId('email-input'), '   ');
       fireEvent.press(getByTestId('send-reset-link-button'));
@@ -325,7 +338,7 @@ describe('Auth auxiliary flows', () => {
         error: 'Email not found',
       });
 
-      const { getByTestId } = render(<ForgotPasswordScreen />);
+      const { getByTestId } = renderWithProviders(<ForgotPasswordScreen />);
 
       fireEvent.changeText(getByTestId('email-input'), 'notfound@example.com');
       fireEvent.press(getByTestId('send-reset-link-button'));
@@ -342,7 +355,7 @@ describe('Auth auxiliary flows', () => {
         friendlyError: 'No account found with this email',
       });
 
-      const { getByTestId } = render(<ForgotPasswordScreen />);
+      const { getByTestId } = renderWithProviders(<ForgotPasswordScreen />);
 
       fireEvent.changeText(getByTestId('email-input'), 'notfound@example.com');
       fireEvent.press(getByTestId('send-reset-link-button'));
@@ -354,7 +367,7 @@ describe('Auth auxiliary flows', () => {
     });
 
     it('navigates to login screen when back button is pressed', () => {
-      const { getByTestId } = render(<ForgotPasswordScreen />);
+      const { getByTestId } = renderWithProviders(<ForgotPasswordScreen />);
 
       fireEvent.press(getByTestId('back-to-sign-in-button'));
 

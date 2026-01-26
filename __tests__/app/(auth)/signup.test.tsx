@@ -93,6 +93,8 @@ import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import React from 'react';
 import SignUpScreen from '../../../app/(auth)/signup';
 import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
+import { TamaguiProvider, Theme } from 'tamagui';
+import { tamaguiConfig } from '../../../tamagui.config';
 
 jest.mock('@/auth/service', () => ({
   signUpWithEmail: jest.fn(),
@@ -104,11 +106,15 @@ jest.mock('@/errors/useFriendlyErrorHandler', () => ({
 
 const mockReplace = jest.fn();
 const mockPush = jest.fn();
+const mockCanGoBack = jest.fn(() => true);
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({
     replace: mockReplace,
     push: mockPush,
+  }),
+  useNavigation: () => ({
+    canGoBack: mockCanGoBack,
   }),
 }));
 
@@ -116,6 +122,15 @@ const mockedSignUpWithEmail = signUpWithEmail as jest.MockedFunction<typeof sign
 const mockedFriendlyError = useFriendlyErrorHandler as jest.MockedFunction<
   typeof useFriendlyErrorHandler
 >;
+
+// Helper to render components with Tamagui providers
+const renderWithProviders = (component: React.ReactElement) => {
+  return render(
+    <TamaguiProvider config={tamaguiConfig}>
+      <Theme name="light">{component}</Theme>
+    </TamaguiProvider>,
+  );
+};
 
 // Suppress act() warnings - these are expected for async updates in handleSubmit
 const originalError = console.error;
@@ -149,7 +164,7 @@ describe('SignUpScreen', () => {
   });
 
   it('renders signup screen with all fields', () => {
-    const { getByTestId } = render(<SignUpScreen />);
+    const { getByTestId } = renderWithProviders(<SignUpScreen />);
 
     expect(getByTestId('name-input')).toBeDefined();
     expect(getByTestId('email-input')).toBeDefined();
@@ -161,7 +176,7 @@ describe('SignUpScreen', () => {
   });
 
   it('disables submit button when email is empty', () => {
-    const { getByTestId } = render(<SignUpScreen />);
+    const { getByTestId } = renderWithProviders(<SignUpScreen />);
 
     const nameInput = getByTestId('name-input');
     const passwordInput = getByTestId('password-input');
@@ -176,7 +191,7 @@ describe('SignUpScreen', () => {
   });
 
   it('disables submit button when password is less than 8 characters', () => {
-    const { getByTestId } = render(<SignUpScreen />);
+    const { getByTestId } = renderWithProviders(<SignUpScreen />);
 
     const nameInput = getByTestId('name-input');
     const emailInput = getByTestId('email-input');
@@ -193,7 +208,7 @@ describe('SignUpScreen', () => {
   });
 
   it('disables submit button when confirm password is less than 8 characters', () => {
-    const { getByTestId } = render(<SignUpScreen />);
+    const { getByTestId } = renderWithProviders(<SignUpScreen />);
 
     const nameInput = getByTestId('name-input');
     const emailInput = getByTestId('email-input');
@@ -210,7 +225,7 @@ describe('SignUpScreen', () => {
   });
 
   it('enables submit button when all fields are valid', () => {
-    const { getByTestId } = render(<SignUpScreen />);
+    const { getByTestId } = renderWithProviders(<SignUpScreen />);
 
     const nameInput = getByTestId('name-input');
     const emailInput = getByTestId('email-input');
@@ -227,7 +242,7 @@ describe('SignUpScreen', () => {
   });
 
   it('toggles password visibility when eye icon is pressed', () => {
-    const { getByTestId } = render(<SignUpScreen />);
+    const { getByTestId } = renderWithProviders(<SignUpScreen />);
 
     const passwordInput = getByTestId('password-input');
     const toggleButton = getByTestId('toggle-password-visibility');
@@ -245,7 +260,7 @@ describe('SignUpScreen', () => {
   });
 
   it('toggles confirm password visibility when eye icon is pressed', () => {
-    const { getByTestId } = render(<SignUpScreen />);
+    const { getByTestId } = renderWithProviders(<SignUpScreen />);
 
     const confirmPasswordInput = getByTestId('confirm-password-input');
     const toggleButton = getByTestId('toggle-confirm-password-visibility');
@@ -263,7 +278,7 @@ describe('SignUpScreen', () => {
   });
 
   it('shows error when passwords do not match', async () => {
-    const { getByTestId } = render(<SignUpScreen />);
+    const { getByTestId } = renderWithProviders(<SignUpScreen />);
 
     const nameInput = getByTestId('name-input');
     const emailInput = getByTestId('email-input');
@@ -283,7 +298,7 @@ describe('SignUpScreen', () => {
   });
 
   it('shows error when name is missing on submit', async () => {
-    const { getByTestId, getByText } = render(<SignUpScreen />);
+    const { getByTestId, getByText } = renderWithProviders(<SignUpScreen />);
 
     fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
     fireEvent.changeText(getByTestId('password-input'), 'password123');
@@ -297,7 +312,7 @@ describe('SignUpScreen', () => {
   });
 
   it('shows email validation error on blur', async () => {
-    const { getByTestId, getByText } = render(<SignUpScreen />);
+    const { getByTestId, getByText } = renderWithProviders(<SignUpScreen />);
 
     fireEvent.changeText(getByTestId('name-input'), 'Test User');
     fireEvent.changeText(getByTestId('email-input'), 'not-an-email');
@@ -309,7 +324,7 @@ describe('SignUpScreen', () => {
   });
 
   it('clears email validation error when corrected', async () => {
-    const { getByTestId, queryByText } = render(<SignUpScreen />);
+    const { getByTestId, queryByText } = renderWithProviders(<SignUpScreen />);
 
     const emailInput = getByTestId('email-input');
 
@@ -328,7 +343,7 @@ describe('SignUpScreen', () => {
   });
 
   it('validates email on submit when email is invalid', async () => {
-    const { getByTestId, getByText } = render(<SignUpScreen />);
+    const { getByTestId, getByText } = renderWithProviders(<SignUpScreen />);
 
     fireEvent.changeText(getByTestId('name-input'), 'Test User');
     fireEvent.changeText(getByTestId('email-input'), 'bad-email');
@@ -344,7 +359,7 @@ describe('SignUpScreen', () => {
   });
 
   it('rejects invalid phone number on submit', async () => {
-    const { getByTestId, getByText } = render(<SignUpScreen />);
+    const { getByTestId, getByText } = renderWithProviders(<SignUpScreen />);
 
     fireEvent.changeText(getByTestId('name-input'), 'Test User');
     fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
@@ -360,7 +375,7 @@ describe('SignUpScreen', () => {
   });
 
   it('clears phone input when only non-digit characters are entered', () => {
-    const { getByTestId } = render(<SignUpScreen />);
+    const { getByTestId } = renderWithProviders(<SignUpScreen />);
 
     fireEvent.changeText(getByTestId('phone-input'), '---');
 
@@ -368,7 +383,7 @@ describe('SignUpScreen', () => {
   });
 
   it('validates phone number when touched', async () => {
-    const { getByTestId, queryByText } = render(<SignUpScreen />);
+    const { getByTestId, queryByText } = renderWithProviders(<SignUpScreen />);
 
     const phoneInput = getByTestId('phone-input');
 
@@ -387,7 +402,7 @@ describe('SignUpScreen', () => {
   });
 
   it('formats international phone numbers with a + prefix', () => {
-    const { getByTestId } = render(<SignUpScreen />);
+    const { getByTestId } = renderWithProviders(<SignUpScreen />);
 
     fireEvent.changeText(getByTestId('phone-input'), '+14155552671');
 
@@ -395,7 +410,7 @@ describe('SignUpScreen', () => {
   });
 
   it('sets phone error when touched and invalid input is entered', async () => {
-    const { getByTestId, queryByText } = render(<SignUpScreen />);
+    const { getByTestId, queryByText } = renderWithProviders(<SignUpScreen />);
 
     const phoneInput = getByTestId('phone-input');
 
@@ -408,7 +423,7 @@ describe('SignUpScreen', () => {
   });
 
   it('sets phone error when blurring an invalid number', async () => {
-    const { getByTestId, queryByText } = render(<SignUpScreen />);
+    const { getByTestId, queryByText } = renderWithProviders(<SignUpScreen />);
 
     const phoneInput = getByTestId('phone-input');
 
@@ -421,7 +436,7 @@ describe('SignUpScreen', () => {
   });
 
   it('clears phone error when touched and input is emptied', async () => {
-    const { getByTestId, queryByText } = render(<SignUpScreen />);
+    const { getByTestId, queryByText } = renderWithProviders(<SignUpScreen />);
 
     const phoneInput = getByTestId('phone-input');
 
@@ -440,7 +455,7 @@ describe('SignUpScreen', () => {
   });
 
   it('keeps phone error clear when blurring an empty field', async () => {
-    const { getByTestId, queryByText } = render(<SignUpScreen />);
+    const { getByTestId, queryByText } = renderWithProviders(<SignUpScreen />);
 
     fireEvent(getByTestId('phone-input'), 'blur');
 
@@ -451,7 +466,7 @@ describe('SignUpScreen', () => {
 
   it('submits normalized phone number metadata', async () => {
     mockedSignUpWithEmail.mockResolvedValue({ success: true });
-    const { getByTestId } = render(<SignUpScreen />);
+    const { getByTestId } = renderWithProviders(<SignUpScreen />);
 
     fireEvent.changeText(getByTestId('name-input'), 'Test User');
     fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
@@ -470,7 +485,7 @@ describe('SignUpScreen', () => {
 
   it('submits normalized phone number when provided in + format', async () => {
     mockedSignUpWithEmail.mockResolvedValue({ success: true });
-    const { getByTestId } = render(<SignUpScreen />);
+    const { getByTestId } = renderWithProviders(<SignUpScreen />);
 
     fireEvent.changeText(getByTestId('name-input'), 'Test User');
     fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
@@ -488,7 +503,7 @@ describe('SignUpScreen', () => {
   });
 
   it('allows deleting phone input without reformatting', () => {
-    const { getByTestId } = render(<SignUpScreen />);
+    const { getByTestId } = renderWithProviders(<SignUpScreen />);
 
     fireEvent.changeText(getByTestId('phone-input'), '4155552671');
     const formatted = getByTestId('phone-input').props.value as string;
@@ -499,7 +514,7 @@ describe('SignUpScreen', () => {
   });
 
   it('shows missing description error when password requirements are unmet', async () => {
-    const { getByTestId, getByText } = render(<SignUpScreen />);
+    const { getByTestId, getByText } = renderWithProviders(<SignUpScreen />);
 
     fireEvent.changeText(getByTestId('name-input'), 'Test User');
     fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
@@ -514,7 +529,7 @@ describe('SignUpScreen', () => {
   });
 
   it('advances focus across fields on submit editing', () => {
-    const { getByTestId } = render(<SignUpScreen />);
+    const { getByTestId } = renderWithProviders(<SignUpScreen />);
 
     fireEvent(getByTestId('name-input'), 'submitEditing');
     fireEvent(getByTestId('email-input'), 'submitEditing');
@@ -523,7 +538,7 @@ describe('SignUpScreen', () => {
   });
 
   it('shows error toast when submitting with invalid form', async () => {
-    const { getByTestId } = render(<SignUpScreen />);
+    const { getByTestId } = renderWithProviders(<SignUpScreen />);
 
     const submitButton = getByTestId('create-account-button');
     fireEvent.press(submitButton);
@@ -536,7 +551,7 @@ describe('SignUpScreen', () => {
   it('calls signUpWithEmail and navigates on success', async () => {
     mockedSignUpWithEmail.mockResolvedValue({ success: true });
 
-    const { getByTestId } = render(<SignUpScreen />);
+    const { getByTestId } = renderWithProviders(<SignUpScreen />);
 
     const nameInput = getByTestId('name-input');
     const emailInput = getByTestId('email-input');
@@ -568,7 +583,7 @@ describe('SignUpScreen', () => {
       error: 'Signup failed',
     });
 
-    const { getByTestId } = render(<SignUpScreen />);
+    const { getByTestId } = renderWithProviders(<SignUpScreen />);
 
     const nameInput = getByTestId('name-input');
     const emailInput = getByTestId('email-input');
@@ -606,7 +621,7 @@ describe('SignUpScreen', () => {
       error: 'Signup failed',
     });
 
-    const { getByTestId, getByText } = render(<SignUpScreen />);
+    const { getByTestId, getByText } = renderWithProviders(<SignUpScreen />);
 
     fireEvent.changeText(getByTestId('name-input'), 'Test User');
     fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
@@ -635,7 +650,7 @@ describe('SignUpScreen', () => {
       error: 'Signup failed',
     });
 
-    const { getByTestId, getByText } = render(<SignUpScreen />);
+    const { getByTestId, getByText } = renderWithProviders(<SignUpScreen />);
 
     fireEvent.changeText(getByTestId('name-input'), 'Test User');
     fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
@@ -664,7 +679,7 @@ describe('SignUpScreen', () => {
       error: 'Signup failed',
     });
 
-    const { getByTestId, getByText } = render(<SignUpScreen />);
+    const { getByTestId, getByText } = renderWithProviders(<SignUpScreen />);
 
     fireEvent.changeText(getByTestId('name-input'), 'Test User');
     fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
@@ -689,7 +704,7 @@ describe('SignUpScreen', () => {
       error: 'Signup failed',
     });
 
-    const { getByTestId, getByText } = render(<SignUpScreen />);
+    const { getByTestId, getByText } = renderWithProviders(<SignUpScreen />);
 
     fireEvent.changeText(getByTestId('name-input'), 'Test User');
     fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
@@ -713,7 +728,7 @@ describe('SignUpScreen', () => {
       friendlyError: { code: 'unknown', type: 'error', descriptionKey: 'errors.signup' },
     });
 
-    const { getByTestId } = render(<SignUpScreen />);
+    const { getByTestId } = renderWithProviders(<SignUpScreen />);
 
     fireEvent.changeText(getByTestId('name-input'), 'Test User');
     fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
@@ -729,7 +744,7 @@ describe('SignUpScreen', () => {
   it('trims email before submitting', async () => {
     mockedSignUpWithEmail.mockResolvedValue({ success: true });
 
-    const { getByTestId } = render(<SignUpScreen />);
+    const { getByTestId } = renderWithProviders(<SignUpScreen />);
 
     const nameInput = getByTestId('name-input');
     const emailInput = getByTestId('email-input');
@@ -752,7 +767,7 @@ describe('SignUpScreen', () => {
   });
 
   it('navigates to login when sign in button is pressed', () => {
-    const { getByTestId } = render(<SignUpScreen />);
+    const { getByTestId } = renderWithProviders(<SignUpScreen />);
 
     const signInButton = getByTestId('sign-in-button');
     fireEvent.press(signInButton);
@@ -765,7 +780,7 @@ describe('SignUpScreen', () => {
       () => new Promise((resolve) => setTimeout(() => resolve({ success: true }), 100)),
     );
 
-    const { getByTestId } = render(<SignUpScreen />);
+    const { getByTestId } = renderWithProviders(<SignUpScreen />);
 
     const nameInput = getByTestId('name-input');
     const emailInput = getByTestId('email-input');
@@ -792,7 +807,7 @@ describe('SignUpScreen', () => {
 
   it('normalizes phone with non-parseable number fallback', async () => {
     mockedSignUpWithEmail.mockResolvedValue({ success: true });
-    const { getByTestId } = render(<SignUpScreen />);
+    const { getByTestId } = renderWithProviders(<SignUpScreen />);
 
     fireEvent.changeText(getByTestId('name-input'), 'Test User');
     fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
@@ -820,7 +835,7 @@ describe('SignUpScreen', () => {
       success: false,
     });
 
-    const { getByTestId, getByText } = render(<SignUpScreen />);
+    const { getByTestId, getByText } = renderWithProviders(<SignUpScreen />);
 
     fireEvent.changeText(getByTestId('name-input'), 'Test User');
     fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
@@ -838,7 +853,7 @@ describe('SignUpScreen', () => {
   });
 
   it('sets valid phone error on blur when phone is valid', async () => {
-    const { getByTestId, queryByText } = render(<SignUpScreen />);
+    const { getByTestId, queryByText } = renderWithProviders(<SignUpScreen />);
 
     const phoneInput = getByTestId('phone-input');
 
@@ -866,7 +881,7 @@ describe('SignUpScreen', () => {
       error: 'Signup failed',
     });
 
-    const { getByTestId, getByText } = render(<SignUpScreen />);
+    const { getByTestId, getByText } = renderWithProviders(<SignUpScreen />);
 
     fireEvent.changeText(getByTestId('name-input'), 'Test User');
     fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
@@ -881,7 +896,7 @@ describe('SignUpScreen', () => {
 
   it('submits with non-parseable phone in metadata', async () => {
     mockedSignUpWithEmail.mockResolvedValue({ success: true });
-    const { getByTestId } = render(<SignUpScreen />);
+    const { getByTestId } = renderWithProviders(<SignUpScreen />);
 
     fireEvent.changeText(getByTestId('name-input'), 'Test User');
     fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
@@ -901,7 +916,7 @@ describe('SignUpScreen', () => {
 
   it('submits with invalid phone that cannot be parsed to E164', async () => {
     mockedSignUpWithEmail.mockResolvedValue({ success: true });
-    const { getByTestId } = render(<SignUpScreen />);
+    const { getByTestId } = renderWithProviders(<SignUpScreen />);
 
     fireEvent.changeText(getByTestId('name-input'), 'Test User');
     fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
@@ -934,7 +949,7 @@ describe('SignUpScreen', () => {
       error: 'Signup failed',
     });
 
-    const { getByTestId, queryByText } = render(<SignUpScreen />);
+    const { getByTestId, queryByText } = renderWithProviders(<SignUpScreen />);
 
     fireEvent.changeText(getByTestId('name-input'), 'Test User');
     fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
@@ -966,7 +981,7 @@ describe('SignUpScreen', () => {
       error: 'Signup failed',
     });
 
-    const { getByTestId, getByText } = render(<SignUpScreen />);
+    const { getByTestId, getByText } = renderWithProviders(<SignUpScreen />);
 
     fireEvent.changeText(getByTestId('name-input'), 'Test User');
     fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
@@ -981,7 +996,7 @@ describe('SignUpScreen', () => {
 
   it('submits with phone containing only formatting characters', async () => {
     mockedSignUpWithEmail.mockResolvedValue({ success: true });
-    const { getByTestId } = render(<SignUpScreen />);
+    const { getByTestId } = renderWithProviders(<SignUpScreen />);
 
     fireEvent.changeText(getByTestId('name-input'), 'Test User');
     fireEvent.changeText(getByTestId('email-input'), 'test@example.com');

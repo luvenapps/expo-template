@@ -17,10 +17,10 @@ import type { NavigationProp, ParamListBase } from '@react-navigation/native';
 import { Eye, EyeOff } from '@tamagui/lucide-icons';
 import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Platform, TextInput } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import { Button, Card, Form, View, YStack, useThemeName } from 'tamagui';
-import { useTranslation } from 'react-i18next';
+import { Button, Card, Form, Separator, View, YStack, useThemeName } from 'tamagui';
 
 export default function LoginScreen() {
   const navigation = useNavigation<NavigationProp<ParamListBase>>();
@@ -298,101 +298,7 @@ export default function LoginScreen() {
             <SubtitleText textAlign="center">{t('auth.loginSubtitle')}</SubtitleText>
           </YStack>
 
-          <Form onSubmit={handleSubmit} width="100%" gap="$4">
-            <FormField
-              testID="email-field"
-              labelTestID="email-label"
-              inputTestID="email-input"
-              label={t('auth.emailLabel')}
-              placeholder={t('auth.emailPlaceholder')}
-              placeholderTextColor="$colorMuted"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              value={email}
-              onChangeText={setEmail}
-              onSubmitEditing={() => passwordInputRef.current?.focus?.()}
-              returnKeyType="next"
-            />
-
-            <FormField
-              ref={passwordInputRef}
-              testID="password-field"
-              labelTestID="password-label"
-              inputTestID="password-input"
-              label={t('auth.passwordLabel')}
-              placeholder={t('auth.passwordPlaceholder')}
-              placeholderTextColor="$colorMuted"
-              secureTextEntry={!showPassword}
-              value={password}
-              onChangeText={setPassword}
-              returnKeyType="done"
-              onSubmitEditing={handleSubmit}
-              paddingRight="$10"
-              rightElement={
-                <View
-                  position="absolute"
-                  right="$0"
-                  padding="$1"
-                  testID="toggle-password-visibility"
-                  aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
-                  onPress={() => setShowPassword((prev) => !prev)}
-                  hoverStyle={{ opacity: 0.7, cursor: 'pointer' }}
-                  pressStyle={{ opacity: 0.5 }}
-                  role="button"
-                >
-                  {showPassword ? (
-                    <EyeOff size={20} color="$colorMuted" />
-                  ) : (
-                    <Eye size={20} color="$colorMuted" />
-                  )}
-                </View>
-              }
-            />
-
-            <CaptionText
-              testID="forgot-password-link"
-              textAlign="right"
-              color="$accentColor"
-              fontWeight="600"
-              onPress={() => router.push('/(auth)/forgot-password')}
-              hoverStyle={{ opacity: 0.8, cursor: 'pointer' }}
-            >
-              {t('auth.forgotPasswordLink')}
-            </CaptionText>
-
-            <InlineError message={error ?? undefined} testID="error-message" />
-
-            <Form.Trigger asChild>
-              <PrimaryButton
-                testID="sign-in-button"
-                disabled={!isFormValid || isLoading}
-                onPress={handleSubmit}
-              >
-                {isLoading ? t('auth.signingIn') : t('auth.signIn')}
-              </PrimaryButton>
-            </Form.Trigger>
-          </Form>
-
-          <YStack
-            gap="$2"
-            width="100%"
-            alignItems="center"
-            marginTop={Platform.OS === 'web' ? '$4' : '$5'}
-          >
-            <CaptionText color="$colorMuted">{t('auth.noAccountPrompt')}</CaptionText>
-            <PrimaryButton
-              testID="create-account-button"
-              width="100%"
-              onPress={() => router.push('/(auth)/signup')}
-            >
-              {t('auth.createAccountCta')}
-            </PrimaryButton>
-          </YStack>
-
           <YStack gap="$3" width="100%" alignItems="center">
-            <View marginTop={Platform.OS === 'web' ? 0 : 10}>
-              <CaptionText color="$colorMuted">{t('auth.oauthDivider')}</CaptionText>
-            </View>
             {oauthButtons.map(
               ({
                 provider,
@@ -480,6 +386,102 @@ export default function LoginScreen() {
                 </Button>
               ),
             )}
+            <View marginTop={Platform.OS === 'web' ? 0 : 10}>
+              <CaptionText color="$colorMuted">{t('auth.oauthDivider')}</CaptionText>
+            </View>
+          </YStack>
+
+          <Form onSubmit={handleSubmit} width="100%" gap="$4">
+            <FormField
+              testID="email-field"
+              labelTestID="email-label"
+              inputTestID="email-input"
+              label={t('auth.emailLabel')}
+              placeholder={t('auth.emailPlaceholder')}
+              placeholderTextColor="$colorMuted"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              value={email}
+              onChangeText={setEmail}
+              onSubmitEditing={() => passwordInputRef.current?.focus?.()}
+              returnKeyType="next"
+            />
+
+            <FormField
+              ref={passwordInputRef}
+              testID="password-field"
+              labelTestID="password-label"
+              inputTestID="password-input"
+              label={t('auth.passwordLabel')}
+              placeholder={t('auth.passwordPlaceholder')}
+              placeholderTextColor="$colorMuted"
+              secureTextEntry={!showPassword}
+              value={password}
+              onChangeText={setPassword}
+              returnKeyType="done"
+              onSubmitEditing={handleSubmit}
+              paddingRight="$10"
+              rightElement={
+                <View
+                  position="absolute"
+                  right="$0"
+                  padding="$1"
+                  testID="toggle-password-visibility"
+                  aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
+                  onPress={() => setShowPassword((prev) => !prev)}
+                  hoverStyle={{ opacity: 0.7, cursor: 'pointer' }}
+                  pressStyle={{ opacity: 0.5 }}
+                  role="button"
+                >
+                  {showPassword ? (
+                    <EyeOff size={20} color="$colorMuted" />
+                  ) : (
+                    <Eye size={20} color="$colorMuted" />
+                  )}
+                </View>
+              }
+            />
+
+            <CaptionText
+              testID="forgot-password-link"
+              textAlign="right"
+              color="$accentColor"
+              fontWeight="600"
+              onPress={() => router.push('/(auth)/forgot-password')}
+              hoverStyle={{ opacity: 0.8, cursor: 'pointer' }}
+            >
+              {t('auth.forgotPasswordLink')}
+            </CaptionText>
+
+            <InlineError message={error ?? undefined} testID="error-message" />
+
+            <Form.Trigger asChild>
+              <PrimaryButton
+                testID="sign-in-button"
+                disabled={!isFormValid || isLoading}
+                onPress={handleSubmit}
+              >
+                {isLoading ? t('auth.signingIn') : t('auth.signIn')}
+              </PrimaryButton>
+            </Form.Trigger>
+          </Form>
+
+          <Separator marginTop={Platform.OS === 'web' ? '$0' : '$4'}></Separator>
+
+          <YStack
+            gap="$2"
+            width="100%"
+            alignItems="center"
+            marginBottom={Platform.OS === 'web' ? -10 : '$2'}
+          >
+            <CaptionText color="$colorMuted">{t('auth.noAccountPrompt')}</CaptionText>
+            <PrimaryButton
+              testID="create-account-button"
+              width="100%"
+              onPress={() => router.push('/(auth)/signup')}
+            >
+              {t('auth.createAccountCta')}
+            </PrimaryButton>
           </YStack>
         </YStack>
       </Card>
