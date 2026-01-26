@@ -9,7 +9,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Platform } from 'react-native';
-import { YStack } from 'tamagui';
+import { Spinner, XStack, YStack } from 'tamagui';
 
 export default function AuthCallbackScreen() {
   const logger = useMemo(() => createLogger('AuthCallback'), []);
@@ -391,7 +391,10 @@ export default function AuthCallbackScreen() {
   return (
     <ScreenContainer justifyContent="center" alignItems="center" scrollable={false}>
       <YStack gap="$3" alignItems="center">
-        <TitleText>{t('auth.signingIn')}</TitleText>
+        <XStack alignItems="center" gap="$2">
+          <TitleText>{t('auth.signingIn')}</TitleText>
+          {!errorMessage ? <Spinner size="small" color="$accentColor" /> : null}
+        </XStack>
         <InlineError message={errorMessage} testID="auth-callback-error" />
         {errorMessage && (
           <PrimaryButton

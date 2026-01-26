@@ -59,6 +59,7 @@ jest.mock('tamagui', () => {
     Text: createForwarded(Text),
     View: createForwarded(View),
     Card: createForwarded(View),
+    Spinner: createForwarded(View),
     useThemeName: jest.fn(() => 'light'),
   };
 });

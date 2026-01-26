@@ -1,12 +1,22 @@
 import { DOMAIN } from '@/config/domain.config';
+import { getLocalName } from '@/auth/nameStorage';
 import { PrimaryButton, ScreenContainer } from '@/ui';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { H2, Paragraph } from 'tamagui';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { t } = useTranslation();
+  const [localName, setLocalName] = useState(() => getLocalName());
+  const firstName = localName?.trim().split(/\s+/)[0];
+
+  useFocusEffect(
+    useCallback(() => {
+      setLocalName(getLocalName());
+    }, []),
+  );
 
   return (
     <>
@@ -15,6 +25,7 @@ export default function HomeScreen() {
           {(t as unknown as (k: string, opts?: Record<string, any>) => string)('home.title', {
             app: DOMAIN.app.displayName,
           })}
+          {firstName ? `, ${firstName}` : ''}
         </H2>
         <Paragraph textAlign="center" color="$colorMuted">
           {t('home.subtitle')}

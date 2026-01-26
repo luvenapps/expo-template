@@ -1,9 +1,9 @@
+import { useSessionStore } from '@/auth/session';
 import { useThemeContext } from '@/ui/theme/ThemeProvider';
 import { Home, Settings } from '@tamagui/lucide-icons';
-import { useSessionStore } from '@/auth/session';
 import { Redirect, Tabs } from 'expo-router';
-import { Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { Platform } from 'react-native';
 
 function TabIcon({ color, Icon }: { color: string; Icon: typeof Home }) {
   return <Icon size={22} color={color} />;

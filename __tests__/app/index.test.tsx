@@ -4,6 +4,10 @@ jest.mock('expo-router', () => ({
   Stack: {
     Screen: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
   },
+  useFocusEffect: (callback: () => void) => {
+    const React = jest.requireActual('react');
+    React.useEffect(() => callback(), [callback]);
+  },
   useRouter: () => ({
     push: mockPush,
   }),
