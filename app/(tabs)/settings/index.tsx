@@ -265,6 +265,9 @@ export default function SettingsScreen() {
   const handleAuthAction = async () => {
     if (status === 'authenticated') {
       await signOut();
+      if (Platform.OS === 'web') {
+        router.replace('/');
+      }
     } else {
       router.push('/(auth)/login');
     }
