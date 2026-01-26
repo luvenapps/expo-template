@@ -60,6 +60,7 @@ export function NamePromptModal({
           alignSelf="center"
           width="100%"
           maxWidth={480}
+          height="90%"
         >
           <YStack gap="$4">
             <YStack gap="$2">
