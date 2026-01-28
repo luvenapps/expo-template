@@ -1,11 +1,14 @@
 import { useSessionStore } from '@/auth/session';
+import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
+import { useFeatureFlag } from '@/featureFlags/useFeatureFlag';
 import { supportedLanguages } from '@/i18n';
 import { NOTIFICATION_PERMISSION_STATE, NOTIFICATION_STATUS } from '@/notifications/status';
 import { useNotificationSettings } from '@/notifications/useNotificationSettings';
-import { ScreenContainer } from '@/ui';
+import { ScreenContainer, useToast } from '@/ui';
 import { useThemeContext } from '@/ui/theme/ThemeProvider';
 import { ChevronRight } from '@tamagui/lucide-icons';
 import { useRouter } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import type { ReactNode } from 'react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -61,9 +64,13 @@ export default function SettingsScreen() {
   const router = useRouter();
   const { t, i18n } = useTranslation();
   const { theme: themePreference } = useThemeContext();
+  const toast = useToast();
+  const showFriendlyError = useFriendlyErrorHandler(toast);
   const status = useSessionStore((state) => state.status);
   const session = useSessionStore((state) => state.session);
   const { permissionStatus, notificationStatus } = useNotificationSettings();
+  const { value: termsUrl } = useFeatureFlag('legal_terms_url', '');
+  const { value: privacyUrl } = useFeatureFlag('legal_privacy_url', '');
 
   const isNative = Platform.OS !== 'web';
   const notificationsBlocked = isNative
@@ -96,6 +103,14 @@ export default function SettingsScreen() {
     status === 'authenticated'
       ? (session?.user?.email ?? t('settings.accountSignedIn'))
       : t('settings.signIn');
+
+  const openExternal = async (url: string) => {
+    try {
+      await WebBrowser.openBrowserAsync(url);
+    } catch (error) {
+      showFriendlyError(error, { surface: 'settings.legal-links' });
+    }
+  };
 
   return (
     <ScreenContainer gap="$4" paddingHorizontal="$4" contentContainerStyle={{ paddingBottom: 48 }}>
@@ -144,12 +159,24 @@ export default function SettingsScreen() {
       <SettingsGroup>
         <SettingsRow
           title={t('settings.termsTitle')}
-          onPress={() => router.push('/(tabs)/settings/terms')}
+          onPress={() => {
+            if (termsUrl) {
+              openExternal(termsUrl);
+              return;
+            }
+            router.push('/(tabs)/settings/terms');
+          }}
         />
         <Separator />
         <SettingsRow
           title={t('settings.privacyTitle')}
-          onPress={() => router.push('/(tabs)/settings/privacy')}
+          onPress={() => {
+            if (privacyUrl) {
+              openExternal(privacyUrl);
+              return;
+            }
+            router.push('/(tabs)/settings/privacy');
+          }}
         />
       </SettingsGroup>
     </ScreenContainer>

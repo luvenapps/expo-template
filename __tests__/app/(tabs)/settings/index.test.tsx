@@ -66,6 +66,23 @@ jest.mock('@/auth/session', () => ({
   useSessionStore: jest.fn(),
 }));
 
+const mockOpenBrowserAsync = jest.fn();
+const mockUseFeatureFlag = jest.fn();
+const mockFriendlyError = jest.fn();
+
+jest.mock('expo-web-browser', () => ({
+  __esModule: true,
+  openBrowserAsync: (...args: unknown[]) => mockOpenBrowserAsync(...args),
+}));
+
+jest.mock('@/featureFlags/useFeatureFlag', () => ({
+  useFeatureFlag: (...args: unknown[]) => mockUseFeatureFlag(...args),
+}));
+
+jest.mock('@/errors/useFriendlyErrorHandler', () => ({
+  useFriendlyErrorHandler: () => mockFriendlyError,
+}));
+
 // Mock react-native-safe-area-context
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: jest.fn(() => ({
@@ -206,6 +223,7 @@ jest.mock('@/ui', () => {
   return {
     ScreenContainer: ({ children, ...props }: any) =>
       mockReact.createElement('View', props, children),
+    useToast: () => ({ show: jest.fn(), messages: [], dismiss: jest.fn() }),
   };
 });
 
@@ -244,6 +262,7 @@ import { useThemeContext } from '@/ui/theme/ThemeProvider';
 import { themePalettes } from '@/ui/theme/palette';
 import { fireEvent, render } from '@testing-library/react-native';
 import React from 'react';
+import { Platform } from 'react-native';
 import SettingsScreen from '../../../../app/(tabs)/settings/index';
 
 const mockedUseSessionStore = useSessionStore as unknown as jest.Mock;
@@ -283,10 +302,16 @@ const buildNotificationSettings = (
 });
 
 describe('SettingsScreen', () => {
+  const originalPlatform = Platform.OS;
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockPush.mockClear();
     (globalThis as any).__TEST_LANG = 'en';
+    mockOpenBrowserAsync.mockReset();
+    mockUseFeatureFlag.mockReset();
+    mockFriendlyError.mockReset();
+    mockUseFeatureFlag.mockReturnValue({ value: '' });
     mockedUseThemeContext.mockReturnValue({
       theme: 'system',
       setTheme: jest.fn(),
@@ -302,6 +327,14 @@ describe('SettingsScreen', () => {
         isLoading: false,
       }),
     );
+  });
+
+  afterEach(() => {
+    Object.defineProperty(Platform, 'OS', {
+      value: originalPlatform,
+      writable: true,
+      configurable: true,
+    });
   });
 
   describe('General Rendering', () => {
@@ -373,6 +406,12 @@ describe('SettingsScreen', () => {
       expect(getByText('Español')).toBeDefined();
     });
 
+    it('falls back to the raw language code when unsupported', () => {
+      (globalThis as any).__TEST_LANG = 'fr';
+      const { getByText } = render(<SettingsScreen />);
+      expect(getByText('fr')).toBeDefined();
+    });
+
     it('should navigate to language screen when pressed', () => {
       const { getByText } = render(<SettingsScreen />);
       fireEvent.press(getByText('Language'));
@@ -420,6 +459,22 @@ describe('SettingsScreen', () => {
       const { getByText } = render(<SettingsScreen />);
       fireEvent.press(getByText('Notifications'));
       expect(mockPush).toHaveBeenCalledWith('/(tabs)/settings/notifications');
+    });
+
+    it('uses web-only blocked state logic when on web', () => {
+      Object.defineProperty(Platform, 'OS', {
+        value: 'web',
+        writable: true,
+        configurable: true,
+      });
+      mockedUseNotificationSettings.mockReturnValue(
+        buildNotificationSettings({
+          permissionStatus: NOTIFICATION_PERMISSION_STATE.DENIED,
+        }),
+      );
+
+      const { getByText } = render(<SettingsScreen />);
+      expect(getByText('Off')).toBeDefined();
     });
   });
 
@@ -513,6 +568,29 @@ describe('SettingsScreen', () => {
       fireEvent.press(getByText('Terms of Service'));
       expect(mockPush).toHaveBeenCalledWith('/(tabs)/settings/terms');
     });
+
+    it('opens the in-app browser when terms url is configured', () => {
+      mockUseFeatureFlag
+        .mockReturnValueOnce({ value: 'https://example.com/terms' })
+        .mockReturnValueOnce({ value: '' });
+      const { getByText } = render(<SettingsScreen />);
+      fireEvent.press(getByText('Terms of Service'));
+      expect(mockOpenBrowserAsync).toHaveBeenCalledWith('https://example.com/terms');
+      expect(mockPush).not.toHaveBeenCalledWith('/(tabs)/settings/terms');
+    });
+
+    it('reports errors when opening terms url fails', async () => {
+      const error = new Error('open failed');
+      mockUseFeatureFlag
+        .mockReturnValueOnce({ value: 'https://example.com/terms' })
+        .mockReturnValueOnce({ value: '' });
+      mockOpenBrowserAsync.mockRejectedValueOnce(error);
+      const { getByText } = render(<SettingsScreen />);
+
+      await fireEvent.press(getByText('Terms of Service'));
+
+      expect(mockFriendlyError).toHaveBeenCalledWith(error, { surface: 'settings.legal-links' });
+    });
   });
 
   describe('Privacy Row', () => {
@@ -520,6 +598,29 @@ describe('SettingsScreen', () => {
       const { getByText } = render(<SettingsScreen />);
       fireEvent.press(getByText('Privacy Policy'));
       expect(mockPush).toHaveBeenCalledWith('/(tabs)/settings/privacy');
+    });
+
+    it('opens the in-app browser when privacy url is configured', () => {
+      mockUseFeatureFlag
+        .mockReturnValueOnce({ value: '' })
+        .mockReturnValueOnce({ value: 'https://example.com/privacy' });
+      const { getByText } = render(<SettingsScreen />);
+      fireEvent.press(getByText('Privacy Policy'));
+      expect(mockOpenBrowserAsync).toHaveBeenCalledWith('https://example.com/privacy');
+      expect(mockPush).not.toHaveBeenCalledWith('/(tabs)/settings/privacy');
+    });
+
+    it('reports errors when opening privacy url fails', async () => {
+      const error = new Error('open failed');
+      mockUseFeatureFlag
+        .mockReturnValueOnce({ value: '' })
+        .mockReturnValueOnce({ value: 'https://example.com/privacy' });
+      mockOpenBrowserAsync.mockRejectedValueOnce(error);
+      const { getByText } = render(<SettingsScreen />);
+
+      await fireEvent.press(getByText('Privacy Policy'));
+
+      expect(mockFriendlyError).toHaveBeenCalledWith(error, { surface: 'settings.legal-links' });
     });
   });
 
