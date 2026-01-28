@@ -132,6 +132,44 @@ describe('NotificationSettingsScreen', () => {
     });
   });
 
+  it('shows disabled text when firebase is on and status is soft declined', () => {
+    process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = 'true';
+    mockNotificationState.notificationStatus = NOTIFICATION_STATUS.SOFT_DECLINED;
+
+    const { getByTestId } = render(<NotificationSettingsScreen />);
+
+    expect(getByTestId('settings-push-status').props.children).toBe(
+      'settings.pushStatusDisabledSimple',
+    );
+  });
+
+  it('shows disabled text when firebase is on and status is unknown', () => {
+    process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = 'true';
+    mockNotificationState.notificationStatus = NOTIFICATION_STATUS.UNKNOWN;
+
+    const { getByTestId } = render(<NotificationSettingsScreen />);
+
+    expect(getByTestId('settings-push-status').props.children).toBe(
+      'settings.pushStatusDisabledSimple',
+    );
+  });
+
+  it('returns early when prompt result is denied', async () => {
+    mockNotificationState.permissionStatus = NOTIFICATION_PERMISSION_STATE.GRANTED;
+    mockTryPromptForPush.mockResolvedValue({ status: NOTIFICATION_STATUS.DENIED });
+
+    const { getByTestId } = render(<NotificationSettingsScreen />);
+
+    fireEvent(getByTestId('settings-push-toggle'), 'onCheckedChange', true);
+
+    await waitFor(() => {
+      expect(mockTryPromptForPush).toHaveBeenCalledWith({
+        context: 'manual',
+        skipSoftPrompt: true,
+      });
+    });
+  });
+
   it('shows push error text when present', () => {
     mockNotificationState.pushError = 'Push error';
 

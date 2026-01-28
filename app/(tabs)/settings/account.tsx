@@ -228,6 +228,7 @@ export default function AccountSettingsScreen() {
                         {t('settings.resetCancel')}
                       </SecondaryButton>
                       <PrimaryButton
+                        testID="settings-reset-confirm-button"
                         width="auto"
                         flex={1}
                         backgroundColor="$dangerColor"
