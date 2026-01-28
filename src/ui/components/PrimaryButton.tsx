@@ -1,9 +1,12 @@
 import type { ComponentProps } from 'react';
+import type { TextProps } from 'tamagui';
 import { Button } from 'tamagui';
 
-export type PrimaryButtonProps = ComponentProps<typeof Button>;
+export type PrimaryButtonProps = ComponentProps<typeof Button> & {
+  textProps?: TextProps;
+};
 
-export function PrimaryButton({ size = '$5', children, ...rest }: PrimaryButtonProps) {
+export function PrimaryButton({ size = '$5', textProps, children, ...rest }: PrimaryButtonProps) {
   return (
     <Button
       size={size}
@@ -23,6 +26,7 @@ export function PrimaryButton({ size = '$5', children, ...rest }: PrimaryButtonP
         backgroundColor: '$colorMuted',
         opacity: 0.7,
       }}
+      textProps={textProps}
       {...rest}
     >
       {children}
