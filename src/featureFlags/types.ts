@@ -2,6 +2,8 @@ export const DEFAULT_FLAGS = {
   test_feature_flag: false,
   new_onboarding_flow: true,
   max_items_per_page: 20,
+  legal_terms_url: '',
+  legal_privacy_url: '',
 } as const;
 
 export type FeatureFlagKey = keyof typeof DEFAULT_FLAGS;
