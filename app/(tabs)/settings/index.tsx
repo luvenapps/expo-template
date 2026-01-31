@@ -28,9 +28,18 @@ type SettingsRowProps = {
 
 function SettingsRow({ title, value, onPress, testID }: SettingsRowProps) {
   return (
-    <Button unstyled onPress={onPress} testID={testID} pressStyle={{ opacity: 0.8 }} padding={0}>
+    <Button
+      unstyled
+      onPress={onPress}
+      testID={testID}
+      pressStyle={{ opacity: 0.8 }}
+      padding={0}
+      backgroundColor="transparent"
+      borderWidth={0}
+      borderRadius={0}
+    >
       <XStack alignItems="center" justifyContent="space-between" padding="$4" gap="$3">
-        <Text fontSize="$4" fontWeight="600">
+        <Text fontSize="$4" fontWeight="600" color="$color">
           {title}
         </Text>
         <XStack alignItems="center" gap="$2" flexShrink={1} justifyContent="space-between">
@@ -54,7 +63,7 @@ function SettingsRow({ title, value, onPress, testID }: SettingsRowProps) {
 
 function SettingsGroup({ children }: { children: ReactNode }) {
   return (
-    <Card bordered elevate padding={0} backgroundColor="$backgroundStrong" borderRadius="$6">
+    <Card bordered elevate padding={0} backgroundColor="$backgroundStrong" borderRadius="$5">
       <YStack>{children}</YStack>
     </Card>
   );
