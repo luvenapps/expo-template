@@ -34,6 +34,7 @@ jest.mock('@/ui', () => {
   PrimaryButton.displayName = 'PrimaryButton';
 
   return {
+    __esModule: true,
     ScreenContainer,
     SettingsSection,
     PrimaryButton,
@@ -46,7 +47,7 @@ jest.mock('tamagui', () => {
   const { View, Text, TextInput } = require('react-native');
 
   const RadioGroup = ({ children, ...props }: any) =>
-    React.createElement(View, { ...props }, children);
+    React.createElement(View, { accessibilityLabel: props['aria-label'], ...props }, children);
   RadioGroup.displayName = 'RadioGroup';
 
   const RadioGroupItem = ({ children }: any) => React.createElement(View, null, children);
@@ -55,8 +56,8 @@ jest.mock('tamagui', () => {
   const RadioGroupIndicator = () => React.createElement(View, null);
   RadioGroupIndicator.displayName = 'RadioGroup.Indicator';
 
-  RadioGroup.Item = RadioGroupItem;
-  RadioGroup.Indicator = RadioGroupIndicator;
+  (RadioGroup as any).Item = RadioGroupItem;
+  (RadioGroup as any).Indicator = RadioGroupIndicator;
 
   const Input = ({ value, onChangeText, placeholder, multiline }: any) =>
     React.createElement(TextInput, {
@@ -67,6 +68,15 @@ jest.mock('tamagui', () => {
       testID: 'message-input',
     });
   Input.displayName = 'Input';
+
+  const TextArea = ({ value, onChangeText, placeholder }: any) =>
+    React.createElement(TextInput, {
+      value,
+      onChangeText,
+      placeholder,
+      testID: 'message-input',
+    });
+  TextArea.displayName = 'TextArea';
 
   const Label = ({ children }: any) => React.createElement(Text, null, children);
   Label.displayName = 'Label';
@@ -81,13 +91,23 @@ jest.mock('tamagui', () => {
   YStack.displayName = 'YStack';
 
   return {
+    __esModule: true,
     Input,
+    TextArea,
     Label,
     RadioGroup,
     Text: TextComponent,
     XStack,
     YStack,
   };
+});
+
+jest.mock('@tamagui/lucide-icons', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  const Mail = () => React.createElement(View, null);
+  Mail.displayName = 'Mail';
+  return { __esModule: true, Mail };
 });
 
 import GetHelpScreen from '../../../../app/(tabs)/settings/get-help';

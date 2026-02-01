@@ -22,6 +22,8 @@ const tokens = createTokens({
     4: 16,
     5: 24,
     6: 32,
+    7: 40,
+    8: 48,
     true: 16,
   },
   size: {
@@ -76,6 +78,8 @@ const bodyFont = createFont({
     3: 24,
     4: 28,
     5: 32,
+    6: 40,
+    7: 48,
     true: 24,
   },
   weight: {

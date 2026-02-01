@@ -1,9 +1,10 @@
 import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
 import { PrimaryButton, ScreenContainer, SettingsSection, useToast } from '@/ui';
+import { Mail } from '@tamagui/lucide-icons';
 import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Linking, Platform } from 'react-native';
-import { Input, Label, RadioGroup, Text, XStack, YStack } from 'tamagui';
+import { Label, RadioGroup, Text, TextArea, XStack, YStack } from 'tamagui';
 
 export default function GetHelpScreen() {
   const { t } = useTranslation();
@@ -29,68 +30,132 @@ export default function GetHelpScreen() {
 
   return (
     <ScreenContainer gap="$5">
-      <SettingsSection title={t('settings.getHelpContact')}>
-        <YStack gap="$4" width="100%" marginBottom={Platform.OS === 'web' ? '$1' : '$5'}>
-          <YStack gap="$2" marginBottom="$5">
-            <Text fontSize="$5" fontWeight="600" marginBottom="$2">
+      <SettingsSection
+        title={t('settings.getHelpContact')}
+        description={t('settings.getHelpDescription')}
+        icon={<Mail size={20} color="$accentColor" marginBottom="$1" />}
+      >
+        <YStack gap="$5" width="100%" marginBottom={Platform.OS === 'web' ? '$1' : '$5'}>
+          <YStack gap="$2">
+            <Text fontSize="$5" fontWeight="600" color="$color" lineHeight="$6">
               {t('settings.getHelpTopicLabel')}
             </Text>
             <RadioGroup
               value={topic}
               onValueChange={(value) => setTopic(value as 'feedback' | 'bug')}
               aria-label="Support topic"
-              gap="$2"
+              gap="$3"
             >
-              <XStack gap="$5">
-                <XStack gap="$3" alignItems="center">
+              <YStack gap="$3">
+                <XStack
+                  gap="$3"
+                  alignItems="center"
+                  padding="$3"
+                  borderRadius="$3"
+                  backgroundColor={topic === 'feedback' ? '$backgroundHover' : 'transparent'}
+                  borderWidth={1}
+                  borderColor={topic === 'feedback' ? '$accentColor' : '$borderColor'}
+                  pressStyle={{ backgroundColor: '$backgroundHover' }}
+                >
                   <RadioGroup.Item
                     value="feedback"
                     id={`${topicId}-feedback`}
-                    size="$7"
+                    size="$5"
                     cursor="pointer"
                   >
                     <RadioGroup.Indicator />
                   </RadioGroup.Item>
-                  <Label
-                    htmlFor={`${topicId}-feedback`}
-                    cursor="pointer"
-                    lineHeight="$4"
-                    paddingVertical="$1"
-                  >
-                    {t('settings.getHelpFeedback')}
-                  </Label>
+                  <YStack flex={1} gap="$1">
+                    <Label
+                      htmlFor={`${topicId}-feedback`}
+                      cursor="pointer"
+                      fontWeight="600"
+                      fontSize="$4"
+                      color="$color"
+                      lineHeight="$5"
+                    >
+                      <YStack gap="$1">
+                        <Text
+                          fontWeight="600"
+                          fontSize="$4"
+                          color="$color"
+                          marginBottom={Platform.OS === 'web' ? -15 : '$0'}
+                        >
+                          {t('settings.getHelpFeedback')}
+                        </Text>
+                        <Text fontSize="$3" color="$colorMuted">
+                          {t('settings.getHelpFeedbackDescription')}
+                        </Text>
+                      </YStack>
+                    </Label>
+                  </YStack>
                 </XStack>
-                <XStack gap="$3" alignItems="center">
-                  <RadioGroup.Item value="bug" id={`${topicId}-bug`} size="$7" cursor="pointer">
+
+                <XStack
+                  gap="$3"
+                  alignItems="center"
+                  padding="$3"
+                  borderRadius="$3"
+                  backgroundColor={topic === 'bug' ? '$backgroundHover' : 'transparent'}
+                  borderWidth={1}
+                  borderColor={topic === 'bug' ? '$accentColor' : '$borderColor'}
+                  pressStyle={{ backgroundColor: '$backgroundHover' }}
+                >
+                  <RadioGroup.Item value="bug" id={`${topicId}-bug`} size="$5" cursor="pointer">
                     <RadioGroup.Indicator />
                   </RadioGroup.Item>
-                  <Label
-                    htmlFor={`${topicId}-bug`}
-                    cursor="pointer"
-                    lineHeight="$4"
-                    paddingVertical="$1"
-                  >
-                    {t('settings.getHelpReportBug')}
-                  </Label>
+                  <YStack flex={1} gap="$1">
+                    <Label htmlFor={`${topicId}-bug`} cursor="pointer" lineHeight="$5">
+                      <YStack gap="$1">
+                        <Text
+                          fontWeight="600"
+                          fontSize="$4"
+                          color="$color"
+                          marginBottom={Platform.OS === 'web' ? -15 : '$0'}
+                        >
+                          {t('settings.getHelpReportBug')}
+                        </Text>
+                        <Text fontSize="$3" color="$colorMuted">
+                          {t('settings.getHelpBugDescription')}
+                        </Text>
+                      </YStack>
+                    </Label>
+                  </YStack>
                 </XStack>
-              </XStack>
+              </YStack>
             </RadioGroup>
           </YStack>
 
-          <YStack gap="$2">
-            <Text fontSize="$5" fontWeight="600" marginBottom="$2">
+          <YStack gap="$2" marginBottom={-10}>
+            <Text fontSize="$5" fontWeight="600" color="$color" lineHeight="$6">
               {t('settings.getHelpMessageLabel')}
             </Text>
-            <Input
-              multiline
+            <TextArea
               value={message}
               onChangeText={setMessage}
               placeholder={t('settings.getHelpMessagePlaceholder')}
-              minHeight={140}
+              placeholderTextColor="$colorMuted"
+              minHeight={160}
+              verticalAlign="top"
+              borderWidth={1}
+              borderColor="$borderColor"
+              focusStyle={{
+                borderColor: '$accentColor',
+                borderWidth: 2,
+              }}
             />
+            <Text fontSize="$3" color="$colorMuted">
+              {t('settings.getHelpMessageHint')}
+            </Text>
           </YStack>
 
-          <PrimaryButton textProps={{ textTransform: 'capitalize' }} onPress={handleSubmit}>
+          <PrimaryButton
+            textProps={{ textTransform: 'capitalize' }}
+            onPress={handleSubmit}
+            disabled={!message.trim()}
+            opacity={!message.trim() ? 0.5 : 1}
+            icon={<Mail size={20} />}
+          >
             {t('settings.getHelpSendEmail')}
           </PrimaryButton>
         </YStack>
