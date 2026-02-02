@@ -1,9 +1,22 @@
 import type { ComponentProps } from 'react';
+import type { TextProps } from 'tamagui';
 import { Button } from 'tamagui';
 
-export type SecondaryButtonProps = ComponentProps<typeof Button>;
+export type SecondaryButtonProps = ComponentProps<typeof Button> & {
+  textProps?: TextProps;
+};
 
-export function SecondaryButton({ size = '$5', children, ...rest }: SecondaryButtonProps) {
+export function SecondaryButton({
+  size = '$4',
+  textProps,
+  children,
+  ...rest
+}: SecondaryButtonProps) {
+  let mergedTextProps: TextProps = { textTransform: 'capitalize' };
+  if (textProps) {
+    mergedTextProps = { ...mergedTextProps, ...textProps };
+  }
+
   return (
     <Button
       width="100%"
@@ -13,7 +26,7 @@ export function SecondaryButton({ size = '$5', children, ...rest }: SecondaryBut
       color="$secondaryText"
       borderWidth={1}
       borderColor="$borderColor"
-      fontWeight="600"
+      fontWeight="300"
       minHeight={48}
       hoverStyle={{ backgroundColor: '$backgroundStrong' }}
       pressStyle={{ backgroundColor: '$backgroundPress' }}
@@ -26,6 +39,7 @@ export function SecondaryButton({ size = '$5', children, ...rest }: SecondaryBut
         backgroundColor: '$background',
         opacity: 0.6,
       }}
+      textProps={mergedTextProps}
       {...rest}
     >
       {children}

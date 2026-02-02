@@ -57,7 +57,7 @@ export default function AppearanceSettingsScreen() {
                 onPress={() => handleThemeSelection(value)}
               >
                 <Icon size={20} color={isActive ? 'white' : '$color'} />
-                <Text fontSize="$4" color={isActive ? 'white' : '$color'}>
+                <Text fontSize="$4" fontWeight="300" color={isActive ? 'white' : '$color'}>
                   {label}
                 </Text>
               </Button>

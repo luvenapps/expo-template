@@ -475,7 +475,7 @@ export default function SignUpScreen() {
                 ),
               )}
 
-              <View>
+              <View marginTop={Platform.OS === 'web' ? 0 : 10}>
                 <CaptionText color="$colorMuted">{t('auth.oauthDivider')}</CaptionText>
               </View>
             </YStack>

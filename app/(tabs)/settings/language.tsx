@@ -37,6 +37,8 @@ export default function LanguageSettingsScreen() {
                 }}
                 disabled={isActive}
                 onPress={() => setLanguage(lang.code)}
+                fontSize="$4"
+                fontWeight="300"
               >
                 {lang.label}
               </Button>
