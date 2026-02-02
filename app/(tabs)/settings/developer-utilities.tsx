@@ -44,11 +44,22 @@ import {
 } from '@/ui';
 import { useThemeContext } from '@/ui/theme/ThemeProvider';
 import { Calendar, Flame, RefreshCw } from '@tamagui/lucide-icons';
+import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Platform } from 'react-native';
-import { Label, Paragraph, Progress, RadioGroup, Switch, Text, XStack, YStack } from 'tamagui';
+import {
+  Label,
+  Paragraph,
+  Progress,
+  RadioGroup,
+  Separator,
+  Switch,
+  Text,
+  XStack,
+  YStack,
+} from 'tamagui';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -84,8 +95,10 @@ export default function SettingsScreen() {
   >('create');
   const [devReminderId, setDevReminderId] = useState<string | null>(null);
   const [devPrimaryId, setDevPrimaryId] = useState<string | null>(null);
+  const [rawPermissionStatus, setRawPermissionStatus] = useState<string>('unknown');
+  const [canAskAgain, setCanAskAgain] = useState<string>('unknown');
   const [, setHasDbData] = useState(false);
-  const { tryPromptForPush } = useNotificationSettings();
+  const { tryPromptForPush, permissionStatus, notificationStatus } = useNotificationSettings();
   const hasOutboxData = queueSize > 0; // Use sync store's queue size instead of manual check
   const isSeedingRef = useRef(false); // Synchronous lock to prevent rapid-clicking (state updates are async)
   const isClearingRef = useRef(false); // Synchronous lock for clear operations
@@ -132,6 +145,19 @@ export default function SettingsScreen() {
   const hasSession = Boolean(session?.user?.id);
   const reminderCadenceId = useId();
   const reminderActionId = useId();
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    Notifications.getPermissionsAsync()
+      .then((result) => {
+        setRawPermissionStatus(result.status);
+        setCanAskAgain(String(result.canAskAgain));
+      })
+      .catch(() => {
+        setRawPermissionStatus('error');
+        setCanAskAgain('error');
+      });
+  }, []);
 
   // cooldown info is handled internally; no inline display to avoid noise
   const streakSample = useMemo(
@@ -1080,13 +1106,90 @@ export default function SettingsScreen() {
               )}
 
               <YStack
-                key="feature-flags-debug"
+                key="notification-debug"
                 gap="$2"
                 marginTop="$4"
                 paddingTop="$4"
                 borderTopWidth={1}
                 borderTopColor="$borderColor"
+                width="100%"
               >
+                <Text
+                  fontWeight="600"
+                  fontSize={Platform.OS === 'web' ? '$5' : '$4'}
+                  marginBottom="$2"
+                >
+                  Notification Debug
+                </Text>
+                <XStack alignItems="center">
+                  <Text
+                    fontSize={Platform.OS === 'web' ? '$4' : '$3'}
+                    color="$colorMuted"
+                    marginRight="$2"
+                  >
+                    permissionStatus:
+                  </Text>
+                  <Text
+                    fontSize={Platform.OS === 'web' ? '$4' : '$3'}
+                    color="$accentColor"
+                    fontWeight="600"
+                  >
+                    {permissionStatus}
+                  </Text>
+                </XStack>
+                <XStack alignItems="center">
+                  <Text
+                    fontSize={Platform.OS === 'web' ? '$4' : '$3'}
+                    color="$colorMuted"
+                    marginRight="$2"
+                  >
+                    notificationStatus:
+                  </Text>
+                  <Text
+                    fontSize={Platform.OS === 'web' ? '$4' : '$3'}
+                    color="$accentColor"
+                    fontWeight="600"
+                  >
+                    {notificationStatus}
+                  </Text>
+                </XStack>
+                <XStack alignItems="center">
+                  <Text
+                    fontSize={Platform.OS === 'web' ? '$4' : '$3'}
+                    color="$colorMuted"
+                    marginRight="$2"
+                  >
+                    permission.rawStatus:
+                  </Text>
+                  <Text
+                    fontSize={Platform.OS === 'web' ? '$4' : '$3'}
+                    color="$accentColor"
+                    fontWeight="600"
+                  >
+                    {rawPermissionStatus}
+                  </Text>
+                </XStack>
+                <XStack alignItems="center">
+                  <Text
+                    fontSize={Platform.OS === 'web' ? '$4' : '$3'}
+                    color="$colorMuted"
+                    marginRight="$2"
+                  >
+                    permission.canAskAgain:
+                  </Text>
+                  <Text
+                    fontSize={Platform.OS === 'web' ? '$4' : '$3'}
+                    color="$accentColor"
+                    fontWeight="600"
+                  >
+                    {canAskAgain}
+                  </Text>
+                </XStack>
+              </YStack>
+
+              <Separator borderColor="$borderColor" marginTop="$4" />
+
+              <YStack key="feature-flags-debug" gap="$2" width="100%">
                 <Text
                   fontWeight="600"
                   fontSize={Platform.OS === 'web' ? '$5' : '$4'}
@@ -1101,11 +1204,18 @@ export default function SettingsScreen() {
                   const { value, source } = useFeatureFlag(typedKey, defaultValue);
 
                   return (
-                    <XStack key={flagKey} justifyContent="space-between" alignItems="center">
+                    <XStack
+                      key={flagKey}
+                      justifyContent="space-between"
+                      alignItems="center"
+                      flexWrap="wrap"
+                      gap="$2"
+                    >
                       <Text
                         fontSize={Platform.OS === 'web' ? '$4' : '$3'}
                         color="$colorMuted"
                         marginRight="$2"
+                        flexShrink={0}
                       >
                         {flagKey}:
                       </Text>
@@ -1113,6 +1223,8 @@ export default function SettingsScreen() {
                         fontSize={Platform.OS === 'web' ? '$4' : '$3'}
                         color="$accentColor"
                         fontWeight="600"
+                        flexShrink={1}
+                        textAlign="right"
                       >
                         {String(value)} ({typeof value}) [{source}]
                       </Text>
@@ -1120,6 +1232,7 @@ export default function SettingsScreen() {
                   );
                 })}
               </YStack>
+
               <YStack
                 key="feature-flag-example"
                 gap="$2"
@@ -1127,6 +1240,7 @@ export default function SettingsScreen() {
                 paddingTop="$4"
                 borderTopWidth={1}
                 borderTopColor="$borderColor"
+                width="100%"
               >
                 <Text
                   fontWeight="600"

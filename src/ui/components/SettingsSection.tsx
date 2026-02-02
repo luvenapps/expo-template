@@ -33,7 +33,7 @@ export function SettingsSection({
   };
 
   const wrappedChildren = flatten(children).map((child, index) => {
-    const key = isValidElement(child) ? child.key : `fallback-key-${index}`;
+    const key = isValidElement(child) ? `${child.key ?? 'item'}-${index}` : `fallback-key-${index}`;
 
     return (
       <XStack key={key} width="100%">

@@ -147,7 +147,7 @@ describe('useNotificationSettings', () => {
       await Promise.resolve();
     });
 
-    expect(result.current.permissionStatus).toBe('denied');
+    expect(result.current.permissionStatus).toBe('prompt');
   });
 
   it('sets isSupported based on platform', async () => {
@@ -516,7 +516,7 @@ describe('useNotificationSettings', () => {
       expect(registerForPushNotifications).not.toHaveBeenCalled();
     });
 
-    it('returns denied when push previously denied', async () => {
+    it('returns denied when push previously denied and prompt is skipped', async () => {
       loadNotificationPreferences.mockReturnValue({
         notificationStatus: 'denied',
         pushManuallyDisabled: false,
@@ -530,7 +530,10 @@ describe('useNotificationSettings', () => {
 
       let promptResult;
       await act(async () => {
-        promptResult = await result.current.tryPromptForPush({ context: 'entry-created' });
+        promptResult = await result.current.tryPromptForPush({
+          context: 'entry-created',
+          skipSoftPrompt: true,
+        });
       });
 
       expect(promptResult).toEqual({ status: 'denied' });
@@ -938,7 +941,7 @@ describe('useNotificationSettings', () => {
       );
     });
 
-    it('updates preferences to denied when permission is denied', async () => {
+    it('updates preferences to denied when permission is blocked', async () => {
       loadNotificationPreferences.mockReturnValue({
         notificationStatus: 'unknown',
         pushManuallyDisabled: false,
@@ -949,7 +952,7 @@ describe('useNotificationSettings', () => {
       getPermissionsAsync.mockResolvedValue({
         granted: false,
         status: expoNotifications.PermissionStatus.DENIED,
-        canAskAgain: true,
+        canAskAgain: false,
       });
 
       const { result } = renderHook(() => useNotificationSettings());
@@ -958,7 +961,7 @@ describe('useNotificationSettings', () => {
         await Promise.resolve();
       });
 
-      expect(result.current.permissionStatus).toBe('denied');
+      expect(result.current.permissionStatus).toBe('blocked');
       expect(persistNotificationPreferences).toHaveBeenCalledWith(
         expect.objectContaining({
           notificationStatus: 'denied',

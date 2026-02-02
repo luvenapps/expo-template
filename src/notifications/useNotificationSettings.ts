@@ -50,6 +50,10 @@ function mapPermission(
     return NOTIFICATION_PERMISSION_STATE.BLOCKED;
   }
 
+  if (status.status === Notifications.PermissionStatus.DENIED && status.canAskAgain) {
+    return NOTIFICATION_PERMISSION_STATE.PROMPT;
+  }
+
   if (status.status === Notifications.PermissionStatus.DENIED) {
     return NOTIFICATION_PERMISSION_STATE.DENIED;
   }
