@@ -6,7 +6,17 @@ import { NOTIFICATION_PERMISSION_STATE, NOTIFICATION_STATUS } from '@/notificati
 import { useNotificationSettings } from '@/notifications/useNotificationSettings';
 import { ScreenContainer, useToast } from '@/ui';
 import { useThemeContext } from '@/ui/theme/ThemeProvider';
-import { ChevronRight } from '@tamagui/lucide-icons';
+import {
+  Bell,
+  ChevronRight,
+  FileText,
+  HelpCircle,
+  Languages,
+  Palette,
+  Shield,
+  User,
+  Wrench,
+} from '@tamagui/lucide-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import type { ReactNode } from 'react';
@@ -22,11 +32,12 @@ const isFirebaseEnabled = () =>
 type SettingsRowProps = {
   title: string;
   value?: string | null;
+  icon?: ReactNode;
   onPress: () => void;
   testID?: string;
 };
 
-function SettingsRow({ title, value, onPress, testID }: SettingsRowProps) {
+function SettingsRow({ title, value, icon, onPress, testID }: SettingsRowProps) {
   return (
     <Button
       unstyled
@@ -39,9 +50,12 @@ function SettingsRow({ title, value, onPress, testID }: SettingsRowProps) {
       borderRadius={0}
     >
       <XStack alignItems="center" justifyContent="space-between" padding="$4" gap="$3">
-        <Text fontSize="$4" fontWeight="600" color="$color">
-          {title}
-        </Text>
+        <XStack alignItems="center" gap="$3" flex={1} minWidth={0}>
+          {icon ? icon : null}
+          <Text fontSize="$4" fontWeight="600" color="$color" numberOfLines={1}>
+            {title}
+          </Text>
+        </XStack>
         <XStack alignItems="center" gap="$2" flexShrink={1} justifyContent="space-between">
           {value ? (
             <Text
@@ -140,18 +154,21 @@ export default function SettingsScreen() {
         <SettingsRow
           title={t('settings.themeTitle')}
           value={appearanceLabel}
+          icon={<Palette size={18} color="$color" />}
           onPress={() => router.push('/(tabs)/settings/appearance')}
         />
         <Separator />
         <SettingsRow
           title={t('settings.languageTitle')}
           value={languageLabel}
+          icon={<Languages size={18} color="$color" />}
           onPress={() => router.push('/(tabs)/settings/language')}
         />
         <Separator />
         <SettingsRow
           title={t('settings.notificationsTitle')}
           value={notificationsLabel}
+          icon={<Bell size={18} color="$color" />}
           onPress={() => router.push('/(tabs)/settings/notifications')}
         />
       </SettingsGroup>
@@ -160,6 +177,7 @@ export default function SettingsScreen() {
         <SettingsRow
           title={t('settings.accountTitle')}
           value={accountLabel}
+          icon={<User size={18} color="$color" />}
           onPress={() => router.push('/(tabs)/settings/account')}
         />
       </SettingsGroup>
@@ -167,6 +185,7 @@ export default function SettingsScreen() {
       <SettingsGroup>
         <SettingsRow
           title={t('settings.developerUtilitiesTitle')}
+          icon={<Wrench size={18} color="$color" />}
           onPress={() => router.push('/(tabs)/settings/developer-utilities')}
         />
       </SettingsGroup>
@@ -174,6 +193,7 @@ export default function SettingsScreen() {
       <SettingsGroup>
         <SettingsRow
           title={t('settings.getHelpTitle')}
+          icon={<HelpCircle size={18} color="$color" />}
           onPress={() => router.push('/(tabs)/settings/get-help')}
         />
       </SettingsGroup>
@@ -181,6 +201,7 @@ export default function SettingsScreen() {
       <SettingsGroup>
         <SettingsRow
           title={t('settings.termsTitle')}
+          icon={<FileText size={18} color="$color" />}
           onPress={() => {
             if (termsUrl) {
               openExternal(termsUrl);
@@ -192,6 +213,7 @@ export default function SettingsScreen() {
         <Separator />
         <SettingsRow
           title={t('settings.privacyTitle')}
+          icon={<Shield size={18} color="$color" />}
           onPress={() => {
             if (privacyUrl) {
               openExternal(privacyUrl);

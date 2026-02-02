@@ -226,9 +226,41 @@ jest.mock('@/i18n', () => ({
 
 // Mock Tamagui Lucide Icons
 jest.mock('@tamagui/lucide-icons', () => ({
+  Bell: ({ size, color }: any) => {
+    const mockReact = jest.requireActual('react');
+    return mockReact.createElement('View', { testID: 'bell-icon', size, color });
+  },
   ChevronRight: ({ size, color }: any) => {
     const mockReact = jest.requireActual('react');
     return mockReact.createElement('View', { testID: 'chevron-right-icon', size, color });
+  },
+  FileText: ({ size, color }: any) => {
+    const mockReact = jest.requireActual('react');
+    return mockReact.createElement('View', { testID: 'file-text-icon', size, color });
+  },
+  HelpCircle: ({ size, color }: any) => {
+    const mockReact = jest.requireActual('react');
+    return mockReact.createElement('View', { testID: 'help-circle-icon', size, color });
+  },
+  Languages: ({ size, color }: any) => {
+    const mockReact = jest.requireActual('react');
+    return mockReact.createElement('View', { testID: 'languages-icon', size, color });
+  },
+  Palette: ({ size, color }: any) => {
+    const mockReact = jest.requireActual('react');
+    return mockReact.createElement('View', { testID: 'palette-icon', size, color });
+  },
+  Shield: ({ size, color }: any) => {
+    const mockReact = jest.requireActual('react');
+    return mockReact.createElement('View', { testID: 'shield-icon', size, color });
+  },
+  User: ({ size, color }: any) => {
+    const mockReact = jest.requireActual('react');
+    return mockReact.createElement('View', { testID: 'user-icon', size, color });
+  },
+  Wrench: ({ size, color }: any) => {
+    const mockReact = jest.requireActual('react');
+    return mockReact.createElement('View', { testID: 'wrench-icon', size, color });
   },
 }));
 
