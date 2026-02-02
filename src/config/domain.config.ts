@@ -18,6 +18,8 @@ export const DOMAIN = {
   app: {
     name: '__APP_NAME__',
     displayName: '__APP_NAME__',
+    companyName: 'Luven LLC',
+    supportEmail: 'support@luvenapps.com',
     database: '__APP_NAME__.db',
     syncTask: '__APP_NAME__-sync-task',
     storageKey: '__APP_NAME__',
@@ -85,7 +87,8 @@ export const DOMAIN = {
 /**
  * Type-safe table name union
  */
-export type TableName = (typeof DOMAIN.entities)[keyof typeof DOMAIN.entities]['tableName'];
+export type TableName =
+  (typeof DOMAIN.entities)[keyof typeof DOMAIN.entities]['tableName'];
 
 /**
  * Type-safe remote table name union
