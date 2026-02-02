@@ -142,4 +142,18 @@ describe('SettingsSection', () => {
 
     expect(getByText('Test Section')).toBeDefined();
   });
+
+  it('should render children inside fragments', () => {
+    const { getByText } = renderWithProviders(
+      <SettingsSection title="Test Section">
+        <>
+          <Text>First fragment child</Text>
+          <Text>Second fragment child</Text>
+        </>
+      </SettingsSection>,
+    );
+
+    expect(getByText('First fragment child')).toBeDefined();
+    expect(getByText('Second fragment child')).toBeDefined();
+  });
 });

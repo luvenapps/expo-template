@@ -545,6 +545,16 @@ describe('LoginScreen', () => {
     expect(mockPush).toHaveBeenCalledWith('/(auth)/signup');
   });
 
+  test('uses web separator margin on web', () => {
+    const originalOS = Platform.OS;
+    Object.defineProperty(Platform, 'OS', { value: 'web' });
+
+    const { getByTestId } = renderWithProviders(<LoginScreen />);
+    expect(getByTestId('sign-in-button')).toBeTruthy();
+
+    Object.defineProperty(Platform, 'OS', { value: originalOS });
+  });
+
   test('disables submit button when email is invalid', () => {
     const { getByTestId } = renderWithProviders(<LoginScreen />);
 

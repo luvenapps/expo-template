@@ -83,6 +83,7 @@ jest.mock('react-i18next', () => ({
 import { sendPasswordReset } from '@/auth/service';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import React from 'react';
+import { Platform } from 'react-native';
 import ForgotPasswordScreen from '../../../app/(auth)/forgot-password';
 import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
 
@@ -324,5 +325,113 @@ describe('ForgotPasswordScreen', () => {
     await waitFor(() => {
       expect(mockedSendPasswordReset).toHaveBeenCalled();
     });
+  });
+
+  it('prefers friendly.description when available', async () => {
+    const friendly = jest.fn(() => ({
+      toastId: 'friendly-description',
+      friendly: { code: 'unknown' as const, type: 'error' as const, description: 'friendly-text' },
+    }));
+    mockedFriendlyError.mockReturnValue(friendly);
+    mockedSendPasswordReset.mockResolvedValue({ success: false, error: 'Reset failed' });
+
+    const { getByTestId, getByText } = render(<ForgotPasswordScreen />);
+    fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
+    fireEvent.press(getByTestId('send-reset-link-button'));
+
+    await waitFor(() => {
+      expect(getByText('friendly-text')).toBeTruthy();
+    });
+  });
+
+  it('uses friendly.descriptionKey when description is missing', async () => {
+    const friendly = jest.fn(() => ({
+      toastId: 'friendly-description-key',
+      friendly: {
+        code: 'unknown' as const,
+        type: 'error' as const,
+        descriptionKey: 'auth.reset.errorUnknown',
+      },
+    }));
+    mockedFriendlyError.mockReturnValue(friendly);
+    mockedSendPasswordReset.mockResolvedValue({ success: false, error: 'Reset failed' });
+
+    const { getByTestId, getByText } = render(<ForgotPasswordScreen />);
+    fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
+    fireEvent.press(getByTestId('send-reset-link-button'));
+
+    await waitFor(() => {
+      expect(getByText('auth.reset.errorUnknown')).toBeTruthy();
+    });
+  });
+
+  it('uses friendly.title when description fields are missing', async () => {
+    const friendly = jest.fn(() => ({
+      toastId: 'friendly-title',
+      friendly: { code: 'unknown' as const, type: 'error' as const, title: 'Friendly title' },
+    }));
+    mockedFriendlyError.mockReturnValue(friendly);
+    mockedSendPasswordReset.mockResolvedValue({ success: false, error: 'Reset failed' });
+
+    const { getByTestId, getByText } = render(<ForgotPasswordScreen />);
+    fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
+    fireEvent.press(getByTestId('send-reset-link-button'));
+
+    await waitFor(() => {
+      expect(getByText('Friendly title')).toBeTruthy();
+    });
+  });
+
+  it('falls back to result.error when friendly fields are missing', async () => {
+    const friendly = jest.fn(() => ({
+      toastId: 'friendly-empty',
+      friendly: { code: 'unknown' as const, type: 'error' as const },
+    }));
+    mockedFriendlyError.mockReturnValue(friendly);
+    mockedSendPasswordReset.mockResolvedValue({ success: false, error: 'Server said no' });
+
+    const { getByTestId, getByText } = render(<ForgotPasswordScreen />);
+    fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
+    fireEvent.press(getByTestId('send-reset-link-button'));
+
+    await waitFor(() => {
+      expect(getByText('Server said no')).toBeTruthy();
+    });
+  });
+
+  it('falls back to unknown message when friendly and result.error are missing', async () => {
+    const friendly = jest.fn(() => ({
+      toastId: 'friendly-empty',
+      friendly: { code: 'unknown' as const, type: 'error' as const },
+    }));
+    mockedFriendlyError.mockReturnValue(friendly);
+    mockedSendPasswordReset.mockResolvedValue({ success: false });
+
+    const { getByTestId, getByText } = render(<ForgotPasswordScreen />);
+    fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
+    fireEvent.press(getByTestId('send-reset-link-button'));
+
+    await waitFor(() => {
+      expect(getByText('auth.reset.errorUnknown')).toBeTruthy();
+    });
+  });
+
+  it('uses web separator margin on web', () => {
+    const originalDescriptor = Object.getOwnPropertyDescriptor(Platform, 'OS');
+    Object.defineProperty(Platform, 'OS', {
+      configurable: true,
+      get: () => 'web',
+    });
+
+    try {
+      const { toJSON } = render(<ForgotPasswordScreen />);
+      const tree = toJSON();
+      const hasWebSeparatorMargin = JSON.stringify(tree).includes('"marginTop":"$0"');
+      expect(hasWebSeparatorMargin).toBe(true);
+    } finally {
+      if (originalDescriptor) {
+        Object.defineProperty(Platform, 'OS', originalDescriptor);
+      }
+    }
   });
 });
