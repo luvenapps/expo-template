@@ -111,6 +111,7 @@ jest.mock('@tamagui/lucide-icons', () => {
 });
 
 import GetHelpScreen from '../../../../app/(tabs)/settings/get-help';
+import { DOMAIN } from '@/config/domain.config';
 
 describe('GetHelpScreen', () => {
   beforeEach(() => {
@@ -125,7 +126,7 @@ describe('GetHelpScreen', () => {
     fireEvent.press(getByText('settings.getHelpSendEmail'));
 
     expect(mockOpenUrl).toHaveBeenCalledWith(
-      expect.stringContaining('mailto:support@luvenapps.com'),
+      expect.stringContaining(`mailto:${DOMAIN.app.supportEmail}`),
     );
     expect(mockOpenUrl.mock.calls[0][0]).toContain('subject=settings.getHelpFeedbackSubject');
     expect(mockOpenUrl.mock.calls[0][0]).toContain('body=Hello%20there');

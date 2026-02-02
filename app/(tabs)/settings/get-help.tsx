@@ -1,4 +1,5 @@
 import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
+import { DOMAIN } from '@/config/domain.config';
 import { PrimaryButton, ScreenContainer, SettingsSection, useToast } from '@/ui';
 import { Mail } from '@tamagui/lucide-icons';
 import { useId, useState } from 'react';
@@ -13,7 +14,7 @@ export default function GetHelpScreen() {
   const [topic, setTopic] = useState<'feedback' | 'bug'>('feedback');
   const [message, setMessage] = useState('');
   const topicId = useId();
-  const supportEmail = 'support@luvenapps.com';
+  const supportEmail = DOMAIN.app.supportEmail;
   const subject =
     topic === 'bug' ? t('settings.getHelpBugSubject') : t('settings.getHelpFeedbackSubject');
 
