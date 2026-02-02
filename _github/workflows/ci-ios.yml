@@ -311,10 +311,13 @@ jobs:
 
       # - name: Upload test results to Codecov
       #   if: ${{ !cancelled() }}
-      #   uses: codecov/test-results-action@v1
+      #   uses: codecov/codecov-action@v5
       #   with:
       #     token: ${{ secrets.CODECOV_TOKEN }}
+      #     files: ./junit.xml
+      #     slug: org/repo
       #     flags: selfhosted-ios
+      #     report_type: test_results
       #     fail_ci_if_error: false
 
       - name: Doctor
