@@ -14,9 +14,9 @@ export default function AppearanceSettingsScreen() {
     label: string;
     Icon: ComponentType<{ size?: number; color?: string }>;
   }[] = [
-    { value: 'system', label: 'System', Icon: Monitor },
-    { value: 'light', label: 'Light', Icon: Sun },
-    { value: 'dark', label: 'Dark', Icon: Moon },
+    { value: 'system', label: t('settings.themeSystem'), Icon: Monitor },
+    { value: 'light', label: t('settings.themeLight'), Icon: Sun },
+    { value: 'dark', label: t('settings.themeDark'), Icon: Moon },
   ];
 
   const handleThemeSelection = (value: ThemeName) => {
@@ -47,13 +47,7 @@ export default function AppearanceSettingsScreen() {
                   backgroundColor: isActive ? '$accentColor' : '$backgroundHover',
                 }}
                 disabled={isActive}
-                aria-label={
-                  value === 'system'
-                    ? t('settings.themeSystem')
-                    : value === 'light'
-                      ? t('settings.themeLight')
-                      : t('settings.themeDark')
-                }
+                aria-label={label}
                 onPress={() => handleThemeSelection(value)}
               >
                 <Icon size={20} color={isActive ? 'white' : '$color'} />
