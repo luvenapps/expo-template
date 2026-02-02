@@ -33,11 +33,12 @@ type SettingsRowProps = {
   title: string;
   value?: string | null;
   icon?: ReactNode;
+  iconBackground?: string;
   onPress: () => void;
   testID?: string;
 };
 
-function SettingsRow({ title, value, icon, onPress, testID }: SettingsRowProps) {
+function SettingsRow({ title, value, icon, iconBackground, onPress, testID }: SettingsRowProps) {
   return (
     <Button
       unstyled
@@ -51,8 +52,19 @@ function SettingsRow({ title, value, icon, onPress, testID }: SettingsRowProps) 
     >
       <XStack alignItems="center" justifyContent="space-between" padding="$4" gap="$3">
         <XStack alignItems="center" gap="$3" flex={1} minWidth={0}>
-          {icon ? icon : null}
-          <Text fontSize="$4" fontWeight="600" color="$color" numberOfLines={1}>
+          {icon ? (
+            <XStack
+              width={32}
+              height={32}
+              borderRadius={8}
+              alignItems="center"
+              justifyContent="center"
+              backgroundColor={iconBackground ?? '$backgroundHover'}
+            >
+              {icon}
+            </XStack>
+          ) : null}
+          <Text fontSize="$4" fontWeight="400" color="$color" numberOfLines={1}>
             {title}
           </Text>
         </XStack>
@@ -154,21 +166,24 @@ export default function SettingsScreen() {
         <SettingsRow
           title={t('settings.themeTitle')}
           value={appearanceLabel}
-          icon={<Palette size={18} color="$color" />}
+          icon={<Palette size={18} color="white" />}
+          iconBackground="#5E5CE6"
           onPress={() => router.push('/(tabs)/settings/appearance')}
         />
         <Separator />
         <SettingsRow
           title={t('settings.languageTitle')}
           value={languageLabel}
-          icon={<Languages size={18} color="$color" />}
+          icon={<Languages size={18} color="white" />}
+          iconBackground="#FF9500"
           onPress={() => router.push('/(tabs)/settings/language')}
         />
         <Separator />
         <SettingsRow
           title={t('settings.notificationsTitle')}
           value={notificationsLabel}
-          icon={<Bell size={18} color="$color" />}
+          icon={<Bell size={18} color="white" />}
+          iconBackground="#FF3B30"
           onPress={() => router.push('/(tabs)/settings/notifications')}
         />
       </SettingsGroup>
@@ -177,7 +192,8 @@ export default function SettingsScreen() {
         <SettingsRow
           title={t('settings.accountTitle')}
           value={accountLabel}
-          icon={<User size={18} color="$color" />}
+          icon={<User size={15} color="white" />}
+          iconBackground="#007AFF"
           onPress={() => router.push('/(tabs)/settings/account')}
         />
       </SettingsGroup>
@@ -185,7 +201,8 @@ export default function SettingsScreen() {
       <SettingsGroup>
         <SettingsRow
           title={t('settings.developerUtilitiesTitle')}
-          icon={<Wrench size={18} color="$color" />}
+          icon={<Wrench size={18} color="white" />}
+          iconBackground="#8E8E93"
           onPress={() => router.push('/(tabs)/settings/developer-utilities')}
         />
       </SettingsGroup>
@@ -193,7 +210,8 @@ export default function SettingsScreen() {
       <SettingsGroup>
         <SettingsRow
           title={t('settings.getHelpTitle')}
-          icon={<HelpCircle size={18} color="$color" />}
+          icon={<HelpCircle size={18} color="white" />}
+          iconBackground="#34C759"
           onPress={() => router.push('/(tabs)/settings/get-help')}
         />
       </SettingsGroup>
@@ -201,7 +219,8 @@ export default function SettingsScreen() {
       <SettingsGroup>
         <SettingsRow
           title={t('settings.termsTitle')}
-          icon={<FileText size={18} color="$color" />}
+          icon={<FileText size={18} color="white" />}
+          iconBackground="#AF52DE"
           onPress={() => {
             if (termsUrl) {
               openExternal(termsUrl);
@@ -213,7 +232,8 @@ export default function SettingsScreen() {
         <Separator />
         <SettingsRow
           title={t('settings.privacyTitle')}
-          icon={<Shield size={18} color="$color" />}
+          icon={<Shield size={18} color="white" />}
+          iconBackground="#30B0C7"
           onPress={() => {
             if (privacyUrl) {
               openExternal(privacyUrl);
