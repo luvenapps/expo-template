@@ -153,7 +153,7 @@ jest.mock('react-i18next', () => {
   const translations: Record<string, Record<string, string>> = {
     en: {
       'settings.themeTitle': 'Theme',
-      'settings.themeSystem': 'Follow System',
+      'settings.themeSystem': 'System',
       'settings.themeLight': 'Light',
       'settings.themeDark': 'Dark',
       'settings.languageTitle': 'Language',
@@ -171,7 +171,7 @@ jest.mock('react-i18next', () => {
     },
     es: {
       'settings.themeTitle': 'Tema',
-      'settings.themeSystem': 'Seguir sistema',
+      'settings.themeSystem': 'Sistema',
       'settings.themeLight': 'Claro',
       'settings.themeDark': 'Oscuro',
       'settings.languageTitle': 'Idioma',
@@ -409,7 +409,7 @@ describe('SettingsScreen', () => {
   describe('Theme Row', () => {
     it('should display current theme preference', () => {
       const { getByText } = render(<SettingsScreen />);
-      expect(getByText('Follow System')).toBeDefined();
+      expect(getByText('System')).toBeDefined();
     });
 
     it('should display light theme when selected', () => {

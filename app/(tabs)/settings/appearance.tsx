@@ -3,7 +3,7 @@ import { useThemeContext, type ThemeName } from '@/ui/theme/ThemeProvider';
 import { Monitor, Moon, Sun } from '@tamagui/lucide-icons';
 import type { ComponentType } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, XStack } from 'tamagui';
+import { Button, Text, YStack } from 'tamagui';
 
 export default function AppearanceSettingsScreen() {
   const { t } = useTranslation();
@@ -14,7 +14,7 @@ export default function AppearanceSettingsScreen() {
     label: string;
     Icon: ComponentType<{ size?: number; color?: string }>;
   }[] = [
-    { value: 'system', label: 'Follow System', Icon: Monitor },
+    { value: 'system', label: 'System', Icon: Monitor },
     { value: 'light', label: 'Light', Icon: Sun },
     { value: 'dark', label: 'Dark', Icon: Moon },
   ];
@@ -26,7 +26,7 @@ export default function AppearanceSettingsScreen() {
   return (
     <ScreenContainer gap="$5">
       <SettingsSection title={t('settings.themeTitle')}>
-        <XStack gap="$2" width="100%">
+        <YStack gap="$2" width="100%">
           {THEME_OPTIONS.map(({ value, label, Icon }) => {
             const isActive = themePreference === value;
             return (
@@ -57,10 +57,13 @@ export default function AppearanceSettingsScreen() {
                 onPress={() => handleThemeSelection(value)}
               >
                 <Icon size={20} color={isActive ? 'white' : '$color'} />
+                <Text fontSize="$4" color={isActive ? 'white' : '$color'}>
+                  {label}
+                </Text>
               </Button>
             );
           })}
-        </XStack>
+        </YStack>
       </SettingsSection>
     </ScreenContainer>
   );

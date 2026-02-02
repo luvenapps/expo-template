@@ -72,7 +72,9 @@ jest.mock('tamagui', () => {
 
   return {
     Button,
+    Text,
     XStack,
+    YStack: ({ children }: any) => React.createElement(View, null, children),
   };
 });
 
