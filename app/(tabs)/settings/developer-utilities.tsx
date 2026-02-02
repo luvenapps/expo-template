@@ -98,7 +98,8 @@ export default function SettingsScreen() {
   const [rawPermissionStatus, setRawPermissionStatus] = useState<string>('unknown');
   const [canAskAgain, setCanAskAgain] = useState<string>('unknown');
   const [, setHasDbData] = useState(false);
-  const { tryPromptForPush, permissionStatus, notificationStatus } = useNotificationSettings();
+  const { tryPromptForPush, permissionStatus, notificationStatus, softLastDeclinedAt } =
+    useNotificationSettings();
   const hasOutboxData = queueSize > 0; // Use sync store's queue size instead of manual check
   const isSeedingRef = useRef(false); // Synchronous lock to prevent rapid-clicking (state updates are async)
   const isClearingRef = useRef(false); // Synchronous lock for clear operations
@@ -139,6 +140,14 @@ export default function SettingsScreen() {
   const archiveOptionHelper =
     archiveOptions.find((option) => option.value === archiveOffsetDays)?.helper ??
     t('settings.archiveBeforeTodayHelper');
+  const softPromptCooldownRemainingMs =
+    softLastDeclinedAt > 0
+      ? Math.max(0, NOTIFICATIONS.softDeclineCooldownMs - (Date.now() - softLastDeclinedAt))
+      : 0;
+  const softPromptCooldownLabel =
+    softPromptCooldownRemainingMs === 0
+      ? 'ready-now'
+      : `${Math.ceil(softPromptCooldownRemainingMs / (60 * 60 * 1000))}h`;
   const isSyncing = syncStatus === 'syncing';
   const { palette } = useThemeContext();
   const accentHex = palette.accent;
@@ -1183,6 +1192,22 @@ export default function SettingsScreen() {
                     fontWeight="600"
                   >
                     {canAskAgain}
+                  </Text>
+                </XStack>
+                <XStack alignItems="center">
+                  <Text
+                    fontSize={Platform.OS === 'web' ? '$4' : '$3'}
+                    color="$colorMuted"
+                    marginRight="$2"
+                  >
+                    softPrompt.timeLeft:
+                  </Text>
+                  <Text
+                    fontSize={Platform.OS === 'web' ? '$4' : '$3'}
+                    color="$accentColor"
+                    fontWeight="600"
+                  >
+                    {softPromptCooldownLabel}
                   </Text>
                 </XStack>
               </YStack>

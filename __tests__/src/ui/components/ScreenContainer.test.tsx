@@ -222,7 +222,7 @@ describe('ScreenContainer', () => {
       );
 
       const container = getByTestId('screen-container');
-      expect(container.props.paddingTop).toBe(56);
+      expect(container.props.paddingTop).toBe(28);
     });
 
     it('should apply safe area insets to bottom padding', () => {
@@ -258,7 +258,7 @@ describe('ScreenContainer', () => {
       );
 
       const container = getByTestId('screen-container');
-      expect(container.props.paddingTop).toBe(62);
+      expect(container.props.paddingTop).toBe(28);
       expect(container.props.paddingBottom).toBe(42);
     });
 
@@ -277,7 +277,7 @@ describe('ScreenContainer', () => {
       );
 
       const container = getByTestId('screen-container');
-      expect(container.props.paddingTop).toBe(24);
+      expect(container.props.paddingTop).toBe(16);
       expect(container.props.paddingBottom).toBe(24);
     });
   });
@@ -309,7 +309,7 @@ describe('ScreenContainer', () => {
       expect(container.props.paddingHorizontal).toBe('$8');
       expect(container.props.gap).toBe('$5');
       expect(container.props.backgroundColor).toBe('$backgroundHover');
-      expect(container.props.paddingTop).toBe(32);
+      expect(container.props.paddingTop).toBe(28);
       expect(container.props.paddingBottom).toBe(24);
     });
   });

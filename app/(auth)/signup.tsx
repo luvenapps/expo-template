@@ -365,14 +365,7 @@ export default function SignUpScreen() {
 
   return (
     <>
-      <ScreenContainer
-        alignItems="center"
-        paddingHorizontal="$6"
-        contentContainerStyle={{
-          flexGrow: 1,
-          justifyContent: 'center',
-        }}
-      >
+      <ScreenContainer>
         <Card
           bordered
           elevate
@@ -681,6 +674,7 @@ export default function SignUpScreen() {
           </YStack>
         </Card>
       </ScreenContainer>
+
       {showRedirectSpinner ? (
         <View
           position="absolute"

@@ -60,6 +60,7 @@ jest.mock('tamagui', () => {
     ...actual,
     Input,
     Button,
+    Separator: createForwarded(View),
     YStack: createForwarded(View),
     XStack: createForwarded(View),
     Paragraph: createForwarded(Text),

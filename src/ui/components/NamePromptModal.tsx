@@ -63,9 +63,9 @@ export function NamePromptModal({
           height="90%"
         >
           <YStack gap="$4">
-            <YStack gap="$2">
+            <YStack gap="$4">
               <Dialog.Title asChild>
-                <Paragraph fontSize="$5" fontWeight="700">
+                <Paragraph fontSize="$5" fontWeight="700" lineHeight={60}>
                   {title}
                 </Paragraph>
               </Dialog.Title>

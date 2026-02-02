@@ -286,14 +286,7 @@ export default function LoginScreen() {
   }, [isDarkMode, t]);
 
   const content = (
-    <ScreenContainer
-      alignItems="center"
-      paddingHorizontal="$6"
-      contentContainerStyle={{
-        flexGrow: 1,
-        justifyContent: 'center',
-      }}
-    >
+    <ScreenContainer>
       <Card
         bordered
         elevate
@@ -482,7 +475,7 @@ export default function LoginScreen() {
             gap="$2"
             width="100%"
             alignItems="center"
-            marginBottom={Platform.OS === 'web' ? -10 : '$2'}
+            marginBottom={Platform.OS === 'web' ? -10 : '$4'}
           >
             <CaptionText color="$colorMuted">{t('auth.noAccountPrompt')}</CaptionText>
             <PrimaryButton

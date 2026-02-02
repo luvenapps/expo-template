@@ -14,7 +14,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Platform } from 'react-native';
-import { Card, Form, YStack } from 'tamagui';
+import { Card, Form, Separator, YStack } from 'tamagui';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
@@ -61,11 +61,7 @@ export default function ForgotPasswordScreen() {
 
   return (
     <>
-      <ScreenContainer
-        alignItems="center"
-        paddingHorizontal="$6"
-        contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
-      >
+      <ScreenContainer>
         <Card
           bordered
           elevate
@@ -113,11 +109,13 @@ export default function ForgotPasswordScreen() {
               </Form.Trigger>
             </Form>
 
+            <Separator marginTop={Platform.OS === 'web' ? '$0' : '$4'}></Separator>
+
             <YStack
               width="100%"
               alignItems="center"
               gap="$2"
-              marginTop={Platform.OS === 'web' ? 0 : '$5'}
+              marginBottom={Platform.OS === 'web' ? -10 : '$4'}
             >
               <CaptionText color="$colorMuted">{t('auth.reset.remembered')}</CaptionText>
               <PrimaryButton

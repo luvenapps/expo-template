@@ -65,7 +65,7 @@ export function SoftPromptModal({
           <YStack gap="$4" flex={1} justifyContent="space-between" minHeight={200}>
             <YStack gap="$3">
               <Dialog.Title asChild>
-                <Paragraph fontSize="$5" fontWeight="700">
+                <Paragraph fontSize="$5" fontWeight="700" lineHeight={60}>
                   {title}
                 </Paragraph>
               </Dialog.Title>

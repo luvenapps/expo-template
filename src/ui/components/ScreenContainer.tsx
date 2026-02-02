@@ -26,8 +26,9 @@ export function ScreenContainer({
   contentContainerStyle,
 }: ScreenContainerProps) {
   const insets = useSafeAreaInsets();
-  const topPadding = Math.max(insets.top, 12) + 12;
+  const topPadding = Math.min(Math.max(insets.top + 8, 16), 28);
   const bottomPadding = Math.max(insets.bottom, 12) + 12;
+
   const resolvedBackground = backgroundColor ?? '$background';
 
   const content = (
