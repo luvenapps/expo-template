@@ -20,6 +20,14 @@ jest.mock('@/ui/theme/ThemeProvider', () => {
         mutedText: themePalettes.light.mutedText,
       },
     })),
+    useOptionalThemeContext: jest.fn(() => ({
+      resolvedTheme: 'light',
+      palette: {
+        background: themePalettes.light.background,
+        text: themePalettes.light.text,
+        mutedText: themePalettes.light.mutedText,
+      },
+    })),
   };
 });
 

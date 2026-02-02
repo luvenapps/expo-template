@@ -61,7 +61,13 @@ export default function ForgotPasswordScreen() {
 
   return (
     <>
-      <ScreenContainer>
+      <ScreenContainer
+        alignItems="center"
+        contentContainerStyle={{
+          flexGrow: 1,
+          justifyContent: 'center',
+        }}
+      >
         <Card
           bordered
           elevate

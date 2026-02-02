@@ -122,7 +122,12 @@ export default function SettingsScreen() {
   };
 
   return (
-    <ScreenContainer gap="$4" paddingHorizontal="$4" contentContainerStyle={{ paddingBottom: 48 }}>
+    <ScreenContainer
+      gap="$4"
+      paddingHorizontal="$4"
+      backgroundColor="$background"
+      contentContainerStyle={{ flexGrow: 1, paddingBottom: 48 }}
+    >
       <SettingsGroup>
         <SettingsRow
           title={t('settings.themeTitle')}

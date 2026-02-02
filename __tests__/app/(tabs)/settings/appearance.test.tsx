@@ -25,6 +25,10 @@ jest.mock('@/ui/theme/ThemeProvider', () => ({
     theme: 'system',
     setTheme: mockSetTheme,
   }),
+  useOptionalThemeContext: () => ({
+    theme: 'system',
+    setTheme: mockSetTheme,
+  }),
 }));
 
 jest.mock('react-i18next', () => ({

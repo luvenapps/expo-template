@@ -286,7 +286,13 @@ export default function LoginScreen() {
   }, [isDarkMode, t]);
 
   const content = (
-    <ScreenContainer>
+    <ScreenContainer
+      alignItems="center"
+      contentContainerStyle={{
+        flexGrow: 1,
+        justifyContent: 'center',
+      }}
+    >
       <Card
         bordered
         elevate

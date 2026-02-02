@@ -31,6 +31,7 @@ jest.mock('expo-router', () => {
 // Mock ThemeProvider
 jest.mock('@/ui/theme/ThemeProvider', () => ({
   useThemeContext: jest.fn(),
+  useOptionalThemeContext: jest.fn(),
 }));
 
 import { useThemeContext } from '@/ui/theme/ThemeProvider';

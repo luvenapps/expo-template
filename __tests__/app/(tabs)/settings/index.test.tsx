@@ -40,6 +40,21 @@ jest.mock('@/ui/theme/ThemeProvider', () => {
         secondaryText: themePalettes.dark.secondaryText,
       },
     })),
+    useOptionalThemeContext: jest.fn(() => ({
+      theme: 'system',
+      setTheme: jest.fn(),
+      resolvedTheme: 'dark',
+      palette: {
+        background: themePalettes.dark.background,
+        text: themePalettes.dark.text,
+        mutedText: themePalettes.dark.mutedText,
+        accent: themePalettes.dark.accent,
+        accentMuted: themePalettes.dark.accentMuted,
+        surface: themePalettes.dark.surface,
+        secondaryBackground: themePalettes.dark.secondaryBackground,
+        secondaryText: themePalettes.dark.secondaryText,
+      },
+    })),
   };
 });
 

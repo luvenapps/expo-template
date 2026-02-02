@@ -33,6 +33,13 @@ jest.mock('@/ui/theme/ThemeProvider', () => {
         text: themePalettes.light.text,
       },
     })),
+    useOptionalThemeContext: jest.fn(() => ({
+      resolvedTheme: 'light',
+      palette: {
+        surface: themePalettes.light.surface,
+        text: themePalettes.light.text,
+      },
+    })),
   };
 });
 

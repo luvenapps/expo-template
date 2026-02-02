@@ -153,6 +153,10 @@ export function useThemeContext() {
   return context;
 }
 
+export function useOptionalThemeContext() {
+  return useContext(ThemeContext);
+}
+
 export function getThemePalette(theme: ThemeName) {
   const resolvedTheme =
     theme === 'system' ? resolveSystemTheme(Appearance.getColorScheme()) : (theme as ResolvedTheme);

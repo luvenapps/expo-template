@@ -1,6 +1,7 @@
 import { PropsWithChildren } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useOptionalThemeContext } from '@/ui/theme/ThemeProvider';
 import { YStack } from 'tamagui';
 
 type ScreenContainerProps = PropsWithChildren<{
@@ -26,10 +27,22 @@ export function ScreenContainer({
   contentContainerStyle,
 }: ScreenContainerProps) {
   const insets = useSafeAreaInsets();
+  const themeContext = useOptionalThemeContext();
+  const palette = themeContext?.palette;
   const topPadding = Math.min(Math.max(insets.top + 8, 16), 28);
   const bottomPadding = Math.max(insets.bottom, 12) + 12;
 
   const resolvedBackground = backgroundColor ?? '$background';
+  const resolvedNativeBackground =
+    typeof resolvedBackground === 'string' && resolvedBackground.startsWith('$')
+      ? resolvedBackground === '$background'
+        ? palette?.background
+        : resolvedBackground === '$backgroundStrong' || resolvedBackground === '$surface'
+          ? palette?.surface
+          : resolvedBackground === '$backgroundHover'
+            ? palette?.secondaryBackground
+            : palette?.background
+      : resolvedBackground;
 
   const content = (
     <YStack
@@ -50,7 +63,8 @@ export function ScreenContainer({
 
   const maybeScrollable = scrollable ? (
     <ScrollView
-      contentContainerStyle={contentContainerStyle}
+      style={{ flex: 1, backgroundColor: resolvedNativeBackground }}
+      contentContainerStyle={[{ flexGrow: 1 }, contentContainerStyle]}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
@@ -66,7 +80,7 @@ export function ScreenContainer({
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1 }}
+      style={{ flex: 1, backgroundColor: resolvedNativeBackground }}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={70}
     >
