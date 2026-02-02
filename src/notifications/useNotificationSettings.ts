@@ -148,6 +148,10 @@ export function useNotificationSettings() {
     }
   }, [analytics, t]);
 
+  const refreshPreferences = useCallback(() => {
+    setPreferences(loadNotificationPreferences());
+  }, []);
+
   useEffect(() => {
     refreshPermissionStatus().catch(() => undefined);
   }, [refreshPermissionStatus]);
@@ -457,6 +461,7 @@ export function useNotificationSettings() {
     error,
     pushError,
     refreshPermissionStatus,
+    refreshPreferences,
     tryPromptForPush,
     disablePushNotifications,
     // Soft prompt modal props

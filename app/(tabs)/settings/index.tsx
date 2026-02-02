@@ -7,10 +7,10 @@ import { useNotificationSettings } from '@/notifications/useNotificationSettings
 import { ScreenContainer, useToast } from '@/ui';
 import { useThemeContext } from '@/ui/theme/ThemeProvider';
 import { ChevronRight } from '@tamagui/lucide-icons';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import type { ReactNode } from 'react';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Platform } from 'react-native';
 import { Button, Card, Separator, Text, XStack, YStack } from 'tamagui';
@@ -77,9 +77,17 @@ export default function SettingsScreen() {
   const showFriendlyError = useFriendlyErrorHandler(toast);
   const status = useSessionStore((state) => state.status);
   const session = useSessionStore((state) => state.session);
-  const { permissionStatus, notificationStatus } = useNotificationSettings();
+  const { permissionStatus, notificationStatus, refreshPermissionStatus, refreshPreferences } =
+    useNotificationSettings();
   const { value: termsUrl } = useFeatureFlag('legal_terms_url', '');
   const { value: privacyUrl } = useFeatureFlag('legal_privacy_url', '');
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshPermissionStatus().catch(() => undefined);
+      refreshPreferences();
+    }, [refreshPermissionStatus, refreshPreferences]),
+  );
 
   const isNative = Platform.OS !== 'web';
   const notificationsBlocked = isNative

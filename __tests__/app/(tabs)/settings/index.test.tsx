@@ -18,6 +18,7 @@ jest.mock('expo-router', () => {
     useRouter: () => ({
       push: mockPush,
     }),
+    useFocusEffect: (effect: () => void | (() => void)) => effect(),
   };
 });
 
@@ -303,6 +304,7 @@ const buildNotificationSettings = (
   ),
   disablePushNotifications: jest.fn(() => Promise.resolve()),
   refreshPermissionStatus: jest.fn(() => Promise.resolve('prompt' as const)),
+  refreshPreferences: jest.fn(),
   softPrompt: {
     open: false,
     title: 'Enable notifications?',
