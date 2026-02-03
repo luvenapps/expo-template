@@ -73,6 +73,7 @@ Before implementing:
   - `Text.tsx` - Semantic text components (`TitleText`, `SubtitleText`, `BodyText`, `LabelText`, `CaptionText`)
   - `PrimaryButton` - Styled button for primary actions
   - `Card` - Already provided by Tamagui; use directly
+  - `UserOnly` - Auth gate for screens that require a signed-in user (redirects to login on unauthenticated)
 - **When to create new components**:
   - Repeated patterns that combine multiple Tamagui primitives
   - Components that need consistent behavior across the app

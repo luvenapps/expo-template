@@ -12,5 +12,6 @@ export * from './components/CalendarHeatmap';
 export * from './components/Toast';
 export * from './components/InlineError';
 export * from './components/SoftPromptModal';
+export * from './components/UserOnly';
 export * from './providers/AppProviders';
 

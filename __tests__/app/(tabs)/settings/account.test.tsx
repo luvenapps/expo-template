@@ -93,6 +93,8 @@ jest.mock('react-i18next', () => ({
 jest.mock('@/ui', () => {
   const React = require('react');
   const { View, Text, Pressable } = require('react-native');
+  const { useSessionStore } = require('@/auth/session');
+  const { useRouter } = require('expo-router');
 
   const ScreenContainer = ({ children }: { children: any }) =>
     React.createElement(View, null, children);
@@ -129,12 +131,26 @@ jest.mock('@/ui', () => {
     React.createElement(View, null, React.createElement(Text, null, String(messages?.length)));
   ToastContainer.displayName = 'ToastContainer';
 
+  const UserOnly = ({ children }: { children: any }) => {
+    const status = useSessionStore((state: any) => state.status);
+    const router = useRouter();
+    React.useEffect(() => {
+      if (status === 'unauthenticated') {
+        router.replace('/(auth)/login');
+      }
+    }, [router, status]);
+    if (status !== 'authenticated') return null;
+    return React.createElement(React.Fragment, null, children);
+  };
+  UserOnly.displayName = 'UserOnly';
+
   return {
     ScreenContainer,
     SettingsSection,
     PrimaryButton,
     SecondaryButton,
     ToastContainer,
+    UserOnly,
     useToast: () => mockToast,
   };
 });
@@ -221,12 +237,12 @@ describe('AccountSettingsScreen', () => {
     consoleErrorSpy.mockRestore();
   });
 
-  it('navigates to login when unauthenticated', () => {
-    const { getByText } = render(<AccountSettingsScreen />);
+  it('redirects to login when unauthenticated', async () => {
+    render(<AccountSettingsScreen />);
 
-    fireEvent.press(getByText('settings.signIn'));
-
-    expect(mockPush).toHaveBeenCalledWith('/(auth)/login');
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/(auth)/login');
+    });
   });
 
   it('signs out and redirects to root on web when authenticated', async () => {
@@ -407,6 +423,8 @@ describe('AccountSettingsScreen', () => {
 
   it('shows loading state on the auth button', () => {
     mockSessionState.isLoading = true;
+    mockSessionState.status = 'authenticated';
+    mockSessionState.session = { user: { id: 'user-loading', email: 'me@example.com' } };
 
     const { getByText } = render(<AccountSettingsScreen />);
 

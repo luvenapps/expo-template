@@ -14,6 +14,7 @@ import {
   SecondaryButton,
   SettingsSection,
   ToastContainer,
+  UserOnly,
   useToast,
 } from '@/ui';
 import { useRouter } from 'expo-router';
@@ -161,95 +162,99 @@ export default function AccountSettingsScreen() {
 
   return (
     <>
-      <ScreenContainer gap="$5">
-        <SettingsSection
-          title={t('settings.accountTitle')}
-          description={accountDescription}
-          descriptionTestID="settings-account-description"
-        >
-          <PrimaryButton
-            testID="settings-auth-button"
-            disabled={isLoading}
-            onPress={handleAuthAction}
+      <UserOnly>
+        <ScreenContainer gap="$5">
+          <SettingsSection
+            title={t('settings.accountTitle')}
+            description={accountDescription}
+            descriptionTestID="settings-account-description"
           >
-            {isLoading
-              ? t('settings.loading')
-              : status === 'authenticated'
-                ? t('settings.signOut')
-                : t('settings.signIn')}
-          </PrimaryButton>
-          {status === 'authenticated' ? (
-            <SecondaryButton
-              testID="settings-profile-button"
-              onPress={() => router.push('/(tabs)/settings/profile')}
+            <PrimaryButton
+              testID="settings-auth-button"
+              disabled={isLoading}
+              onPress={handleAuthAction}
             >
-              {t('settings.profileEditAction')}
-            </SecondaryButton>
-          ) : null}
-        </SettingsSection>
-
-        {status === 'authenticated' ? (
-          <>
-            <SettingsSection
-              title={t('settings.resetTitle')}
-              description={t('settings.resetDescription')}
-              footer={resetStatus ?? undefined}
-            >
+              {isLoading
+                ? t('settings.loading')
+                : status === 'authenticated'
+                  ? t('settings.signOut')
+                  : t('settings.signIn')}
+            </PrimaryButton>
+            {status === 'authenticated' ? (
               <SecondaryButton
-                testID="settings-reset-app-button"
-                disabled={isResettingAllData}
-                onPress={() => setResetModalOpen(true)}
+                testID="settings-profile-button"
+                onPress={() => router.push('/(tabs)/settings/profile')}
               >
-                {isResettingAllData ? t('settings.resetInProgress') : t('settings.resetAction')}
+                {t('settings.profileEditAction')}
               </SecondaryButton>
-            </SettingsSection>
-            <Dialog
-              modal
-              open={resetModalOpen}
-              onOpenChange={(open) => {
-                if (!isResettingAllData) {
-                  setResetModalOpen(open);
-                }
-              }}
-            >
-              <Dialog.Portal>
-                <Dialog.Overlay key="reset-data-overlay" />
-                <Dialog.Content key="reset-data-content" bordered elevate>
-                  <YStack gap="$3">
-                    <Dialog.Title>{t('settings.resetConfirmTitle')}</Dialog.Title>
-                    <Dialog.Description>{t('settings.resetConfirmDescription')}</Dialog.Description>
-                    <XStack gap="$3" paddingTop="$2">
-                      <SecondaryButton
-                        width="auto"
-                        flex={1}
-                        disabled={isResettingAllData}
-                        onPress={() => setResetModalOpen(false)}
-                      >
-                        {t('settings.resetCancel')}
-                      </SecondaryButton>
-                      <PrimaryButton
-                        testID="settings-reset-confirm-button"
-                        width="auto"
-                        flex={1}
-                        backgroundColor="$dangerColor"
-                        pressStyle={{ backgroundColor: '$dangerColor' }}
-                        disabled={isResettingAllData}
-                        onPress={handleResetAppData}
-                      >
-                        {isResettingAllData ? (
-                          <Spinner size="small" color="$dangerColor" />
-                        ) : (
-                          t('settings.resetConfirmAction')
-                        )}
-                      </PrimaryButton>
-                    </XStack>
-                  </YStack>
-                </Dialog.Content>
-              </Dialog.Portal>
-            </Dialog>
-          </>
-        ) : null}
-      </ScreenContainer>
+            ) : null}
+          </SettingsSection>
+
+          {status === 'authenticated' ? (
+            <>
+              <SettingsSection
+                title={t('settings.resetTitle')}
+                description={t('settings.resetDescription')}
+                footer={resetStatus ?? undefined}
+              >
+                <SecondaryButton
+                  testID="settings-reset-app-button"
+                  disabled={isResettingAllData}
+                  onPress={() => setResetModalOpen(true)}
+                >
+                  {isResettingAllData ? t('settings.resetInProgress') : t('settings.resetAction')}
+                </SecondaryButton>
+              </SettingsSection>
+              <Dialog
+                modal
+                open={resetModalOpen}
+                onOpenChange={(open) => {
+                  if (!isResettingAllData) {
+                    setResetModalOpen(open);
+                  }
+                }}
+              >
+                <Dialog.Portal>
+                  <Dialog.Overlay key="reset-data-overlay" />
+                  <Dialog.Content key="reset-data-content" bordered elevate>
+                    <YStack gap="$3">
+                      <Dialog.Title>{t('settings.resetConfirmTitle')}</Dialog.Title>
+                      <Dialog.Description>
+                        {t('settings.resetConfirmDescription')}
+                      </Dialog.Description>
+                      <XStack gap="$3" paddingTop="$2">
+                        <SecondaryButton
+                          width="auto"
+                          flex={1}
+                          disabled={isResettingAllData}
+                          onPress={() => setResetModalOpen(false)}
+                        >
+                          {t('settings.resetCancel')}
+                        </SecondaryButton>
+                        <PrimaryButton
+                          testID="settings-reset-confirm-button"
+                          width="auto"
+                          flex={1}
+                          backgroundColor="$dangerColor"
+                          pressStyle={{ backgroundColor: '$dangerColor' }}
+                          disabled={isResettingAllData}
+                          onPress={handleResetAppData}
+                        >
+                          {isResettingAllData ? (
+                            <Spinner size="small" color="$dangerColor" />
+                          ) : (
+                            t('settings.resetConfirmAction')
+                          )}
+                        </PrimaryButton>
+                      </XStack>
+                    </YStack>
+                  </Dialog.Content>
+                </Dialog.Portal>
+              </Dialog>
+            </>
+          ) : null}
+        </ScreenContainer>
+      </UserOnly>
       {isSigningOut || isResettingAllData ? (
         <YStack
           position="absolute"

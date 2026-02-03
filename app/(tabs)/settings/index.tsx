@@ -202,10 +202,6 @@ export default function SettingsScreen() {
           icon={<User size={15} color="white" />}
           iconBackground="#007AFF"
           onPress={() => {
-            if (isNative && status !== 'authenticated') {
-              router.push('/(auth)/login');
-              return;
-            }
             router.push('/(tabs)/settings/account');
           }}
         />

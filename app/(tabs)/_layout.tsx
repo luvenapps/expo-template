@@ -18,6 +18,7 @@ export default function TabsLayout() {
     return null;
   }
 
+  // Force login in Web
   if (Platform.OS === 'web' && status !== 'authenticated') {
     return <Redirect href="/(auth)/login" />;
   }

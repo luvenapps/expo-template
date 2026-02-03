@@ -361,6 +361,7 @@ Jest config; prefer them over relative imports.
   - `Text.tsx` – Semantic text components (`TitleText`, `SubtitleText`, `BodyText`, `LabelText`, `CaptionText`)
   - `PrimaryButton` – Styled button for primary actions
   - `Card` – Already provided by Tamagui; use directly for cards/containers
+  - `UserOnly` – Auth gate for screens that require a signed-in user (redirects to login on unauthenticated)
 - **Theme configuration**: `tamagui.config.ts` defines tokens and theme values
 - **When to create new components**:
   - Repeated patterns that combine multiple Tamagui primitives

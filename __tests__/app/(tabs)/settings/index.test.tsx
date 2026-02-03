@@ -569,7 +569,7 @@ describe('SettingsScreen', () => {
     it('should navigate to account screen when pressed', () => {
       const { getByText } = render(<SettingsScreen />);
       fireEvent.press(getByText('Account'));
-      expect(mockPush).toHaveBeenCalledWith('/(auth)/login');
+      expect(mockPush).toHaveBeenCalledWith('/(tabs)/settings/account');
     });
   });
 

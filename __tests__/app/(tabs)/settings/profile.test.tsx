@@ -75,6 +75,7 @@ jest.mock('expo-router');
 const mockRouter = {
   push: jest.fn(),
   back: jest.fn(),
+  replace: jest.fn(),
 };
 
 const mockHandleError = jest.fn();
@@ -125,21 +126,12 @@ describe('ProfileScreen', () => {
       });
     });
 
-    it('should render sign-in prompt when unauthenticated', () => {
+    it('redirects to login when unauthenticated', async () => {
       renderWithProviders(<ProfileScreen />);
 
-      expect(screen.getByText('settings.profileTitle')).toBeTruthy();
-      expect(screen.getByText('settings.profileSignInRequired')).toBeTruthy();
-      expect(screen.getByText('settings.signIn')).toBeTruthy();
-    });
-
-    it('should navigate to login when sign-in button is pressed', () => {
-      renderWithProviders(<ProfileScreen />);
-
-      const signInButton = screen.getByText('settings.signIn');
-      fireEvent.press(signInButton);
-
-      expect(mockRouter.push).toHaveBeenCalledWith('/(auth)/login');
+      await waitFor(() => {
+        expect(mockRouter.replace).toHaveBeenCalledWith('/(auth)/login');
+      });
     });
   });
 

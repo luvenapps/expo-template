@@ -2,7 +2,14 @@ import { supabase } from '@/auth/client';
 import { useSessionStore } from '@/auth/session';
 import { isValidEmail } from '@/data/validation';
 import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
-import { FormField, InlineError, PrimaryButton, ScreenContainer, SecondaryButton } from '@/ui';
+import {
+  FormField,
+  InlineError,
+  PrimaryButton,
+  ScreenContainer,
+  SecondaryButton,
+  UserOnly,
+} from '@/ui';
 import { Stack, useRouter } from 'expo-router';
 import { AsYouType, parsePhoneNumberFromString } from 'libphonenumber-js/min';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -21,7 +28,6 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const session = useSessionStore((state) => state.session);
-  const status = useSessionStore((state) => state.status);
   const setSession = useSessionStore((state) => state.setSession);
   const handleError = useFriendlyErrorHandler();
   const [name, setName] = useState('');
@@ -267,101 +273,84 @@ export default function ProfileScreen() {
     t,
   ]);
 
-  if (status !== 'authenticated') {
-    return (
+  return (
+    <UserOnly>
       <ScreenContainer contentContainerStyle={{ flexGrow: 1, paddingBottom: 96 }}>
         <Stack.Screen options={{ title: t('settings.profileTitle') }} />
-        <YStack gap="$4" alignItems="center" justifyContent="center" flex={1}>
-          <Paragraph fontSize="$5" fontWeight="700">
-            {t('settings.profileTitle')}
-          </Paragraph>
-          <Paragraph color="$colorMuted" textAlign="center">
-            {t('settings.profileSignInRequired')}
-          </Paragraph>
-          <SecondaryButton onPress={() => router.push('/(auth)/login')}>
-            {t('settings.signIn')}
-          </SecondaryButton>
+        <YStack gap="$4">
+          <YStack gap="$2">
+            <Paragraph fontSize="$5" fontWeight="700">
+              {t('settings.profileTitle')}
+            </Paragraph>
+            <Paragraph color="$colorMuted">{t('settings.profileDescription')}</Paragraph>
+          </YStack>
+
+          <FormField
+            label={t('settings.profileNameLabel')}
+            value={name}
+            onChangeText={setName}
+            autoCapitalize="words"
+            autoComplete="name"
+            inputTestID="profile-name-input"
+          />
+          <FormField
+            label={t('settings.profileEmailLabel')}
+            value={email}
+            onChangeText={(value) => {
+              setEmail(value);
+              if (emailTouched) {
+                validateEmail(value);
+              }
+            }}
+            onBlur={() => {
+              setEmailTouched(true);
+              validateEmail(email);
+            }}
+            autoCapitalize="none"
+            autoComplete="email"
+            keyboardType="email-address"
+            helperText={
+              isEmailProvider ? t('settings.profileEmailHelper') : t('settings.profileEmailManaged')
+            }
+            editable={isEmailProvider}
+            errorText={isEmailProvider ? (emailError ?? undefined) : undefined}
+            borderColor={isEmailProvider && emailError ? '$dangerColor' : undefined}
+            focusStyle={isEmailProvider && emailError ? { borderColor: '$dangerColor' } : undefined}
+            inputTestID="profile-email-input"
+          />
+          <FormField
+            label={t('settings.profilePhoneLabel')}
+            value={phoneNumber}
+            onChangeText={handlePhoneChange}
+            autoCapitalize="none"
+            autoComplete="tel"
+            keyboardType="phone-pad"
+            inputTestID="profile-phone-input"
+          />
+
+          <InlineError message={errorMessage} testID="profile-error" />
+          {statusMessage ? (
+            <Paragraph color="$colorMuted" textAlign="center" testID="profile-status">
+              {statusMessage}
+            </Paragraph>
+          ) : null}
+
+          <XStack gap="$3" paddingTop="$2">
+            <SecondaryButton
+              size="$4"
+              width="auto"
+              flex={1}
+              onPress={() => router.back()}
+              disabled={isSaving}
+            >
+              {t('settings.profileCancel')}
+            </SecondaryButton>
+            <PrimaryButton size="$4" width="auto" flex={1} onPress={handleSave} disabled={isSaving}>
+              {isSaving ? t('settings.profileSaving') : t('settings.profileSave')}
+            </PrimaryButton>
+          </XStack>
         </YStack>
       </ScreenContainer>
-    );
-  }
-
-  return (
-    <ScreenContainer contentContainerStyle={{ flexGrow: 1, paddingBottom: 96 }}>
-      <Stack.Screen options={{ title: t('settings.profileTitle') }} />
-      <YStack gap="$4">
-        <YStack gap="$2">
-          <Paragraph fontSize="$5" fontWeight="700">
-            {t('settings.profileTitle')}
-          </Paragraph>
-          <Paragraph color="$colorMuted">{t('settings.profileDescription')}</Paragraph>
-        </YStack>
-
-        <FormField
-          label={t('settings.profileNameLabel')}
-          value={name}
-          onChangeText={setName}
-          autoCapitalize="words"
-          autoComplete="name"
-          inputTestID="profile-name-input"
-        />
-        <FormField
-          label={t('settings.profileEmailLabel')}
-          value={email}
-          onChangeText={(value) => {
-            setEmail(value);
-            if (emailTouched) {
-              validateEmail(value);
-            }
-          }}
-          onBlur={() => {
-            setEmailTouched(true);
-            validateEmail(email);
-          }}
-          autoCapitalize="none"
-          autoComplete="email"
-          keyboardType="email-address"
-          helperText={
-            isEmailProvider ? t('settings.profileEmailHelper') : t('settings.profileEmailManaged')
-          }
-          editable={isEmailProvider}
-          errorText={isEmailProvider ? (emailError ?? undefined) : undefined}
-          borderColor={isEmailProvider && emailError ? '$dangerColor' : undefined}
-          focusStyle={isEmailProvider && emailError ? { borderColor: '$dangerColor' } : undefined}
-          inputTestID="profile-email-input"
-        />
-        <FormField
-          label={t('settings.profilePhoneLabel')}
-          value={phoneNumber}
-          onChangeText={handlePhoneChange}
-          autoCapitalize="none"
-          autoComplete="tel"
-          keyboardType="phone-pad"
-          inputTestID="profile-phone-input"
-        />
-
-        <InlineError message={errorMessage} testID="profile-error" />
-        {statusMessage ? (
-          <Paragraph color="$colorMuted" textAlign="center" testID="profile-status">
-            {statusMessage}
-          </Paragraph>
-        ) : null}
-
-        <XStack gap="$3" paddingTop="$2">
-          <SecondaryButton
-            size="$4"
-            width="auto"
-            flex={1}
-            onPress={() => router.back()}
-            disabled={isSaving}
-          >
-            {t('settings.profileCancel')}
-          </SecondaryButton>
-          <PrimaryButton size="$4" width="auto" flex={1} onPress={handleSave} disabled={isSaving}>
-            {isSaving ? t('settings.profileSaving') : t('settings.profileSave')}
-          </PrimaryButton>
-        </XStack>
-      </YStack>
-    </ScreenContainer>
+    </UserOnly>
   );
 }
