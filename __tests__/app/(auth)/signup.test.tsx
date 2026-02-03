@@ -49,10 +49,47 @@ jest.mock('tamagui', () => {
   );
   Input.displayName = 'Input';
 
-  const Button = ({ children, onPress, ...rest }: any) =>
+  const Button = ({
+    children,
+    onPress,
+    style,
+    backgroundColor,
+    color,
+    borderColor,
+    borderWidth,
+    height,
+    minWidth,
+    paddingHorizontal,
+    hoverStyle,
+    pressStyle,
+    disabledStyle,
+    ...rest
+  }: any) =>
     React.createElement(
       TouchableOpacity,
-      { onPress, accessibilityRole: 'button', ...rest },
+      {
+        onPress,
+        accessibilityRole: 'button',
+        style: [
+          {
+            backgroundColor,
+            color,
+            borderColor,
+            borderWidth,
+            height,
+            minWidth,
+            paddingHorizontal,
+          },
+          style,
+        ],
+        hoverStyle,
+        pressStyle,
+        disabledStyle,
+        __hoverStyle: hoverStyle,
+        __pressStyle: pressStyle,
+        __disabledStyle: disabledStyle,
+        ...rest,
+      },
       typeof children === 'string' ? React.createElement(Text, null, children) : children,
     );
 
@@ -101,9 +138,10 @@ import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import React from 'react';
 import SignUpScreen from '../../../app/(auth)/signup';
 import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
-import { TamaguiProvider, Theme } from 'tamagui';
+import { Separator, TamaguiProvider, Theme, useThemeName } from 'tamagui';
 import { tamaguiConfig } from '../../../tamagui.config';
 import { getLocalName } from '@/auth/nameStorage';
+import { Platform } from 'react-native';
 
 jest.mock('@/auth/service', () => ({
   signUpWithEmail: jest.fn(),
@@ -149,6 +187,8 @@ const mockedFriendlyError = useFriendlyErrorHandler as jest.MockedFunction<
   typeof useFriendlyErrorHandler
 >;
 const mockedGetLocalName = getLocalName as jest.MockedFunction<typeof getLocalName>;
+const mockedUseThemeName = useThemeName as jest.MockedFunction<typeof useThemeName>;
+const originalPlatform = Platform.OS;
 
 // Helper to render components with Tamagui providers
 const renderWithProviders = (component: React.ReactElement) => {
@@ -187,12 +227,17 @@ describe('SignUpScreen', () => {
     mockStatus = 'unauthenticated';
     mockedGetLocalName.mockReset();
     mockedSignUpWithEmail.mockClear();
+    mockedUseThemeName.mockReturnValue('light');
     mockedFriendlyError.mockReturnValue(
       jest.fn(() => ({
         friendly: { code: 'unknown' as const, type: 'error' as const, titleKey: 'errors.signup' },
         toastId: 'toast-1',
       })),
     );
+  });
+
+  afterEach(() => {
+    Object.defineProperty(Platform, 'OS', { value: originalPlatform });
   });
 
   it('renders signup screen with all fields', () => {
@@ -258,6 +303,84 @@ describe('SignUpScreen', () => {
       expect(mockSignInWithOAuth).toHaveBeenCalledWith('google');
       expect(getByText('OAuth failed')).toBeTruthy();
     });
+  });
+
+  it('clears the OAuth error message after a successful sign-in', async () => {
+    const friendlyHandler = jest.fn(() => ({
+      friendly: { code: 'unknown' as const, type: 'error' as const, description: 'OAuth failed' },
+      toastId: 'toast-oauth',
+    }));
+    mockedFriendlyError.mockReturnValue(friendlyHandler);
+
+    mockSignInWithOAuth.mockResolvedValueOnce({
+      success: false,
+      error: 'OAuth error',
+    });
+    mockSignInWithOAuth.mockResolvedValueOnce({
+      success: true,
+    });
+
+    const { getByTestId, getByText, queryByText } = renderWithProviders(<SignUpScreen />);
+
+    fireEvent.press(getByTestId('oauth-google-button'));
+
+    await waitFor(() => {
+      expect(getByText('OAuth failed')).toBeTruthy();
+    });
+
+    fireEvent.press(getByTestId('oauth-google-button'));
+
+    await waitFor(() => {
+      expect(mockSignInWithOAuth).toHaveBeenCalledWith('google');
+      expect(queryByText('OAuth failed')).toBeNull();
+    });
+  });
+
+  it('renders Apple OAuth button on non-Android with light styles', () => {
+    Object.defineProperty(Platform, 'OS', { value: 'ios' });
+
+    const { getByTestId } = renderWithProviders(<SignUpScreen />);
+    const appleButton = getByTestId('oauth-apple-button');
+    const appleStyle = Array.isArray(appleButton.props.style)
+      ? Object.assign({}, ...appleButton.props.style)
+      : appleButton.props.style;
+
+    expect(appleStyle.backgroundColor).toBe('#FFFFFF');
+    expect(appleStyle.borderColor).toBe('#747775');
+    expect(appleStyle.color).toBe('#000000');
+  });
+
+  it('uses dark mode styles for Google OAuth button', () => {
+    mockedUseThemeName.mockReturnValue('dark');
+
+    const { getByTestId } = renderWithProviders(<SignUpScreen />);
+    const googleButton = getByTestId('oauth-google-button');
+    const googleStyle = Array.isArray(googleButton.props.style)
+      ? Object.assign({}, ...googleButton.props.style)
+      : googleButton.props.style;
+
+    expect(googleStyle.backgroundColor).toBe('#131314');
+    expect(googleStyle.borderColor).toBe('#8E918F');
+    expect(googleStyle.color).toBe('#E3E3E3');
+  });
+
+  it('hides Apple OAuth button on Android', () => {
+    Object.defineProperty(Platform, 'OS', { value: 'android' });
+
+    const { queryByTestId, getByTestId } = renderWithProviders(<SignUpScreen />);
+
+    expect(queryByTestId('oauth-apple-button')).toBeNull();
+    expect(getByTestId('oauth-google-button')).toBeDefined();
+  });
+
+  it('uses web spacing for the OAuth divider separator on web', () => {
+    Object.defineProperty(Platform, 'OS', { value: 'web' });
+
+    const { UNSAFE_getAllByType } = renderWithProviders(<SignUpScreen />);
+    const separators = UNSAFE_getAllByType(Separator);
+    const divider = separators.find((node) => node.props.marginTop !== undefined);
+
+    expect(divider?.props.marginTop).toBe('$0');
   });
 
   it('disables submit button when email is empty', () => {
