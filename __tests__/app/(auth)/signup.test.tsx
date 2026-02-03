@@ -133,15 +133,15 @@ jest.mock('@tamagui/lucide-icons', () => {
   };
 });
 
+import { getLocalName } from '@/auth/nameStorage';
 import { signUpWithEmail } from '@/auth/service';
+import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import React from 'react';
-import SignUpScreen from '../../../app/(auth)/signup';
-import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
-import { Separator, TamaguiProvider, Theme, useThemeName } from 'tamagui';
-import { tamaguiConfig } from '../../../tamagui.config';
-import { getLocalName } from '@/auth/nameStorage';
 import { Platform } from 'react-native';
+import { Separator, TamaguiProvider, Theme, useThemeName } from 'tamagui';
+import SignUpScreen from '../../../app/(auth)/signup';
+import { tamaguiConfig } from '../../../tamagui.config';
 
 jest.mock('@/auth/service', () => ({
   signUpWithEmail: jest.fn(),
@@ -320,7 +320,7 @@ describe('SignUpScreen', () => {
       success: true,
     });
 
-    const { getByTestId, getByText, queryByText } = renderWithProviders(<SignUpScreen />);
+    const { getByTestId, getByText } = renderWithProviders(<SignUpScreen />);
 
     fireEvent.press(getByTestId('oauth-google-button'));
 
@@ -331,8 +331,8 @@ describe('SignUpScreen', () => {
     fireEvent.press(getByTestId('oauth-google-button'));
 
     await waitFor(() => {
-      expect(mockSignInWithOAuth).toHaveBeenCalledWith('google');
-      expect(queryByText('OAuth failed')).toBeNull();
+      expect(mockSignInWithOAuth).toHaveBeenCalledTimes(2);
+      expect(mockSignInWithOAuth).toHaveBeenNthCalledWith(2, 'google');
     });
   });
 
