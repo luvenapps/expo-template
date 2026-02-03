@@ -310,8 +310,8 @@ import { useThemeContext } from '@/ui/theme/ThemeProvider';
 import { themePalettes } from '@/ui/theme/palette';
 import { fireEvent, render } from '@testing-library/react-native';
 import React from 'react';
-import { Platform } from 'react-native';
-import SettingsScreen from '../../../../app/(tabs)/settings/index';
+import { Platform, Text } from 'react-native';
+import SettingsScreen, { SettingsRow } from '../../../../app/(tabs)/settings/index';
 
 const mockedUseSessionStore = useSessionStore as unknown as jest.Mock;
 const mockedUseThemeContext = useThemeContext as unknown as jest.Mock;
@@ -461,10 +461,32 @@ describe('SettingsScreen', () => {
       expect(getByText('fr')).toBeDefined();
     });
 
+    it('handles region-tagged locales', () => {
+      (globalThis as any).__TEST_LANG = 'en-US';
+      const { getByText } = render(<SettingsScreen />);
+      expect(getByText('English')).toBeDefined();
+    });
+
     it('should navigate to language screen when pressed', () => {
       const { getByText } = render(<SettingsScreen />);
       fireEvent.press(getByText('Language'));
       expect(mockPush).toHaveBeenCalledWith('/(tabs)/settings/language');
+    });
+  });
+
+  describe('SettingsRow', () => {
+    it('uses the default icon background when none is provided', () => {
+      const { UNSAFE_root } = render(
+        <SettingsRow title="Row" onPress={jest.fn()} icon={<Text testID="row-icon" />} />,
+      );
+
+      const iconWrapper = UNSAFE_root.findAllByType('View').find(
+        (node: { props: { width?: number; height?: number } }) => {
+          return node.props.width === 32 && node.props.height === 32;
+        },
+      );
+
+      expect(iconWrapper?.props.backgroundColor).toBe('$backgroundHover');
     });
   });
 
@@ -547,7 +569,7 @@ describe('SettingsScreen', () => {
     it('should navigate to account screen when pressed', () => {
       const { getByText } = render(<SettingsScreen />);
       fireEvent.press(getByText('Account'));
-      expect(mockPush).toHaveBeenCalledWith('/(tabs)/settings/account');
+      expect(mockPush).toHaveBeenCalledWith('/(auth)/login');
     });
   });
 

@@ -38,7 +38,14 @@ type SettingsRowProps = {
   testID?: string;
 };
 
-function SettingsRow({ title, value, icon, iconBackground, onPress, testID }: SettingsRowProps) {
+export function SettingsRow({
+  title,
+  value,
+  icon,
+  iconBackground,
+  onPress,
+  testID,
+}: SettingsRowProps) {
   return (
     <Button
       unstyled
@@ -194,7 +201,13 @@ export default function SettingsScreen() {
           value={accountLabel}
           icon={<User size={15} color="white" />}
           iconBackground="#007AFF"
-          onPress={() => router.push('/(tabs)/settings/account')}
+          onPress={() => {
+            if (isNative && status !== 'authenticated') {
+              router.push('/(auth)/login');
+              return;
+            }
+            router.push('/(tabs)/settings/account');
+          }}
         />
       </SettingsGroup>
 
