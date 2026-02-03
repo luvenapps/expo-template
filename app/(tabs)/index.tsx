@@ -1,5 +1,5 @@
-import { DOMAIN } from '@/config/domain.config';
 import { getLocalName } from '@/auth/nameStorage';
+import { DOMAIN } from '@/config/domain.config';
 import { PrimaryButton, ScreenContainer } from '@/ui';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -21,7 +21,7 @@ export default function HomeScreen() {
   return (
     <>
       <ScreenContainer gap="$4" alignItems="center">
-        <H2 fontWeight="700" testID="welcome-title">
+        <H2 fontWeight="700" fontSize={40} testID="welcome-title" textAlign="center">
           {(t as unknown as (k: string, opts?: Record<string, any>) => string)('home.title', {
             app: DOMAIN.app.displayName,
           })}
