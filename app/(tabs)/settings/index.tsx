@@ -17,6 +17,7 @@ import {
   User,
   Wrench,
 } from '@tamagui/lucide-icons';
+import Constants from 'expo-constants';
 import { useFocusEffect, useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import type { ReactNode } from 'react';
@@ -252,6 +253,13 @@ export default function SettingsScreen() {
           }}
         />
       </SettingsGroup>
+
+      <YStack alignItems="center" paddingVertical="$4" gap="$2">
+        <Text fontSize="$4" color="$colorMuted" testID="app-version">
+          {'v'}
+          {Constants.nativeAppVersion ?? Constants.expoConfig?.version ?? '1.0.0'}
+        </Text>
+      </YStack>
     </ScreenContainer>
   );
 }
