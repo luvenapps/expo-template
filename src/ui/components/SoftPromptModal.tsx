@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import { useWindowDimensions } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { Dialog, Paragraph, XStack, YStack, useTheme } from 'tamagui';
 import { PrimaryButton } from '../components/PrimaryButton';
@@ -30,6 +31,8 @@ export function SoftPromptModal({
   const resolvedNotNowLabel = notNowLabel ?? '';
   // Require the user to press one of the actions before the modal can close.
   const allowCloseRef = useRef(false);
+  const { width } = useWindowDimensions();
+  const size = width < 390 ? 200 : 300;
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen && !allowCloseRef.current) {
@@ -74,7 +77,7 @@ export function SoftPromptModal({
               </Dialog.Description>
             </YStack>
             <XStack justifyContent="center">
-              <Svg width={200} height={200} viewBox="0 0 72 72" fill="none">
+              <Svg width={size} height={size} viewBox="0 0 72 72" fill="none">
                 <Circle cx="36" cy="36" r="32" stroke={strokeColor} strokeWidth="2" />
                 <Path
                   d="M36 18c-7.2 0-13 5.8-13 13v8.5l-3.4 4.6c-.4.5 0 1.4.7 1.4h32.6c.7 0 1.1-.9.7-1.4L49 39.5V31c0-7.2-5.8-13-13-13Z"

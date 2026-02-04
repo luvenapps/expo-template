@@ -38,10 +38,21 @@ jest.mock('tamagui', () => {
   const YStack = ({ children, ...props }: any) => React.createElement(View, props, children);
   YStack.displayName = 'YStack';
 
+  const XStack = ({ children, ...props }: any) => React.createElement(View, props, children);
+  XStack.displayName = 'XStack';
+
+  const useTheme = () => ({
+    color: {
+      get: () => '#111',
+    },
+  });
+
   return {
     Dialog,
     Paragraph,
     YStack,
+    XStack,
+    useTheme,
   };
 });
 
