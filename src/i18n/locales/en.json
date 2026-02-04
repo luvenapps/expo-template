@@ -136,6 +136,11 @@
       "description": "Please try again."
     }
   },
+  "appUpdate": {
+    "title": "Update required",
+    "description": "A newer version is required to continue. Please update the app to keep using it.",
+    "action": "Update app"
+  },
   "settings": {
     "syncUnavailableWeb": "Background sync requires the iOS or Android app to access the local database.",
     "syncUnavailableAuth": "Sign in to enable syncing with your Supabase account.",

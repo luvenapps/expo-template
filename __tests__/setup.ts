@@ -26,6 +26,7 @@ jest.mock('@/featureFlags/types', () => {
     ...actual,
     DEFAULT_FLAGS: {
       test_feature_flag: false,
+      min_app_version: '',
     },
   };
 });
@@ -50,11 +51,17 @@ jest.mock('expo-constants', () => ({
   __esModule: true,
   default: {
     expoConfig: {
+      version: '1.0.0',
       extra: {
         supabaseUrl: 'https://test.supabase.co',
         supabaseAnonKey: 'test-anon-key',
+        storeIds: {
+          ios: '1234567890',
+          android: 'com.example.test',
+        },
       },
     },
+    nativeAppVersion: '1.0.0',
   },
 }));
 

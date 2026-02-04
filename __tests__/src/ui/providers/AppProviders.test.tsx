@@ -298,6 +298,20 @@ jest.mock('@/ui/components/SoftPromptModal', () => ({
   SoftPromptModal: () => null,
 }));
 
+const mockForceUpgradeModal = jest.fn();
+jest.mock('@/ui/components/ForceUpgradeModal', () => ({
+  ForceUpgradeModal: (props: any) => {
+    mockForceUpgradeModal(props);
+    const React = jest.requireActual('react');
+    return React.createElement('ForceUpgradeModal', props);
+  },
+}));
+
+const mockUseFeatureFlag = jest.fn();
+jest.mock('@/featureFlags/useFeatureFlag', () => ({
+  useFeatureFlag: (...args: unknown[]) => mockUseFeatureFlag(...args),
+}));
+
 const actualThemePalettes = jest.requireActual('@/ui/theme/palette').themePalettes;
 
 import { AppProviders } from '@/ui/providers/AppProviders';
@@ -348,6 +362,11 @@ describe('AppProviders', () => {
       return jest.fn();
     });
     mockFeatureFlagClient.setContext.mockClear();
+    mockUseFeatureFlag.mockReturnValue({
+      value: '',
+      status: 'ready',
+      source: 'default',
+    });
     const { useNotificationSettings } = require('@/notifications/useNotificationSettings');
     useNotificationSettings.mockReturnValue({
       ...mockNotificationSettingsDefault,
@@ -374,6 +393,50 @@ describe('AppProviders', () => {
       );
 
       expect(UNSAFE_root).toBeDefined();
+    });
+
+    it('shows the force upgrade modal when min_app_version is higher than the app version', async () => {
+      mockUseFeatureFlag.mockReturnValue({
+        value: '2.0.0',
+        status: 'ready',
+        source: 'remote',
+      });
+
+      render(
+        <AppProviders>
+          <Text>Test Content</Text>
+        </AppProviders>,
+      );
+
+      await waitFor(() => {
+        const lastCall = mockForceUpgradeModal.mock.calls.at(-1)?.[0];
+        expect(lastCall?.open).toBe(true);
+      });
+    });
+
+    it('does not show force upgrade modal when version cannot be parsed', async () => {
+      const semver = require('semver');
+      const originalCoerce = semver.coerce;
+      semver.coerce = jest.fn().mockReturnValue(null);
+
+      mockUseFeatureFlag.mockReturnValue({
+        value: 'invalid-version',
+        status: 'ready',
+        source: 'remote',
+      });
+
+      render(
+        <AppProviders>
+          <Text>Test Content</Text>
+        </AppProviders>,
+      );
+
+      await waitFor(() => {
+        const lastCall = mockForceUpgradeModal.mock.calls.at(-1)?.[0];
+        expect(lastCall?.open).toBe(false);
+      });
+
+      semver.coerce = originalCoerce;
     });
 
     it('should render children correctly', () => {

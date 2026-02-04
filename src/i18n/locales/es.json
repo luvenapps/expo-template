@@ -136,6 +136,11 @@
       "description": "Por favor intenta de nuevo."
     }
   },
+  "appUpdate": {
+    "title": "Actualización requerida",
+    "description": "Se requiere una versión más reciente para continuar. Actualiza la app para seguir usándola.",
+    "action": "Actualizar app"
+  },
   "settings": {
     "syncUnavailableWeb": "La sincronización en segundo plano requiere la app de iOS o Android para acceder a la base de datos local.",
     "syncUnavailableAuth": "Inicia sesión para habilitar la sincronización con tu cuenta de Supabase.",

@@ -95,6 +95,12 @@ jest.mock('tamagui', () => {
   Dialog.Close = ({ children }: any) => <>{children}</>;
   Dialog.Close.displayName = 'Dialog.Close';
 
+  const useTheme = () => ({
+    color: {
+      get: () => '#111',
+    },
+  });
+
   return {
     TamaguiProvider: ({ children }: any) => children,
     Theme: ({ children }: any) => children,
@@ -107,6 +113,7 @@ jest.mock('tamagui', () => {
     createTamagui: jest.fn(() => ({})),
     createTokens: jest.fn((tokens) => tokens),
     createFont: jest.fn((font) => font),
+    useTheme,
   };
 });
 

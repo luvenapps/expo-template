@@ -21,16 +21,19 @@ import { onNotificationEvent } from '@/notifications/notificationEvents';
 import { refreshReminderSeriesWindows } from '@/notifications/scheduler';
 import { useNotificationSettings } from '@/notifications/useNotificationSettings';
 import { getFeatureFlagClient } from '@/featureFlags';
+import { useFeatureFlag } from '@/featureFlags/useFeatureFlag';
 import { analytics } from '@/observability/analytics';
 import { AnalyticsProvider } from '@/observability/AnalyticsProvider';
 import { createLogger } from '@/observability/logger';
 import { getQueryClient, getQueryClientPersistOptions } from '@/state';
 import { pullUpdates, pushOutbox, useSync } from '@/sync';
+import { ForceUpgradeModal } from '@/ui/components/ForceUpgradeModal';
 import { NamePromptModal } from '@/ui/components/NamePromptModal';
 import { SoftPromptModal } from '@/ui/components/SoftPromptModal';
 import { useThemeContext } from '@/ui/theme/ThemeProvider';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
+import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import { useRouter, type Href } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -39,6 +42,7 @@ import { I18nextProvider } from 'react-i18next';
 import { AppState, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import semver from 'semver';
 import { YStack } from 'tamagui';
 
 const queryClient = getQueryClient();
@@ -60,12 +64,36 @@ export function AppProviders({ children }: PropsWithChildren) {
   const [namePromptOpen, setNamePromptOpen] = useState(false);
   const [namePromptValue, setNamePromptValue] = useState('');
   const { tryPromptForPush, softPrompt } = useNotificationSettings();
+  const { value: minAppVersion, status: minAppVersionStatus } = useFeatureFlag(
+    'min_app_version',
+    '',
+  );
   const turnOnFirebase = useMemo(
     () =>
       process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === 'true' ||
       process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === '1',
     [],
   );
+  const shouldForceUpgrade = useMemo(() => {
+    if (isWeb || minAppVersionStatus !== 'ready') {
+      return false;
+    }
+
+    const trimmedMinVersion = typeof minAppVersion === 'string' ? minAppVersion.trim() : '';
+    if (!trimmedMinVersion) {
+      return false;
+    }
+
+    const currentVersion = Constants.nativeAppVersion ?? Constants.expoConfig?.version ?? '';
+    const parsedCurrent = semver.coerce(currentVersion)?.version;
+    const parsedMin = semver.coerce(trimmedMinVersion)?.version;
+
+    if (!parsedCurrent || !parsedMin) {
+      return false;
+    }
+
+    return semver.lt(parsedCurrent, parsedMin);
+  }, [minAppVersion, minAppVersionStatus]);
 
   useEffect(() => {
     const initialize = async () => {
@@ -392,6 +420,12 @@ export function AppProviders({ children }: PropsWithChildren) {
       <AnalyticsProvider>
         <GestureHandlerRootView style={{ flex: 1, backgroundColor: palette.background }}>
           <ForegroundReminderAnalyticsHost />
+          <ForceUpgradeModal
+            open={shouldForceUpgrade}
+            title={i18n.t('appUpdate.title')}
+            message={i18n.t('appUpdate.description')}
+            actionLabel={i18n.t('appUpdate.action')}
+          />
           <SoftPromptModal
             open={softPrompt.open}
             title={softPrompt.title}
