@@ -6,6 +6,8 @@ import { DOMAIN } from '@/config/domain.config';
 import { archiveOldEntries } from '@/db/sqlite/archive';
 import { cleanupSoftDeletedRecords } from '@/db/sqlite/cleanup';
 import { optimizeDatabase } from '@/db/sqlite/maintenance';
+import { getFeatureFlagClient } from '@/featureFlags';
+import { useFeatureFlag } from '@/featureFlags/useFeatureFlag';
 import i18n from '@/i18n';
 import {
   configureNotificationHandler,
@@ -20,8 +22,6 @@ import { ForegroundReminderAnalyticsHost } from '@/notifications/ForegroundRemin
 import { onNotificationEvent } from '@/notifications/notificationEvents';
 import { refreshReminderSeriesWindows } from '@/notifications/scheduler';
 import { useNotificationSettings } from '@/notifications/useNotificationSettings';
-import { getFeatureFlagClient } from '@/featureFlags';
-import { useFeatureFlag } from '@/featureFlags/useFeatureFlag';
 import { analytics } from '@/observability/analytics';
 import { AnalyticsProvider } from '@/observability/AnalyticsProvider';
 import { createLogger } from '@/observability/logger';

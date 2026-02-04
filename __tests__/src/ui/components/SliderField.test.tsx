@@ -1,45 +1,60 @@
-// Mock Tamagui
+// Mock Tamagui with simplified structure to avoid segfaults
+/* eslint-disable react/no-unknown-property */
 jest.mock('tamagui', () => {
-  const mockReact = jest.requireActual('react');
+  const React = require('react');
 
-  const MockSlider = ({ children, value, onValueChange, ...props }: any) => {
-    return mockReact.createElement(
-      'View',
-      { ...props, testID: 'slider' },
-      mockReact.createElement(
-        'button',
-        {
-          testID: 'slider-button',
-          onClick: () => onValueChange?.([50]),
-        },
-        'Adjust Slider',
-      ),
-      children,
+  // Simplified mock components without complex createElement nesting
+  function YStack(props: any) {
+    return <div testID={props.testID} {...props} />;
+  }
+
+  function Slider(props: any) {
+    return (
+      <div testID="slider" {...props}>
+        {props.children}
+      </div>
     );
-  };
+  }
 
-  MockSlider.Track = ({ children, ...props }: any) =>
-    mockReact.createElement('View', { ...props, testID: 'slider-track' }, children);
-  MockSlider.TrackActive = (props: any) =>
-    mockReact.createElement('View', { ...props, testID: 'slider-track-active' });
-  MockSlider.Thumb = (props: any) =>
-    mockReact.createElement('View', { ...props, testID: `slider-thumb-${props.index}` });
+  function Track(props: any) {
+    return (
+      <div testID="slider-track" {...props}>
+        {props.children}
+      </div>
+    );
+  }
+  Slider.Track = Track;
 
-  return {
-    YStack: ({ children, ...props }: any) => mockReact.createElement('View', props, children),
-    Slider: MockSlider,
-  };
+  const TrackActive = (props: any) => <div testID="slider-track-active" {...props} />;
+  Slider.TrackActive = TrackActive;
+
+  const Thumb = (props: any) => <div testID={`slider-thumb-${props.index}`} {...props} />;
+  Slider.Thumb = Thumb;
+
+  return { YStack, Slider };
 });
+/* eslint-enable react/no-unknown-property */
 
-// Mock Text components
+// Mock Text components with simplified structure
+/* eslint-disable react/no-unknown-property */
 jest.mock('@/ui/components/Text', () => {
-  const mockReact = jest.requireActual('react');
+  const React = require('react');
 
-  return {
-    LabelText: ({ children, ...props }: any) => mockReact.createElement('Text', props, children),
-    CaptionText: ({ children, ...props }: any) => mockReact.createElement('Text', props, children),
-  };
+  const LabelText = (props: any) => (
+    <div testID={props.testID} {...props}>
+      {props.children}
+    </div>
+  );
+
+  const CaptionText = (props: any) => (
+    <div testID={props.testID} {...props}>
+      {props.children}
+    </div>
+  );
+
+  return { LabelText, CaptionText };
 });
+/* eslint-enable react/no-unknown-property */
 
 import { render } from '@testing-library/react-native';
 import React from 'react';
