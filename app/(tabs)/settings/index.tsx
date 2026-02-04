@@ -106,7 +106,7 @@ function SettingsGroup({ children }: { children: ReactNode }) {
 export default function SettingsScreen() {
   const router = useRouter();
   const { t, i18n } = useTranslation();
-  const { theme: themePreference } = useThemeContext();
+  const { theme: themePreference, resolvedTheme } = useThemeContext();
   const toast = useToast();
   const showFriendlyError = useFriendlyErrorHandler(toast);
   const status = useSessionStore((state) => state.status);
@@ -140,6 +140,15 @@ export default function SettingsScreen() {
     return t('settings.themeSystem');
   }, [themePreference, t]);
 
+  const isDarkMode = resolvedTheme === 'dark';
+  const getIconStyles = useCallback(
+    (accent: string) => ({
+      background: isDarkMode ? '$transparent' : accent,
+      color: isDarkMode ? accent : 'white',
+    }),
+    [isDarkMode],
+  );
+
   const currentLanguage = (i18n.language ?? 'en').split('-')[0];
   const languageLabel =
     supportedLanguages.find((lang) => lang.code === currentLanguage)?.label ?? currentLanguage;
@@ -154,6 +163,15 @@ export default function SettingsScreen() {
     status === 'authenticated'
       ? (session?.user?.email ?? t('settings.accountSignedIn'))
       : t('settings.signIn');
+
+  const themeIcon = getIconStyles('#5E5CE6');
+  const languageIcon = getIconStyles('#FF9500');
+  const notificationsIcon = getIconStyles('#FF3B30');
+  const accountIcon = getIconStyles('#007AFF');
+  const developerIcon = getIconStyles('#8E8E93');
+  const helpIcon = getIconStyles('#34C759');
+  const termsIcon = getIconStyles('#AF52DE');
+  const privacyIcon = getIconStyles('#30B0C7');
 
   const openExternal = async (url: string) => {
     try {
@@ -174,24 +192,24 @@ export default function SettingsScreen() {
         <SettingsRow
           title={t('settings.themeTitle')}
           value={appearanceLabel}
-          icon={<Palette size={18} color="white" />}
-          iconBackground="#5E5CE6"
+          icon={<Palette size={18} color={themeIcon.color} />}
+          iconBackground={themeIcon.background}
           onPress={() => router.push('/(tabs)/settings/appearance')}
         />
         <Separator />
         <SettingsRow
           title={t('settings.languageTitle')}
           value={languageLabel}
-          icon={<Languages size={18} color="white" />}
-          iconBackground="#FF9500"
+          icon={<Languages size={18} color={languageIcon.color} />}
+          iconBackground={languageIcon.background}
           onPress={() => router.push('/(tabs)/settings/language')}
         />
         <Separator />
         <SettingsRow
           title={t('settings.notificationsTitle')}
           value={notificationsLabel}
-          icon={<Bell size={18} color="white" />}
-          iconBackground="#FF3B30"
+          icon={<Bell size={18} color={notificationsIcon.color} />}
+          iconBackground={notificationsIcon.background}
           onPress={() => router.push('/(tabs)/settings/notifications')}
         />
       </SettingsGroup>
@@ -200,8 +218,8 @@ export default function SettingsScreen() {
         <SettingsRow
           title={t('settings.accountTitle')}
           value={accountLabel}
-          icon={<User size={15} color="white" />}
-          iconBackground="#007AFF"
+          icon={<User size={15} color={accountIcon.color} />}
+          iconBackground={accountIcon.background}
           onPress={() => {
             router.push('/(tabs)/settings/account');
           }}
@@ -211,8 +229,8 @@ export default function SettingsScreen() {
       <SettingsGroup>
         <SettingsRow
           title={t('settings.developerUtilitiesTitle')}
-          icon={<Wrench size={18} color="white" />}
-          iconBackground="#8E8E93"
+          icon={<Wrench size={18} color={developerIcon.color} />}
+          iconBackground={developerIcon.background}
           onPress={() => router.push('/(tabs)/settings/developer-utilities')}
         />
       </SettingsGroup>
@@ -220,8 +238,8 @@ export default function SettingsScreen() {
       <SettingsGroup>
         <SettingsRow
           title={t('settings.getHelpTitle')}
-          icon={<HelpCircle size={18} color="white" />}
-          iconBackground="#34C759"
+          icon={<HelpCircle size={18} color={helpIcon.color} />}
+          iconBackground={helpIcon.background}
           onPress={() => router.push('/(tabs)/settings/get-help')}
         />
       </SettingsGroup>
@@ -229,8 +247,8 @@ export default function SettingsScreen() {
       <SettingsGroup>
         <SettingsRow
           title={t('settings.termsTitle')}
-          icon={<FileText size={18} color="white" />}
-          iconBackground="#AF52DE"
+          icon={<FileText size={18} color={termsIcon.color} />}
+          iconBackground={termsIcon.background}
           onPress={() => {
             if (termsUrl) {
               openExternal(termsUrl);
@@ -242,8 +260,8 @@ export default function SettingsScreen() {
         <Separator />
         <SettingsRow
           title={t('settings.privacyTitle')}
-          icon={<Shield size={18} color="white" />}
-          iconBackground="#30B0C7"
+          icon={<Shield size={18} color={privacyIcon.color} />}
+          iconBackground={privacyIcon.background}
           onPress={() => {
             if (privacyUrl) {
               openExternal(privacyUrl);
