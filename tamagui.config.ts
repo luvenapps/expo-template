@@ -5,9 +5,11 @@ import { tamaguiColorTokens } from './src/ui/theme/palette';
 
 const colorTokens = {
   ...tamaguiColorTokens,
+  transparent: 'transparent',
   shadowColorLight: 'rgba(15, 23, 42, 0.25)',
   shadowColorDark: 'rgba(0, 0, 0, 0.65)',
 } as typeof tamaguiColorTokens & {
+  transparent: string;
   shadowColorLight: string;
   shadowColorDark: string;
 };

@@ -6,7 +6,7 @@
  * Responsibilities (minimal + working Husky v9+):
  *  - Update package.json name (if still "template-starter")
  *  - Remove template-only metadata ("x-template") from package.json
- *  - Replace placeholders (__APP_NAME__, __APP_ID__) in app.json
+ *  - Replace placeholders (__APP_NAME__, __APP_ID__) in app.config.ts
  *  - Replace placeholders in Maestro flows (.maestro/flows/*.yml|yaml)
  *  - Replace tokens in README.md (if present)
  *  - Replace tockens in Domain Config if present
@@ -71,11 +71,11 @@ const singularize = (word) => {
   const endings = {
     ves: 'f', // wives -> wife
     ies: 'y', // strategies -> strategy
-    i: 'us',  // cacti -> cactus (irregular)
+    i: 'us', // cacti -> cactus (irregular)
     zes: 'ze', // dozes -> doze
     ses: 's', // classes -> class
-    es: '',   // boxes -> box
-    s: ''     // papers -> paper
+    es: '', // boxes -> box
+    s: '', // papers -> paper
   };
 
   // Iterate through the endings in reverse order of length to prioritize longer matches
@@ -87,7 +87,7 @@ const singularize = (word) => {
 
   // If no specific rule applies, assume it's already singular or an irregular plural not covered
   return word;
-}
+};
 
 // Summary for the footer
 let summary = { appName: null, slug: null, appId: null, singular: null };
@@ -115,32 +115,31 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
   }
   console.log(`✅ package.json updated: name="${pkg.name}"`);
 
-  // app.json tokens
-  const appJsonPath = path.join(CWD, 'app.json');
+  // app.config.ts tokens
+  const appConfigPath = path.join(CWD, 'app.config.ts');
   const owner = 'luvenapps';
   const bundleIdBase = `com.${owner}`;
 
   // Slug for Expo (keep dashes for readability in slug/name)
   const rawName = (pkg.name || folderName).trim().toLowerCase();
-  const slugSafe = rawName
-    .replace(/[^a-z0-9-]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+  const slugSafe = rawName.replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '');
 
   // Android/iOS bundle id segment: letters/digits only, no dashes/underscores; must start with a letter
   const idSegmentBase = rawName.replace(/[^a-z0-9]+/g, '');
-  const idSegment = /^[a-z]/.test(idSegmentBase) && idSegmentBase.length
-    ? idSegmentBase
-    : `app${idSegmentBase}`; // ensure it starts with a letter
+  const idSegment =
+    /^[a-z]/.test(idSegmentBase) && idSegmentBase.length
+      ? idSegmentBase
+      : `app${idSegmentBase}`; // ensure it starts with a letter
 
   const appId = `${bundleIdBase}.${idSegment}`.replace(/\.+/g, '.');
 
   summary.slug = slugSafe;
   summary.appId = appId;
 
-  if (exists(appJsonPath)) {
+  if (exists(appConfigPath)) {
     try {
-      const appJson = readJson(appJsonPath);
-      const expo = appJson.expo || appJson;
+      const appConfig = readJson(appConfigPath);
+      const expo = appConfig.expo || appConfig;
 
       expo.name =
         typeof expo.name === 'string'
@@ -189,12 +188,12 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
         }
       } catch {}
 
-      if (appJson.expo) appJson.expo = expo;
-      else Object.assign(appJson, expo);
-      writeJson(appJsonPath, appJson);
-      console.log('✅ app.json updated (name, slug, bundle IDs)');
+      if (appConfig.expo) appConfig.expo = expo;
+      else Object.assign(appConfig, expo);
+      writeJson(appConfigPath, appConfig);
+      console.log('✅ app.config.ts updated (name, slug, bundle IDs)');
     } catch (e) {
-      console.log(`⚠️  app.json update skipped (${e.message})`);
+      console.log(`⚠️  app.config.ts update skipped (${e.message})`);
     }
   }
 
@@ -260,7 +259,7 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
       if (exists(giDst)) {
         fs.unlinkSync(giDst);
         console.log(
-          '🧹 Removed existing .gitignore to replace with template version'
+          '🧹 Removed existing .gitignore to replace with template version',
         );
       }
       fs.renameSync(giSrc, giDst);
@@ -279,7 +278,9 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
     try {
       if (exists(prettierrcDst)) {
         fs.unlinkSync(prettierrcDst);
-        console.log('🧹 Removed existing .prettierrc.json to replace with template version');
+        console.log(
+          '🧹 Removed existing .prettierrc.json to replace with template version',
+        );
       }
       fs.renameSync(prettierrcSrc, prettierrcDst);
       console.log('✅ Restored .prettierrc.json from template');
@@ -287,7 +288,9 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
       console.log(`⚠️  Failed to restore .prettierrc.json (${e.message})`);
     }
   } else {
-    console.log('⚠️  No _prettierrc.json found in template directory — skipping');
+    console.log(
+      '⚠️  No _prettierrc.json found in template directory — skipping',
+    );
   }
 
   // Rename _prettierignore → .prettierignore if present
@@ -297,7 +300,9 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
     try {
       if (exists(prettierignoreDst)) {
         fs.unlinkSync(prettierignoreDst);
-        console.log('🧹 Removed existing .prettierignore to replace with template version');
+        console.log(
+          '🧹 Removed existing .prettierignore to replace with template version',
+        );
       }
       fs.renameSync(prettierignoreSrc, prettierignoreDst);
       console.log('✅ Restored .prettierignore from template');
@@ -305,7 +310,9 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
       console.log(`⚠️  Failed to restore .prettierignore (${e.message})`);
     }
   } else {
-    console.log('⚠️  No _prettierignore found in template directory — skipping');
+    console.log(
+      '⚠️  No _prettierignore found in template directory — skipping',
+    );
   }
 
   // Rename _nvmrc → .nvmrc if present
@@ -315,7 +322,9 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
     try {
       if (exists(nvmrcDst)) {
         fs.unlinkSync(nvmrcDst);
-        console.log('🧹 Removed existing .nvmrc to replace with template version');
+        console.log(
+          '🧹 Removed existing .nvmrc to replace with template version',
+        );
       }
       fs.renameSync(nvmrcSrc, nvmrcDst);
       console.log('✅ Restored .nvmrc from template');
@@ -331,8 +340,8 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
   if (!isGit) runSilent('git', ['init']);
   const huskyDst = path.join(CWD, '.husky');
   const huskySrcCandidates = [
-    path.join(CWD, '.husky'),  // present for local copies
-    path.join(CWD, '_husky'),  // present when installed from GitHub/npm tarball
+    path.join(CWD, '.husky'), // present for local copies
+    path.join(CWD, '_husky'), // present when installed from GitHub/npm tarball
   ];
   const huskySrc = huskySrcCandidates.find(exists);
 
@@ -343,7 +352,9 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
       for (const f of fs.readdirSync(huskyDst)) {
         const p = path.join(huskyDst, f);
         if (fs.lstatSync(p).isFile()) {
-          try { fs.chmodSync(p, 0o755); } catch {}
+          try {
+            fs.chmodSync(p, 0o755);
+          } catch {}
         }
       }
       console.log('✅ Husky hooks installed');
@@ -386,7 +397,9 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
       console.log(`⚠️  Maestro restore failed (${e.message})`);
     }
   } else {
-    console.log('⚠️  No .maestro/_maestro found in template directory — skipping');
+    console.log(
+      '⚠️  No .maestro/_maestro found in template directory — skipping',
+    );
   }
 
   // Restore .github (delete existing .github and rename _github → .github)
@@ -413,7 +426,9 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
       console.log(`⚠️  github restore failed (${e.message})`);
     }
   } else {
-    console.log('⚠️  No .github/_maestro found in template directory — skipping');
+    console.log(
+      '⚠️  No .github/_maestro found in template directory — skipping',
+    );
   }
 
   // Ensure all shell scripts in .github are executable
@@ -438,7 +453,9 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
       makeExecutable(githubDir);
       console.log('✅ All .sh scripts in .github are executable');
     } catch (e) {
-      console.log(`⚠️  Failed to make .github scripts executable (${e.message})`);
+      console.log(
+        `⚠️  Failed to make .github scripts executable (${e.message})`,
+      );
     }
   }
 
@@ -473,7 +490,9 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
       console.log('🧹 Removed postinstall script from package.json');
     }
   } catch (e) {
-    console.log(`⚠️  Failed to remove postinstall script from package.json (${e.message})`);
+    console.log(
+      `⚠️  Failed to remove postinstall script from package.json (${e.message})`,
+    );
   }
 
   // Self-delete

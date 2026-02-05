@@ -1,11 +1,21 @@
 {
-  "cli": { "version": ">=16.23.0", "appVersionSource": "local" },
+  "cli": {
+    "version": ">=16.23.0",
+    "appVersionSource": "local"
+  },
   "build": {
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "android": { "buildType": "apk", "gradleCommand": ":app:assembleDebug" },
-      "ios": { "buildConfiguration": "Debug", "simulator": true }
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleDebug"
+      },
+      "ios": {
+        "buildConfiguration": "Debug",
+        "simulator": true
+      },
+      "channel": "development"
     },
     "e2eRelease": {
       "developmentClient": false,
@@ -15,25 +25,45 @@
         "buildType": "apk",
         "gradleCommand": ":app:assembleRelease"
       },
-      "ios": { "buildConfiguration": "Release", "simulator": true }
+      "ios": {
+        "buildConfiguration": "Release",
+        "simulator": true
+      },
+      "channel": "e2eRelease"
     },
     "preview": {
       "distribution": "internal",
       "channel": "preview",
-      "env": { "EXPO_PUBLIC_ENV": "preview" },
-      "android": { "buildType": "apk" },
-      "ios": { "simulator": false }
+      "env": {
+        "EXPO_PUBLIC_ENV": "preview"
+      },
+      "android": {
+        "buildType": "apk"
+      },
+      "ios": {
+        "simulator": false
+      }
     },
     "adhocRelease": {
       "distribution": "internal",
-      "ios": { "buildConfiguration": "Release", "simulator": false }
+      "ios": {
+        "buildConfiguration": "Release",
+        "simulator": false
+      },
+      "channel": "adhocRelease"
     },
     "production": {
       "channel": "production",
       "autoIncrement": true,
-      "env": { "EXPO_PUBLIC_ENV": "production" },
-      "android": { "buildType": "app-bundle" },
-      "ios": { "buildConfiguration": "Release" }
+      "env": {
+        "EXPO_PUBLIC_ENV": "production"
+      },
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "ios": {
+        "buildConfiguration": "Release"
+      }
     }
   },
   "submit": {
