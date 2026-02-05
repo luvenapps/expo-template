@@ -29,7 +29,7 @@
         "buildConfiguration": "Release",
         "simulator": true
       },
-      "channel": "e2eRelease"
+      "channel": "e2e-release"
     },
     "preview": {
       "distribution": "internal",
@@ -50,7 +50,7 @@
         "buildConfiguration": "Release",
         "simulator": false
       },
-      "channel": "adhocRelease"
+      "channel": "adhoc-release"
     },
     "production": {
       "channel": "production",
