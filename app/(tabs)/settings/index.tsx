@@ -172,6 +172,9 @@ export default function SettingsScreen() {
   const helpIcon = getIconStyles('#34C759');
   const termsIcon = getIconStyles('#AF52DE');
   const privacyIcon = getIconStyles('#30B0C7');
+  const showDevTools =
+    (globalThis as typeof globalThis & { __DEV__?: boolean }).__DEV__ ??
+    process.env.NODE_ENV !== 'production';
 
   const openExternal = async (url: string) => {
     try {
@@ -226,14 +229,16 @@ export default function SettingsScreen() {
         />
       </SettingsGroup>
 
-      <SettingsGroup>
-        <SettingsRow
-          title={t('settings.developerUtilitiesTitle')}
-          icon={<Wrench size={18} color={developerIcon.color} />}
-          iconBackground={developerIcon.background}
-          onPress={() => router.push('/(tabs)/settings/developer-utilities')}
-        />
-      </SettingsGroup>
+      {showDevTools ? (
+        <SettingsGroup>
+          <SettingsRow
+            title={t('settings.developerUtilitiesTitle')}
+            icon={<Wrench size={18} color={developerIcon.color} />}
+            iconBackground={developerIcon.background}
+            onPress={() => router.push('/(tabs)/settings/developer-utilities')}
+          />
+        </SettingsGroup>
+      ) : null}
 
       <SettingsGroup>
         <SettingsRow

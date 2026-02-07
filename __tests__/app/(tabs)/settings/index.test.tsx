@@ -361,6 +361,7 @@ describe('SettingsScreen', () => {
     mockUseFeatureFlag.mockReset();
     mockFriendlyError.mockReset();
     mockUseFeatureFlag.mockReturnValue({ value: '' });
+    (globalThis as typeof globalThis & { __DEV__?: boolean }).__DEV__ = true;
     mockedUseThemeContext.mockReturnValue({
       theme: 'system',
       setTheme: jest.fn(),
@@ -384,6 +385,7 @@ describe('SettingsScreen', () => {
       writable: true,
       configurable: true,
     });
+    delete (globalThis as typeof globalThis & { __DEV__?: boolean }).__DEV__;
   });
 
   describe('General Rendering', () => {
@@ -622,6 +624,13 @@ describe('SettingsScreen', () => {
       const { getByText } = render(<SettingsScreen />);
       fireEvent.press(getByText('Developer Utilities'));
       expect(mockPush).toHaveBeenCalledWith('/(tabs)/settings/developer-utilities');
+    });
+
+    it('hides developer utilities when not in dev mode', () => {
+      (globalThis as typeof globalThis & { __DEV__?: boolean }).__DEV__ = false;
+
+      const { queryByText } = render(<SettingsScreen />);
+      expect(queryByText('Developer Utilities')).toBeNull();
     });
   });
 
