@@ -13,7 +13,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   return {
     ...config,
     name: isPreview ? '__APP_NAME__ (Preview)' : '__APP_NAME__',
-    slug: isPreview ? '__APP_SLUG__-preview' : '__APP_SLUG__',
+    slug: '__APP_SLUG__',
     owner: 'luvenapps',
 
     version: '1.0.0',

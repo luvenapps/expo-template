@@ -1,0 +1,254 @@
+name: Expo Go PR Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+concurrency:
+  group: 'expo-go-pr-${{ github.event.pull_request.number || github.run_id }}'
+  cancel-in-progress: true
+
+jobs:
+  preview-selfhosted:
+    name: expo preview- Self-hosted MacOS
+    if: ${{ vars.USE_SELF_HOSTED == 'true' && (github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork) }}
+    runs-on: [self-hosted, macos, arm64]
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN || '' }}
+      EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.DEV_PUBLIC_SUPABASE_URL || '' }}
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.DEV_PUBLIC_SUPABASE_ANON_KEY || '' }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.DEV_SUPABASE_ACCESS_TOKEN || '' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Clean workspace (self-hosted)
+        shell: bash
+        run: |
+          git clean -ffdx
+          git reset --hard HEAD
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sanity check versions
+        run: |
+          node -v
+          npm -v
+          npx expo --version
+          npx eas --version
+
+      - name: Guardrails - resolve react-native
+        run: |
+          node -e "console.log(require.resolve('react-native/package.json'))"
+          node -e "const p=require('react-native/package.json'); console.log({name:p.name,version:p.version,main:p.main,exports:!!p.exports})"
+          npm ls react-native --depth=0
+
+      - name: Basic checks
+        run: npm run type-check
+
+      - name: Setup Expo / EAS
+        if: ${{ github.event_name == 'pull_request' && env.EXPO_TOKEN != '' && !github.event.pull_request.head.repo.fork }}
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          packager: npm
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Publish Expo Go preview for PR
+        if: ${{ github.event_name == 'pull_request' && env.EXPO_TOKEN != '' && !github.event.pull_request.head.repo.fork }}
+        env:
+          APP_VARIANT: preview
+          EXPO_PUBLIC_DEBUG_RUN_ID: pr-${{ github.event.pull_request.number }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
+          EXPO_PUBLIC_TURN_ON_FIREBASE: 'false'
+          EXPO_USE_LOCAL_CLI: '1'
+          GOOGLE_SERVICE_INFO_PLIST_B64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_B64 }}
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
+        run: |
+          eas update \
+            --branch "pr-${{ github.event.pull_request.number }}" \
+            --message "PR #${{ github.event.pull_request.number }} - ${{ github.sha }}" \
+            --platform all \
+            --non-interactive
+
+      - name: Comment with preview details
+        if: ${{ github.event_name == 'pull_request' && env.EXPO_TOKEN != '' && !github.event.pull_request.head.repo.fork }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const marker = '<!-- expo-go-preview-comment -->';
+            const prNumber = context.payload.pull_request.number;
+            const branch = `pr-${prNumber}`;
+            const shortSha = context.sha.slice(0, 7);
+            const runtimeVersion = 'exposdk 54.0.0';
+            const easDashboardUrl = `https://expo.dev/accounts/luvenapps/projects/betterhabits/updates?branch=${branch}`;
+            const body = `${marker}\nExpo Go preview published.\nRuntime version: ${runtimeVersion}\nCommit: ${shortSha}\nEAS Dashboard: ${easDashboardUrl}`;
+
+            const { owner, repo } = context.repo;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner,
+              repo,
+              issue_number: prNumber,
+              per_page: 100,
+            });
+
+            const previewComments = comments.filter((comment) => {
+              if (comment.user?.type !== 'Bot' || typeof comment.body !== 'string') {
+                return false;
+              }
+
+              return (
+                comment.body.includes(marker) ||
+                comment.body.startsWith('Expo Go preview published.') ||
+                comment.body.includes('Expo Go preview published.')
+              );
+            });
+
+            const targetComment = previewComments[0];
+
+            if (targetComment) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: targetComment.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: prNumber,
+                body,
+              });
+            }
+
+      - name: Clean self-hosted workspace
+        if: always()
+        shell: bash
+        run: .github/scripts/clean_selfhosted_workspace.sh
+
+  preview-hosted:
+    name: expo preview - Hosted MacOS
+    if: ${{ vars.USE_SELF_HOSTED != 'true' && (github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork) }}
+    runs-on: macos-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN || '' }}
+      EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.DEV_PUBLIC_SUPABASE_URL || '' }}
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.DEV_PUBLIC_SUPABASE_ANON_KEY || '' }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.DEV_SUPABASE_ACCESS_TOKEN || '' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sanity check versions
+        run: |
+          node -v
+          npm -v
+          npx expo --version
+          npx eas --version
+
+      - name: Guardrails - resolve react-native
+        run: |
+          node -e "console.log(require.resolve('react-native/package.json'))"
+          node -e "const p=require('react-native/package.json'); console.log({name:p.name,version:p.version,main:p.main,exports:!!p.exports})"
+          npm ls react-native --depth=0
+
+      - name: Basic checks
+        run: npm run type-check
+
+      - name: Setup Expo / EAS
+        if: ${{ github.event_name == 'pull_request' && env.EXPO_TOKEN != '' && !github.event.pull_request.head.repo.fork }}
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          packager: npm
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Publish Expo Go preview for PR
+        if: ${{ github.event_name == 'pull_request' && env.EXPO_TOKEN != '' && !github.event.pull_request.head.repo.fork }}
+        env:
+          APP_VARIANT: preview
+          EXPO_PUBLIC_DEBUG_RUN_ID: pr-${{ github.event.pull_request.number }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
+          EXPO_PUBLIC_TURN_ON_FIREBASE: 'false'
+          EXPO_USE_LOCAL_CLI: '1'
+          GOOGLE_SERVICE_INFO_PLIST_B64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_B64 }}
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
+        run: |
+          eas update \
+            --branch "pr-${{ github.event.pull_request.number }}" \
+            --message "PR #${{ github.event.pull_request.number }} - ${{ github.sha }}" \
+            --platform all \
+            --non-interactive
+
+      - name: Comment with preview details
+        if: ${{ github.event_name == 'pull_request' && env.EXPO_TOKEN != '' && !github.event.pull_request.head.repo.fork }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const marker = '<!-- expo-go-preview-comment -->';
+            const prNumber = context.payload.pull_request.number;
+            const branch = `pr-${prNumber}`;
+            const shortSha = context.sha.slice(0, 7);
+            const runtimeVersion = 'exposdk 54.0.0';
+            const easDashboardUrl = `https://expo.dev/accounts/luvenapps/projects/betterhabits/updates?branch=${branch}`;
+            const body = `${marker}\nExpo Go preview published.\nRuntime version: ${runtimeVersion}\nCommit: ${shortSha}\nEAS Dashboard: ${easDashboardUrl}`;
+
+            const { owner, repo } = context.repo;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner,
+              repo,
+              issue_number: prNumber,
+              per_page: 100,
+            });
+
+            const previewComments = comments.filter((comment) => {
+              if (comment.user?.type !== 'Bot' || typeof comment.body !== 'string') {
+                return false;
+              }
+
+              return (
+                comment.body.includes(marker) ||
+                comment.body.startsWith('Expo Go preview published.') ||
+                comment.body.includes('Expo Go preview published.')
+              );
+            });
+
+            const targetComment = previewComments[0];
+
+            if (targetComment) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: targetComment.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: prNumber,
+                body,
+              });
+            }
