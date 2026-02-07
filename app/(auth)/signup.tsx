@@ -475,8 +475,31 @@ export default function SignUpScreen() {
                 ),
               )}
 
-              <View marginTop={Platform.OS === 'web' ? 0 : 10}>
+              <View
+                marginTop={Platform.OS === 'web' ? 0 : 10}
+                flexDirection="row"
+                alignItems="center"
+                gap="$3"
+                accessible
+                accessibilityLabel={t('auth.oauthDivider')}
+              >
+                <View
+                  flex={1}
+                  height={1}
+                  backgroundColor="$colorMuted"
+                  aria-hidden
+                  accessibilityElementsHidden
+                  importantForAccessibility="no-hide-descendants"
+                />
                 <CaptionText color="$colorMuted">{t('auth.oauthDivider')}</CaptionText>
+                <View
+                  flex={1}
+                  height={1}
+                  backgroundColor="$colorMuted"
+                  aria-hidden
+                  accessibilityElementsHidden
+                  importantForAccessibility="no-hide-descendants"
+                />
               </View>
             </YStack>
 
