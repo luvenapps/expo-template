@@ -615,8 +615,6 @@ export default function SignUpScreen() {
                 onSubmitEditing={() => confirmInputRef.current?.focus?.()}
                 rightElement={
                   <View
-                    position="absolute"
-                    right="$0"
                     padding="$1"
                     testID="toggle-password-visibility"
                     aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
@@ -649,8 +647,6 @@ export default function SignUpScreen() {
                 onSubmitEditing={handleSubmit}
                 rightElement={
                   <View
-                    position="absolute"
-                    right="$0"
                     padding="$1"
                     testID="toggle-confirm-password-visibility"
                     aria-label={

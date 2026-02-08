@@ -455,8 +455,6 @@ export default function LoginScreen() {
               paddingRight="$10"
               rightElement={
                 <View
-                  position="absolute"
-                  right="$0"
                   padding="$1"
                   testID="toggle-password-visibility"
                   aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}

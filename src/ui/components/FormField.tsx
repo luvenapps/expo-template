@@ -61,9 +61,11 @@ export const FormField = forwardRef<React.ComponentRef<typeof Input>, FormFieldP
             <View
               position="absolute"
               right="$3"
-              top="50%"
+              top={0}
+              bottom={0}
+              alignItems="center"
+              justifyContent="center"
               pointerEvents="box-none"
-              style={{ transform: [{ translateY: -16 }] }}
             >
               {rightElement}
             </View>
