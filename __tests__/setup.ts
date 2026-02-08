@@ -136,3 +136,11 @@ jest.mock('expo-secure-store', () => ({
     return Promise.resolve();
   }),
 }));
+
+// Mock react-native-reanimated
+jest.mock('react-native-reanimated', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const Reanimated = require('react-native-reanimated/mock');
+  Reanimated.default.call = () => {};
+  return Reanimated;
+});

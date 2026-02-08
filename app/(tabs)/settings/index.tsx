@@ -21,18 +21,150 @@ import Constants from 'expo-constants';
 import { useFocusEffect, useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import type { ReactNode } from 'react';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Platform } from 'react-native';
+import { Platform, View as RNView } from 'react-native';
+import Animated, {
+  Easing,
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { Button, Card, Separator, Text, XStack, YStack } from 'tamagui';
 
 const isFirebaseEnabled = () =>
   process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === 'true' ||
   process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === '1';
 
+const MARQUEE_PAUSE_MS = 1500;
+const MARQUEE_SPEED_PX_PER_SEC = 30;
+const MARQUEE_EDGE_PADDING = 8; // Extra scroll distance at each end
+
+type MarqueeTextProps = {
+  text: string;
+};
+
+function MarqueeText({ text }: MarqueeTextProps) {
+  // On web, render simple text with ellipsis (same as valueMarquee={false})
+  if (Platform.OS === 'web') {
+    return (
+      <Text color="$colorMuted" fontSize="$4" numberOfLines={1} ellipsizeMode="tail" flexShrink={1}>
+        {text}
+      </Text>
+    );
+  }
+
+  return <MarqueeTextNative text={text} />;
+}
+
+function MarqueeTextNative({ text }: { text: string }) {
+  const [textWidth, setTextWidth] = useState(0);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const translateX = useSharedValue(0);
+
+  // Check if text overflows the container (with 1px threshold to avoid floating point issues)
+  const rawOverflow = textWidth - containerWidth;
+  const isOverflowing = textWidth > 0 && containerWidth > 0 && rawOverflow > 1;
+
+  // Total scroll distance includes padding at both ends
+  const scrollDistance = rawOverflow + MARQUEE_EDGE_PADDING * 2;
+
+  const directionRef = useRef<'left' | 'right'>('left');
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    // Reset direction when effect re-runs
+    directionRef.current = 'left';
+
+    if (!isOverflowing) {
+      cancelAnimation(translateX);
+      translateX.value = 0;
+      return;
+    }
+
+    const scrollDuration = (scrollDistance / MARQUEE_SPEED_PX_PER_SEC) * 1000;
+    // Start position: shifted right by edge padding
+    const startPos = MARQUEE_EDGE_PADDING;
+    // End position: shifted left to show end of text plus padding
+    const endPos = -(rawOverflow + MARQUEE_EDGE_PADDING);
+
+    // Set initial position
+    translateX.value = startPos;
+
+    const animateStep = () => {
+      if (directionRef.current === 'left') {
+        // Scroll left to show end of text
+        translateX.value = withTiming(endPos, {
+          duration: scrollDuration,
+          easing: Easing.linear,
+        });
+        directionRef.current = 'right';
+        // Schedule next step after scroll + pause
+        timeoutRef.current = setTimeout(animateStep, scrollDuration + MARQUEE_PAUSE_MS);
+      } else {
+        // Scroll right back to start
+        translateX.value = withTiming(startPos, {
+          duration: scrollDuration,
+          easing: Easing.linear,
+        });
+        directionRef.current = 'left';
+        // Schedule next step after scroll + pause
+        timeoutRef.current = setTimeout(animateStep, scrollDuration + MARQUEE_PAUSE_MS);
+      }
+    };
+
+    // Start with initial pause, then begin animation
+    timeoutRef.current = setTimeout(animateStep, MARQUEE_PAUSE_MS);
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      cancelAnimation(translateX);
+    };
+  }, [isOverflowing, rawOverflow, scrollDistance, translateX]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+  }));
+
+  return (
+    <RNView
+      style={{ overflow: 'hidden', flexShrink: 1 }}
+      pointerEvents="none"
+      onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
+    >
+      {/* Hidden measurement text - use onTextLayout to get actual text width */}
+      <RNView style={{ position: 'absolute', top: 0, left: 0, opacity: 0 }} pointerEvents="none">
+        <Text
+          color="$colorMuted"
+          fontSize="$4"
+          onTextLayout={(e) => {
+            const lines = e.nativeEvent.lines;
+            if (lines.length > 0) {
+              const totalWidth = lines.reduce((sum, line) => sum + line.width, 0);
+              setTextWidth(totalWidth);
+            }
+          }}
+        >
+          {text}
+        </Text>
+      </RNView>
+      {/* Visible text - animated if overflowing, static otherwise */}
+      <Animated.View style={[{ width: textWidth > 0 ? textWidth : undefined }, animatedStyle]}>
+        <Text color="$colorMuted" fontSize="$4">
+          {text}
+        </Text>
+      </Animated.View>
+    </RNView>
+  );
+}
+
 type SettingsRowProps = {
   title: string;
   value?: string | null;
+  valueMarquee?: boolean;
   icon?: ReactNode;
   iconBackground?: string;
   onPress: () => void;
@@ -42,6 +174,7 @@ type SettingsRowProps = {
 export function SettingsRow({
   title,
   value,
+  valueMarquee,
   icon,
   iconBackground,
   onPress,
@@ -59,7 +192,7 @@ export function SettingsRow({
       borderRadius={0}
     >
       <XStack alignItems="center" justifyContent="space-between" padding="$4" gap="$3">
-        <XStack alignItems="center" gap="$3" flex={1} minWidth={0}>
+        <XStack alignItems="center" gap="$3" flexShrink={0}>
           {icon ? (
             <XStack
               width={32}
@@ -76,19 +209,23 @@ export function SettingsRow({
             {title}
           </Text>
         </XStack>
-        <XStack alignItems="center" gap="$2" flexShrink={1} justifyContent="space-between">
+        <XStack alignItems="center" gap="$2" flexShrink={1} justifyContent="flex-end" minWidth={0}>
           {value ? (
-            <Text
-              color="$colorMuted"
-              fontSize="$4"
-              numberOfLines={1}
-              ellipsizeMode="tail"
-              maxWidth="90%"
-            >
-              {value}
-            </Text>
+            valueMarquee ? (
+              <MarqueeText text={value} />
+            ) : (
+              <Text
+                color="$colorMuted"
+                fontSize="$4"
+                numberOfLines={1}
+                ellipsizeMode="tail"
+                flexShrink={1}
+              >
+                {value}
+              </Text>
+            )
           ) : null}
-          <ChevronRight size={18} color="$colorMuted" />
+          <ChevronRight size={18} color="$colorMuted" flexShrink={0} />
         </XStack>
       </XStack>
     </Button>
@@ -226,6 +363,7 @@ export default function SettingsScreen() {
           onPress={() => {
             router.push('/(tabs)/settings/account');
           }}
+          valueMarquee={true}
         />
       </SettingsGroup>
 

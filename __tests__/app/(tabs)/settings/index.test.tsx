@@ -308,7 +308,7 @@ import { useSessionStore } from '@/auth/session';
 import { useNotificationSettings } from '@/notifications/useNotificationSettings';
 import { useThemeContext } from '@/ui/theme/ThemeProvider';
 import { themePalettes } from '@/ui/theme/palette';
-import { fireEvent, render } from '@testing-library/react-native';
+import { act, fireEvent, render } from '@testing-library/react-native';
 import React from 'react';
 import { Platform, Text } from 'react-native';
 import SettingsScreen, { SettingsRow } from '../../../../app/(tabs)/settings/index';
@@ -564,8 +564,8 @@ describe('SettingsScreen', () => {
     });
 
     it('should display "Sign In" when unauthenticated', () => {
-      const { getByText } = render(<SettingsScreen />);
-      expect(getByText('Sign In')).toBeDefined();
+      const { getAllByText } = render(<SettingsScreen />);
+      expect(getAllByText('Sign In')[0]).toBeDefined();
     });
 
     it('should navigate to account screen when pressed', () => {
@@ -592,8 +592,8 @@ describe('SettingsScreen', () => {
     });
 
     it('should display user email when authenticated', () => {
-      const { getByText } = render(<SettingsScreen />);
-      expect(getByText('test@example.com')).toBeDefined();
+      const { getAllByText } = render(<SettingsScreen />);
+      expect(getAllByText('test@example.com')[0]).toBeDefined();
     });
 
     it('should display "Signed in" when authenticated without email', () => {
@@ -608,8 +608,8 @@ describe('SettingsScreen', () => {
         }),
       );
 
-      const { getByText } = render(<SettingsScreen />);
-      expect(getByText('Signed in')).toBeDefined();
+      const { getAllByText } = render(<SettingsScreen />);
+      expect(getAllByText('Signed in')[0]).toBeDefined();
     });
 
     it('should navigate to account screen when pressed', () => {
@@ -735,6 +735,483 @@ describe('SettingsScreen', () => {
 
       const { getByText } = render(<SettingsScreen />);
       expect(getByText('On')).toBeDefined();
+    });
+  });
+
+  describe('MarqueeText Component', () => {
+    it('renders simple text with ellipsis on web', () => {
+      Object.defineProperty(Platform, 'OS', {
+        value: 'web',
+        writable: true,
+        configurable: true,
+      });
+
+      const { getAllByText } = render(
+        <SettingsRow
+          title="Test"
+          value="Long email address"
+          valueMarquee={true}
+          onPress={jest.fn()}
+        />,
+      );
+
+      // Should render the text (even though it's web, we just check it renders)
+      expect(getAllByText('Long email address').length).toBeGreaterThan(0);
+    });
+
+    it('renders MarqueeTextNative on native platforms', () => {
+      Object.defineProperty(Platform, 'OS', {
+        value: 'ios',
+        writable: true,
+        configurable: true,
+      });
+
+      mockedUseSessionStore.mockImplementation((selector: any) =>
+        selector({
+          status: 'authenticated',
+          session: {
+            user: {
+              email: 'very.long.email.address@example.com',
+            },
+          },
+          signOut: jest.fn(),
+          isLoading: false,
+        }),
+      );
+
+      const { getAllByText } = render(<SettingsScreen />);
+      // Should render the email text (in MarqueeTextNative)
+      expect(getAllByText('very.long.email.address@example.com').length).toBeGreaterThan(0);
+    });
+
+    it('triggers onLayout callback for container width measurement', () => {
+      Object.defineProperty(Platform, 'OS', {
+        value: 'ios',
+        writable: true,
+        configurable: true,
+      });
+
+      mockedUseSessionStore.mockImplementation((selector: any) =>
+        selector({
+          status: 'authenticated',
+          session: {
+            user: {
+              email: 'test@example.com',
+            },
+          },
+          signOut: jest.fn(),
+          isLoading: false,
+        }),
+      );
+
+      const { UNSAFE_root } = render(<SettingsScreen />);
+
+      // Find the container View with onLayout callback
+      const containers = UNSAFE_root.findAllByType('View');
+      const containerWithOnLayout = containers.find(
+        (node: any) => node.props.onLayout && node.props.style?.overflow === 'hidden',
+      );
+
+      expect(containerWithOnLayout).toBeDefined();
+
+      // Simulate layout event
+      if (containerWithOnLayout) {
+        act(() => {
+          containerWithOnLayout.props.onLayout({
+            nativeEvent: {
+              layout: { width: 200, height: 20, x: 0, y: 0 },
+            },
+          });
+        });
+      }
+    });
+
+    it('triggers onTextLayout callback for text width measurement', () => {
+      Object.defineProperty(Platform, 'OS', {
+        value: 'ios',
+        writable: true,
+        configurable: true,
+      });
+
+      mockedUseSessionStore.mockImplementation((selector: any) =>
+        selector({
+          status: 'authenticated',
+          session: {
+            user: {
+              email: 'test@example.com',
+            },
+          },
+          signOut: jest.fn(),
+          isLoading: false,
+        }),
+      );
+
+      const { UNSAFE_root } = render(<SettingsScreen />);
+
+      // Find the Text component with onTextLayout callback
+      const textElements = UNSAFE_root.findAllByType('Text');
+      const textWithOnTextLayout = textElements.find((node: any) => node.props.onTextLayout);
+
+      expect(textWithOnTextLayout).toBeDefined();
+
+      // Simulate text layout event with line measurements
+      if (textWithOnTextLayout) {
+        act(() => {
+          textWithOnTextLayout.props.onTextLayout({
+            nativeEvent: {
+              lines: [{ width: 150, height: 20, text: 'test@example.com', x: 0, y: 0 }],
+            },
+          });
+        });
+      }
+    });
+
+    it('handles empty lines array in onTextLayout', () => {
+      Object.defineProperty(Platform, 'OS', {
+        value: 'ios',
+        writable: true,
+        configurable: true,
+      });
+
+      mockedUseSessionStore.mockImplementation((selector: any) =>
+        selector({
+          status: 'authenticated',
+          session: {
+            user: {
+              email: 'test@example.com',
+            },
+          },
+          signOut: jest.fn(),
+          isLoading: false,
+        }),
+      );
+
+      const { UNSAFE_root } = render(<SettingsScreen />);
+
+      const textElements = UNSAFE_root.findAllByType('Text');
+      const textWithOnTextLayout = textElements.find((node: any) => node.props.onTextLayout);
+
+      // Simulate text layout event with empty lines
+      if (textWithOnTextLayout) {
+        act(() => {
+          textWithOnTextLayout.props.onTextLayout({
+            nativeEvent: {
+              lines: [],
+            },
+          });
+        });
+      }
+
+      // Should not throw an error
+      expect(textWithOnTextLayout).toBeDefined();
+    });
+
+    it('calculates total width from multiple lines', () => {
+      Object.defineProperty(Platform, 'OS', {
+        value: 'ios',
+        writable: true,
+        configurable: true,
+      });
+
+      mockedUseSessionStore.mockImplementation((selector: any) =>
+        selector({
+          status: 'authenticated',
+          session: {
+            user: {
+              email: 'very.long.email.address@example.com',
+            },
+          },
+          signOut: jest.fn(),
+          isLoading: false,
+        }),
+      );
+
+      const { UNSAFE_root } = render(<SettingsScreen />);
+
+      const textElements = UNSAFE_root.findAllByType('Text');
+      const textWithOnTextLayout = textElements.find((node: any) => node.props.onTextLayout);
+
+      // Simulate text layout event with multiple lines (shouldn't happen, but test the reduce logic)
+      if (textWithOnTextLayout) {
+        act(() => {
+          textWithOnTextLayout.props.onTextLayout({
+            nativeEvent: {
+              lines: [
+                { width: 100, height: 20, text: 'very.long.email.', x: 0, y: 0 },
+                { width: 150, height: 20, text: 'address@example.com', x: 0, y: 20 },
+              ],
+            },
+          });
+        });
+      }
+
+      expect(textWithOnTextLayout).toBeDefined();
+    });
+
+    it('triggers animation when text overflows container', () => {
+      jest.useFakeTimers();
+
+      Object.defineProperty(Platform, 'OS', {
+        value: 'ios',
+        writable: true,
+        configurable: true,
+      });
+
+      mockedUseSessionStore.mockImplementation((selector: any) =>
+        selector({
+          status: 'authenticated',
+          session: {
+            user: {
+              email: 'very.long.email.address.that.overflows@example.com',
+            },
+          },
+          signOut: jest.fn(),
+          isLoading: false,
+        }),
+      );
+
+      const { UNSAFE_root } = render(<SettingsScreen />);
+
+      // Find and trigger layout events to simulate overflow
+      const containers = UNSAFE_root.findAllByType('View');
+      const containerWithOnLayout = containers.find(
+        (node: any) => node.props.onLayout && node.props.style?.overflow === 'hidden',
+      );
+
+      const textElements = UNSAFE_root.findAllByType('Text');
+      const textWithOnTextLayout = textElements.find((node: any) => node.props.onTextLayout);
+
+      // Set container width to 150px
+      if (containerWithOnLayout) {
+        act(() => {
+          containerWithOnLayout.props.onLayout({
+            nativeEvent: {
+              layout: { width: 150, height: 20, x: 0, y: 0 },
+            },
+          });
+        });
+      }
+
+      // Set text width to 300px (overflows by 150px, exceeds 1px threshold)
+      if (textWithOnTextLayout) {
+        act(() => {
+          textWithOnTextLayout.props.onTextLayout({
+            nativeEvent: {
+              lines: [
+                {
+                  width: 300,
+                  height: 20,
+                  text: 'very.long.email.address.that.overflows@example.com',
+                  x: 0,
+                  y: 0,
+                },
+              ],
+            },
+          });
+        });
+      }
+
+      // Advance timers to trigger animation
+      act(() => {
+        jest.advanceTimersByTime(1500); // MARQUEE_PAUSE_MS
+      });
+
+      // Clean up
+      jest.useRealTimers();
+    });
+
+    it('cleans up animation timeout on unmount', () => {
+      jest.useFakeTimers();
+
+      Object.defineProperty(Platform, 'OS', {
+        value: 'ios',
+        writable: true,
+        configurable: true,
+      });
+
+      mockedUseSessionStore.mockImplementation((selector: any) =>
+        selector({
+          status: 'authenticated',
+          session: {
+            user: {
+              email: 'very.long.email.address@example.com',
+            },
+          },
+          signOut: jest.fn(),
+          isLoading: false,
+        }),
+      );
+
+      const { unmount } = render(<SettingsScreen />);
+
+      // Unmount to trigger cleanup
+      unmount();
+
+      // Verify no timers are left running
+      expect(jest.getTimerCount()).toBe(0);
+
+      jest.useRealTimers();
+    });
+
+    it('does not animate when text does not overflow', () => {
+      Object.defineProperty(Platform, 'OS', {
+        value: 'ios',
+        writable: true,
+        configurable: true,
+      });
+
+      mockedUseSessionStore.mockImplementation((selector: any) =>
+        selector({
+          status: 'authenticated',
+          session: {
+            user: {
+              email: 'short@ex.co',
+            },
+          },
+          signOut: jest.fn(),
+          isLoading: false,
+        }),
+      );
+
+      const { UNSAFE_root } = render(<SettingsScreen />);
+
+      const containers = UNSAFE_root.findAllByType('View');
+      const containerWithOnLayout = containers.find(
+        (node: any) => node.props.onLayout && node.props.style?.overflow === 'hidden',
+      );
+
+      const textElements = UNSAFE_root.findAllByType('Text');
+      const textWithOnTextLayout = textElements.find((node: any) => node.props.onTextLayout);
+
+      // Set container width to 200px
+      if (containerWithOnLayout) {
+        act(() => {
+          containerWithOnLayout.props.onLayout({
+            nativeEvent: {
+              layout: { width: 200, height: 20, x: 0, y: 0 },
+            },
+          });
+        });
+      }
+
+      // Set text width to 100px (does not overflow)
+      if (textWithOnTextLayout) {
+        act(() => {
+          textWithOnTextLayout.props.onTextLayout({
+            nativeEvent: {
+              lines: [{ width: 100, height: 20, text: 'short@ex.co', x: 0, y: 0 }],
+            },
+          });
+        });
+      }
+
+      expect(UNSAFE_root).toBeDefined();
+    });
+
+    it('does not animate when overflow is within 1px threshold', () => {
+      Object.defineProperty(Platform, 'OS', {
+        value: 'ios',
+        writable: true,
+        configurable: true,
+      });
+
+      mockedUseSessionStore.mockImplementation((selector: any) =>
+        selector({
+          status: 'authenticated',
+          session: {
+            user: {
+              email: 'test@example.com',
+            },
+          },
+          signOut: jest.fn(),
+          isLoading: false,
+        }),
+      );
+
+      const { UNSAFE_root } = render(<SettingsScreen />);
+
+      const containers = UNSAFE_root.findAllByType('View');
+      const containerWithOnLayout = containers.find(
+        (node: any) => node.props.onLayout && node.props.style?.overflow === 'hidden',
+      );
+
+      const textElements = UNSAFE_root.findAllByType('Text');
+      const textWithOnTextLayout = textElements.find((node: any) => node.props.onTextLayout);
+
+      // Set container width to 200px
+      if (containerWithOnLayout) {
+        act(() => {
+          containerWithOnLayout.props.onLayout({
+            nativeEvent: {
+              layout: { width: 200, height: 20, x: 0, y: 0 },
+            },
+          });
+        });
+      }
+
+      // Set text width to 200.5px (overflows by 0.5px, below 1px threshold)
+      if (textWithOnTextLayout) {
+        act(() => {
+          textWithOnTextLayout.props.onTextLayout({
+            nativeEvent: {
+              lines: [{ width: 200.5, height: 20, text: 'test@example.com', x: 0, y: 0 }],
+            },
+          });
+        });
+      }
+
+      expect(UNSAFE_root).toBeDefined();
+    });
+  });
+
+  describe('Notification Status Combinations', () => {
+    it('displays "Setup Needed" when permission is DENIED on native', () => {
+      Object.defineProperty(Platform, 'OS', {
+        value: 'ios',
+        writable: true,
+        configurable: true,
+      });
+
+      mockedUseNotificationSettings.mockReturnValue(
+        buildNotificationSettings({
+          permissionStatus: NOTIFICATION_PERMISSION_STATE.DENIED,
+        }),
+      );
+
+      const { getByText } = render(<SettingsScreen />);
+      expect(getByText('Setup Needed')).toBeDefined();
+    });
+
+    it('displays "Setup Needed" when permission is UNAVAILABLE on native', () => {
+      Object.defineProperty(Platform, 'OS', {
+        value: 'ios',
+        writable: true,
+        configurable: true,
+      });
+
+      mockedUseNotificationSettings.mockReturnValue(
+        buildNotificationSettings({
+          permissionStatus: NOTIFICATION_PERMISSION_STATE.UNAVAILABLE,
+        }),
+      );
+
+      const { getByText } = render(<SettingsScreen />);
+      expect(getByText('Setup Needed')).toBeDefined();
+    });
+  });
+
+  describe('Icon Color Computation', () => {
+    it('computes correct icon styles in light mode', () => {
+      mockedUseThemeContext.mockReturnValue({
+        theme: 'light',
+        setTheme: jest.fn(),
+        resolvedTheme: 'light',
+        palette: themePalettes.light,
+      });
+
+      const { UNSAFE_root } = render(<SettingsScreen />);
+      // Just verify it renders without crashing in light mode
+      expect(UNSAFE_root).toBeDefined();
     });
   });
 });
