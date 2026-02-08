@@ -530,12 +530,12 @@ type WebMessagingConfig = {
 function hasWebConfig(config: WebMessagingConfig, vapidKey?: string) {
   return Boolean(
     vapidKey &&
-      config.apiKey &&
-      config.authDomain &&
-      config.projectId &&
-      config.storageBucket &&
-      config.messagingSenderId &&
-      config.appId,
+    config.apiKey &&
+    config.authDomain &&
+    config.projectId &&
+    config.storageBucket &&
+    config.messagingSenderId &&
+    config.appId,
   );
 }
 

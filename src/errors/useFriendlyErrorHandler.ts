@@ -16,10 +16,10 @@ type ErrorOptions = {
 function isFriendlyError(error: unknown): error is FriendlyError {
   return Boolean(
     error &&
-      typeof error === 'object' &&
-      'code' in error &&
-      'type' in error &&
-      ('titleKey' in error || 'title' in error),
+    typeof error === 'object' &&
+    'code' in error &&
+    'type' in error &&
+    ('titleKey' in error || 'title' in error),
   );
 }
 
