@@ -569,7 +569,7 @@ describe('firebasePush Native', () => {
     it('returns cached native token loaded on module init', async () => {
       Object.defineProperty(Platform, 'OS', { value: 'android', configurable: true });
       jest.doMock('react-native-mmkv', () => ({
-        MMKV: jest.fn(() => ({
+        createMMKV: jest.fn(() => ({
           getString: jest.fn(() => 'cached-native-token'),
         })),
       }));

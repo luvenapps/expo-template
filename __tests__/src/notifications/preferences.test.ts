@@ -8,7 +8,7 @@ import {
 } from '@/notifications/preferences';
 
 jest.mock('react-native-mmkv', () => ({
-  MMKV: jest.fn().mockImplementation(() => ({
+  createMMKV: jest.fn().mockImplementation(() => ({
     getString: jest.fn(),
     set: jest.fn(),
     delete: jest.fn(),
@@ -40,7 +40,7 @@ describe('preferences', () => {
       set: jest.fn(),
       delete: jest.fn(),
     };
-    MMKVModule.MMKV.mockImplementation(() => mockMMKV);
+    MMKVModule.createMMKV.mockImplementation(() => mockMMKV);
 
     // Setup globalThis.localStorage
     Object.defineProperty(globalThis, 'localStorage', {
@@ -199,7 +199,7 @@ describe('preferences', () => {
     it('handles MMKV initialization error on native', () => {
       Object.defineProperty(Platform, 'OS', { value: 'ios', configurable: true });
       const MMKVModule = require('react-native-mmkv');
-      MMKVModule.MMKV.mockImplementation(() => {
+      MMKVModule.createMMKV.mockImplementation(() => {
         throw new Error('MMKV init failed');
       });
 
@@ -258,7 +258,7 @@ describe('preferences', () => {
     it('handles MMKV initialization error on native', () => {
       Object.defineProperty(Platform, 'OS', { value: 'android', configurable: true });
       const MMKVModule = require('react-native-mmkv');
-      MMKVModule.MMKV.mockImplementation(() => {
+      MMKVModule.createMMKV.mockImplementation(() => {
         throw new Error('MMKV init failed');
       });
       const preferences = {

@@ -18,7 +18,7 @@ const mockMmkvDelete = jest.fn((key: string) => {
 });
 
 jest.mock('react-native-mmkv', () => ({
-  MMKV: jest.fn(() => ({
+  createMMKV: jest.fn(() => ({
     set: mockMmkvSet,
     getString: mockMmkvGetString,
     delete: mockMmkvDelete,
@@ -135,7 +135,7 @@ describe('auth/reset', () => {
   it('skips native write when MMKV initialization throws', () => {
     setPlatform('ios');
     const mmkvModule = require('react-native-mmkv');
-    mmkvModule.MMKV.mockImplementationOnce(() => {
+    mmkvModule.createMMKV.mockImplementationOnce(() => {
       throw new Error('MMKV init failed');
     });
 
@@ -146,7 +146,7 @@ describe('auth/reset', () => {
   it('returns false on native when MMKV initialization fails', () => {
     setPlatform('ios');
     const mmkvModule = require('react-native-mmkv');
-    mmkvModule.MMKV.mockImplementationOnce(() => {
+    mmkvModule.createMMKV.mockImplementationOnce(() => {
       throw new Error('MMKV init failed');
     });
 

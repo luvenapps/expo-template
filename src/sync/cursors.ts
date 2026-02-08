@@ -28,12 +28,12 @@ function createMemoryAdapter(): StorageAdapter {
 function createMmkvAdapter(): StorageAdapter | undefined {
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { MMKV } = require('react-native-mmkv');
+    const { createMMKV } = require('react-native-mmkv');
     if (Platform.OS === 'web') {
       return undefined;
     }
 
-    const instance = new MMKV({ id: DOMAIN.app.cursorStorageId });
+    const instance = createMMKV({ id: DOMAIN.app.cursorStorageId });
 
     return {
       getString: (key) => instance.getString(key) ?? undefined,

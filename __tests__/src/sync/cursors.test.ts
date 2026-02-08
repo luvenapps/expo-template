@@ -42,7 +42,7 @@ describe('cursor storage with MMKV', () => {
 
     jest.doMock('react-native', () => ({ Platform: { OS: 'ios' } }), { virtual: true });
     jest.doMock('react-native-mmkv', () => ({
-      MMKV: jest.fn(() => ({ getString, set, delete: del, clearAll })),
+      createMMKV: jest.fn(() => ({ getString, set, delete: del, clearAll })),
     }));
 
     const { setCursor, getCursor, clearCursor, resetCursors } = loadModule();
@@ -64,7 +64,7 @@ describe('cursor storage with MMKV', () => {
 
     jest.doMock('react-native', () => ({ Platform: { OS: 'ios' } }), { virtual: true });
     jest.doMock('react-native-mmkv', () => ({
-      MMKV: jest.fn(() => ({ getString, set, delete: del, clearAll })),
+      createMMKV: jest.fn(() => ({ getString, set, delete: del, clearAll })),
     }));
 
     const { getCursor } = loadModule();
@@ -76,7 +76,7 @@ describe('cursor storage with MMKV', () => {
   test('falls back to memory on web despite MMKV', () => {
     jest.doMock('react-native', () => ({ Platform: { OS: 'web' } }), { virtual: true });
     jest.doMock('react-native-mmkv', () => ({
-      MMKV: jest.fn(() => ({
+      createMMKV: jest.fn(() => ({
         getString: jest.fn().mockReturnValue('should-not-be-used'),
         set: jest.fn(),
         delete: jest.fn(),

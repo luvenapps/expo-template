@@ -38,8 +38,8 @@ const readStoredDebugFlag = () => {
 
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { MMKV } = require('react-native-mmkv');
-    const store = new MMKV({ id: 'debug-logs' });
+    const { createMMKV } = require('react-native-mmkv');
+    const store = createMMKV({ id: 'debug-logs' });
     return toBoolean(store.getString(DEBUG_LOGS_STORAGE_KEY) ?? null);
   } catch {
     return null;
@@ -59,8 +59,8 @@ const writeStoredDebugFlag = (enabled: boolean) => {
 
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { MMKV } = require('react-native-mmkv');
-    const store = new MMKV({ id: 'debug-logs' });
+    const { createMMKV } = require('react-native-mmkv');
+    const store = createMMKV({ id: 'debug-logs' });
     store.set(DEBUG_LOGS_STORAGE_KEY, enabled ? 'true' : 'false');
   } catch {
     return;

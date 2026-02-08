@@ -30,8 +30,8 @@ const webRegisterLogger = createLogger('FCM:web:register');
 
 function getNativeStore() {
   try {
-    const { MMKV } = require('react-native-mmkv');
-    return new MMKV({ id: `${DOMAIN.app.name}-notifications` });
+    const { createMMKV } = require('react-native-mmkv');
+    return createMMKV({ id: `${DOMAIN.app.name}-notifications` });
   } catch {
     return null;
   }

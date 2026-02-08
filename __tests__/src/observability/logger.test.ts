@@ -130,7 +130,7 @@ describe('logger', () => {
     const mockMMKV = jest.fn(() => ({ getString, set }));
 
     jest.doMock('react-native-mmkv', () => ({
-      MMKV: mockMMKV,
+      createMMKV: mockMMKV,
     }));
 
     const { createLogger, getDebugLogsEnabled, setDebugLogsEnabled } =
@@ -192,7 +192,7 @@ describe('logger', () => {
     const mockMMKV = jest.fn(() => ({ getString, set: jest.fn() }));
 
     jest.doMock('react-native-mmkv', () => ({
-      MMKV: mockMMKV,
+      createMMKV: mockMMKV,
     }));
 
     const { createLogger, getDebugLogsEnabled } =
@@ -219,7 +219,7 @@ describe('logger', () => {
     const mockMMKV = jest.fn(() => ({ getString, set: jest.fn() }));
 
     jest.doMock('react-native-mmkv', () => ({
-      MMKV: mockMMKV,
+      createMMKV: mockMMKV,
     }));
 
     const { createLogger, getDebugLogsEnabled } =

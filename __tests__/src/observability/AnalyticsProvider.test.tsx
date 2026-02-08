@@ -16,7 +16,7 @@ const mockMMKVInstance = {
 const mockGetFirebaseAnalyticsBackend = jest.fn();
 
 jest.mock('react-native-mmkv', () => ({
-  MMKV: jest.fn().mockImplementation(() => mockMMKVInstance),
+  createMMKV: jest.fn().mockImplementation(() => mockMMKVInstance),
 }));
 
 jest.mock('@/observability/firebaseBackend', () => ({

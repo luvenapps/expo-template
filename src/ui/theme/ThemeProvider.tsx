@@ -45,8 +45,8 @@ function loadStoredPreference(): ThemePreference {
   try {
     if (Platform.OS !== 'web') {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { MMKV } = require('react-native-mmkv');
-      const store = new MMKV({ id: STORAGE_NAMESPACE });
+      const { createMMKV } = require('react-native-mmkv');
+      const store = createMMKV({ id: STORAGE_NAMESPACE });
       const stored = store.getString(STORAGE_KEY);
       if (stored === 'light' || stored === 'dark' || stored === 'system') {
         return stored;
@@ -67,8 +67,8 @@ function persistPreference(preference: ThemePreference) {
   try {
     if (Platform.OS !== 'web') {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { MMKV } = require('react-native-mmkv');
-      const store = new MMKV({ id: STORAGE_NAMESPACE });
+      const { createMMKV } = require('react-native-mmkv');
+      const store = createMMKV({ id: STORAGE_NAMESPACE });
       store.set(STORAGE_KEY, preference);
     } else if (typeof globalThis !== 'undefined' && 'localStorage' in globalThis) {
       globalThis.localStorage.setItem(STORAGE_KEY, preference);

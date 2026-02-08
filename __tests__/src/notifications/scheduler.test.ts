@@ -31,7 +31,7 @@ const mockMMKVStore = {
 };
 
 jest.mock('react-native-mmkv', () => ({
-  MMKV: jest.fn().mockImplementation(() => mockMMKVStore),
+  createMMKV: jest.fn().mockImplementation(() => mockMMKVStore),
 }));
 
 jest.mock('expo-notifications', () => ({

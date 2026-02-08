@@ -70,8 +70,8 @@ let crashlyticsBackend: ErrorReporterBackend | null | undefined;
 function getNativeStore() {
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { MMKV } = require('react-native-mmkv');
-    return new MMKV({ id: ANALYTICS_STORAGE_NAMESPACE });
+    const { createMMKV } = require('react-native-mmkv');
+    return createMMKV({ id: ANALYTICS_STORAGE_NAMESPACE });
   } catch {
     return null;
   }

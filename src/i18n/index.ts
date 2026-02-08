@@ -26,8 +26,8 @@ function getDeviceLanguage() {
 function getNativeStore() {
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { MMKV } = require('react-native-mmkv');
-    return new MMKV({ id: `${DOMAIN.app.cursorStorageId}-i18n` });
+    const { createMMKV } = require('react-native-mmkv');
+    return createMMKV({ id: `${DOMAIN.app.cursorStorageId}-i18n` });
   } catch {
     return null;
   }

@@ -108,7 +108,7 @@ describe('i18n', () => {
     mockI18n.language = 'en';
     const setMock = jest.fn();
     jest.doMock('react-native-mmkv', () => ({
-      MMKV: jest.fn().mockImplementation(() => ({
+      createMMKV: jest.fn().mockImplementation(() => ({
         set: setMock,
         getString: jest.fn(),
       })),

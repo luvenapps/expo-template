@@ -582,8 +582,8 @@ export default function SettingsScreen() {
     if (!isNative) return;
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { MMKV } = require('react-native-mmkv');
-      const store = new MMKV({ id: `${DOMAIN.app.name}-notifications` });
+      const { createMMKV } = require('react-native-mmkv');
+      const store = createMMKV({ id: `${DOMAIN.app.name}-notifications` });
       const keys = store.getAllKeys();
 
       devNotificationsLogger.info('keys:', keys);
@@ -621,7 +621,7 @@ export default function SettingsScreen() {
     if (!isNative) return;
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { MMKV } = require('react-native-mmkv');
+      const { createMMKV } = require('react-native-mmkv');
       const stores = [
         { id: `${DOMAIN.app.name}-notifications`, label: 'notifications' },
         {
@@ -639,7 +639,7 @@ export default function SettingsScreen() {
 
       let totalKeys = 0;
       stores.forEach(({ id, label }) => {
-        const store = new MMKV({ id });
+        const store = createMMKV({ id });
         const keys = store.getAllKeys();
         devMmkvLogger.info(`[${label}] keys:`, keys);
         totalKeys += keys.length;

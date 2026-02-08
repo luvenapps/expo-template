@@ -110,7 +110,7 @@ describe('auth/nameStorage', () => {
       Platform: { OS: 'ios' },
     }));
     jest.doMock('react-native-mmkv', () => ({
-      MMKV: jest.fn(() => store),
+      createMMKV: jest.fn(() => store),
     }));
 
     let storageModule: typeof import('@/auth/nameStorage') | null = null;

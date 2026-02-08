@@ -10,8 +10,8 @@ const STORAGE_NAMESPACE = `${DOMAIN.app.storageKey}-reset`;
 function getNativeStore() {
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { MMKV } = require('react-native-mmkv');
-    return new MMKV({ id: STORAGE_NAMESPACE });
+    const { createMMKV } = require('react-native-mmkv');
+    return createMMKV({ id: STORAGE_NAMESPACE });
   } catch {
     return null;
   }

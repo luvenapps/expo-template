@@ -7,7 +7,7 @@ import { Appearance, Platform } from 'react-native';
 
 jest.mock('react-native-mmkv', () => {
   const store = new Map<string, string>();
-  const MMKV = jest.fn(() => ({
+  const createMMKV = jest.fn(() => ({
     getString: jest.fn((key: string) => (store.has(key) ? store.get(key)! : null)),
     set: jest.fn((key: string, value: string) => {
       store.set(key, value);
@@ -18,7 +18,7 @@ jest.mock('react-native-mmkv', () => {
   }));
 
   return {
-    MMKV,
+    createMMKV,
     __store: store,
   };
 });
@@ -437,7 +437,7 @@ describe('ThemeProvider', () => {
 
       const mmkvModule = require('react-native-mmkv');
       mmkvModule.__store.clear();
-      mmkvModule.MMKV.mockClear();
+      mmkvModule.createMMKV.mockClear();
     });
 
     afterEach(() => {
@@ -452,7 +452,7 @@ describe('ThemeProvider', () => {
 
       const { result } = renderHook(() => useThemeContext(), { wrapper });
 
-      expect(mmkvModule.MMKV).toHaveBeenCalled();
+      expect(mmkvModule.createMMKV).toHaveBeenCalled();
       expect(result.current.preference).toBe('dark');
       expect(result.current.resolvedTheme).toBe('dark');
     });
@@ -467,7 +467,7 @@ describe('ThemeProvider', () => {
       });
 
       const persistCall =
-        mmkvModule.MMKV.mock.results[mmkvModule.MMKV.mock.results.length - 1].value;
+        mmkvModule.createMMKV.mock.results[mmkvModule.createMMKV.mock.results.length - 1].value;
       expect(persistCall.set).toHaveBeenCalledWith(STORAGE_KEY, 'light');
       expect(mmkvModule.__store.get(STORAGE_KEY)).toBe('light');
     });

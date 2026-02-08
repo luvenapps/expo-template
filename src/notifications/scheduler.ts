@@ -50,8 +50,8 @@ type ReminderSeriesConfig = {
 const getReminderSeriesStore = () => {
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { MMKV } = require('react-native-mmkv');
-    return new MMKV({ id: `${DOMAIN.app.name}-notifications` });
+    const { createMMKV } = require('react-native-mmkv');
+    return createMMKV({ id: `${DOMAIN.app.name}-notifications` });
   } catch {
     return null;
   }
