@@ -1,5 +1,6 @@
 import { DOMAIN } from '@/config/domain.config';
 import { themePalettes, ThemePalette } from '@/ui/theme/palette';
+import Constants from 'expo-constants';
 import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from 'react';
 import { Appearance, Platform } from 'react-native';
 import { analytics } from '@/observability/analytics';
@@ -25,6 +26,8 @@ const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
 const STORAGE_KEY = `${DOMAIN.app.storageKey}-theme-preference`;
 const STORAGE_NAMESPACE = `${DOMAIN.app.cursorStorageId}-theme`;
+const isExpoGo =
+  Constants.executionEnvironment === 'storeClient' || Constants.appOwnership === 'expo';
 
 function resolveSystemTheme(colorScheme: 'light' | 'dark' | null | undefined): ResolvedTheme {
   return colorScheme === 'dark' ? 'dark' : 'light';
@@ -44,6 +47,9 @@ function resolveWebSystemTheme(): ResolvedTheme {
 function loadStoredPreference(): ThemePreference {
   try {
     if (Platform.OS !== 'web') {
+      if (isExpoGo) {
+        return 'system';
+      }
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { createMMKV } = require('react-native-mmkv');
       const store = createMMKV({ id: STORAGE_NAMESPACE });
@@ -66,6 +72,9 @@ function loadStoredPreference(): ThemePreference {
 function persistPreference(preference: ThemePreference) {
   try {
     if (Platform.OS !== 'web') {
+      if (isExpoGo) {
+        return;
+      }
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { createMMKV } = require('react-native-mmkv');
       const store = createMMKV({ id: STORAGE_NAMESPACE });

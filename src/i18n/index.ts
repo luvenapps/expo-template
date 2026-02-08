@@ -1,6 +1,7 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import * as Localization from 'expo-localization';
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { DOMAIN } from '@/config/domain.config';
 import { analytics } from '@/observability/analytics';
@@ -8,6 +9,8 @@ import { analytics } from '@/observability/analytics';
 import en from './locales/en.json';
 import es from './locales/es.json';
 
+const isExpoGo =
+  Constants.executionEnvironment === 'storeClient' || Constants.appOwnership === 'expo';
 const resources = {
   en: { translation: en },
   es: { translation: es },
@@ -25,6 +28,9 @@ function getDeviceLanguage() {
 
 function getNativeStore() {
   try {
+    if (isExpoGo) {
+      return null;
+    }
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { createMMKV } = require('react-native-mmkv');
     return createMMKV({ id: `${DOMAIN.app.cursorStorageId}-i18n` });

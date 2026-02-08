@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import { OBSERVABILITY } from '@/config/constants';
 import { DOMAIN } from '@/config/domain.config';
 import { Platform } from 'react-native';
@@ -69,6 +70,9 @@ let crashlyticsBackend: ErrorReporterBackend | null | undefined;
 /* istanbul ignore next - MMKV initialization executes at module load */
 function getNativeStore() {
   try {
+    if (Constants.executionEnvironment === 'storeClient' || Constants.appOwnership === 'expo') {
+      return null;
+    }
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { createMMKV } = require('react-native-mmkv');
     return createMMKV({ id: ANALYTICS_STORAGE_NAMESPACE });

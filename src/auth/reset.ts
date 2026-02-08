@@ -1,4 +1,5 @@
 import type { Session } from '@supabase/supabase-js';
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { DOMAIN } from '@/config/domain.config';
 import { supabase } from './client';
@@ -9,6 +10,9 @@ const STORAGE_NAMESPACE = `${DOMAIN.app.storageKey}-reset`;
 
 function getNativeStore() {
   try {
+    if (Constants.executionEnvironment === 'storeClient' || Constants.appOwnership === 'expo') {
+      return null;
+    }
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { createMMKV } = require('react-native-mmkv');
     return createMMKV({ id: STORAGE_NAMESPACE });

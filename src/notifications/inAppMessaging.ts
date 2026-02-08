@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { useAnalytics } from '@/observability/AnalyticsProvider';
 
@@ -32,6 +33,10 @@ function isFirebaseEnabled() {
   );
 }
 
+function isExpoGo() {
+  return Constants.executionEnvironment === 'storeClient' || Constants.appOwnership === 'expo';
+}
+
 function getAnalytics() {
   if (analytics) return analytics;
   try {
@@ -46,6 +51,7 @@ function getAnalytics() {
 
 function loadFirebaseModule(): FirebaseIAMModule | null {
   if (Platform.OS === 'web') return null;
+  if (isExpoGo()) return null;
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const iamModule = require('@react-native-firebase/in-app-messaging')

@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { DOMAIN } from '@/config/domain.config';
 
@@ -27,6 +28,9 @@ function createMemoryAdapter(): StorageAdapter {
 
 function createMmkvAdapter(): StorageAdapter | undefined {
   try {
+    if (Constants.executionEnvironment === 'storeClient' || Constants.appOwnership === 'expo') {
+      return undefined;
+    }
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { createMMKV } = require('react-native-mmkv');
     if (Platform.OS === 'web') {

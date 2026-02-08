@@ -1,4 +1,5 @@
 /* istanbul ignore file */
+import Constants from 'expo-constants';
 import { ANALYTICS } from '@/config/constants';
 import { createLogger } from '@/observability/logger';
 import { Platform } from 'react-native';
@@ -54,6 +55,10 @@ export function getFirebaseAnalyticsBackend(): AnalyticsBackend | null {
 
 function createNativeBackendIfAvailable(): AnalyticsBackend | null {
   if (Platform.OS === 'web') return null;
+  if (Constants.executionEnvironment === 'storeClient' || Constants.appOwnership === 'expo') {
+    logger.warn('Native analytics not available in Expo Go');
+    return null;
+  }
 
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports

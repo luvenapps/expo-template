@@ -1,6 +1,7 @@
 import { DOMAIN } from '@/config/domain.config';
 import { createLogger } from '@/observability/logger';
 import { emitNotificationEvent } from '@/observability/notificationEvents';
+import Constants from 'expo-constants';
 import { WEB_NOTIFICATION_PERMISSION } from '@/notifications/status';
 import { Platform } from 'react-native';
 
@@ -27,9 +28,13 @@ const NATIVE_TOKEN_STORAGE_KEY = `${DOMAIN.app.name}-native-fcm-token`;
 const logger = createLogger('FCM');
 const webLogger = createLogger('FCM:web');
 const webRegisterLogger = createLogger('FCM:web:register');
+const isExpoGo = Constants.appOwnership === 'expo';
 
 function getNativeStore() {
   try {
+    if (isExpoGo) {
+      return null;
+    }
     const { createMMKV } = require('react-native-mmkv');
     return createMMKV({ id: `${DOMAIN.app.name}-notifications` });
   } catch {
@@ -81,6 +86,10 @@ export async function registerForPushNotifications(): Promise<PushRegistrationRe
 
   if (Platform.OS === 'web') {
     return registerForWebPush();
+  }
+  if (isExpoGo) {
+    logger.warn('Expo Go detected; native FCM is unavailable.');
+    return { status: 'unavailable' };
   }
 
   // Native fast-path + in-flight dedupe
@@ -222,6 +231,10 @@ export function initializeFCMListeners() {
   if (Platform.OS === 'web') {
     return;
   }
+  if (isExpoGo) {
+    logger.warn('Expo Go detected; skipping native FCM listeners.');
+    return;
+  }
 
   try {
     const messagingModule = require('@react-native-firebase/messaging');
@@ -284,6 +297,10 @@ export function setupBackgroundMessageHandler() {
   if (!turnOnFirebase) return;
 
   if (Platform.OS === 'web') {
+    return;
+  }
+  if (isExpoGo) {
+    logger.warn('Expo Go detected; skipping background FCM handler.');
     return;
   }
 
@@ -501,6 +518,9 @@ export async function revokePushToken(): Promise<PushRevokeResult> {
   }
 
   // Native implementation
+  if (isExpoGo) {
+    return { status: 'unavailable' };
+  }
   try {
     const messagingModule = require('@react-native-firebase/messaging');
     const messaging = messagingModule.default;

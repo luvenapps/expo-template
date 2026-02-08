@@ -1,4 +1,5 @@
 import { DOMAIN } from '@/config/domain.config';
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
 import { NOTIFICATION_STATUS, type NotificationStatus } from '@/notifications/status';
@@ -23,6 +24,9 @@ const STORAGE_NAMESPACE = `${DOMAIN.app.cursorStorageId}-notifications`;
 
 function getNativeStore() {
   try {
+    if (Constants.executionEnvironment === 'storeClient' || Constants.appOwnership === 'expo') {
+      return null;
+    }
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { createMMKV } = require('react-native-mmkv');
     return createMMKV({ id: STORAGE_NAMESPACE });

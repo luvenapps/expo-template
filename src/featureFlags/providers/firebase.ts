@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import { createLogger } from '@/observability/logger';
 import { AppState, Platform } from 'react-native';
 import {
@@ -42,6 +43,10 @@ function hasCompleteWebConfig() {
 
 function getNativeRemoteConfig(): RemoteConfigModule | null {
   try {
+    if (Constants.executionEnvironment === 'storeClient' || Constants.appOwnership === 'expo') {
+      logger.warn('Native Remote Config not available in Expo Go, using defaults');
+      return null;
+    }
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const remoteConfig = require('@react-native-firebase/remote-config').default;
     return remoteConfig();

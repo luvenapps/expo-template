@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import { Linking, Platform } from 'react-native';
 
 import { DOMAIN } from '@/config/domain.config';
@@ -12,6 +13,7 @@ export type Logger = {
 };
 
 const isDev = typeof __DEV__ !== 'undefined' && __DEV__;
+const isExpoGo = Constants.appOwnership === 'expo';
 const DEBUG_LOGS_STORAGE_KEY = `${DOMAIN.app.storageKey}-debug-logs-enabled`;
 let debugLogsEnabled = false;
 let debugLogsInitialized = false;
@@ -36,6 +38,10 @@ const readStoredDebugFlag = () => {
     }
   }
 
+  if (isExpoGo) {
+    return null;
+  }
+
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { createMMKV } = require('react-native-mmkv');
@@ -54,6 +60,10 @@ const writeStoredDebugFlag = (enabled: boolean) => {
     } catch {
       return;
     }
+    return;
+  }
+
+  if (isExpoGo) {
     return;
   }
 

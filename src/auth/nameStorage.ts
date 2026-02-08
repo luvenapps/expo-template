@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { DOMAIN } from '@/config/domain.config';
 
@@ -6,6 +7,9 @@ const STORAGE_NAMESPACE = `${DOMAIN.app.storageKey}-profile`;
 
 function getNativeStore() {
   try {
+    if (Constants.executionEnvironment === 'storeClient' || Constants.appOwnership === 'expo') {
+      return null;
+    }
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { createMMKV } = require('react-native-mmkv');
     return createMMKV({ id: STORAGE_NAMESPACE });
