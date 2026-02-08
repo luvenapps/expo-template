@@ -280,7 +280,7 @@ export default function SettingsScreen() {
       <YStack alignItems="center" paddingVertical="$4" gap="$2">
         <Text fontSize="$4" color="$colorMuted" testID="app-version">
           {'v'}
-          {Constants.nativeAppVersion ?? Constants.expoConfig?.version ?? '1.0.0'}
+          {Constants.expoConfig?.version ?? Constants.nativeAppVersion ?? '1.0.0'}
         </Text>
       </YStack>
     </ScreenContainer>
