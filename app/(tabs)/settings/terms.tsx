@@ -45,7 +45,7 @@ export default function TermsScreen() {
               accessing or using the App, you agree to be bound by these Terms of Service
               (&quot;Terms&quot;). If you do not agree to these Terms, please do not use the App.
             </Paragraph>
-            <Paragraph color="$color" fontWeight="700" fontSize="$4" flex={1} flexWrap="wrap">
+            <Paragraph color="$color" fontWeight="400" fontSize="$4" flex={1} flexWrap="wrap">
               1. Eligibility
             </Paragraph>
             <Paragraph
@@ -60,7 +60,7 @@ export default function TermsScreen() {
               jurisdiction) to use the App. By using the App, you represent and warrant that you
               meet this requirement.
             </Paragraph>
-            <Paragraph color="$color" fontWeight="700" fontSize="$4" flex={1} flexWrap="wrap">
+            <Paragraph color="$color" fontWeight="400" fontSize="$4" flex={1} flexWrap="wrap">
               2. Account & Access
             </Paragraph>
             <Paragraph
@@ -76,7 +76,7 @@ export default function TermsScreen() {
               account. We reserve the right to suspend or terminate access if these Terms are
               violated.
             </Paragraph>
-            <Paragraph color="$color" fontWeight="700" fontSize="$4" flex={1} flexWrap="wrap">
+            <Paragraph color="$color" fontWeight="400" fontSize="$4" flex={1} flexWrap="wrap">
               3. Use of the App
             </Paragraph>
             <Paragraph
@@ -92,7 +92,7 @@ export default function TermsScreen() {
               with or disrupt the App or its services; use the App in a way that violates any
               applicable laws or regulations.
             </Paragraph>
-            <Paragraph color="$color" fontWeight="700" fontSize="$4" flex={1} flexWrap="wrap">
+            <Paragraph color="$color" fontWeight="400" fontSize="$4" flex={1} flexWrap="wrap">
               4. User Data & Content
             </Paragraph>
             <Paragraph
@@ -109,7 +109,7 @@ export default function TermsScreen() {
               content. For details on how data is collected and handled, please refer to our Privacy
               Policy.
             </Paragraph>
-            <Paragraph color="$color" fontWeight="700" fontSize="$4" flex={1} flexWrap="wrap">
+            <Paragraph color="$color" fontWeight="400" fontSize="$4" flex={1} flexWrap="wrap">
               5. Notifications & Communications
             </Paragraph>
             <Paragraph
@@ -124,7 +124,7 @@ export default function TermsScreen() {
               related to your use of the App. You can disable notifications at any time through your
               device or app settings.
             </Paragraph>
-            <Paragraph color="$color" fontWeight="700" fontSize="$4" flex={1} flexWrap="wrap">
+            <Paragraph color="$color" fontWeight="400" fontSize="$4" flex={1} flexWrap="wrap">
               6. Availability & Changes
             </Paragraph>
             <Paragraph
@@ -140,7 +140,7 @@ export default function TermsScreen() {
               update these Terms periodically. Continued use of the App after changes are posted
               constitutes acceptance of the updated Terms.
             </Paragraph>
-            <Paragraph color="$color" fontWeight="700" fontSize="$4" flex={1} flexWrap="wrap">
+            <Paragraph color="$color" fontWeight="400" fontSize="$4" flex={1} flexWrap="wrap">
               7. Intellectual Property
             </Paragraph>
             <Paragraph
@@ -155,7 +155,7 @@ export default function TermsScreen() {
               the property of Luven LLC and are protected by applicable intellectual property laws.
               You may not use them without prior written permission.
             </Paragraph>
-            <Paragraph color="$color" fontWeight="700" fontSize="$4" flex={1} flexWrap="wrap">
+            <Paragraph color="$color" fontWeight="400" fontSize="$4" flex={1} flexWrap="wrap">
               8. Disclaimer of Warranties
             </Paragraph>
             <Paragraph
@@ -170,7 +170,7 @@ export default function TermsScreen() {
               data will always be available or preserved; the App will meet your specific needs or
               expectations. Use of the App is at your own risk.
             </Paragraph>
-            <Paragraph color="$color" fontWeight="700" fontSize="$4" flex={1} flexWrap="wrap">
+            <Paragraph color="$color" fontWeight="400" fontSize="$4" flex={1} flexWrap="wrap">
               9. Limitation of Liability
             </Paragraph>
             <Paragraph
@@ -185,7 +185,7 @@ export default function TermsScreen() {
               indirect, incidental, consequential, or special damages arising out of or related to
               your use of the App.
             </Paragraph>
-            <Paragraph color="$color" fontWeight="700" fontSize="$4" flex={1} flexWrap="wrap">
+            <Paragraph color="$color" fontWeight="400" fontSize="$4" flex={1} flexWrap="wrap">
               10. Termination
             </Paragraph>
             <Paragraph
@@ -199,7 +199,7 @@ export default function TermsScreen() {
               We may suspend or terminate your access to the App at any time if you violate these
               Terms or misuse the service.
             </Paragraph>
-            <Paragraph color="$color" fontWeight="700" fontSize="$4" flex={1} flexWrap="wrap">
+            <Paragraph color="$color" fontWeight="400" fontSize="$4" flex={1} flexWrap="wrap">
               11. Governing Law
             </Paragraph>
             <Paragraph
@@ -213,7 +213,7 @@ export default function TermsScreen() {
               These Terms are governed by the laws of the United States, without regard to
               conflict-of-law principles.
             </Paragraph>
-            <Paragraph color="$color" fontWeight="700" fontSize="$4" flex={1} flexWrap="wrap">
+            <Paragraph color="$color" fontWeight="400" fontSize="$4" flex={1} flexWrap="wrap">
               12. Contact
             </Paragraph>
             <Paragraph color="$colorMuted" fontSize="$3" fontWeight="300" flex={1} flexWrap="wrap">

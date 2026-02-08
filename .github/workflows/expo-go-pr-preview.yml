@@ -46,7 +46,7 @@ jobs:
           node -v
           npm -v
           npx expo --version
-          npx eas --version
+          npx eas-cli --version
 
       - name: Guardrails - resolve react-native
         run: |
@@ -167,7 +167,7 @@ jobs:
           node -v
           npm -v
           npx expo --version
-          npx eas --version
+          npx eas-cli --version
 
       - name: Guardrails - resolve react-native
         run: |

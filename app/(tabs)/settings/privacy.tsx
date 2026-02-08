@@ -46,7 +46,7 @@ export default function PrivacyScreen() {
               when you use the App. By using the App, you agree to the practices described in this
               Privacy Policy.
             </Paragraph>
-            <Paragraph color="$color" fontWeight="700" fontSize="$4" flex={1} flexWrap="wrap">
+            <Paragraph color="$color" fontWeight="400" fontSize="$4" flex={1} flexWrap="wrap">
               1. Information We Collect
             </Paragraph>
             <Paragraph
@@ -59,7 +59,7 @@ export default function PrivacyScreen() {
             >
               We collect only the information necessary to provide and improve the App.
             </Paragraph>
-            <Paragraph color="$color" fontWeight="700" fontSize="$4" flex={1} flexWrap="wrap">
+            <Paragraph color="$color" fontWeight="400" fontSize="$4" flex={1} flexWrap="wrap">
               a. Information You Provide
             </Paragraph>
             <Paragraph
@@ -74,7 +74,7 @@ export default function PrivacyScreen() {
               reminders, and app preferences you create within the App; support communications you
               send to us (e.g., emails).
             </Paragraph>
-            <Paragraph color="$color" fontWeight="700" fontSize="$4" flex={1} flexWrap="wrap">
+            <Paragraph color="$color" fontWeight="400" fontSize="$4" flex={1} flexWrap="wrap">
               b. Automatically Collected Information
             </Paragraph>
             <Paragraph
@@ -89,7 +89,7 @@ export default function PrivacyScreen() {
               functionality and debugging; crash and error logs (if enabled on your device). We do
               not collect precise location data.
             </Paragraph>
-            <Paragraph color="$color" fontWeight="700" fontSize="$4" flex={1} flexWrap="wrap">
+            <Paragraph color="$color" fontWeight="400" fontSize="$4" flex={1} flexWrap="wrap">
               2. How We Use Your Information
             </Paragraph>
             <Paragraph
@@ -105,7 +105,7 @@ export default function PrivacyScreen() {
               send optional notifications you enable. We do not use your data for advertising
               purposes.
             </Paragraph>
-            <Paragraph color="$color" fontWeight="700" fontSize="$4" flex={1} flexWrap="wrap">
+            <Paragraph color="$color" fontWeight="400" fontSize="$4" flex={1} flexWrap="wrap">
               3. Data Storage & Security
             </Paragraph>
             <Paragraph
@@ -120,7 +120,7 @@ export default function PrivacyScreen() {
               measures to protect your information from unauthorized access, loss, or misuse. No
               system is 100% secure, but we continuously work to safeguard your data.
             </Paragraph>
-            <Paragraph color="$color" fontWeight="700" fontSize="$4" flex={1} flexWrap="wrap">
+            <Paragraph color="$color" fontWeight="400" fontSize="$4" flex={1} flexWrap="wrap">
               4. Data Sharing
             </Paragraph>
             <Paragraph
@@ -136,7 +136,7 @@ export default function PrivacyScreen() {
               for functionality; when required by law or to comply with legal obligations; to
               protect the rights, safety, or security of users or the App.
             </Paragraph>
-            <Paragraph color="$color" fontWeight="700" fontSize="$4" flex={1} flexWrap="wrap">
+            <Paragraph color="$color" fontWeight="400" fontSize="$4" flex={1} flexWrap="wrap">
               5. Notifications
             </Paragraph>
             <Paragraph
@@ -150,7 +150,7 @@ export default function PrivacyScreen() {
               If you enable notifications, the App may send you reminders or updates. You can
               disable notifications at any time through your device or app settings.
             </Paragraph>
-            <Paragraph color="$color" fontWeight="700" fontSize="$4" flex={1} flexWrap="wrap">
+            <Paragraph color="$color" fontWeight="400" fontSize="$4" flex={1} flexWrap="wrap">
               6. Data Retention & Deletion
             </Paragraph>
             <Paragraph
@@ -165,7 +165,7 @@ export default function PrivacyScreen() {
               your account or local data through the App&apos;s settings. When data is deleted, it
               is removed from active systems within a reasonable timeframe.
             </Paragraph>
-            <Paragraph color="$color" fontWeight="700" fontSize="$4" flex={1} flexWrap="wrap">
+            <Paragraph color="$color" fontWeight="400" fontSize="$4" flex={1} flexWrap="wrap">
               7. Children&apos;s Privacy
             </Paragraph>
             <Paragraph
@@ -180,7 +180,7 @@ export default function PrivacyScreen() {
               personal information from children. If you believe a child has provided us with
               personal data, please contact us and we will take appropriate action.
             </Paragraph>
-            <Paragraph color="$color" fontWeight="700" fontSize="$4" flex={1} flexWrap="wrap">
+            <Paragraph color="$color" fontWeight="400" fontSize="$4" flex={1} flexWrap="wrap">
               8. Your Rights
             </Paragraph>
             <Paragraph
@@ -195,7 +195,7 @@ export default function PrivacyScreen() {
               request correction or deletion of your data, or withdraw consent where applicable. To
               exercise these rights, contact us at the email below.
             </Paragraph>
-            <Paragraph color="$color" fontWeight="700" fontSize="$4" flex={1} flexWrap="wrap">
+            <Paragraph color="$color" fontWeight="400" fontSize="$4" flex={1} flexWrap="wrap">
               9. Changes to This Policy
             </Paragraph>
             <Paragraph
@@ -210,7 +210,7 @@ export default function PrivacyScreen() {
               updating the &quot;Last updated&quot; date. Continued use of the App means you accept
               the revised policy.
             </Paragraph>
-            <Paragraph color="$color" fontWeight="700" fontSize="$4" flex={1} flexWrap="wrap">
+            <Paragraph color="$color" fontWeight="400" fontSize="$4" flex={1} flexWrap="wrap">
               10. Contact Us
             </Paragraph>
             <Paragraph color="$colorMuted" fontSize="$3" fontWeight="300" flex={1} flexWrap="wrap">
