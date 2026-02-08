@@ -2,6 +2,17 @@ import { useNotificationSettings } from '@/notifications/useNotificationSettings
 import { act, renderHook } from '@testing-library/react-native';
 import { AppState, Platform, type AppStateStatus } from 'react-native';
 
+jest.mock('@/config/constants', () => {
+  const actual = jest.requireActual('@/config/constants');
+  return {
+    ...actual,
+    NOTIFICATIONS: {
+      ...actual.NOTIFICATIONS,
+      initialSoftPromptTrigger: 'app-install',
+    },
+  };
+});
+
 jest.mock('@/notifications/preferences', () => ({
   loadNotificationPreferences: jest.fn(),
   persistNotificationPreferences: jest.fn(),
