@@ -1,137 +1,121 @@
 # ⚙️ Continuous Integration with GitHub Actions
 
-This project uses split GitHub Actions workflows for **quality checks**, **hosted mobile E2E**, and **self-hosted mobile E2E**.
+This repository uses **coordinator workflows + reusable workflows**.
+
+- Coordinators are the only workflows triggered by PR/push.
+- Sub-workflows run through `workflow_call`.
+- Hosted vs self-hosted execution is controlled by `USE_SELF_HOSTED`.
 
 ---
 
 ## 🚀 Workflow map
 
-Current workflow files:
+### Coordinator workflows (event entry points)
+
+- `.github/workflows/ci-hosted-coordinator.yml`
+- `.github/workflows/ci-selfhosted-coordinator.yml`
+
+Both coordinators trigger on:
+
+- `push` to `main` (with `paths-ignore`)
+- `pull_request` with `types: [opened, synchronize, reopened]` (with `paths-ignore`)
+
+Both coordinators define:
+
+- `run-name: ${{ github.event.workflow_run.display_title || github.ref_name }}`
+- `env.ENV_PREFIX`: `PROD` for `main`, otherwise `DEV`
+
+### Reusable sub-workflows (`workflow_call`)
 
 - `.github/workflows/ci-quality.yml`
 - `.github/workflows/ci-android-hosted.yml`
 - `.github/workflows/ci-android-selfhosted.yml`
 - `.github/workflows/ci-ios-hosted.yml`
 - `.github/workflows/ci-ios-selfhosted.yml`
+- `.github/workflows/expo-go-preview.yml`
 
-### Triggers
-
-- **Quality CI** (`ci-quality.yml`)
-  - `push`
-  - `pull_request`
-  - `workflow_dispatch`
-
-- **Android CI - Hosted** (`ci-android-hosted.yml`)
-  - `push`
-  - `pull_request`
-  - `workflow_dispatch`
-
-- **Android CI** (`ci-android-selfhosted.yml`)
-  - `workflow_run` (after **Quality CI** completes)
-  - `workflow_dispatch`
-
-- **iOS CI - Hosted** (`ci-ios-hosted.yml`)
-  - `push`
-  - `pull_request`
-  - `workflow_dispatch`
-
-- **iOS CI** (`ci-ios-selfhosted.yml`)
-  - `workflow_run` (after **Quality CI** completes)
-  - `workflow_dispatch`
+All of the above are called by coordinators via `uses: ./.github/workflows/...` and `secrets: inherit`.
 
 ---
 
 ## 🔀 Hosted vs self-hosted routing
 
-Runner mode is controlled by repository variable `USE_SELF_HOSTED`:
+Routing is controlled by repository variable `USE_SELF_HOSTED`:
 
-- `USE_SELF_HOSTED == 'true'` → self-hosted mobile jobs run
-- any other value (including empty) → hosted mobile jobs run
+- `USE_SELF_HOSTED == 'true'`
+  - self-hosted coordinator jobs run
+  - hosted coordinator jobs are skipped
+- any other value (including empty)
+  - hosted coordinator jobs run
+  - self-hosted coordinator jobs are skipped
 
-Configure it at:
+Configure at:
 
 **Repo → Settings → Secrets and variables → Actions → Variables**
 
-Recommended default:
+---
 
-- `USE_SELF_HOSTED = false`
+## 🧱 Coordinator job graph
+
+Each coordinator runs the same dependency graph:
+
+1. `quality`
+2. `android` (`needs: quality`)
+3. `ios` (`needs: quality`)
+4. `expo-go-preview` (parallel, no `needs`)
+
+This ensures Android and iOS only run after quality passes, while Expo preview can run independently.
 
 ---
 
-## ✅ Quality CI (`ci-quality.yml`)
+## 🧪 Runner + timeout policy
 
-Quality checks are centralized here (instead of duplicated in mobile workflows):
+### Hosted mode
 
-- formatting (`npm run format:check`)
-- lint (`npm run lint`)
-- unit tests with coverage (`npm run test -- --coverage`)
+- Quality: `ubuntu-latest`
+- Android hosted: `ubuntu-latest`, timeout `90`
+- iOS hosted: `macos-latest`, timeout `90`
+- Expo preview hosted: `macos-latest`
+
+### Self-hosted mode
+
+- Quality: `[self-hosted, macos, arm64]`
+- Android self-hosted: `[self-hosted, macos, arm64]`, timeout `45`
+- iOS self-hosted: `[self-hosted, macos, arm64]`, timeout `45`
+- Expo preview self-hosted: `[self-hosted, macos, arm64]`
+
+---
+
+## 🔐 Dynamic env/secret mapping in reusable workflows
+
+Reusable workflows accept `env_prefix` and map runtime values dynamically:
+
+- Variables: `vars[format('{0}_VAR_NAME', inputs.env_prefix)]`
+- Secrets: selected in shell with `if [ "${{ inputs.env_prefix }}" = "PROD" ] ... else ... fi`
+
+Selected values are written into `$GITHUB_ENV` for downstream steps.
+
+---
+
+## 🔧 Quality workflow
+
+`ci-quality.yml` is reusable and receives:
+
+- `env_prefix`
+- `runner_target` (`hosted` or `selfhosted`)
+
+It runs:
+
+- `npm run format:check`
+- `npm run lint`
+- `npm run test -- --coverage`
 - Codecov uploads
 
-It contains two jobs:
-
-- `quality-hosted` (Ubuntu, hosted mode)
-- `quality-selfhosted` (self-hosted macOS arm64)
-
-Codecov flags are split for clarity:
-
-- `hosted-quality`
-- `selfhosted-quality`
+GPG installation is skipped on self-hosted quality runs.
 
 ---
 
-## 🤖 Android workflows
-
-### Hosted (`ci-android-hosted.yml`)
-
-- Job: `android-hosted`
-- Runner: `ubuntu-latest`
-- Timeout: `90` minutes
-- Performs build + Android E2E flow
-
-### Self-hosted (`ci-android-selfhosted.yml`)
-
-- Workflow name: **Android CI**
-- Job: `android-selfhosted`
-- Runner: `[self-hosted, macos, arm64]`
-- Timeout: `45` minutes
-- Triggered automatically after successful **Quality CI** via `workflow_run`
-- Also manually runnable via `workflow_dispatch`
-
----
-
-## 🍎 iOS workflows
-
-### Hosted (`ci-ios-hosted.yml`)
-
-- Job: `ios-hosted`
-- Runner: `macos-latest`
-- Timeout: `90` minutes
-- Performs build + iOS E2E flow
-
-### Self-hosted (`ci-ios-selfhosted.yml`)
-
-- Workflow name: **iOS CI**
-- Job: `ios-selfhosted`
-- Runner: `[self-hosted, macos, arm64]`
-- Timeout: `45` minutes
-- Triggered automatically after successful **Quality CI** via `workflow_run`
-- Also manually runnable via `workflow_dispatch`
-
----
-
-## 🧩 Action versions and runtime consistency
-
-Workflows use:
-
-- `actions/checkout@v5`
-- `actions/setup-node@v6` with `node-version-file: '.nvmrc'`
-- `actions/setup-java@v5` (where Java is required)
-
-This keeps CI aligned with repository Node pinning and current stable GitHub Action majors.
-
----
-
-## 💻 Self-hosted macOS runner notes
+## 💻 Self-hosted runner baseline
 
 Self-hosted jobs target:
 
@@ -139,24 +123,24 @@ Self-hosted jobs target:
 runs-on: [self-hosted, macos, arm64]
 ```
 
-Keep runner toolchains aligned with project requirements:
+Keep toolchains aligned with project requirements:
 
-- Node (from `.nvmrc`)
+- Node version from `.nvmrc`
 - Java 17
-- Xcode + iOS simulator tooling
-- Android SDK + emulator tooling (for Android self-hosted)
+- Xcode + iOS simulators
+- Android SDK + emulator tooling
 
-Runner helper scripts are in `.github/runner/`.
+Runner helper scripts are under `.github/scripts/`.
 
 ---
 
 ## 🔐 Permissions
 
-Workflows set minimal default token permissions:
+Workflows default to minimal permissions:
 
 ```yaml
 permissions:
   contents: read
 ```
 
-Increase permissions only at job level when required.
+Increase permissions only where needed at the job level (for example PR comment steps in preview workflows).
