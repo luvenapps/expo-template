@@ -1,0 +1,229 @@
+name: iOS CI
+on:
+  workflow_call:
+    inputs:
+      env_prefix:
+        description: Environment prefix (PROD or DEV)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  IOS_DEVICE: 'iPhone 17'
+  MAESTRO_VERSION: '2.0.6'
+  FASTLANE_VERSION: '2.228.0'
+  MAESTRO_DRIVER_STARTUP_TIMEOUT: 60000
+
+jobs:
+  ios-selfhosted:
+    name: Build • E2E (iOS) - Self-hosted MacOS
+    runs-on: [self-hosted, macos, arm64]
+    timeout-minutes: 45
+    concurrency:
+      group: selfhosted-mobile-${{ github.repository }}
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Map runtime variables and secrets
+        shell: bash
+        env:
+          TURN_ON_FIREBASE: ${{ vars[format('{0}_TURN_ON_FIREBASE', inputs.env_prefix)] || vars.TURN_ON_FIREBASE || 'false' }}
+          RETRIES_VALUE: ${{ vars[format('{0}_RETRIES', inputs.env_prefix)] || vars.RETRIES || '2' }}
+          RETRY_DELAY_VALUE: ${{ vars[format('{0}_RETRY_DELAY', inputs.env_prefix)] || vars.RETRY_DELAY || '5' }}
+          PROD_PUBLIC_SUPABASE_URL: ${{ vars.PROD_PUBLIC_SUPABASE_URL || '' }}
+          DEV_PUBLIC_SUPABASE_URL: ${{ vars.DEV_PUBLIC_SUPABASE_URL || '' }}
+          PROD_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.PROD_PUBLIC_SUPABASE_ANON_KEY || '' }}
+          DEV_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.DEV_PUBLIC_SUPABASE_ANON_KEY || '' }}
+          PROD_SUPABASE_ACCESS_TOKEN: ${{ secrets.PROD_SUPABASE_ACCESS_TOKEN || '' }}
+          DEV_SUPABASE_ACCESS_TOKEN: ${{ secrets.DEV_SUPABASE_ACCESS_TOKEN || '' }}
+        run: |
+          echo "EXPO_PUBLIC_TURN_ON_FIREBASE=$TURN_ON_FIREBASE" >> "$GITHUB_ENV"
+          echo "RETRIES=$RETRIES_VALUE" >> "$GITHUB_ENV"
+          echo "RETRY_DELAY=$RETRY_DELAY_VALUE" >> "$GITHUB_ENV"
+
+          if [ "${{ inputs.env_prefix }}" = "PROD" ]; then
+            echo "EXPO_PUBLIC_SUPABASE_URL=$PROD_PUBLIC_SUPABASE_URL" >> "$GITHUB_ENV"
+            echo "EXPO_PUBLIC_SUPABASE_ANON_KEY=$PROD_PUBLIC_SUPABASE_ANON_KEY" >> "$GITHUB_ENV"
+            echo "SUPABASE_ACCESS_TOKEN=$PROD_SUPABASE_ACCESS_TOKEN" >> "$GITHUB_ENV"
+          else
+            echo "EXPO_PUBLIC_SUPABASE_URL=$DEV_PUBLIC_SUPABASE_URL" >> "$GITHUB_ENV"
+            echo "EXPO_PUBLIC_SUPABASE_ANON_KEY=$DEV_PUBLIC_SUPABASE_ANON_KEY" >> "$GITHUB_ENV"
+            echo "SUPABASE_ACCESS_TOKEN=$DEV_SUPABASE_ACCESS_TOKEN" >> "$GITHUB_ENV"
+          fi
+
+      - name: Check EAS CLI
+        shell: bash
+        run: |
+          if ! command -v eas >/dev/null 2>&1; then
+            echo "❌ EAS CLI not found on this runner."
+            echo "Install it globally: npm i -g eas-cli@16.23.0"
+            exit 1
+          fi
+          eas --version
+
+      - name: Verify Expo/RN dependency alignment
+        shell: bash
+        run: |
+          set -e
+          npx expo --version || true
+          node -e "console.log('react-native', require('react-native/package.json').version)" || true
+          node -e "console.log('expo', require('expo/package.json').version)" || true
+          # Strict: fail if mismatched so lockfile must be updated in a PR
+          if ! npx expo install --check; then
+            echo "❌ Expo dependency mismatch. Run 'npx expo install --fix' locally and commit the updated package-lock.json."
+            exit 1
+          fi
+
+      - name: Make CI scripts executable
+        run: chmod +x .github/scripts/*.sh
+
+      - name: Setup Fastlane
+        shell: bash
+        run: .github/scripts/setup_fastlane.sh  "${{ env.FASTLANE_VERSION }}"
+
+      - name: Setup Maestro
+        shell: bash
+        run: .github/scripts/setup_maestro.sh "${{ env.MAESTRO_VERSION }}"
+
+      - name: Compute iOS build fingerprint
+        id: ios_fp
+        shell: bash
+        env:
+          GOOGLE_SERVICE_INFO_PLIST_B64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_B64 }}
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
+        run: ./.github/scripts/compute_fingerprint.sh ios >> "$GITHUB_OUTPUT"
+
+      - name: Restore the tar.gz iOS app
+        id: ios_cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ./*.tar.gz
+          key: ${{ steps.ios_fp.outputs.key }}
+
+      - name: Build e2erelease
+        if: steps.ios_cache.outputs.cache-hit != 'true'
+        shell: bash
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          GOOGLE_SERVICE_INFO_PLIST_B64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_B64 }}
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
+          EXPO_PUBLIC_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          EXPO_PUBLIC_FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+          EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
+          EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID: ${{ secrets.FIREBASE_MEASUREMENT_ID }}
+          EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
+          EXPO_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET }}
+          EXPO_PUBLIC_SUPABASE_URL: ${{ vars.PROD_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.PROD_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.PROD_SUPABASE_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          ATTEMPTS="${RETRIES:-2}"
+          DELAY="${RETRY_DELAY:-2}"
+          i=1
+          while [ "$i" -le "$ATTEMPTS" ]; do
+            echo "🏗️  iOS build attempt $i/$ATTEMPTS..."
+            if eas build --platform ios --profile e2eRelease --local --non-interactive; then
+              echo "✅ Build succeeded on attempt $i"
+              exit 0
+            fi
+            if [ "$i" -lt "$ATTEMPTS" ]; then
+              echo "❌ Build attempt $i failed — retrying in ${DELAY}s..."
+              sleep "$DELAY"
+            fi
+            i=$((i+1))
+          done
+          echo "❌ Build failed after $ATTEMPTS attempts"
+          exit 1
+
+      - name: Save the tar.gz iOS app
+        if: steps.ios_cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ./*.tar.gz
+          key: ${{ steps.ios_fp.outputs.key }}
+
+      - name: Locate .app artifact
+        id: find_app
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARTIFACT_TAR=$(ls -1t ./*.tar.gz 2>/dev/null | head -n1 || true)
+          if [ -n "$ARTIFACT_TAR" ]; then
+            echo "📦 Extracting $ARTIFACT_TAR ..."
+            mkdir -p extracted_app
+            tar -xzf "$ARTIFACT_TAR" -C extracted_app
+          fi
+          APP=$(find extracted_app -type d -name "*.app" -maxdepth 6 | head -n1 || true)
+          echo "app=$APP" >> $GITHUB_OUTPUT
+          [ -n "$APP" ] || (echo "No .app found after extracting $ARTIFACT_TAR"; ls -alh extracted_app || true; exit 1)
+
+      - name: Repack iOS app with latest JS bundle
+        if: steps.ios_cache.outputs.cache-hit == 'true'
+        shell: bash
+        env:
+          PLATFORM: ios
+          SOURCE_APP: ${{ steps.find_app.outputs.app }}
+        run: |
+          set -euo pipefail
+          TMP_OUTPUT_DIR="$(mktemp -d)"
+          TMP_OUTPUT="$TMP_OUTPUT_DIR/$(basename "$SOURCE_APP")"
+          npx @expo/repack-app --platform "$PLATFORM" --source-app "$SOURCE_APP" --output "$TMP_OUTPUT"
+          rm -rf "$SOURCE_APP"
+          mv "$TMP_OUTPUT" "$SOURCE_APP"
+          [ -d "$SOURCE_APP" ] || (echo "❌ Repacked app was not moved back to source path"; exit 1)
+          echo "✅ Repacked app replaced in-place at: $SOURCE_APP"
+
+      - name: Boot simulator
+        shell: bash
+        run: .github/scripts/ios_boot_simulator.sh
+
+      - name: Install on simulator and warm up
+        shell: bash
+        timeout-minutes: 10
+        run: .github/scripts/ios_install_app.sh "${{ steps.find_app.outputs.app }}"
+
+      - name: Run E2E tests
+        shell: bash
+        run: .github/scripts/ios_run_e2e.sh
+
+      - name: Upload Xcode build artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcode-build-artifacts-ios-selfhosted
+          path: |
+            ios/build/**/*.xcresult
+            ios/build/**/*.log
+            ~/Library/Developer/Xcode/DerivedData/**/Logs/Build/*.log
+          if-no-files-found: ignore
+
+      - name: Upload E2E artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-artifacts-ios-selfhosted
+          path: |
+            e2e-artifacts/**/*
+            ios/build/**/*.log
+          include-hidden-files: true
+
+      - name: Clean self-hosted workspace
+        if: always()
+        shell: bash
+        run: .github/scripts/clean_selfhosted_workspace.sh

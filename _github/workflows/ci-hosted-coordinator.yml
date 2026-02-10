@@ -1,0 +1,82 @@
+name: CI Coordinator - Hosted
+run-name: ${{ github.event.pull_request.title || github.event.workflow_run.display_title || github.ref_name }}
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.mdx'
+      - 'docs/**'
+      - 'scripts/**'
+      - '.editorconfig'
+      - '.gitattributes'
+      - '.gitignore'
+      - '.nvmrc'
+      - '.node-version'
+      - '.prettierignore'
+      - '.prettierrc*'
+      - '.eslintrc*'
+      - 'CODEOWNERS'
+      - 'LICENSE*'
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.mdx'
+      - 'docs/**'
+      - 'scripts/**'
+      - '.editorconfig'
+      - '.gitattributes'
+      - '.gitignore'
+      - '.nvmrc'
+      - '.node-version'
+      - '.prettierignore'
+      - '.prettierrc*'
+      - '.eslintrc*'
+      - 'CODEOWNERS'
+      - 'LICENSE*'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: ci-hosted-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    if: vars.USE_SELF_HOSTED != 'true'
+    uses: ./.github/workflows/ci-quality.yml
+    with:
+      env_prefix: ${{ github.ref_name == 'main' && 'PROD' || 'DEV' }}
+      runner_target: hosted
+    secrets: inherit
+
+  android:
+    if: vars.USE_SELF_HOSTED != 'true'
+    needs: quality
+    uses: ./.github/workflows/ci-android-hosted.yml
+    with:
+      env_prefix: ${{ github.ref_name == 'main' && 'PROD' || 'DEV' }}
+    secrets: inherit
+
+  ios:
+    if: vars.USE_SELF_HOSTED != 'true'
+    needs: quality
+    uses: ./.github/workflows/ci-ios-hosted.yml
+    with:
+      env_prefix: ${{ github.ref_name == 'main' && 'PROD' || 'DEV' }}
+    secrets: inherit
+
+  expo-go-preview:
+    if: vars.USE_SELF_HOSTED != 'true'
+    uses: ./.github/workflows/expo-go-preview.yml
+    with:
+      env_prefix: ${{ github.ref_name == 'main' && 'PROD' || 'DEV' }}
+      runner_target: hosted
+      is_pull_request: ${{ github.event_name == 'pull_request' }}
+      pr_number: ${{ github.event.pull_request.number || 0 }}
+      is_fork: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork || false }}
+    secrets: inherit

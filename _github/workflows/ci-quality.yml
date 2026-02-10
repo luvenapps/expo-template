@@ -1,61 +1,37 @@
 name: Quality CI
 
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - '**/*.md'
-      - '**/*.mdx'
-      - 'docs/**'
-      - 'scripts/**'
-      - '.editorconfig'
-      - '.gitattributes'
-      - '.gitignore'
-      - '.nvmrc'
-      - '.node-version'
-      - '.prettierignore'
-      - '.prettierrc*'
-      - '.eslintrc*'
-      - 'CODEOWNERS'
-      - 'LICENSE*'
-  pull_request:
-    paths-ignore:
-      - '**/*.md'
-      - '**/*.mdx'
-      - 'docs/**'
-      - 'scripts/**'
-      - '.editorconfig'
-      - '.gitattributes'
-      - '.gitignore'
-      - '.nvmrc'
-      - '.node-version'
-      - '.prettierignore'
-      - '.prettierrc*'
-      - '.eslintrc*'
-      - 'CODEOWNERS'
-      - 'LICENSE*'
-  workflow_dispatch:
+  workflow_call:
+    inputs:
+      env_prefix:
+        description: Environment prefix (PROD or DEV)
+        required: true
+        type: string
+      runner_target:
+        description: hosted or selfhosted
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: quality-${{ github.ref }}
+  group: quality-${{ github.workflow }}-${{ github.run_id }}
   cancel-in-progress: true
 
 jobs:
-  quality-hosted:
-    name: Quality Checks - Hosted Ubuntu
-    if: vars.USE_SELF_HOSTED != 'true'
-    runs-on: ubuntu-latest
+  quality:
+    name: Quality Checks
+    runs-on: ${{ fromJSON(inputs.runner_target == 'selfhosted' && '["self-hosted","macos","arm64"]' || '["ubuntu-latest"]') }}
+    timeout-minutes: 90
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node 24
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 24.1.0
+          node-version-file: '.nvmrc'
           cache: 'npm'
 
       - name: Install deps
@@ -71,30 +47,32 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Unit tests (with coverage)
+      - name: Unit tests
         run: npm run test -- --coverage
 
-      # - name: Install GPG
-      #   run: |
-      #     sudo apt-get update
-      #     sudo apt-get install -y gnupg
+      - name: Install GPG
+        if: ${{ !cancelled() && inputs.runner_target != 'selfhosted' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gnupg
 
-      # - name: Upload coverage to Codecov
-      #   uses: codecov/codecov-action@v5
-      #   with:
-      #     token: ${{ secrets.CODECOV_TOKEN }}
-      #     files: ./coverage/lcov.info
-      #     slug: org/repo
-      #     flags: quality
-      #     fail_ci_if_error: false
+      - name: Upload coverage to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info
+          slug: org/repo
+          flags: ${{ inputs.runner_target }}-quality
+          fail_ci_if_error: false
 
-      # - name: Upload test results to Codecov
-      #   if: ${{ !cancelled() }}
-      #   uses: codecov/codecov-action@v5
-      #   with:
-      #     token: ${{ secrets.CODECOV_TOKEN }}
-      #     files: ./junit.xml
-      #     slug: org/repo
-      #     flags: quality
-      #     report_type: test_results
-      #     fail_ci_if_error: false
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./junit.xml
+          slug: org/repo
+          flags: ${{ inputs.runner_target }}-quality
+          report_type: test_results
+          fail_ci_if_error: false

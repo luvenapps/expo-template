@@ -1,0 +1,164 @@
+name: Expo Go Preview
+
+on:
+  workflow_call:
+    inputs:
+      env_prefix:
+        description: Environment prefix (PROD or DEV)
+        required: true
+        type: string
+      runner_target:
+        description: hosted or selfhosted
+        required: true
+        type: string
+      is_pull_request:
+        description: Whether caller event is pull_request
+        required: true
+        type: boolean
+      pr_number:
+        description: Pull request number when available
+        required: true
+        type: number
+      is_fork:
+        description: Whether pull request head repo is a fork
+        required: true
+        type: boolean
+
+concurrency:
+  group: expo-go-${{ inputs.is_pull_request && format('pr-{0}', inputs.pr_number) || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    name: >-
+      expo preview -
+      ${{ inputs.runner_target == 'selfhosted' && 'Self-hosted MacOS' || 'Hosted MacOS' }}
+    if: ${{ !inputs.is_pull_request || !inputs.is_fork }}
+    runs-on: ${{ fromJSON(inputs.runner_target == 'selfhosted' && '["self-hosted","macos","arm64"]' || '["macos-latest"]') }}
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN || '' }}
+
+    steps:
+      - name: Map preview variables and secrets
+        shell: bash
+        env:
+          DEV_PUBLIC_SUPABASE_URL: ${{ vars.DEV_PUBLIC_SUPABASE_URL || '' }}
+          DEV_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.DEV_PUBLIC_SUPABASE_ANON_KEY || '' }}
+          DEV_SUPABASE_ACCESS_TOKEN: ${{ secrets.DEV_SUPABASE_ACCESS_TOKEN || '' }}
+        run: |
+          echo "EXPO_PUBLIC_SUPABASE_URL=$DEV_PUBLIC_SUPABASE_URL" >> "$GITHUB_ENV"
+          echo "EXPO_PUBLIC_SUPABASE_ANON_KEY=$DEV_PUBLIC_SUPABASE_ANON_KEY" >> "$GITHUB_ENV"
+          echo "SUPABASE_ACCESS_TOKEN=$DEV_SUPABASE_ACCESS_TOKEN" >> "$GITHUB_ENV"
+
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Clean workspace (self-hosted)
+        if: ${{ inputs.runner_target == 'selfhosted' }}
+        shell: bash
+        run: |
+          git clean -ffdx
+          git reset --hard HEAD
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sanity check versions
+        run: |
+          node -v
+          npm -v
+          npx expo --version
+          npx eas-cli --version
+
+      - name: Guardrails - resolve react-native
+        run: |
+          node -e "console.log(require.resolve('react-native/package.json'))"
+          node -e "const p=require('react-native/package.json'); console.log({name:p.name,version:p.version,main:p.main,exports:!!p.exports})"
+          npm ls react-native --depth=0
+
+      - name: Publish Expo Go preview
+        if: ${{ (inputs.is_pull_request || github.ref_name == 'main') && env.EXPO_TOKEN != '' }}
+        env:
+          APP_VARIANT: preview
+          EXPO_PUBLIC_DEBUG_RUN_ID: ${{ inputs.is_pull_request && format('pr-{0}-', inputs.pr_number) || 'main-' }}${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
+          EXPO_PUBLIC_TURN_ON_FIREBASE: 'false'
+          EXPO_USE_LOCAL_CLI: '1'
+          GOOGLE_SERVICE_INFO_PLIST_B64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_B64 }}
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
+        run: |
+          if [ "${{ inputs.is_pull_request }}" = "true" ]; then
+            BRANCH="pr-${{ inputs.pr_number }}"
+            MESSAGE="PR #${{ inputs.pr_number }} - ${{ github.sha }}"
+          else
+            BRANCH="main"
+            MESSAGE="main - ${{ github.sha }}"
+          fi
+          npx eas-cli@latest update \
+            --branch "$BRANCH" \
+            --message "$MESSAGE" \
+            --platform all \
+            --non-interactive
+
+      - name: Comment with preview details
+        if: ${{ inputs.is_pull_request && env.EXPO_TOKEN != '' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const marker = '<!-- expo-go-preview-comment -->';
+            const prNumber = Number('${{ inputs.pr_number }}');
+            const branch = `pr-${prNumber}`;
+            const shortSha = context.sha.slice(0, 7);
+            const runtimeVersion = 'exposdk 54.0.0';
+            const easDashboardUrl = `<EXPO DEV UPDATES URL>`;
+            const body = `${marker}\nExpo Go preview published.\nRuntime version: ${runtimeVersion}\nCommit: ${shortSha}\nEAS Dashboard: ${easDashboardUrl}`;
+
+            const { owner, repo } = context.repo;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner,
+              repo,
+              issue_number: prNumber,
+              per_page: 100,
+            });
+
+            const previewComments = comments.filter((comment) => {
+              if (comment.user?.type !== 'Bot' || typeof comment.body !== 'string') {
+                return false;
+              }
+
+              return (
+                comment.body.includes(marker) ||
+                comment.body.startsWith('Expo Go preview published.') ||
+                comment.body.includes('Expo Go preview published.')
+              );
+            });
+
+            const targetComment = previewComments[0];
+
+            if (targetComment) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: targetComment.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: prNumber,
+                body,
+              });
+            }
+
+      - name: Clean self-hosted workspace
+        if: ${{ always() && inputs.runner_target == 'selfhosted' }}
+        shell: bash
+        run: .github/scripts/clean_selfhosted_workspace.sh
