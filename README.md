@@ -1,4 +1,4 @@
-# 🧭 __APP_NAME__
+# 🧭 **APP_NAME**
 
 A modern, production-ready Expo React Native template with **TypeScript**, **Jest**, **ESLint**, **Prettier**, **Maestro (E2E)**, and a clean folder structure.
 
@@ -229,7 +229,7 @@ This project uses a centralized domain configuration system to make it template-
 
 ### `src/config/domain.config.ts`
 
-All app-specific and entity-specific naming is defined in a single configuration file. 
+All app-specific and entity-specific naming is defined in a single configuration file.
 
 Example:
 
@@ -609,7 +609,7 @@ Before shipping preview/production builds, follow [`docs/build-size.md`](docs/bu
 
 ### Social authentication setup
 
-We implement Supabase’s [Expo React Native social auth quickstart](https://supabase.com/docs/guides/auth/quickstarts/with-expo-react-native-social-auth), which uses Expo Linking + AuthSession to drive Supabase’s hosted OAuth flows. Use that guide as your source of truth; the notes below capture __APP_NAME__-specific details.
+We implement Supabase’s [Expo React Native social auth quickstart](https://supabase.com/docs/guides/auth/quickstarts/with-expo-react-native-social-auth), which uses Expo Linking + AuthSession to drive Supabase’s hosted OAuth flows. Use that guide as your source of truth; the notes below capture **APP_NAME**-specific details.
 
 1. **Register callback URLs**
    - In Supabase Studio’s _Authentication → URL Configuration_, add both `__APP_NAME__://auth-callback` and your deployed web URL (e.g., `https://yourdomain.com/auth-callback`).
