@@ -131,12 +131,11 @@ function MarqueeTextNative({ text }: { text: string }) {
 
   return (
     <RNView
-      style={{ overflow: 'hidden', flexShrink: 1 }}
-      pointerEvents="none"
+      style={{ overflow: 'hidden', flexShrink: 1, pointerEvents: 'none' }}
       onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
     >
       {/* Hidden measurement text - use onTextLayout to get actual text width */}
-      <RNView style={{ position: 'absolute', top: 0, left: 0, opacity: 0 }} pointerEvents="none">
+      <RNView style={{ position: 'absolute', top: 0, left: 0, opacity: 0, pointerEvents: 'none' }}>
         <Text
           color="$colorMuted"
           fontSize="$4"

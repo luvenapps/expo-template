@@ -65,7 +65,7 @@ export const FormField = forwardRef<React.ComponentRef<typeof Input>, FormFieldP
               bottom={0}
               alignItems="center"
               justifyContent="center"
-              pointerEvents="box-none"
+              style={{ pointerEvents: 'box-none' }}
             >
               {rightElement}
             </View>

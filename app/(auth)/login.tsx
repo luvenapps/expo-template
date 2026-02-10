@@ -531,7 +531,7 @@ export default function LoginScreen() {
           alignItems="center"
           justifyContent="center"
           backgroundColor="rgba(0,0,0,0.2)"
-          pointerEvents="auto"
+          style={{ pointerEvents: 'auto' }}
         >
           <Spinner size="large" color="$accentColor" />
         </View>

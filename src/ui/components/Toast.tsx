@@ -75,7 +75,7 @@ export function ToastContainer({ messages, dismiss, testID }: ToastContainerProp
       maxWidth={480}
       alignSelf="center"
       gap="$2"
-      pointerEvents="box-none"
+      style={{ pointerEvents: 'box-none' }}
       zIndex={1000}
       testID={testID}
     >

@@ -412,7 +412,10 @@ export function useNotificationSettings() {
   // Auto-show the soft prompt on first load (or after cooldown) when OS/browser is still in
   // prompt/default state. Relies on tryPromptForPush to enforce cooldown/attempts.
   useEffect(() => {
-    if (NOTIFICATIONS.initialSoftPromptTrigger !== 'app-install') return;
+    const shouldAutoPrompt =
+      NOTIFICATIONS.initialSoftPromptTrigger === 'app-install' ||
+      (Platform.OS === 'web' && NOTIFICATIONS.initialSoftPromptTrigger === 'first-entry');
+    if (!shouldAutoPrompt) return;
     if (permissionStatus !== NOTIFICATION_PERMISSION_STATE.PROMPT) return;
     if (preferences.pushManuallyDisabled) return;
     if (preferences.notificationStatus === NOTIFICATION_STATUS.GRANTED) return;

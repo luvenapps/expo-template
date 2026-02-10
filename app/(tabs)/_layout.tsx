@@ -1,7 +1,7 @@
 import { useSessionStore } from '@/auth/session';
 import { useThemeContext } from '@/ui/theme/ThemeProvider';
 import { Home, Settings } from '@tamagui/lucide-icons';
-import { Redirect, Tabs } from 'expo-router';
+import { Redirect, router, Tabs } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Platform } from 'react-native';
 
@@ -39,8 +39,15 @@ export default function TabsLayout() {
       />
       <Tabs.Screen
         name="settings"
+        listeners={{
+          tabPress: (event) => {
+            event.preventDefault();
+            router.replace('/settings');
+          },
+        }}
         options={{
           title: t('common.settings'),
+          href: '/settings',
           tabBarIcon: ({ color }) => <TabIcon color={color} Icon={Settings} />,
           headerShown: false,
         }}

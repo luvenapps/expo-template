@@ -1,15 +1,32 @@
+import { useOptionalThemeContext } from '@/ui/theme/ThemeProvider';
 import { Stack } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
 export default function SettingsLayout() {
   const { t } = useTranslation();
+  const themeContext = useOptionalThemeContext();
+  const palette = themeContext?.palette;
+  const headerColors = palette
+    ? {
+        headerStyle: { backgroundColor: palette.background },
+        headerTintColor: palette.text,
+        headerTitleStyle: { color: palette.text },
+      }
+    : {};
   return (
-    <Stack screenOptions={{ headerBackButtonDisplayMode: 'minimal' }}>
+    <Stack
+      screenOptions={{
+        headerBackButtonDisplayMode: 'minimal',
+        ...headerColors,
+      }}
+    >
       <Stack.Screen
         name="index"
         options={{
           title: t('common.settings'),
           headerShown: true,
+          headerBackVisible: false,
+          headerLeft: () => null,
         }}
       />
       <Stack.Screen
