@@ -36,6 +36,12 @@ Both coordinators define:
 
 All of the above are called by coordinators via `uses: ./.github/workflows/...` and `secrets: inherit`.
 
+### Standalone PR automation workflow
+
+- `.github/workflows/auto-claude-review.yml`
+
+This workflow is intentionally separate from the coordinator/reusable graph and runs directly on PR events.
+
 ---
 
 ## 🔀 Hosted vs self-hosted routing
@@ -66,6 +72,8 @@ Each coordinator runs the same dependency graph:
 
 This ensures Android and iOS only run after quality passes, while Expo preview can run independently.
 
+`auto-claude-review.yml` is outside this graph because it is direct PR comment automation.
+
 ---
 
 ## 🧪 Runner + timeout policy
@@ -76,6 +84,7 @@ This ensures Android and iOS only run after quality passes, while Expo preview c
 - Android hosted: `ubuntu-latest`, timeout `90`
 - iOS hosted: `macos-latest`, timeout `90`
 - Expo preview hosted: `macos-latest`
+- Auto Claude review hosted: `ubuntu-latest`
 
 ### Self-hosted mode
 
@@ -83,6 +92,7 @@ This ensures Android and iOS only run after quality passes, while Expo preview c
 - Android self-hosted: `[self-hosted, macos, arm64]`, timeout `45`
 - iOS self-hosted: `[self-hosted, macos, arm64]`, timeout `45`
 - Expo preview self-hosted: `[self-hosted, macos, arm64]`
+- Auto Claude review self-hosted: `[self-hosted, macos, arm64]`
 
 ---
 
@@ -111,7 +121,60 @@ It runs:
 - `npm run test -- --coverage`
 - Codecov uploads
 
+`Doctor` is intentionally retained only in `ci-quality.yml`.
+
 GPG installation is skipped on self-hosted quality runs.
+
+---
+
+## 📦 Native build cache repack behavior (Android + iOS)
+
+To speed E2E while still testing the latest PR JavaScript, Android and iOS workflows repack cached native artifacts.
+
+### Repack trigger conditions
+
+- Repack runs **only** when the platform cache is a hit.
+- On cache miss, workflows perform a full native rebuild and skip repack.
+
+### iOS placement and source of truth
+
+- Repack step is immediately after **Locate .app artifact**.
+- The located `find_app` output path is used as `--source-app`.
+- Repack tool output is written to a temp path, then explicitly moved back to the located path (`find_app`) so downstream E2E steps continue using the same path.
+
+### Android placement and source of truth
+
+- Repack step is immediately after **Save APK to cache**.
+- The located `find_apk` output path is used as `--source-app`.
+- Repack writes directly to the located path via `--output`, so downstream E2E steps continue using the locate step output.
+
+### Repack commands
+
+Both platforms follow the same pattern and use `npx` only:
+
+```bash
+npx @expo/repack-app --platform android --source-app <located-apk-path> --output <located-apk-path>
+npx @expo/repack-app --platform ios --source-app <located-app-path> --output <temp-path>
+# then replace the located .app path with the repacked output
+```
+
+---
+
+## 👀 Expo Go preview changes
+
+- Removed `Basic checks` (`npm run type-check`) from `.github/workflows/expo-go-preview.yml`.
+- Remaining preview publish/comment behavior is unchanged.
+
+---
+
+## 🤖 Auto Claude review workflow
+
+`auto-claude-review.yml` requests Claude review by posting `@claude review this PR`.
+
+- Trigger: `pull_request` with `types: [opened, synchronize]`.
+- Hosted mode (`USE_SELF_HOSTED != 'true'`): job runs on `ubuntu-latest`.
+- Self-hosted mode (`USE_SELF_HOSTED == 'true'`): job runs on `[self-hosted, macos, arm64]`.
+- Required permission: `pull-requests: write`.
 
 ---
 
