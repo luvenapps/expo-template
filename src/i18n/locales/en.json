@@ -18,6 +18,9 @@
     "signIn": "Sign In",
     "signUp": "Create account"
   },
+  "footer": {
+    "copyright": "Copyright © {{year}} {{company}}. All Rights Reserved."
+  },
   "tabs": {
     "home": "Home",
     "settings": "Settings"

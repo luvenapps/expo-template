@@ -18,6 +18,9 @@
     "signIn": "Iniciar sesión",
     "signUp": "Crear cuenta"
   },
+  "footer": {
+    "copyright": "Derechos de autor © {{year}} {{company}}. Todos los derechos reservados."
+  },
   "tabs": {
     "home": "Inicio",
     "settings": "Configuración"
