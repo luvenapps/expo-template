@@ -26,7 +26,7 @@ export function SecondaryButton({
       color="$secondaryText"
       borderWidth={1}
       borderColor="$borderColor"
-      fontWeight="300"
+      fontWeight="400"
       minHeight={48}
       hoverStyle={{ backgroundColor: '$backgroundStrong' }}
       pressStyle={{ backgroundColor: '$backgroundPress' }}
