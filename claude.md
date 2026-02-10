@@ -67,13 +67,13 @@ Before implementing:
   2. Compose Tamagui primitives into reusable components for common patterns (e.g., `FormField`, `ScreenContainer`)
   3. Only build custom components when Tamagui doesn't provide the needed functionality
 - **Styling**: Use Tamagui's theme tokens (`$background`, `$color`, `$borderColor`, etc.) for consistency across light/dark modes
-- **Custom components**: Located in `src/ui/components/`
-  - `ScreenContainer` - Page wrapper with safe area handling and keyboard avoidance
-  - `FormField` - Input wrapper with label, helper text, and error states
+- **Custom components**: Located in `src/ui/components/` — browse the directory for the full list. Key ones:
+  - `ScreenContainer` - Wrap every screen (safe area + keyboard avoidance)
+  - `FormField` - Consistent form inputs (label, helper text, error states)
   - `Text.tsx` - Semantic text components (`TitleText`, `SubtitleText`, `BodyText`, `LabelText`, `CaptionText`)
-  - `PrimaryButton` - Styled button for primary actions
-  - `Card` - Already provided by Tamagui; use directly
-  - `UserOnly` - Auth gate for screens that require a signed-in user (redirects to login on unauthenticated)
+  - `UserOnly` - Auth gate that redirects unauthenticated users to login
+  - Also available: action buttons, inline errors, toast system, settings sections, modal dialogs, and data visualization components
+  - `Card` - Use Tamagui's built-in `Card` directly; no custom wrapper needed
 - **When to create new components**:
   - Repeated patterns that combine multiple Tamagui primitives
   - Components that need consistent behavior across the app
@@ -116,8 +116,21 @@ When starting work:
 
 Remember: **Verification over assumption. Questions over guesses.**
 
+## Pre-commit & PR Checklist
+
+Before committing or opening a PR:
+
+1. Always run `npm run format`.
+2. If any `.js`, `.ts`, `.tsx`, or `.jsx` files changed:
+   1. Run `npm run lint`.
+   2. For each modified/new source file, run Jest with scoped coverage (`--coverage --collectCoverageFrom='<file>'`). Require >= 80% for Stmts, Branch, Funcs, and Lines.
+   3. After per-file coverage passes, run `npm test` (full suite).
+3. Do not commit or open a PR until all checks pass and `git diff --exit-code` is clean.
+
 ## Response Formatting
 
 - When the user requests a commit message, respond with two separate fenced code blocks (title first, body second) so they can copy them easily.
 - After finishing any coding task, proactively provide the commit title/body in that format without waiting for the user to ask.
-- Do not modify files outside the requested scope unless the user explicitly approves it—ask first if you’re unsure.
+- Do not modify files outside the requested scope unless the user explicitly approves it—ask first if you're unsure.
+- **Do not** include the Claude session link in commit messages or PR descriptions.
+- **PR descriptions**: Keep them minimal — a brief summary of changes. Do not include a "what was tested" section.

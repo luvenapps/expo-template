@@ -27,7 +27,7 @@ and codebase conventions so agents can run reliably without human context.
 - Install dependencies with:
   - `npm ci` for clean, repeatable installs (preferred for CI/agents).
   - `npm install` if you need to mutate dependencies locally.
-- `npm run troubleshoot` executes `scripts/troubleshoot.js`, which validates the
+- `npm run troubleshoot` executes `scripts/troubleshoot.mjs`, which validates the
   local toolchain (Node, npm, Expo CLI, Java 17, Android SDK/adb, Xcode, Watchman, Maestro).
   CocoaPods is managed automatically by Expo during prebuild.
 - If Expo packages drift, run `npx expo install` to realign native peer deps.
@@ -78,16 +78,13 @@ and codebase conventions so agents can run reliably without human context.
 
 ## Navigation & Routing (Expo Router)
 
-- **Route structure**:
-  - `app/index.tsx` – Root redirect (always redirects to `/(tabs)`)
+- **Route structure** (file-based — browse `app/` to discover all screens):
+  - `app/index.tsx` – Root redirect (always goes to `/(tabs)`)
   - `app/_layout.tsx` – Root Stack navigator, registers route groups
-  - `app/(auth)/` – Optional login flows (accessed from Settings)
-    - `_layout.tsx` – Auth-specific Stack configuration
-    - `login.tsx` – Sign in screen with Supabase auth
-  - `app/(tabs)/` – Main app navigation (Tabs)
-    - `_layout.tsx` – Tab navigator configuration
+  - `app/(auth)/` – Auth flows (login, signup, password reset, OAuth callback). Accessed from Settings.
+  - `app/(tabs)/` – Main tab navigation (Home, Settings)
     - `index.tsx` – Home screen (Today view)
-    - `settings/index.tsx` – Settings & auth controls
+    - `settings/` – Nested Stack with sub-pages (profile, account, appearance, notifications, etc.)
 
 - **Header configuration hierarchy**:
   1. Root layout (`app/_layout.tsx`): Sets defaults for route groups
@@ -132,40 +129,31 @@ and codebase conventions so agents can run reliably without human context.
 
 ## Project Layout
 
-- `app/` – Expo Router entry points. Typed routes enabled (`experiments.typedRoutes`).
-  - `app/index.tsx` – Root redirect (always goes to `/(tabs)`)
-  - `app/_layout.tsx` – Root Stack navigator with route group registration
-  - `app/(auth)/` – Optional login flows (modal from Settings)
-    - `_layout.tsx` – Auth Stack configuration
-    - `login.tsx` – Sign in screen with email/password
-  - `app/(tabs)/` – Main app navigation (Tabs)
-    - `_layout.tsx` – Tab navigator (Home, Settings)
-    - `index.tsx` – Home screen (Today view)
-    - `settings/index.tsx` – Settings with auth controls and sync status
+- `app/` – Expo Router file-based routes. Typed routes enabled (`experiments.typedRoutes`).
+  - `(auth)/` – Auth flows (login, signup, password reset, OAuth callback)
+  - `(tabs)/` – Main tab navigation (Home, Settings with nested sub-pages)
 
-- `src/`
-  - `auth/` – Supabase client, session store (Zustand), auth services
-    - `client.ts` – Supabase client initialization
-    - `session.ts` – Zustand store + session listener
-    - `service.ts` – Auth actions (signIn, signOut, OAuth)
+- `src/` – Core application code, organized by domain:
+  - `auth/` – Supabase client, Zustand session store, auth services, token storage
   - `config/` – Domain config (`DOMAIN`) used across UI/data
-  - `data/`, `db/` – Drizzle repositories + SQLite schema
-  - `queries/` – React Query hooks for Supabase reads/mutations (web data layer)
-  - `sync/` – Outbox, cursor storage (MMKV fallback), sync engine/hooks
-    - `cursors.ts` – MMKV-based cursor persistence
-    - `useSync.ts` – Sync hook with background scheduling
-  - `ui/` – Tamagui components, global providers
-    - `components/` – Reusable UI components (e.g., `ScreenContainer`)
-    - `providers/AppProviders.tsx` – Wraps app with contexts (SafeArea, Tamagui, QueryClient, session listener)
-  - `utils/`, `state/`, `notifications/` – Helpers for broader features
+  - `data/` – Drizzle repositories for local SQLite CRUD
+  - `db/` – Database schemas and migrations (`sqlite/` for local, `postgres/` for Supabase)
+  - `errors/` – User-facing error handling (`useFriendlyErrorHandler`)
+  - `featureFlags/` – Feature flag system with provider pattern (Firebase + fallback)
+  - `i18n/` – Internationalization (locales in `locales/`)
+  - `notifications/` – Push notifications, in-app messaging, scheduling, preferences
+  - `observability/` – Logging and observability utilities
+  - `queries/` – React Query hooks for Supabase reads/mutations
+  - `supabase/` – Supabase-related utilities
+  - `sync/` – Offline-first sync engine (outbox pattern, MMKV cursors, background tasks)
+  - `ui/components/` – Reusable Tamagui-based components (see UI Components section)
+  - `ui/providers/` – App-level context providers (SafeArea, Tamagui, QueryClient, session listener)
 
-- `__tests__/` – Mirrors `src/` tree with unit coverage
-  - `setup.ts` – Jest configuration, mocks for Supabase, Expo modules, SQLite, background tasks
-  - Coverage reports → `coverage/`, JUnit XML → `junit.xml`
-
-- `docs/` – Contributor-facing docs
-  - `roadmap.md` – Feature roadmap
-  - `updates.md` – Change log and updates
+- `__tests__/` – Mirrors `src/` and `app/` tree. Setup and mocks in `setup.ts`.
+- `docs/` – Contributor-facing documentation (architecture, migrations, feature flags, CI/CD, etc.)
+- `supabase/` – Backend: SQL migrations and Deno edge functions
+- `scripts/` – Build/utility scripts (troubleshoot, migrations, deploy, version bump)
+- `.maestro/flows/` – E2E test flows for iOS and Android
 
 Path aliases (`@/...`) are defined in `tsconfig.json`, `babel.config.js`, and
 Jest config; prefer them over relative imports.
@@ -191,8 +179,8 @@ Jest config; prefer them over relative imports.
 
 ### Adding Background Sync Logic
 
-1. Update sync hook: `src/sync/useSync.ts`
-2. Modify push/pull functions: `src/sync/` (e.g., `pushOutbox`, `pullUpdates`)
+1. Update sync hooks in `src/sync/` (e.g., `useSyncManager.ts`, `useSyncTask.ts`)
+2. Modify push/pull functions in `src/sync/` (e.g., `outbox.ts`, `engine.ts`)
 3. Register background task if needed (see existing `expo-background-task` integration)
 4. Mock in tests: Update `__tests__/setup.ts` mocks
 5. **Test on native platforms only** – sync disabled on web (no SQLite)
@@ -208,7 +196,7 @@ Jest config; prefer them over relative imports.
 
 ### Database Schema Changes
 
-1. Update schema: `src/db/schema.ts` (Drizzle)
+1. Update schema in `src/db/sqlite/schema.ts` (Drizzle)
 2. Generate migration: `npm run db:generate`
 3. Apply migration: `npm run db:push` (dev) or migrations in production
 4. Update TypeScript types to match schema
@@ -355,18 +343,38 @@ Jest config; prefer them over relative imports.
   2. Compose Tamagui primitives into reusable components for common patterns (e.g., `FormField`, `ScreenContainer`)
   3. Only build custom components when Tamagui doesn't provide the needed functionality
 - **Styling**: Use Tamagui's theme tokens (`$background`, `$color`, `$borderColor`, etc.) for consistency across light/dark modes
-- **Custom components**: Located in `src/ui/components/` – reusable UI building blocks
-  - `ScreenContainer` – Page wrapper with safe area handling and keyboard avoidance
-  - `FormField` – Input wrapper with label, helper text, and error states
+- **Custom components**: Located in `src/ui/components/` – browse the directory to see the full list. Key patterns:
+  - `ScreenContainer` – Wrap every screen (safe area + keyboard avoidance)
+  - `FormField` – Consistent form inputs (label, helper text, error states)
   - `Text.tsx` – Semantic text components (`TitleText`, `SubtitleText`, `BodyText`, `LabelText`, `CaptionText`)
-  - `PrimaryButton` – Styled button for primary actions
-  - `Card` – Already provided by Tamagui; use directly for cards/containers
-  - `UserOnly` – Auth gate for screens that require a signed-in user (redirects to login on unauthenticated)
+  - `UserOnly` – Auth gate that redirects unauthenticated users to login
+  - Action buttons (`PrimaryButton`, `SecondaryButton`), inline errors (`InlineError`), toast system (`Toast.tsx`/`toastStore.ts`), and various modal dialogs are also available
+  - `Card` – Use Tamagui's built-in `Card` directly; no custom wrapper needed
 - **Theme configuration**: `tamagui.config.ts` defines tokens and theme values
 - **When to create new components**:
   - Repeated patterns that combine multiple Tamagui primitives
   - Components that need consistent behavior across the app (e.g., form fields with validation)
   - Semantic wrappers that improve code readability (e.g., `TitleText` instead of `Text fontSize="$8"`)
+
+## Pre-commit & PR Checklist
+
+Before committing or opening a PR, follow this sequence:
+
+1. **Format**: Always run `npm run format`.
+2. **Lint & test** (only when `.js`, `.ts`, `.tsx`, or `.jsx` files changed):
+   1. Run `npm run lint`.
+   2. For each modified or new source file, run Jest with scoped coverage:
+      ```bash
+      npx jest --coverage --collectCoverageFrom='<file>' <test-file>
+      ```
+      Require **% Stmts, % Branch, % Funcs, and % Lines each >= 80%**.
+   3. After per-file coverage passes, run `npm test` (full suite).
+3. **Clean working tree**: Do not commit or open a PR until all checks pass and `git diff --exit-code` is clean. If any step fails, fix only the reported issues and re-run the failing step.
+
+**PR descriptions**:
+
+- Use a minimal description with a brief summary of changes.
+- Do **not** include a "what was tested" section or agent task/session links.
 
 ## Tooling & Hooks
 
