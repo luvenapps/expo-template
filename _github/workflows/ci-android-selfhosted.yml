@@ -41,7 +41,6 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version-file: '.nvmrc'
-          cache: 'npm'
 
       - name: Install deps
         run: npm ci
@@ -237,6 +236,11 @@ jobs:
           export ANDROID_SDK_ROOT="$RESOLVED_SDK_DIR"
           export ANDROID_HOME="$RESOLVED_SDK_DIR"
 
+          echo "🧹 Clearing Metro cache before repack..."
+          rm -rf .expo
+          rm -rf /tmp/metro-* /tmp/haste-map-* 2>/dev/null || true
+          rm -rf "$TMPDIR/metro-"* "$TMPDIR/haste-map-"* 2>/dev/null || true
+          echo "✅ Metro cache cleared"
           npx @expo/repack-app --platform "$PLATFORM" --source-app "$SOURCE_APP" --output "$SOURCE_APP"
 
       - name: Upload Gradle reports

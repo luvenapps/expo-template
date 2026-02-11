@@ -33,7 +33,6 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version-file: '.nvmrc'
-          cache: 'npm'
 
       - name: Install deps
         run: npm ci
@@ -183,6 +182,11 @@ jobs:
           set -euo pipefail
           TMP_OUTPUT_DIR="$(mktemp -d)"
           TMP_OUTPUT="$TMP_OUTPUT_DIR/$(basename "$SOURCE_APP")"
+          echo "🧹 Clearing Metro cache before repack..."
+          rm -rf .expo
+          rm -rf /tmp/metro-* /tmp/haste-map-* 2>/dev/null || true
+          rm -rf "$TMPDIR/metro-"* "$TMPDIR/haste-map-"* 2>/dev/null || true
+          echo "✅ Metro cache cleared"
           npx @expo/repack-app --platform "$PLATFORM" --source-app "$SOURCE_APP" --output "$TMP_OUTPUT"
           rm -rf "$SOURCE_APP"
           mv "$TMP_OUTPUT" "$SOURCE_APP"
