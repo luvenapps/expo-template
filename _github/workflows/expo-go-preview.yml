@@ -78,11 +78,36 @@ jobs:
           npx expo --version
           npx eas-cli --version
 
-      - name: Guardrails - resolve react-native
+      - name: Guardrails - resolve core modules (react-native + firebase)
+        shell: bash
         run: |
-          node -e "console.log(require.resolve('react-native/package.json'))"
-          node -e "const p=require('react-native/package.json'); console.log({name:p.name,version:p.version,main:p.main,exports:!!p.exports})"
-          npm ls react-native --depth=0
+          set +e
+
+          run_guardrails() {
+            echo "[guardrails] react-native"
+            node -e "console.log(require.resolve('react-native/package.json'))" || return 1
+            node -e "const p=require('react-native/package.json'); console.log({name:p.name,version:p.version,main:p.main,exports:!!p.exports})" || return 1
+            npm ls react-native --depth=0 || return 1
+
+            echo "[guardrails] react-native-firebase"
+            node -e "console.log(require.resolve('@react-native-firebase/app/package.json'))" || return 1
+            node -e "console.log(require.resolve('@react-native-firebase/messaging/package.json'))" || return 1
+            npm ls @react-native-firebase/app @react-native-firebase/messaging --depth=0 || return 1
+          }
+
+          if run_guardrails; then
+            exit 0
+          fi
+
+          echo "⚠️ Guardrails failed. Re-installing dependencies once and retrying..."
+          npm ci
+
+          if run_guardrails; then
+            exit 0
+          fi
+
+          echo "❌ Guardrails still failing after reinstall."
+          exit 1
 
       - name: Publish Expo Go preview
         if: ${{ (inputs.is_pull_request || github.ref_name == 'main') && env.EXPO_TOKEN != '' }}
