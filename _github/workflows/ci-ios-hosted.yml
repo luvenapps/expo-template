@@ -12,6 +12,8 @@ permissions:
   contents: read
 
 env:
+  EXPO_USE_LOCAL_CLI: '1'
+  METRO_CACHE_PATH: ${{ github.workspace }}/.metro-cache-ci
   IOS_DEVICE: 'iPhone 17'
   MAESTRO_VERSION: '2.0.6'
   FASTLANE_VERSION: '2.228.0'
@@ -183,26 +185,64 @@ jobs:
           echo "app=$APP" >> $GITHUB_OUTPUT
           [ -n "$APP" ] || (echo "No .app found after extracting $ARTIFACT_TAR"; ls -alh extracted_app || true; exit 1)
 
+      - name: Guardrails before repack - resolve critical modules
+        if: steps.ios_cache.outputs.cache-hit == 'true'
+        shell: bash
+        run: |
+          set +e
+
+          run_guardrails() {
+            echo "[guardrails] react-native"
+            node -e "console.log(require.resolve('react-native/package.json'))" || return 1
+            npm ls react-native --depth=0 || return 1
+
+            echo "[guardrails] react-native-firebase"
+            node -e "console.log(require.resolve('@react-native-firebase/app/package.json'))" || return 1
+            node -e "console.log(require.resolve('@react-native-firebase/messaging/package.json'))" || return 1
+            npm ls @react-native-firebase/app @react-native-firebase/messaging --depth=0 || return 1
+
+            echo "[guardrails] Expo Router + tab icon dependencies"
+            node -e "console.log(require.resolve('expo-router/package.json'))" || return 1
+            node -e "console.log(require.resolve('@tamagui/lucide-icons/package.json'))" || return 1
+            npm ls expo-router @tamagui/lucide-icons --depth=0 || return 1
+          }
+
+          if run_guardrails; then
+            exit 0
+          fi
+
+          echo "⚠️ Guardrails failed. Re-installing dependencies once and retrying..."
+          npm ci
+
+          if run_guardrails; then
+            exit 0
+          fi
+
+          echo "❌ Guardrails still failing after reinstall."
+          exit 1
+
       - name: Repack iOS app with latest JS bundle
         if: steps.ios_cache.outputs.cache-hit == 'true'
         shell: bash
         env:
           PLATFORM: ios
           SOURCE_APP: ${{ steps.find_app.outputs.app }}
+          METRO_CACHE_PATH: ${{ github.workspace }}/.metro-cache-ci
+          GOOGLE_SERVICE_INFO_PLIST_B64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_B64 }}
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
         run: |
           set -euo pipefail
-          TMP_OUTPUT_DIR="$(mktemp -d)"
-          TMP_OUTPUT="$TMP_OUTPUT_DIR/$(basename "$SOURCE_APP")"
-          echo "🧹 Clearing Metro cache before repack..."
-          rm -rf .expo
-          rm -rf /tmp/metro-* /tmp/haste-map-* 2>/dev/null || true
-          rm -rf "$TMPDIR/metro-"* "$TMPDIR/haste-map-"* 2>/dev/null || true
-          echo "✅ Metro cache cleared"
-          npx @expo/repack-app --platform "$PLATFORM" --source-app "$SOURCE_APP" --output "$TMP_OUTPUT"
+          echo "📦 Exporting release bundle before repack..."
+          rm -rf ./dist
+          npx expo export --platform "$PLATFORM" --output-dir ./dist --clear
+          echo "🔍 Verifying dist folder contents:"
+          find ./dist -maxdepth 4 -print
+          TEMP_OUTPUT="repacked_output"
+          rm -rf "$TEMP_OUTPUT"
+          npx @expo/repack-app --platform "$PLATFORM" --source-app "$SOURCE_APP" --output "$TEMP_OUTPUT"
+          echo "Replacing $SOURCE_APP with repacked version..."
           rm -rf "$SOURCE_APP"
-          mv "$TMP_OUTPUT" "$SOURCE_APP"
-          [ -d "$SOURCE_APP" ] || (echo "❌ Repacked app was not moved back to source path"; exit 1)
-          echo "✅ Repacked app replaced in-place at: $SOURCE_APP"
+          mv "$TEMP_OUTPUT" "$SOURCE_APP"
 
       - name: Boot simulator
         shell: bash

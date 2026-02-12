@@ -11,6 +11,8 @@ permissions:
   contents: read
 
 env:
+  EXPO_USE_LOCAL_CLI: '1'
+  METRO_CACHE_PATH: ${{ github.workspace }}/.metro-cache-ci
   ANDROID_TARGET: 'google_apis'
   ANDROID_API_LEVEL: 35
   MAESTRO_VERSION: '2.0.6'
@@ -94,37 +96,6 @@ jobs:
             echo "❌ Expo dependency mismatch. Run 'npx expo install --fix' locally and commit the updated package-lock.json."
             exit 1
           fi
-
-      - name: Guardrails - resolve core modules (react-native + firebase)
-        shell: bash
-        run: |
-          set +e
-
-          run_guardrails() {
-            echo "[guardrails] react-native"
-            node -e "console.log(require.resolve('react-native/package.json'))" || return 1
-            node -e "const p=require('react-native/package.json'); console.log({name:p.name,version:p.version,main:p.main,exports:!!p.exports})" || return 1
-            npm ls react-native --depth=0 || return 1
-
-            echo "[guardrails] react-native-firebase"
-            node -e "console.log(require.resolve('@react-native-firebase/app/package.json'))" || return 1
-            node -e "console.log(require.resolve('@react-native-firebase/messaging/package.json'))" || return 1
-            npm ls @react-native-firebase/app @react-native-firebase/messaging --depth=0 || return 1
-          }
-
-          if run_guardrails; then
-            exit 0
-          fi
-
-          echo "⚠️ Guardrails failed. Re-installing dependencies once and retrying..."
-          npm ci
-
-          if run_guardrails; then
-            exit 0
-          fi
-
-          echo "❌ Guardrails still failing after reinstall."
-          exit 1
 
       - name: Make CI scripts executable
         run: chmod +x .github/scripts/*.sh
@@ -239,12 +210,51 @@ jobs:
           path: ./*.apk
           key: ${{ steps.android_fingerprint.outputs.key }}
 
+      - name: Guardrails before repack - resolve critical modules
+        if: steps.apk-cache.outputs.cache-hit == 'true'
+        shell: bash
+        run: |
+          set +e
+
+          run_guardrails() {
+            echo "[guardrails] react-native"
+            node -e "console.log(require.resolve('react-native/package.json'))" || return 1
+            npm ls react-native --depth=0 || return 1
+
+            echo "[guardrails] react-native-firebase"
+            node -e "console.log(require.resolve('@react-native-firebase/app/package.json'))" || return 1
+            node -e "console.log(require.resolve('@react-native-firebase/messaging/package.json'))" || return 1
+            npm ls @react-native-firebase/app @react-native-firebase/messaging --depth=0 || return 1
+
+            echo "[guardrails] Expo Router + tab icon dependencies"
+            node -e "console.log(require.resolve('expo-router/package.json'))" || return 1
+            node -e "console.log(require.resolve('@tamagui/lucide-icons/package.json'))" || return 1
+            npm ls expo-router @tamagui/lucide-icons --depth=0 || return 1
+          }
+
+          if run_guardrails; then
+            exit 0
+          fi
+
+          echo "⚠️ Guardrails failed. Re-installing dependencies once and retrying..."
+          npm ci
+
+          if run_guardrails; then
+            exit 0
+          fi
+
+          echo "❌ Guardrails still failing after reinstall."
+          exit 1
+
       - name: Repack Android app with latest JS bundle
         if: steps.apk-cache.outputs.cache-hit == 'true'
         shell: bash
         env:
           PLATFORM: android
           SOURCE_APP: ${{ steps.find_apk.outputs.apk }}
+          METRO_CACHE_PATH: ${{ github.workspace }}/.metro-cache-ci
+          GOOGLE_SERVICE_INFO_PLIST_B64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_B64 }}
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
         run: |
           set -euo pipefail
 
@@ -267,12 +277,17 @@ jobs:
           export ANDROID_SDK_ROOT="$RESOLVED_SDK_DIR"
           export ANDROID_HOME="$RESOLVED_SDK_DIR"
 
-          echo "🧹 Clearing Metro cache before repack..."
-          rm -rf .expo
-          rm -rf /tmp/metro-* /tmp/haste-map-* 2>/dev/null || true
-          rm -rf "$TMPDIR/metro-"* "$TMPDIR/haste-map-"* 2>/dev/null || true
-          echo "✅ Metro cache cleared"
-          npx @expo/repack-app --platform "$PLATFORM" --source-app "$SOURCE_APP" --output "$SOURCE_APP"
+          echo "📦 Exporting release bundle before repack..."
+          rm -rf ./dist
+          npx expo export --platform "$PLATFORM" --output-dir ./dist --clear
+          echo "🔍 Verifying dist folder contents:"
+          find ./dist -maxdepth 4 -print
+          TEMP_OUTPUT="repacked_output"
+          rm -rf "$TEMP_OUTPUT"
+          npx @expo/repack-app --platform "$PLATFORM" --source-app "$SOURCE_APP" --output "$TEMP_OUTPUT"
+          echo "Replacing $SOURCE_APP with repacked version..."
+          rm -rf "$SOURCE_APP"
+          mv "$TEMP_OUTPUT" "$SOURCE_APP"
 
       - name: Upload Gradle reports
         if: failure()

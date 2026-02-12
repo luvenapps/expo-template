@@ -35,4 +35,18 @@ describe('app.config', () => {
     expect(config.slug).toBe('appname');
     expect(config.name).toBe('appname');
   });
+
+  it('enables Hermes globally and in build properties plugin', () => {
+    const config = makeConfig();
+
+    expect(config.jsEngine).toBe('hermes');
+
+    const buildPropertiesPlugin = config.plugins?.find(
+      (plugin) => Array.isArray(plugin) && plugin[0] === 'expo-build-properties',
+    ) as [string, { android?: { jsEngine?: string }; ios?: { jsEngine?: string } }] | undefined;
+
+    expect(buildPropertiesPlugin).toBeDefined();
+    expect(buildPropertiesPlugin?.[1].android?.jsEngine).toBe('hermes');
+    expect(buildPropertiesPlugin?.[1].ios?.jsEngine).toBe('hermes');
+  });
 });

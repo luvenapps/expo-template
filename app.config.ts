@@ -22,6 +22,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     icon: './assets/icon.png',
     userInterfaceStyle: 'automatic',
     newArchEnabled: true,
+    jsEngine: 'hermes',
 
     splash: {
       image: './assets/splash-icon.png',
@@ -78,6 +79,17 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       'expo-localization',
       'expo-apple-authentication',
       'expo-web-browser',
+      [
+        'expo-build-properties',
+        {
+          android: {
+            jsEngine: 'hermes',
+          },
+          ios: {
+            jsEngine: 'hermes',
+          },
+        },
+      ],
       './plugins/withFirebaseCredentials.js',
       './plugins/withFirebaseConfig.js',
       './plugins/withFirebaseModularHeaders.js',

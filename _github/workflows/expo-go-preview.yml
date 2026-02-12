@@ -24,6 +24,10 @@ on:
         required: true
         type: boolean
 
+env:
+  EXPO_USE_LOCAL_CLI: '1'
+  METRO_CACHE_PATH: ${{ github.workspace }}/.metro-cache-ci
+
 concurrency:
   group: expo-go-${{ inputs.is_pull_request && format('pr-{0}', inputs.pr_number) || github.ref_name }}
   cancel-in-progress: true
@@ -115,7 +119,6 @@ jobs:
           APP_VARIANT: preview
           EXPO_PUBLIC_DEBUG_RUN_ID: ${{ inputs.is_pull_request && format('pr-{0}-', inputs.pr_number) || 'main-' }}${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
           EXPO_PUBLIC_TURN_ON_FIREBASE: 'false'
-          EXPO_USE_LOCAL_CLI: '1'
           GOOGLE_SERVICE_INFO_PLIST_B64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_B64 }}
           GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
         run: |
@@ -130,6 +133,7 @@ jobs:
             --branch "$BRANCH" \
             --message "$MESSAGE" \
             --platform all \
+            --clear-cache \
             --non-interactive
 
       - name: Comment with preview details
