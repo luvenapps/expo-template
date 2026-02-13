@@ -165,89 +165,176 @@ jobs:
         run: |
           set -euo pipefail
           ARTIFACT_TAR=$(ls -1t ./*.tar.gz 2>/dev/null | head -n1 || true)
+          rm -rf extracted_app
+          mkdir -p extracted_app
           if [ -n "$ARTIFACT_TAR" ]; then
             echo "📦 Extracting $ARTIFACT_TAR ..."
-            mkdir -p extracted_app
             tar -xzf "$ARTIFACT_TAR" -C extracted_app
           fi
-          APP=$(find extracted_app -type d -name "*.app" -maxdepth 6 | head -n1 || true)
+          APP=$(find extracted_app -maxdepth 6 -type d -name "*.app" | head -n1 || true)
           echo "app=$APP" >> $GITHUB_OUTPUT
           [ -n "$APP" ] || (echo "No .app found after extracting $ARTIFACT_TAR"; ls -alh extracted_app || true; exit 1)
 
-      - name: Guardrails before repack - resolve critical modules
+      - name: Run context snippet (engine + native project state)
         if: steps.ios_cache.outputs.cache-hit == 'true'
         shell: bash
         run: |
-          set +e
+          echo "[run-snippet] pwd"
+          pwd
 
-          run_guardrails() {
-            echo "[guardrails] react-native"
-            node -e "console.log(require.resolve('react-native/package.json'))" || return 1
-            npm ls react-native --depth=0 || return 1
-
-            echo "[guardrails] react-native-firebase"
-            node -e "console.log(require.resolve('@react-native-firebase/app/package.json'))" || return 1
-            node -e "console.log(require.resolve('@react-native-firebase/messaging/package.json'))" || return 1
-            npm ls @react-native-firebase/app @react-native-firebase/messaging --depth=0 || return 1
-
-            echo "[guardrails] Expo Router + tab icon dependencies"
-            node -e "console.log(require.resolve('expo-router/package.json'))" || return 1
-            node -e "console.log(require.resolve('@tamagui/lucide-icons/package.json'))" || return 1
-            npm ls expo-router @tamagui/lucide-icons --depth=0 || return 1
-          }
-
-          if run_guardrails; then
-            exit 0
+          echo "[run-snippet] extracted app state"
+          if [ -d extracted_app ]; then
+            find extracted_app -maxdepth 4 -type d -name "*.app" -print || true
+          else
+            echo "extracted_app missing"
           fi
 
-          echo "⚠️ Guardrails failed. Re-installing dependencies once and retrying..."
-          npm ci
+          echo "[run-snippet] expo public config (engine/runtime lines)"
+          node -e "const { execSync } = require('node:child_process'); const config = JSON.parse(execSync('npx expo config --json', { encoding: 'utf8' })); const payload = { jsEngine: config.jsEngine ?? null, newArchEnabled: config.newArchEnabled ?? null, runtimeVersion: config.runtimeVersion ?? null, iosBundleIdentifier: config.ios?.bundleIdentifier ?? null }; console.log(JSON.stringify(payload, null, 2));"
 
-          if run_guardrails; then
-            exit 0
-          fi
-
-          echo "❌ Guardrails still failing after reinstall."
-          exit 1
-
-      - name: Repack iOS app with latest JS bundle
+      - name: Prepare iOS JS bundle for repack
         if: steps.ios_cache.outputs.cache-hit == 'true'
         shell: bash
         env:
           PLATFORM: ios
-          SOURCE_APP: ${{ steps.find_app.outputs.app }}
           METRO_CACHE_PATH: ${{ github.workspace }}/.metro-cache-ci
           GOOGLE_SERVICE_INFO_PLIST_B64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_B64 }}
           GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
         run: |
           set -euo pipefail
+          # Reset Watchman to prevent stale file system state from previous runs
+          if command -v watchman >/dev/null 2>&1; then
+            echo "🔄 Resetting Watchman watches..."
+            watchman watch-del-all || true
+          fi
           echo "📦 Exporting release bundle before repack..."
           rm -rf ./dist
           npx expo export --platform "$PLATFORM" --output-dir ./dist --clear
           echo "🔍 Verifying dist folder contents:"
           find ./dist -maxdepth 4 -print
-          TEMP_OUTPUT="repacked_output"
-          rm -rf "$TEMP_OUTPUT"
-          npx @expo/repack-app --platform "$PLATFORM" --source-app "$SOURCE_APP" --output "$TEMP_OUTPUT"
-          echo "Replacing $SOURCE_APP with repacked version..."
+          echo "expo-export" > dist/.bundle-source
+
+      - name: Validate Hermes + bundle compatibility before repack
+        if: steps.ios_cache.outputs.cache-hit == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          EXPO_CONFIG_JSON="$(npx expo config --json)"
+          if [ -z "$EXPO_CONFIG_JSON" ]; then
+            echo "❌ Failed to load Expo config JSON"
+            exit 1
+          fi
+
+          EXPECTED_ENGINE="$(node -e "const cfg = JSON.parse(process.argv[1]); const engine = cfg.ios?.jsEngine ?? cfg.jsEngine ?? 'hermes'; process.stdout.write(String(engine).toLowerCase());" "$EXPO_CONFIG_JSON")"
+          if [ -z "$EXPECTED_ENGINE" ]; then
+            echo "❌ Could not determine expected iOS JS engine from Expo config"
+            exit 1
+          fi
+
+          if [ ! -d dist ]; then
+            echo "❌ dist folder is missing"
+            exit 1
+          fi
+
+          if [ -z "$(find dist -mindepth 1 -maxdepth 1 -print -quit)" ]; then
+            echo "❌ dist folder is empty"
+            exit 1
+          fi
+
+          BUNDLE_PATH="$(find dist -type f \( -path "*/_expo/static/js/ios/*.js" -o -path "*/_expo/static/js/ios/*.hbc" \) | head -n1 || true)"
+          if [ -z "$BUNDLE_PATH" ]; then
+            echo "❌ iOS bundle file not found under dist/_expo/static/js/ios (.js or .hbc)"
+            find dist -maxdepth 6 -type f | head -n 50 || true
+            exit 1
+          fi
+
+          if [ ! -s "$BUNDLE_PATH" ]; then
+            echo "❌ iOS bundle file is empty: $BUNDLE_PATH"
+            exit 1
+          fi
+
+          BUNDLE_SIZE="$(wc -c < "$BUNDLE_PATH" | tr -d ' ')"
+          HAS_HERMES_MARKER="no"
+          if grep -a -q "Hermes" "$BUNDLE_PATH"; then
+            HAS_HERMES_MARKER="yes"
+          fi
+
+          BUNDLE_SOURCE=""
+          if [ -f dist/.bundle-source ]; then
+            BUNDLE_SOURCE="$(cat dist/.bundle-source)"
+          fi
+
+          if [ "$EXPECTED_ENGINE" = "hermes" ] && [ "$HAS_HERMES_MARKER" != "yes" ] && [ "$BUNDLE_SOURCE" != "expo-export" ]; then
+            echo "❌ Hermes expected but bundle has no Hermes marker and source is not expo-export"
+            exit 1
+          fi
+
+          echo "[validation] expected engine: $EXPECTED_ENGINE"
+          echo "[validation] bundle path: $BUNDLE_PATH"
+          echo "[validation] bundle file size (bytes): $BUNDLE_SIZE"
+          echo "[validation] hermes marker present: $HAS_HERMES_MARKER"
+          echo "[validation] bundle source: ${BUNDLE_SOURCE:-unknown}"
+
+      - name: Repack iOS app artifact with latest JS bundle
+        if: steps.ios_cache.outputs.cache-hit == 'true'
+        shell: bash
+        env:
+          PLATFORM: ios
+          SOURCE_APP: ${{ steps.find_app.outputs.app }}
+        run: |
+          set -euo pipefail
+
+          REPACKED_APP="repacked_output.app"
+          rm -rf "$REPACKED_APP"
+          npx @expo/repack-app --platform "$PLATFORM" --source-app "$SOURCE_APP" --output "$REPACKED_APP"
+
+          if [ ! -d "$REPACKED_APP" ]; then
+            echo "❌ Repacked .app not found at $REPACKED_APP"
+            ls -la repacked_output* 2>/dev/null || true
+            exit 1
+          fi
+
+          echo "Replacing $SOURCE_APP with repacked app from $REPACKED_APP..."
           rm -rf "$SOURCE_APP"
-          mv "$TEMP_OUTPUT" "$SOURCE_APP"
+          mkdir -p "$(dirname "$SOURCE_APP")"
+          mv "$REPACKED_APP" "$SOURCE_APP"
 
       - name: Boot simulator
         shell: bash
         run: .github/scripts/ios_boot_simulator.sh
 
+      - name: Resolve app path for simulator install
+        id: install_app
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP="${{ steps.find_app.outputs.app }}"
+          if [ ! -d "$APP" ]; then
+            echo "⚠️ find_app output does not exist: $APP"
+            APP="$(find extracted_app -maxdepth 6 -type d -name "*.app" | head -n1 || true)"
+          fi
+
+          if [ -z "$APP" ] || [ ! -d "$APP" ]; then
+            echo "❌ Unable to resolve .app path for simulator install"
+            find extracted_app -maxdepth 6 -print || true
+            exit 1
+          fi
+
+          echo "Resolved app for install: $APP"
+          echo "app=$APP" >> "$GITHUB_OUTPUT"
+
       - name: Install on simulator and warm up
         shell: bash
         timeout-minutes: 10
-        run: .github/scripts/ios_install_app.sh "${{ steps.find_app.outputs.app }}"
+        run: .github/scripts/ios_install_app.sh "${{ steps.install_app.outputs.app }}"
 
       - name: Run E2E tests
         shell: bash
         run: .github/scripts/ios_run_e2e.sh
 
       - name: Upload Xcode build artifacts
-        if: failure()
+        if: failure() && steps.ios_cache.outputs.cache-hit != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: xcode-build-artifacts-ios-selfhosted

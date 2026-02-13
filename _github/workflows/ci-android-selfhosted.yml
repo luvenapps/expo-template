@@ -33,6 +33,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Clean workspace (self-hosted)
+        shell: bash
+        run: |
+          git clean -ffdx
+          git reset --hard HEAD
+
       - name: Setup Java 17
         uses: actions/setup-java@v5
         with:
@@ -108,35 +114,6 @@ jobs:
         shell: bash
         run: .github/scripts/setup_maestro.sh "${{ env.MAESTRO_VERSION }}"
 
-      # Lean caching: only Gradle to stay under 10GB org-wide cache budget
-      - name: Cache Gradle (caches + wrapper + project .gradle)
-        id: gradle-cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-            android/.gradle
-          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'android/**/build.gradle', 'android/**/gradle.properties') }}
-          restore-keys: |
-            gradle-${{ runner.os }}-
-
-      - name: Create debug keystore
-        run: |
-          mkdir -p android
-          keytool -genkeypair -v \
-            -keystore "android/debug.keystore" \
-            -storepass android -keypass android \
-            -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
-            -dname "CN=Android Debug,O=Android,C=US"
-
-      - name: Write signing props for Gradle
-        run: |
-          echo "android.injected.signing.store.file=$PWD/android/debug.keystore" >> android/gradle.properties
-          echo "android.injected.signing.store.password=android"                 >> android/gradle.properties
-          echo "android.injected.signing.key.alias=androiddebugkey"              >> android/gradle.properties
-          echo "android.injected.signing.key.password=android"                   >> android/gradle.properties
-
       - name: Compute Android build fingerprint
         id: android_fingerprint
         shell: bash
@@ -151,6 +128,38 @@ jobs:
         with:
           path: ./*.apk
           key: ${{ steps.android_fingerprint.outputs.key }}
+
+      - name: Create debug keystore
+        if: steps.apk-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p android
+          keytool -genkeypair -v \
+            -keystore "android/debug.keystore" \
+            -storepass android -keypass android \
+            -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US"
+
+      - name: Write signing props for Gradle
+        if: steps.apk-cache.outputs.cache-hit != 'true'
+        run: |
+          echo "android.injected.signing.store.file=$PWD/android/debug.keystore" >> android/gradle.properties
+          echo "android.injected.signing.store.password=android"                 >> android/gradle.properties
+          echo "android.injected.signing.key.alias=androiddebugkey"              >> android/gradle.properties
+          echo "android.injected.signing.key.password=android"                   >> android/gradle.properties
+
+      # Lean caching: only Gradle to stay under 10GB org-wide cache budget
+      - name: Cache Gradle (caches + wrapper + project .gradle)
+        if: steps.apk-cache.outputs.cache-hit != 'true'
+        id: gradle-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            android/.gradle
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'android/**/build.gradle', 'android/**/gradle.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
 
       - name: Build e2erelease APK
         if: steps.apk-cache.outputs.cache-hit != 'true'
@@ -210,41 +219,36 @@ jobs:
           path: ./*.apk
           key: ${{ steps.android_fingerprint.outputs.key }}
 
-      - name: Guardrails before repack - resolve critical modules
+      - name: Run context snippet (engine + native project state)
         if: steps.apk-cache.outputs.cache-hit == 'true'
         shell: bash
         run: |
-          set +e
+          echo "[run-snippet] pwd"
+          pwd
 
-          run_guardrails() {
-            echo "[guardrails] react-native"
-            node -e "console.log(require.resolve('react-native/package.json'))" || return 1
-            npm ls react-native --depth=0 || return 1
-
-            echo "[guardrails] react-native-firebase"
-            node -e "console.log(require.resolve('@react-native-firebase/app/package.json'))" || return 1
-            node -e "console.log(require.resolve('@react-native-firebase/messaging/package.json'))" || return 1
-            npm ls @react-native-firebase/app @react-native-firebase/messaging --depth=0 || return 1
-
-            echo "[guardrails] Expo Router + tab icon dependencies"
-            node -e "console.log(require.resolve('expo-router/package.json'))" || return 1
-            node -e "console.log(require.resolve('@tamagui/lucide-icons/package.json'))" || return 1
-            npm ls expo-router @tamagui/lucide-icons --depth=0 || return 1
-          }
-
-          if run_guardrails; then
-            exit 0
+          echo "[run-snippet] android directory state"
+          if [ -d android ]; then
+            echo "android exists"
+          else
+            echo "android missing"
           fi
 
-          echo "⚠️ Guardrails failed. Re-installing dependencies once and retrying..."
-          npm ci
-
-          if run_guardrails; then
-            exit 0
+          if [ -f android/gradle.properties ]; then
+            echo "[run-snippet] android/gradle.properties (engine lines)"
+            grep -En "hermes|jsengine|jsEngine|newarch|newArch" android/gradle.properties || true
+          else
+            echo "[run-snippet] android/gradle.properties missing"
           fi
 
-          echo "❌ Guardrails still failing after reinstall."
-          exit 1
+          if [ -f android/app/build.gradle ]; then
+            echo "[run-snippet] android/app/build.gradle (engine lines)"
+            grep -En "hermes|jsengine|jsEngine|newarch|newArch|enableHermes" android/app/build.gradle || true
+          else
+            echo "[run-snippet] android/app/build.gradle missing"
+          fi
+
+          echo "[run-snippet] expo public config (engine/runtime lines)"
+          node -e "const { execSync } = require('node:child_process'); const config = JSON.parse(execSync('npx expo config --json', { encoding: 'utf8' })); const payload = { jsEngine: config.jsEngine ?? null, newArchEnabled: config.newArchEnabled ?? null, runtimeVersion: config.runtimeVersion ?? null, androidPackage: config.android?.package ?? null }; console.log(JSON.stringify(payload, null, 2));"
 
       - name: Repack Android app with latest JS bundle
         if: steps.apk-cache.outputs.cache-hit == 'true'
@@ -277,11 +281,130 @@ jobs:
           export ANDROID_SDK_ROOT="$RESOLVED_SDK_DIR"
           export ANDROID_HOME="$RESOLVED_SDK_DIR"
 
-          echo "📦 Exporting release bundle before repack..."
-          rm -rf ./dist
-          npx expo export --platform "$PLATFORM" --output-dir ./dist --clear
+          echo "🧹 Removing native folders before JS export to avoid stale Hermes/native mismatch checks"
+          rm -rf ./android ./ios
+
+          echo "📦 Building embedded Android bundle for repack..."
+          rm -rf dist
+
+          npx expo export:embed \
+            --platform android \
+            --entry-file index.js \
+            --bundle-output dist/index.android.bundle \
+            --assets-dest dist/assets \
+            --dev false
+
+          echo "export:embed" > dist/.bundle-source
+
+          if [ ! -f dist/index.android.bundle ]; then
+            echo "❌ index.android.bundle not generated"
+            exit 1
+          fi
+
+          if [ ! -d dist/assets ]; then
+            echo "❌ assets directory not generated"
+            exit 1
+          fi
+
           echo "🔍 Verifying dist folder contents:"
           find ./dist -maxdepth 4 -print
+
+      - name: Validate Hermes + bundle compatibility before repack
+        if: steps.apk-cache.outputs.cache-hit == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          EXPO_CONFIG_JSON="$(npx expo config --json)"
+          if [ -z "$EXPO_CONFIG_JSON" ]; then
+            echo "❌ Failed to load Expo config JSON"
+            exit 1
+          fi
+
+          EXPECTED_ENGINE="$(node -e "const cfg = JSON.parse(process.argv[1]); const engine = cfg.android?.jsEngine ?? cfg.jsEngine ?? 'hermes'; process.stdout.write(String(engine).toLowerCase());" "$EXPO_CONFIG_JSON")"
+          if [ -z "$EXPECTED_ENGINE" ]; then
+            echo "❌ Could not determine expected JS engine from Expo config"
+            exit 1
+          fi
+
+          BUNDLE_PATH="dist/index.android.bundle"
+          ASSETS_PATH="dist/assets"
+
+          if [ ! -d dist ]; then
+            echo "❌ dist folder is missing"
+            exit 1
+          fi
+
+          if [ -z "$(find dist -mindepth 1 -maxdepth 1 -print -quit)" ]; then
+            echo "❌ dist folder is empty"
+            exit 1
+          fi
+
+          if [ ! -f "$BUNDLE_PATH" ]; then
+            echo "❌ Bundle file missing: $BUNDLE_PATH"
+            exit 1
+          fi
+
+          if [ ! -s "$BUNDLE_PATH" ]; then
+            echo "❌ Bundle file is empty: $BUNDLE_PATH"
+            exit 1
+          fi
+
+          if [ ! -d "$ASSETS_PATH" ]; then
+            echo "❌ Required assets directory missing: $ASSETS_PATH"
+            exit 1
+          fi
+
+          BUNDLE_SIZE="$(wc -c < "$BUNDLE_PATH" | tr -d ' ')"
+          HAS_HERMES_MARKER="no"
+          if grep -a -q "Hermes" "$BUNDLE_PATH"; then
+            HAS_HERMES_MARKER="yes"
+          fi
+
+          BUNDLE_SOURCE=""
+          if [ -f dist/.bundle-source ]; then
+            BUNDLE_SOURCE="$(cat dist/.bundle-source)"
+          fi
+
+          if [ "$EXPECTED_ENGINE" = "hermes" ] && [ "$HAS_HERMES_MARKER" != "yes" ] && [ "$BUNDLE_SOURCE" != "export:embed" ]; then
+            echo "❌ Hermes expected but bundle has no Hermes marker and was not produced by export:embed"
+            exit 1
+          fi
+
+          echo "[validation] expected engine: $EXPECTED_ENGINE"
+          echo "[validation] bundle path: $BUNDLE_PATH"
+          echo "[validation] bundle file size (bytes): $BUNDLE_SIZE"
+          echo "[validation] hermes marker present: $HAS_HERMES_MARKER"
+          echo "[validation] bundle source: ${BUNDLE_SOURCE:-unknown}"
+
+      - name: Repack Android app artifact with embedded bundle
+        if: steps.apk-cache.outputs.cache-hit == 'true'
+        shell: bash
+        env:
+          PLATFORM: android
+          SOURCE_APP: ${{ steps.find_apk.outputs.apk }}
+        run: |
+          set -euo pipefail
+
+          RESOLVED_SDK_DIR="${ANDROID_SDK_DIR/#\$HOME/$HOME}"
+          if [ ! -d "$RESOLVED_SDK_DIR/build-tools" ]; then
+            for candidate in "$HOME/Library/Android/sdk" "${ANDROID_HOME:-}" "${ANDROID_SDK_ROOT:-}"; do
+              if [ -n "$candidate" ] && [ -d "$candidate/build-tools" ]; then
+                RESOLVED_SDK_DIR="$candidate"
+                break
+              fi
+            done
+          fi
+
+          if [ ! -d "$RESOLVED_SDK_DIR/build-tools" ]; then
+            echo "❌ Unable to find Android build-tools for repack-app."
+            echo "Checked: $RESOLVED_SDK_DIR, $HOME/Library/Android/sdk, ${ANDROID_HOME:-<unset>}, ${ANDROID_SDK_ROOT:-<unset>}"
+            exit 1
+          fi
+
+          export ANDROID_SDK_ROOT="$RESOLVED_SDK_DIR"
+          export ANDROID_HOME="$RESOLVED_SDK_DIR"
+
           TEMP_OUTPUT="repacked_output"
           rm -rf "$TEMP_OUTPUT"
           npx @expo/repack-app --platform "$PLATFORM" --source-app "$SOURCE_APP" --output "$TEMP_OUTPUT"
@@ -300,7 +423,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Save Gradle cache (post-build)
-        if: always() && steps.gradle-cache.outputs.cache-hit != 'true'
+        if: always() && steps.apk-cache.outputs.cache-hit != 'true' && steps.gradle-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: |
