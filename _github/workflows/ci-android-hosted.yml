@@ -68,20 +68,7 @@ jobs:
           DEV_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.DEV_PUBLIC_SUPABASE_ANON_KEY || '' }}
           PROD_SUPABASE_ACCESS_TOKEN: ${{ secrets.PROD_SUPABASE_ACCESS_TOKEN || '' }}
           DEV_SUPABASE_ACCESS_TOKEN: ${{ secrets.DEV_SUPABASE_ACCESS_TOKEN || '' }}
-        run: |
-          echo "EXPO_PUBLIC_TURN_ON_FIREBASE=$TURN_ON_FIREBASE" >> "$GITHUB_ENV"
-          echo "RETRIES=$RETRIES_VALUE" >> "$GITHUB_ENV"
-          echo "RETRY_DELAY=$RETRY_DELAY_VALUE" >> "$GITHUB_ENV"
-
-          if [ "${{ inputs.env_prefix }}" = "PROD" ]; then
-            echo "EXPO_PUBLIC_SUPABASE_URL=$PROD_PUBLIC_SUPABASE_URL" >> "$GITHUB_ENV"
-            echo "EXPO_PUBLIC_SUPABASE_ANON_KEY=$PROD_PUBLIC_SUPABASE_ANON_KEY" >> "$GITHUB_ENV"
-            echo "SUPABASE_ACCESS_TOKEN=$PROD_SUPABASE_ACCESS_TOKEN" >> "$GITHUB_ENV"
-          else
-            echo "EXPO_PUBLIC_SUPABASE_URL=$DEV_PUBLIC_SUPABASE_URL" >> "$GITHUB_ENV"
-            echo "EXPO_PUBLIC_SUPABASE_ANON_KEY=$DEV_PUBLIC_SUPABASE_ANON_KEY" >> "$GITHUB_ENV"
-            echo "SUPABASE_ACCESS_TOKEN=$DEV_SUPABASE_ACCESS_TOKEN" >> "$GITHUB_ENV"
-          fi
+        run: .github/scripts/map_runtime_env.sh "${{ inputs.env_prefix }}"
 
       - name: Install EAS CLI
         shell: bash
@@ -98,16 +85,7 @@ jobs:
 
       - name: Verify Expo/RN dependency alignment
         shell: bash
-        run: |
-          set -e
-          npx expo --version || true
-          node -e "console.log('react-native', require('react-native/package.json').version)" || true
-          node -e "console.log('expo', require('expo/package.json').version)" || true
-          # Strict: fail if mismatched so lockfile must be updated in a PR
-          if ! npx expo install --check; then
-            echo "❌ Expo dependency mismatch. Run 'npx expo install --fix' locally and commit the updated package-lock.json."
-            exit 1
-          fi
+        run: .github/scripts/verify_expo_deps.sh
 
       - name: Setup Maestro
         shell: bash
@@ -311,70 +289,7 @@ jobs:
       - name: Validate Hermes + bundle compatibility before repack
         if: steps.apk-cache.outputs.cache-hit == 'true'
         shell: bash
-        run: |
-          set -euo pipefail
-
-          EXPO_CONFIG_JSON="$(npx expo config --json)"
-          if [ -z "$EXPO_CONFIG_JSON" ]; then
-            echo "❌ Failed to load Expo config JSON"
-            exit 1
-          fi
-
-          EXPECTED_ENGINE="$(node -e "const cfg = JSON.parse(process.argv[1]); const engine = cfg.android?.jsEngine ?? cfg.jsEngine ?? 'hermes'; process.stdout.write(String(engine).toLowerCase());" "$EXPO_CONFIG_JSON")"
-          if [ -z "$EXPECTED_ENGINE" ]; then
-            echo "❌ Could not determine expected JS engine from Expo config"
-            exit 1
-          fi
-
-          BUNDLE_PATH="dist/index.android.bundle"
-          ASSETS_PATH="dist/assets"
-
-          if [ ! -d dist ]; then
-            echo "❌ dist folder is missing"
-            exit 1
-          fi
-
-          if [ -z "$(find dist -mindepth 1 -maxdepth 1 -print -quit)" ]; then
-            echo "❌ dist folder is empty"
-            exit 1
-          fi
-
-          if [ ! -f "$BUNDLE_PATH" ]; then
-            echo "❌ Bundle file missing: $BUNDLE_PATH"
-            exit 1
-          fi
-
-          if [ ! -s "$BUNDLE_PATH" ]; then
-            echo "❌ Bundle file is empty: $BUNDLE_PATH"
-            exit 1
-          fi
-
-          if [ ! -d "$ASSETS_PATH" ]; then
-            echo "❌ Required assets directory missing: $ASSETS_PATH"
-            exit 1
-          fi
-
-          BUNDLE_SIZE="$(wc -c < "$BUNDLE_PATH" | tr -d ' ')"
-          HAS_HERMES_MARKER="no"
-          if grep -a -q "Hermes" "$BUNDLE_PATH"; then
-            HAS_HERMES_MARKER="yes"
-          fi
-
-          BUNDLE_SOURCE=""
-          if [ -f dist/.bundle-source ]; then
-            BUNDLE_SOURCE="$(cat dist/.bundle-source)"
-          fi
-
-          if [ "$EXPECTED_ENGINE" = "hermes" ] && [ "$HAS_HERMES_MARKER" != "yes" ] && [ "$BUNDLE_SOURCE" != "export:embed" ]; then
-            echo "❌ Hermes expected but bundle has no Hermes marker and was not produced by export:embed"
-            exit 1
-          fi
-
-          echo "[validation] expected engine: $EXPECTED_ENGINE"
-          echo "[validation] bundle path: $BUNDLE_PATH"
-          echo "[validation] bundle file size (bytes): $BUNDLE_SIZE"
-          echo "[validation] hermes marker present: $HAS_HERMES_MARKER"
-          echo "[validation] bundle source: ${BUNDLE_SOURCE:-unknown}"
+        run: .github/scripts/validate_hermes_bundle.sh android
 
       - name: Repack Android app artifact with embedded bundle
         if: steps.apk-cache.outputs.cache-hit == 'true'
