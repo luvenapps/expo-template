@@ -31,6 +31,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Reset Watchman (self-hosted)
+        shell: bash
+        run: |
+          if command -v watchman >/dev/null 2>&1; then
+            echo "🔄 Resetting Watchman watches..."
+            watchman watch-del-all || true
+          fi
+
       - name: Setup Node 24
         uses: actions/setup-node@v6
         with:
@@ -202,11 +210,6 @@ jobs:
           GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
         run: |
           set -euo pipefail
-          # Reset Watchman to prevent stale file system state from previous runs
-          if command -v watchman >/dev/null 2>&1; then
-            echo "🔄 Resetting Watchman watches..."
-            watchman watch-del-all || true
-          fi
           echo "📦 Exporting release bundle before repack..."
           rm -rf ./dist
           npx expo export --platform "$PLATFORM" --output-dir ./dist --clear

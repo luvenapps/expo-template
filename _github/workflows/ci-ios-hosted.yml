@@ -213,11 +213,6 @@ jobs:
           GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
         run: |
           set -euo pipefail
-          # Reset Watchman to prevent stale file system state from previous runs
-          if command -v watchman >/dev/null 2>&1; then
-            echo "🔄 Resetting Watchman watches..."
-            watchman watch-del-all || true
-          fi
           echo "📦 Exporting release bundle before repack..."
           rm -rf ./dist
           npx expo export --platform "$PLATFORM" --output-dir ./dist --clear

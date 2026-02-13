@@ -67,6 +67,15 @@ jobs:
           git clean -ffdx
           git reset --hard HEAD
 
+      - name: Reset Watchman (self-hosted)
+        if: ${{ inputs.runner_target == 'selfhosted' }}
+        shell: bash
+        run: |
+          if command -v watchman >/dev/null 2>&1; then
+            echo "🔄 Resetting Watchman watches..."
+            watchman watch-del-all || true
+          fi
+
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
@@ -83,6 +92,7 @@ jobs:
           npx eas-cli --version
 
       - name: Publish Expo Go preview
+        id: eas_update
         if: ${{ (inputs.is_pull_request || github.ref_name == 'main') && env.EXPO_TOKEN != '' }}
         env:
           APP_VARIANT: preview
@@ -98,25 +108,63 @@ jobs:
             BRANCH="main"
             MESSAGE="main - ${{ github.sha }}"
           fi
-          npx eas-cli@latest update \
+
+          EAS_OUTPUT=$(npx eas-cli@latest update \
             --branch "$BRANCH" \
             --message "$MESSAGE" \
             --platform all \
             --clear-cache \
-            --non-interactive
+            --non-interactive \
+            --json)
+
+          UPDATE_GROUP_ID=$(echo "$EAS_OUTPUT" | jq -r '.[0].group // empty' 2>/dev/null || true)
+          RUNTIME_VERSION=$(echo "$EAS_OUTPUT" | jq -r '.[0].runtimeVersion // empty' 2>/dev/null || true)
+
+          echo "update_group_id=${UPDATE_GROUP_ID}" >> "$GITHUB_OUTPUT"
+          echo "runtime_version=${RUNTIME_VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Comment with preview details
         if: ${{ inputs.is_pull_request && env.EXPO_TOKEN != '' }}
         uses: actions/github-script@v7
+        env:
+          UPDATE_GROUP_ID: ${{ steps.eas_update.outputs.update_group_id }}
+          RUNTIME_VERSION: ${{ steps.eas_update.outputs.runtime_version }}
         with:
           script: |
             const marker = '<!-- expo-go-preview-comment -->';
             const prNumber = Number('${{ inputs.pr_number }}');
             const branch = `pr-${prNumber}`;
             const shortSha = context.sha.slice(0, 7);
-            const runtimeVersion = 'exposdk 54.0.0';
+            const updateGroupId = process.env.UPDATE_GROUP_ID;
+            const runtimeVersion = process.env.RUNTIME_VERSION || 'unknown';
+            const projectId = '<EXPO DEV PROJECT ID>';
             const easDashboardUrl = `<EXPO DEV UPDATES URL>`;
-            const body = `${marker}\nExpo Go preview published.\nRuntime version: ${runtimeVersion}\nCommit: ${shortSha}\nEAS Dashboard: ${easDashboardUrl}`;
+
+            let body;
+            if (updateGroupId) {
+              const qrUrl = `https://qr.expo.dev/eas-update?projectId=${projectId}&groupId=${updateGroupId}`;
+              body = [
+                marker,
+                '## Expo Go Preview',
+                '',
+                '<p align="left">',
+                `<a href="${easDashboardUrl}">`,
+                `<img src="${qrUrl}" width="250" height="250" alt="QR Code" />`,
+                '</a>',
+                '</p>',
+                '',
+                '> Scan with **Expo Go** on iOS or Android to preview this PR.',
+                '',
+                '| Detail | Value |',
+                '|--------|-------|',
+                `| **Runtime version** | \`${runtimeVersion}\` |`,
+                `| **Commit** | \`${shortSha}\` |`,
+                `| **Branch** | \`${branch}\` |`,
+                `| **EAS Dashboard** | [View updates](${easDashboardUrl}) |`,
+              ].join('\n');
+            } else {
+              body = `${marker}\nExpo Go preview published.\nRuntime version: ${runtimeVersion}\nCommit: ${shortSha}\nEAS Dashboard: ${easDashboardUrl}`;
+            }
 
             const { owner, repo } = context.repo;
             const { data: comments } = await github.rest.issues.listComments({
