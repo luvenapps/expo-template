@@ -1,7 +1,7 @@
 module.exports = {
   preset: 'jest-expo',
   setupFiles: ['<rootDir>/__tests__/setup.ts'],
-  setupFilesAfterEnv: ['@testing-library/jest-native/extend-expect'],
+  setupFilesAfterEnv: ['@testing-library/react-native/build/matchers/extend-expect'],
   watchman: false,
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
