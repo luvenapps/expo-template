@@ -90,6 +90,10 @@ jobs:
             fi
           done
 
+      - name: Verify Expo/RN dependency alignment
+        shell: bash
+        run: .github/scripts/verify_expo_deps.sh
+
       - name: Doctor
         run: npm run doctor
         continue-on-error: true

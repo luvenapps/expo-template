@@ -1,0 +1,24 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "schedule": ["every weekend"],
+  "packageRules": [
+    {
+      "groupName": "expo",
+      "matchPackagePatterns": ["^expo", "^@expo/", "^react-native"],
+      "postUpgradeTasks": {
+        "commands": ["npx expo install --fix"],
+        "fileFilters": ["package.json", "package-lock.json"],
+        "executionMode": "branch"
+      }
+    },
+    {
+      "groupName": "dev-dependencies",
+      "matchDepTypes": ["devDependencies"],
+      "excludePackagePatterns": ["^expo", "^@expo/", "^react-native"]
+    },
+    { "groupName": "github-actions", "matchManagers": ["github-actions"] }
+  ],
+  "prHourlyLimit": 5,
+  "prConcurrentLimit": 10
+}

@@ -71,10 +71,6 @@ jobs:
           fi
           eas --version
 
-      - name: Verify Expo/RN dependency alignment
-        shell: bash
-        run: .github/scripts/verify_expo_deps.sh
-
       - name: Make CI scripts executable
         run: chmod +x .github/scripts/*.sh
 

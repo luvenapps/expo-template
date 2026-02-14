@@ -83,10 +83,6 @@ jobs:
         shell: bash
         run: .github/scripts/setup_fastlane.sh  "${{ env.FASTLANE_VERSION }}"
 
-      - name: Verify Expo/RN dependency alignment
-        shell: bash
-        run: .github/scripts/verify_expo_deps.sh
-
       - name: Setup Maestro
         shell: bash
         run: .github/scripts/setup_maestro.sh "${{ env.MAESTRO_VERSION }}"
