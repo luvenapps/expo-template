@@ -1,0 +1,55 @@
+name: CI Cache Bust
+
+on:
+  workflow_call:
+
+jobs:
+  cache-bust:
+    if: vars.USE_SELF_HOSTED == 'true'
+    runs-on: [self-hosted, macos, arm64]
+    steps:
+      - name: Bust local cache
+        if: vars.USE_LOCAL_CACHE == 'true'
+        shell: bash
+        env:
+          CACHE_BUST_TOKEN: ${{ vars.CACHE_BUST_TOKEN }}
+        run: |
+          set -euo pipefail
+          CACHE_DIR="$HOME/.local-ci-cache"
+          TOKEN_FILE="$CACHE_DIR/.bust-token"
+
+          mkdir -p "$CACHE_DIR"
+
+          STORED_TOKEN=""
+          [ -f "$TOKEN_FILE" ] && STORED_TOKEN=$(cat "$TOKEN_FILE")
+
+          if [ "$STORED_TOKEN" = "$CACHE_BUST_TOKEN" ]; then
+            echo "Bust token unchanged — skipping cache wipe."
+            exit 0
+          fi
+
+          echo "Bust token changed ('$STORED_TOKEN' → '$CACHE_BUST_TOKEN') — wiping local cache."
+
+          CACHE_LOCK_DIR="$CACHE_DIR/.lockdir"
+          acquire_cache_lock() {
+            local deadline=$(( $(date +%s) + 120 ))
+            while ! mkdir "$CACHE_LOCK_DIR" 2>/dev/null; do
+              if [ "$(date +%s)" -ge "$deadline" ]; then return 1; fi
+              local mtime
+              mtime=$(stat -f "%m" "$CACHE_LOCK_DIR" 2>/dev/null || stat -c "%Y" "$CACHE_LOCK_DIR" 2>/dev/null || echo "$(date +%s)")
+              [ $(( $(date +%s) - mtime )) -gt 180 ] && rm -rf "$CACHE_LOCK_DIR"
+              sleep 1
+            done
+            trap 'rm -rf "$CACHE_LOCK_DIR"' EXIT INT TERM HUP
+          }
+          acquire_cache_lock || { echo "⚠️  Could not acquire cache lock after 120s — aborting bust"; exit 1; }
+
+          for entry in "$CACHE_DIR"/*/; do
+            [ -d "$entry" ] || continue
+            [ "$(basename "$entry")" = ".lockdir" ] && continue
+            echo "Removing $(basename "$entry")"
+            rm -rf "$entry"
+          done
+
+          printf '%s' "$CACHE_BUST_TOKEN" > "$TOKEN_FILE"
+          echo "Cache wiped and bust token updated."

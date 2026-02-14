@@ -31,7 +31,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Setup Java 17
         uses: actions/setup-java@v5
@@ -48,7 +48,7 @@ jobs:
       - name: Setup Ruby (for Fastlane)
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.2'
+          ruby-version: '4.0.1'
           bundler: 'none'
 
       - name: Install deps
@@ -95,7 +95,7 @@ jobs:
 
       - name: Restore the tar.gz iOS app
         id: ios_cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           path: ./*.tar.gz
           key: ${{ steps.ios_fp.outputs.key }}
@@ -139,7 +139,7 @@ jobs:
 
       - name: Save the tar.gz iOS app
         if: steps.ios_cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: ./*.tar.gz
           key: ${{ steps.ios_fp.outputs.key }}
@@ -258,7 +258,7 @@ jobs:
 
       - name: Upload Xcode build artifacts
         if: failure() && steps.ios_cache.outputs.cache-hit != 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: xcode-build-artifacts-ios-hosted
           path: |
@@ -269,7 +269,7 @@ jobs:
 
       - name: Upload E2E artifacts on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: e2e-artifacts-ios-hosted
           path: |

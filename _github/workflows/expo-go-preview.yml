@@ -58,7 +58,7 @@ jobs:
           echo "SUPABASE_ACCESS_TOKEN=$DEV_SUPABASE_ACCESS_TOKEN" >> "$GITHUB_ENV"
 
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Clean workspace (self-hosted)
         if: ${{ inputs.runner_target == 'selfhosted' }}
@@ -125,7 +125,7 @@ jobs:
 
       - name: Comment with preview details
         if: ${{ inputs.is_pull_request && env.EXPO_TOKEN != '' }}
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           UPDATE_GROUP_ID: ${{ steps.eas_update.outputs.update_group_id }}
           RUNTIME_VERSION: ${{ steps.eas_update.outputs.runtime_version }}

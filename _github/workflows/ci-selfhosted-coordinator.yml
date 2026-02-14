@@ -46,6 +46,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  cache-bust:
+    if: vars.USE_SELF_HOSTED == 'true'
+    uses: ./.github/workflows/ci-cache-bust.yml
+    secrets: inherit
+
   quality:
     if: vars.USE_SELF_HOSTED == 'true'
     uses: ./.github/workflows/ci-quality.yml
@@ -56,7 +61,7 @@ jobs:
 
   android:
     if: vars.USE_SELF_HOSTED == 'true'
-    needs: quality
+    needs: [quality, cache-bust]
     uses: ./.github/workflows/ci-android-selfhosted.yml
     with:
       env_prefix: ${{ github.ref_name == 'main' && 'PROD' || 'DEV' }}
@@ -64,7 +69,7 @@ jobs:
 
   ios:
     if: vars.USE_SELF_HOSTED == 'true'
-    needs: quality
+    needs: [quality, cache-bust]
     uses: ./.github/workflows/ci-ios-selfhosted.yml
     with:
       env_prefix: ${{ github.ref_name == 'main' && 'PROD' || 'DEV' }}
@@ -80,3 +85,77 @@ jobs:
       pr_number: ${{ github.event.pull_request.number || 0 }}
       is_fork: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork || false }}
     secrets: inherit
+
+  evict-local-cache:
+    # Runs after android + ios complete (pass or fail) to keep disk under budget.
+    # Only active when local cache mode is enabled.
+    if: always() && vars.USE_SELF_HOSTED == 'true' && vars.USE_LOCAL_CACHE == 'true'
+    needs: [android, ios]
+    runs-on: [self-hosted, macos, arm64]
+    # Serialize evictions across concurrent workflow runs so rm -rf never
+    # races with another run's restore/save (which hold the same flock).
+    concurrency:
+      group: local-cache-evict
+      cancel-in-progress: false
+    steps:
+      - name: Evict stale local cache entries
+        shell: bash
+        env:
+          LOCAL_CACHE_MAX_GB: ${{ vars.LOCAL_CACHE_MAX_GB || '100' }}
+        run: |
+          set -euo pipefail
+          MAX_GB="${LOCAL_CACHE_MAX_GB:-100}"
+          CACHE_DIR="$HOME/.local-ci-cache"
+          MAX_BYTES=$(( MAX_GB * 1024 * 1024 * 1024 ))
+
+          echo "Cache dir: $CACHE_DIR"
+          [ -d "$CACHE_DIR" ] || { echo "No local cache dir — nothing to evict."; exit 0; }
+
+          # Portable advisory lock: mkdir is atomic on all POSIX filesystems
+          # and works on both Linux and macOS without extra packages.
+          CACHE_LOCK_DIR="$CACHE_DIR/.lockdir"
+          acquire_cache_lock() {
+            local deadline=$(( $(date +%s) + 120 ))
+            while ! mkdir "$CACHE_LOCK_DIR" 2>/dev/null; do
+              if [ "$(date +%s)" -ge "$deadline" ]; then return 1; fi
+              local mtime
+              mtime=$(stat -f "%m" "$CACHE_LOCK_DIR" 2>/dev/null || stat -c "%Y" "$CACHE_LOCK_DIR" 2>/dev/null || echo "$(date +%s)")
+              [ $(( $(date +%s) - mtime )) -gt 180 ] && rm -rf "$CACHE_LOCK_DIR"
+              sleep 1
+            done
+            trap 'rm -rf "$CACHE_LOCK_DIR"' EXIT INT TERM HUP
+          }
+          acquire_cache_lock || { echo "⚠️  Could not acquire cache lock after 120s — skipping eviction"; exit 0; }
+
+          # du -sk gives KiB; convert to bytes
+          TOTAL=$(du -sk "$CACHE_DIR" 2>/dev/null | awk '{print $1 * 1024}' || echo 0)
+          echo "Local cache size : $(( TOTAL / 1024 / 1024 )) MB  (limit: $(( MAX_GB * 1024 )) MB)"
+
+          if [ "$TOTAL" -le "$MAX_BYTES" ]; then
+            echo "Within budget — no eviction needed."
+            exit 0
+          fi
+
+          # Sort entries by last-accessed (then saved-at) timestamp, oldest first
+          while IFS= read -r entry; do
+            [ "$TOTAL" -le "$MAX_BYTES" ] && break
+            [ -d "$entry" ] || continue
+            SIZE=$(du -sk "$entry" 2>/dev/null | awk '{print $1 * 1024}' || echo 0)
+            echo "Evicting $(basename "$entry")  ($(( SIZE / 1024 / 1024 )) MB)"
+            rm -rf "$entry"
+            TOTAL=$(( TOTAL - SIZE ))
+          done < <(
+            for d in "$CACHE_DIR"/*/; do
+              [ -d "$d" ] || continue
+              # Skip the lock directory itself
+              [ "$(basename "$d")" = ".lockdir" ] && continue
+              ts=0
+              for f in "$d/.last-accessed" "$d/.saved-at"; do
+                if [ -f "$f" ]; then ts=$(cat "$f"); break; fi
+              done
+              [ "$ts" -eq 0 ] && ts=$(stat -f "%m" "$d" 2>/dev/null || stat -c "%Y" "$d" 2>/dev/null || echo 0)
+              printf '%s %s\n' "$ts" "$d"
+            done | sort -n | awk '{print $2}'
+          )
+
+          echo "Cache size after eviction: $(( TOTAL / 1024 / 1024 )) MB"

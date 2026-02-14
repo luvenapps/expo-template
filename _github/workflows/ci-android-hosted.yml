@@ -33,7 +33,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Setup Node 24
         uses: actions/setup-node@v6
@@ -44,7 +44,7 @@ jobs:
       - name: Setup Ruby (for Fastlane)
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.2'
+          ruby-version: '4.0.1'
           bundler: 'none'
 
       - name: Setup Java 17
@@ -97,7 +97,7 @@ jobs:
 
       - name: Restore cached APK
         id: apk-cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           path: ./*.apk
           key: ${{ steps.android_fingerprint.outputs.key }}
@@ -124,7 +124,7 @@ jobs:
       - name: Cache Gradle (caches + wrapper + project .gradle)
         if: steps.apk-cache.outputs.cache-hit != 'true'
         id: gradle-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.gradle/caches
@@ -187,7 +187,7 @@ jobs:
 
       - name: Save APK to cache
         if: steps.apk-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: ${{ steps.find_apk.outputs.apk }}
           key: ${{ steps.android_fingerprint.outputs.key }}
@@ -324,7 +324,7 @@ jobs:
 
       - name: Upload Gradle reports
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: gradle-reports-android-hosted
           path: |
@@ -334,7 +334,7 @@ jobs:
 
       - name: Save Gradle cache (post-build)
         if: always() && steps.apk-cache.outputs.cache-hit != 'true' && steps.gradle-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: |
             ~/.gradle/caches
@@ -372,7 +372,7 @@ jobs:
 
       - name: Upload E2E artifacts on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: e2e-artifacts-android-hosted
           path: |

@@ -1,0 +1,92 @@
+name: Local Cache Save
+description: >
+  Save to local disk (self-hosted) when use-local-cache is true,
+  otherwise delegate to actions/cache/save for GitHub-hosted runners.
+
+inputs:
+  path:
+    description: Newline-separated list of paths to cache
+    required: true
+  key:
+    description: Cache key
+    required: true
+  use-local-cache:
+    description: Set to 'true' to use the runner's local disk cache
+    required: false
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    # ── GitHub-hosted path ──────────────────────────────────────────────────
+    - name: Save to GitHub cache
+      if: ${{ inputs.use-local-cache != 'true' }}
+      uses: actions/cache/save@v5
+      with:
+        path: ${{ inputs.path }}
+        key: ${{ inputs.key }}
+
+    # ── Self-hosted local-disk path ─────────────────────────────────────────
+    - name: Save to local disk cache
+      if: ${{ inputs.use-local-cache == 'true' }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        KEY="${{ inputs.key }}"
+        SAFE_KEY=$(printf '%s' "$KEY" | tr -cs 'a-zA-Z0-9._-' '_')
+        CACHE_DIR="$HOME/.local-ci-cache/$SAFE_KEY"
+
+        # Collect all matching paths (expand ~ and relative, then glob)
+        RESOLVED=()
+        while IFS= read -r raw; do
+          raw=$(echo "$raw" | xargs 2>/dev/null || true)
+          [ -z "$raw" ] && continue
+          expanded="${raw/#\~/$HOME}"
+          if [[ "$expanded" != /* ]]; then
+            expanded="$GITHUB_WORKSPACE/$expanded"
+          fi
+          # Glob-expand; skip patterns that match nothing
+          for f in $expanded; do
+            [ -e "$f" ] && RESOLVED+=("$f")
+          done
+        done <<< "${{ inputs.path }}"
+
+        echo "── Local cache save ────────────────────────────────────────────"
+        echo "  Key  : $KEY"
+        echo "  Store: $CACHE_DIR"
+        echo "────────────────────────────────────────────────────────────────"
+
+        if [ ${#RESOLVED[@]} -eq 0 ]; then
+          echo "  ⚠️  No paths matched — skipping save"
+          echo "────────────────────────────────────────────────────────────────"
+          exit 0
+        fi
+
+        echo "  Paths to archive (${#RESOLVED[@]}):"
+        printf '    %s\n' "${RESOLVED[@]}"
+
+        # Portable advisory lock (see restore action for rationale).
+        mkdir -p "$HOME/.local-ci-cache"
+        CACHE_LOCK_DIR="$HOME/.local-ci-cache/.lockdir"
+        acquire_cache_lock() {
+          local deadline=$(( $(date +%s) + 120 ))
+          while ! mkdir "$CACHE_LOCK_DIR" 2>/dev/null; do
+            if [ "$(date +%s)" -ge "$deadline" ]; then return 1; fi
+            local mtime
+            mtime=$(stat -f "%m" "$CACHE_LOCK_DIR" 2>/dev/null || stat -c "%Y" "$CACHE_LOCK_DIR" 2>/dev/null || echo "$(date +%s)")
+            [ $(( $(date +%s) - mtime )) -gt 180 ] && rm -rf "$CACHE_LOCK_DIR"
+            sleep 1
+          done
+          trap 'rm -rf "$CACHE_LOCK_DIR"' EXIT INT TERM HUP
+        }
+        acquire_cache_lock || { echo "⚠️  Could not acquire cache lock after 120s — proceeding unlocked"; }
+
+        mkdir -p "$CACHE_DIR"
+
+        echo "  Creating archive ..."
+        tar -czf "$CACHE_DIR/cache.tar.gz" "${RESOLVED[@]}"
+        printf '%s' "$(date -u +%s)" > "$CACHE_DIR/.saved-at"
+        echo "  Archive size: $(du -sh "$CACHE_DIR/cache.tar.gz" | cut -f1)"
+        echo "────────────────────────────────────────────────────────────────"
+        echo "  Result: saved to $CACHE_DIR"
+        echo "────────────────────────────────────────────────────────────────"

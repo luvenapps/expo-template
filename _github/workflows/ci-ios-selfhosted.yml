@@ -29,7 +29,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Reset Watchman (self-hosted)
         shell: bash
@@ -92,10 +92,11 @@ jobs:
 
       - name: Restore the tar.gz iOS app
         id: ios_cache
-        uses: actions/cache/restore@v4
+        uses: ./.github/actions/local-cache/restore
         with:
           path: ./*.tar.gz
           key: ${{ steps.ios_fp.outputs.key }}
+          use-local-cache: ${{ vars.USE_LOCAL_CACHE == 'true' }}
 
       - name: Build e2erelease
         if: steps.ios_cache.outputs.cache-hit != 'true'
@@ -136,10 +137,11 @@ jobs:
 
       - name: Save the tar.gz iOS app
         if: steps.ios_cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: ./.github/actions/local-cache/save
         with:
           path: ./*.tar.gz
           key: ${{ steps.ios_fp.outputs.key }}
+          use-local-cache: ${{ vars.USE_LOCAL_CACHE == 'true' }}
 
       - name: Locate .app artifact
         id: find_app
@@ -255,7 +257,7 @@ jobs:
 
       - name: Upload Xcode build artifacts
         if: failure() && steps.ios_cache.outputs.cache-hit != 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: xcode-build-artifacts-ios-selfhosted
           path: |
@@ -266,7 +268,7 @@ jobs:
 
       - name: Upload E2E artifacts on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: e2e-artifacts-ios-selfhosted
           path: |

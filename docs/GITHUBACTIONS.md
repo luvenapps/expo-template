@@ -28,6 +28,7 @@ Both coordinators define:
 ### Reusable sub-workflows (`workflow_call`)
 
 - `.github/workflows/ci-quality.yml`
+- `.github/workflows/ci-cache-bust.yml`
 - `.github/workflows/ci-android-hosted.yml`
 - `.github/workflows/ci-android-selfhosted.yml`
 - `.github/workflows/ci-ios-hosted.yml`
@@ -70,7 +71,10 @@ Each coordinator runs the same dependency graph:
 3. `ios` (`needs: quality`)
 4. `expo-go-preview` (parallel, no `needs`)
 
-This ensures Android and iOS only run after quality passes, while Expo preview can run independently.
+The self-hosted coordinator adds two additional jobs:
+
+- `cache-bust` (parallel with `quality`, no `needs`) — wipes the local cache when `CACHE_BUST_TOKEN` changes; `android` and `ios` both `needs: [quality, cache-bust]`. See [Cache busting](#cache-busting).
+- `evict-local-cache` (`needs: [android, ios]`, `if: always()`) — only runs when `USE_LOCAL_CACHE == 'true'`; see [LRU eviction](#lru-eviction).
 
 `auto-claude-review.yml` is outside this graph because it is direct PR comment automation.
 
@@ -105,6 +109,8 @@ Reusable workflows accept `env_prefix` and map runtime values dynamically:
 
 Selected values are written into `$GITHUB_ENV` for downstream steps.
 
+The mapping is performed by `.github/scripts/map_runtime_env.sh` which is called early in every mobile workflow.
+
 ---
 
 ## 🔧 Quality workflow
@@ -120,10 +126,13 @@ It runs:
 - `npm run lint`
 - `npm run test -- --coverage`
 - Codecov uploads
+- Expo dependency verification via `.github/scripts/verify_expo_deps.sh`
 
 `Doctor` is intentionally retained only in `ci-quality.yml`.
 
 GPG installation is skipped on self-hosted quality runs.
+
+**Expo dep check is centralised here.** It was previously duplicated in each mobile workflow; it now runs once in quality and mobile workflows no longer call `verify_expo_deps.sh` directly.
 
 ---
 
@@ -158,12 +167,137 @@ npx @expo/repack-app --platform ios --source-app <located-app-path> --output <te
 # then replace the located .app path with the repacked output
 ```
 
+### Hermes bundle validation
+
+Before repack, `.github/scripts/validate_hermes_bundle.sh <platform>` checks that the cached native binary and the freshly-exported JS bundle are Hermes-compatible (accepts both `.js` and `.hbc` bytecode outputs). If validation fails the workflow aborts before touching the artifact.
+
+---
+
+## 💾 Local disk cache (self-hosted only)
+
+GitHub Actions imposes a 10 GB org-wide cache quota. Because Renovate triggers the self-hosted workflow on every dependency update, the quota fills quickly. The local cache system routes cache I/O to the runner's own SSD instead of the GitHub cache service.
+
+### Enabling
+
+Set a repository (or org) variable:
+
+```
+USE_LOCAL_CACHE = true
+```
+
+Remove it or set it to any other value to fall back to `actions/cache` with no code change required.
+
+### Composite actions
+
+Two composite actions in `.github/actions/local-cache/` wrap every cache step:
+
+| Action                | Replaces                                                    |
+| --------------------- | ----------------------------------------------------------- |
+| `local-cache/restore` | `actions/cache/restore@v5`                                  |
+| `local-cache/save`    | `actions/cache/save@v5` and the combined `actions/cache@v5` |
+
+Both actions accept a `use-local-cache` input. When `false` (or unset) they delegate directly to the corresponding `actions/cache` action, so hosted workflows are completely unaffected.
+
+### Storage layout
+
+Cache entries are stored in the runner's home directory:
+
+```
+~/.local-ci-cache/
+├── .lockdir/             ← advisory mutex directory (held during save/restore/evict)
+└── <sanitized-key>/
+    ├── cache.tar.gz      ← tar archive preserving absolute paths
+    ├── .saved-at         ← Unix epoch written on save
+    └── .last-accessed    ← Unix epoch updated on every restore hit
+```
+
+`cache.tar.gz` is extracted with `tar -xzf ... -C /`, which restores files to their original absolute paths (`~/.gradle/caches`, `$GITHUB_WORKSPACE/*.apk`, etc.).
+
+Why not inside the workspace? The Android workflow runs `git clean -ffdx` at the start of every job. The `-x` flag removes gitignored files, so anything inside the workspace — even under `.gitignore` — is deleted before the restore step runs. `~` is outside the workspace and is never touched by `git clean`.
+
+### What is cached
+
+| Cache key               | Contents                                                   | Workflow                    |
+| ----------------------- | ---------------------------------------------------------- | --------------------------- |
+| Android fingerprint key | `*.apk` in workspace root                                  | `ci-android-selfhosted.yml` |
+| `gradle-<OS>-<hash>`    | `~/.gradle/caches`, `~/.gradle/wrapper`, `android/.gradle` | `ci-android-selfhosted.yml` |
+| iOS fingerprint key     | `*.tar.gz` in workspace root                               | `ci-ios-selfhosted.yml`     |
+
+### Concurrency and locking
+
+Save, restore, and eviction all acquire an exclusive advisory lock before touching cache entries. The lock is implemented as `~/.local-ci-cache/.lockdir` — `mkdir` on that path is atomic on all POSIX filesystems (Linux and macOS) and requires no external packages. The lock is released automatically via a bash `EXIT` trap. Stale locks older than 3 minutes (left by force-killed jobs) are cleared automatically.
+
+The `evict-local-cache` job also carries a GitHub Actions job-level `concurrency` group (`local-cache-evict`, `cancel-in-progress: false`) so that evictions from concurrent workflow runs are serialized rather than overlapping.
+
+### Cache busting
+
+To force-wipe the entire local cache on all self-hosted runners (e.g. after a corrupted entry or a major toolchain upgrade), rotate the value of a repository variable:
+
+```
+CACHE_BUST_TOKEN = <any new value>
+```
+
+The `cache-bust` job in `ci-selfhosted-coordinator.yml` (reusable workflow: `ci-cache-bust.yml`) reads `~/.local-ci-cache/.bust-token` and compares it to `vars.CACHE_BUST_TOKEN`. If they differ, the entire `~/.local-ci-cache/` directory is wiped and the new token is written to disk. On subsequent runs the token matches and the wipe is skipped.
+
+`android` and `ios` both `needs: [quality, cache-bust]`, so builds cannot start until the wipe completes.
+
+### LRU eviction
+
+The `evict-local-cache` job in `ci-selfhosted-coordinator.yml` runs after `android` and `ios` complete (regardless of their outcome). It:
+
+1. Measures total size of `~/.local-ci-cache/`.
+2. If over the configured limit (default **100 GB**), deletes entries in least-recently-accessed order until the total is back under budget.
+3. LRU order is determined by `.last-accessed` (updated on restore hit), falling back to `.saved-at`, then directory mtime.
+
+The limit defaults to 100 GB and can be overridden by setting a repository (or org) variable:
+
+```
+LOCAL_CACHE_MAX_GB = 50
+```
+
+### Variable timing
+
+`vars.*` values (including `CACHE_BUST_TOKEN` and `LOCAL_CACHE_MAX_GB`) are resolved at **workflow run creation time** — when the triggering event (push, PR) fires — not when individual jobs start. If you update a variable while a run is already in progress, the running jobs will still see the old value. The new value takes effect on the next workflow run triggered after the update.
+
 ---
 
 ## 👀 Expo Go preview changes
 
-- Removed `Basic checks` (`npm run type-check`) from `.github/workflows/expo-go-preview.yml`.
-- Remaining preview publish/comment behavior is unchanged.
+- The PR comment now embeds a **scannable QR code** from `qr.expo.dev` linking to the published update.
+- The update group ID and runtime version are parsed from the `eas update --json` output.
+- Falls back to the original plain-text comment if JSON parsing fails.
+- `Basic checks` (`npm run type-check`) was removed from `expo-go-preview.yml`; type checking now runs in `ci-quality.yml`.
+
+---
+
+## 🔥 Firebase guardrails (self-hosted mobile jobs)
+
+Android and iOS self-hosted workflows gate Firebase-dependent steps behind a `TURN_ON_FIREBASE` variable:
+
+- `vars.TURN_ON_FIREBASE == 'true'` (or `vars.<PREFIX>_TURN_ON_FIREBASE == 'true'`) — Firebase secrets are injected.
+- Any other value — Firebase env vars are set to empty strings so the app still builds and runs without Firebase.
+
+The same pattern is applied in `expo-go-preview.yml`.
+
+---
+
+## 📜 Shared CI scripts
+
+All helper scripts live under `.github/scripts/` and are made executable via `chmod +x .github/scripts/*.sh` early in each workflow.
+
+| Script                          | Purpose                                                                         |
+| ------------------------------- | ------------------------------------------------------------------------------- |
+| `map_runtime_env.sh`            | Maps `env_prefix`-scoped vars/secrets into `$GITHUB_ENV`                        |
+| `validate_hermes_bundle.sh`     | Verifies Hermes compatibility between native binary and JS bundle before repack |
+| `verify_expo_deps.sh`           | Checks that installed Expo package versions match `expo-doctor` expectations    |
+| `compute_fingerprint.sh`        | Computes a deterministic cache key for the native build (Android or iOS)        |
+| `setup_fastlane.sh`             | Installs/verifies the pinned Fastlane version                                   |
+| `setup_maestro.sh`              | Installs/verifies the pinned Maestro version                                    |
+| `android_run_e2e.sh`            | Runs the Android E2E test suite via Maestro                                     |
+| `ios_boot_simulator.sh`         | Boots the target iOS simulator                                                  |
+| `ios_install_app.sh`            | Installs the `.app` on the booted simulator                                     |
+| `ios_run_e2e.sh`                | Runs the iOS E2E test suite via Maestro                                         |
+| `clean_selfhosted_workspace.sh` | Post-job workspace cleanup on self-hosted runners                               |
 
 ---
 
@@ -175,6 +309,12 @@ npx @expo/repack-app --platform ios --source-app <located-app-path> --output <te
 - Hosted mode (`USE_SELF_HOSTED != 'true'`): job runs on `ubuntu-latest`.
 - Self-hosted mode (`USE_SELF_HOSTED == 'true'`): job runs on `[self-hosted, macos, arm64]`.
 - Required permission: `pull-requests: write`.
+
+---
+
+## 🔄 Renovate
+
+`renovate.json` is present at the repository root. Renovate runs as a self-hosted workflow, which means every Renovate dependency-update PR triggers the full self-hosted CI pipeline. This is the primary driver for the local disk cache feature — Renovate PRs previously consumed the 10 GB GitHub cache quota faster than it could be reclaimed.
 
 ---
 

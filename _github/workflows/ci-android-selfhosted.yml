@@ -31,7 +31,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Clean workspace (self-hosted)
         shell: bash
@@ -106,10 +106,11 @@ jobs:
 
       - name: Restore cached APK
         id: apk-cache
-        uses: actions/cache/restore@v4
+        uses: ./.github/actions/local-cache/restore
         with:
           path: ./*.apk
           key: ${{ steps.android_fingerprint.outputs.key }}
+          use-local-cache: ${{ vars.USE_LOCAL_CACHE == 'true' }}
 
       - name: Create debug keystore
         if: steps.apk-cache.outputs.cache-hit != 'true'
@@ -130,10 +131,10 @@ jobs:
           echo "android.injected.signing.key.password=android"                   >> android/gradle.properties
 
       # Lean caching: only Gradle to stay under 10GB org-wide cache budget
-      - name: Cache Gradle (caches + wrapper + project .gradle)
+      - name: Restore Gradle cache
         if: steps.apk-cache.outputs.cache-hit != 'true'
         id: gradle-cache
-        uses: actions/cache@v4
+        uses: ./.github/actions/local-cache/restore
         with:
           path: |
             ~/.gradle/caches
@@ -142,6 +143,7 @@ jobs:
           key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'android/**/build.gradle', 'android/**/gradle.properties') }}
           restore-keys: |
             gradle-${{ runner.os }}-
+          use-local-cache: ${{ vars.USE_LOCAL_CACHE == 'true' }}
 
       - name: Build e2erelease APK
         if: steps.apk-cache.outputs.cache-hit != 'true'
@@ -196,10 +198,11 @@ jobs:
 
       - name: Save APK to cache
         if: steps.apk-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: ./.github/actions/local-cache/save
         with:
           path: ./*.apk
           key: ${{ steps.android_fingerprint.outputs.key }}
+          use-local-cache: ${{ vars.USE_LOCAL_CACHE == 'true' }}
 
       - name: Run context snippet (engine + native project state)
         if: steps.apk-cache.outputs.cache-hit == 'true'
@@ -333,7 +336,7 @@ jobs:
 
       - name: Upload Gradle reports
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: gradle-reports-android-selfhosted
           path: |
@@ -343,13 +346,14 @@ jobs:
 
       - name: Save Gradle cache (post-build)
         if: always() && steps.apk-cache.outputs.cache-hit != 'true' && steps.gradle-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: ./.github/actions/local-cache/save
         with:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
             android/.gradle
           key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'android/**/build.gradle', 'android/**/gradle.properties') }}
+          use-local-cache: ${{ vars.USE_LOCAL_CACHE == 'true' }}
 
       # Self-hosted macOS (Apple Silicon) runner must have Android SDK & emulator installed; hardware accel uses Hypervisor.framework (no KVM).
       - name: Run E2E tests
@@ -368,7 +372,7 @@ jobs:
 
       - name: Upload E2E artifacts on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: e2e-artifacts-android-selfhosted
           path: |

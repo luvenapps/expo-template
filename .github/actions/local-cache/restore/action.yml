@@ -1,0 +1,142 @@
+name: Local Cache Restore
+description: >
+  Restore from local disk (self-hosted) when use-local-cache is true,
+  otherwise delegate to actions/cache/restore for GitHub-hosted runners.
+
+inputs:
+  path:
+    description: Newline-separated list of paths to restore
+    required: true
+  key:
+    description: Exact cache key
+    required: true
+  restore-keys:
+    description: Ordered list of prefix keys to fall back to
+    required: false
+    default: ''
+  use-local-cache:
+    description: Set to 'true' to use the runner's local disk cache
+    required: false
+    default: 'false'
+
+outputs:
+  cache-hit:
+    description: "'true' if an exact key match was found, 'false' otherwise"
+    value: ${{ steps.set-output.outputs.cache-hit }}
+
+runs:
+  using: composite
+  steps:
+    # ── GitHub-hosted path ──────────────────────────────────────────────────
+    - name: Restore from GitHub cache
+      if: ${{ inputs.use-local-cache != 'true' }}
+      id: gh-restore
+      uses: actions/cache/restore@v5
+      with:
+        path: ${{ inputs.path }}
+        key: ${{ inputs.key }}
+        restore-keys: ${{ inputs.restore-keys }}
+
+    # ── Self-hosted local-disk path ─────────────────────────────────────────
+    - name: Restore from local disk cache
+      if: ${{ inputs.use-local-cache == 'true' }}
+      id: local-restore
+      shell: bash
+      run: |
+        set -euo pipefail
+        KEY="${{ inputs.key }}"
+        SAFE_KEY=$(printf '%s' "$KEY" | tr -cs 'a-zA-Z0-9._-' '_')
+        CACHE_DIR="$HOME/.local-ci-cache/$SAFE_KEY"
+        HIT="false"
+
+        echo "── Local cache restore ─────────────────────────────────────────"
+        echo "  Key  : $KEY"
+        echo "  Store: $CACHE_DIR"
+        echo "────────────────────────────────────────────────────────────────"
+
+        # Portable advisory lock: mkdir is atomic on all POSIX filesystems and
+        # works on both Linux and macOS without any extra packages (flock is
+        # Linux-only and not available on the macOS self-hosted runners).
+        mkdir -p "$HOME/.local-ci-cache"
+        CACHE_LOCK_DIR="$HOME/.local-ci-cache/.lockdir"
+        acquire_cache_lock() {
+          local deadline=$(( $(date +%s) + 120 ))
+          while ! mkdir "$CACHE_LOCK_DIR" 2>/dev/null; do
+            if [ "$(date +%s)" -ge "$deadline" ]; then return 1; fi
+            # Clear a stale lock left behind by a crashed process (> 3 min old)
+            local mtime
+            mtime=$(stat -f "%m" "$CACHE_LOCK_DIR" 2>/dev/null || stat -c "%Y" "$CACHE_LOCK_DIR" 2>/dev/null || echo "$(date +%s)")
+            [ $(( $(date +%s) - mtime )) -gt 180 ] && rm -rf "$CACHE_LOCK_DIR"
+            sleep 1
+          done
+          trap 'rm -rf "$CACHE_LOCK_DIR"' EXIT INT TERM HUP
+        }
+        acquire_cache_lock || { echo "⚠️  Could not acquire cache lock after 120s — proceeding unlocked"; }
+
+        restore_from_dir() {
+          local dir="$1"
+          local archive="$dir/cache.tar.gz"
+          if [ -f "$archive" ]; then
+            echo "  Archive : $archive ($(du -sh "$archive" | cut -f1))"
+            echo "  Extracting ..."
+            tar -xzf "$archive" -C / 2>/dev/null || tar -xzf "$archive" -C /
+            printf '%s' "$(date -u +%s)" > "$dir/.last-accessed"
+            echo "  Extraction complete."
+            return 0
+          else
+            echo "  ⚠️  cache.tar.gz not found in $dir — treating as miss"
+            return 1
+          fi
+        }
+
+        if [ -d "$CACHE_DIR" ]; then
+          echo "Exact match found for key: $KEY"
+          if restore_from_dir "$CACHE_DIR"; then
+            HIT="true"
+          else
+            echo "Archive missing in exact-match directory — treating as cache miss"
+          fi
+        else
+          echo "No exact match for key: $KEY"
+          # Prefix / restore-keys fallback
+          RESTORE_KEYS="${{ inputs.restore-keys }}"
+          if [ -n "$RESTORE_KEYS" ]; then
+            echo "Trying restore-keys (prefix fallback):"
+            FOUND_PREFIX=false
+            while IFS= read -r prefix; do
+              prefix=$(echo "$prefix" | xargs 2>/dev/null || true)
+              [ -z "$prefix" ] && continue
+              SAFE_PREFIX=$(printf '%s' "$prefix" | tr -cs 'a-zA-Z0-9._-' '_')
+              MATCH=$(ls -1dt "$HOME/.local-ci-cache/${SAFE_PREFIX}"* 2>/dev/null | head -n1 || true)
+              if [ -n "$MATCH" ] && [ -d "$MATCH" ]; then
+                echo "  Prefix '$prefix' → matched $(basename "$MATCH")"
+                restore_from_dir "$MATCH" && FOUND_PREFIX=true
+                break
+              else
+                echo "  Prefix '$prefix' → no match"
+              fi
+            done <<< "$RESTORE_KEYS"
+            $FOUND_PREFIX || echo "No prefix match found — cache miss"
+          else
+            echo "No restore-keys configured — cache miss"
+          fi
+        fi
+
+        echo "────────────────────────────────────────────────────────────────"
+        echo "  Result: cache-hit=$HIT"
+        echo "────────────────────────────────────────────────────────────────"
+        echo "cache-hit=$HIT" >> "$GITHUB_OUTPUT"
+
+    # ── Unify outputs ───────────────────────────────────────────────────────
+    - name: Set unified cache-hit output
+      id: set-output
+      shell: bash
+      run: |
+        if [ "${{ inputs.use-local-cache }}" == "true" ]; then
+          echo "cache-hit=${{ steps.local-restore.outputs.cache-hit }}" >> "$GITHUB_OUTPUT"
+        else
+          # actions/cache/restore emits 'true' on exact hit, '' otherwise
+          RAW="${{ steps.gh-restore.outputs.cache-hit }}"
+          [ "$RAW" == "true" ] && echo "cache-hit=true" >> "$GITHUB_OUTPUT" \
+                                || echo "cache-hit=false" >> "$GITHUB_OUTPUT"
+        fi
