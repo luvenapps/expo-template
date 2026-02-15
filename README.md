@@ -64,21 +64,7 @@ brew update
 brew upgrade
 ```
 
-### 🧭 Expo CLI (optional but recommended globally)
-
-You can run Expo commands with `npx`, but installing globally is convenient:
-
-```bash
-npm install -g expo-cli
-```
-
-Check:
-
-```bash
-expo --version
-```
-
-### 🧩 Core dependencies (via Homebrew)
+### 🧩 3. Core dependencies (via Homebrew)
 
 #### 🚀 Fastlane — for local iOS builds
 
@@ -104,6 +90,34 @@ brew install watchman
 
 ```bash
 brew install node
+```
+
+### 🧭 Expo CLI (optional but recommended globally)
+
+You can run Expo commands with `npx`, but installing globally is convenient:
+
+```bash
+npm install -g expo-cli
+```
+
+Check:
+
+```bash
+expo --version
+```
+
+### 🧭 4. Expo CLI (optional but recommended globally)
+
+You can run Expo commands with `npx`, but installing globally is convenient:
+
+```bash
+npm install -g expo-cli
+```
+
+Check:
+
+```bash
+expo --version
 ```
 
 ### 🐋 Container Runtime (Supabase Local DB)
