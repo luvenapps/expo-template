@@ -203,7 +203,7 @@ Both actions accept a `use-local-cache` input. When `false` (or unset) they dele
 Cache entries are stored in the runner's home directory:
 
 ```
-~/.local-ci-cache/
+~/.github/local-ci-cache/
 ├── .lockdir/             ← advisory mutex directory (held during save/restore/evict)
 └── <sanitized-key>/
     ├── cache.tar.gz      ← tar archive preserving absolute paths
@@ -225,7 +225,7 @@ Why not inside the workspace? The Android workflow runs `git clean -ffdx` at the
 
 ### Concurrency and locking
 
-Save, restore, and eviction all acquire an exclusive advisory lock before touching cache entries. The lock is implemented as `~/.local-ci-cache/.lockdir` — `mkdir` on that path is atomic on all POSIX filesystems (Linux and macOS) and requires no external packages. The lock is released automatically via a bash `EXIT` trap. Stale locks older than 3 minutes (left by force-killed jobs) are cleared automatically.
+Save, restore, and eviction all acquire an exclusive advisory lock before touching cache entries. The lock is implemented as `~/.github/local-ci-cache/.lockdir` — `mkdir` on that path is atomic on all POSIX filesystems (Linux and macOS) and requires no external packages. The lock is released automatically via a bash `EXIT` trap. Stale locks older than 3 minutes (left by force-killed jobs) are cleared automatically.
 
 The `evict-local-cache` job also carries a GitHub Actions job-level `concurrency` group (`local-cache-evict`, `cancel-in-progress: false`) so that evictions from concurrent workflow runs are serialized rather than overlapping.
 
@@ -237,7 +237,7 @@ To force-wipe the entire local cache on all self-hosted runners (e.g. after a co
 CACHE_BUST_TOKEN = <any new value>
 ```
 
-The `cache-bust` job in `ci-selfhosted-coordinator.yml` (reusable workflow: `ci-cache-bust.yml`) reads `~/.local-ci-cache/.bust-token` and compares it to `vars.CACHE_BUST_TOKEN`. If they differ, the entire `~/.local-ci-cache/` directory is wiped and the new token is written to disk. On subsequent runs the token matches and the wipe is skipped.
+The `cache-bust` job in `ci-selfhosted-coordinator.yml` (reusable workflow: `ci-cache-bust.yml`) reads `~/.github/local-ci-cache/.bust-token` and compares it to `vars.CACHE_BUST_TOKEN`. If they differ, the entire `~/.github/local-ci-cache/` directory is wiped and the new token is written to disk. On subsequent runs the token matches and the wipe is skipped.
 
 `android` and `ios` both `needs: [quality, cache-bust]`, so builds cannot start until the wipe completes.
 
@@ -245,7 +245,7 @@ The `cache-bust` job in `ci-selfhosted-coordinator.yml` (reusable workflow: `ci-
 
 The `evict-local-cache` job in `ci-selfhosted-coordinator.yml` runs after `android` and `ios` complete (regardless of their outcome). It:
 
-1. Measures total size of `~/.local-ci-cache/`.
+1. Measures total size of `~/.github/local-ci-cache/`.
 2. If over the configured limit (default **100 GB**), deletes entries in least-recently-accessed order until the total is back under budget.
 3. LRU order is determined by `.last-accessed` (updated on restore hit), falling back to `.saved-at`, then directory mtime.
 
@@ -333,7 +333,33 @@ Keep toolchains aligned with project requirements:
 - Xcode + iOS simulators
 - Android SDK + emulator tooling
 
-Runner helper scripts are under `.github/scripts/`.
+Runner install location (macOS-safe):
+
+```
+~/.github/actions-runner
+```
+
+Runner workspace location:
+
+```
+~/.github/actions-runner-workspace
+```
+
+Runner helper scripts:
+
+| Script                               | Purpose                                                                       |
+| ------------------------------------ | ----------------------------------------------------------------------------- |
+| `.github/runner/register-runner.sh`  | Download/configure runner (prompts for token + scope), does not start service |
+| `.github/runner/runner.service.sh`   | Manage launchd service: `start`, `stop`, `restart`, `status`, `logs`          |
+| `.github/runner/runner.local.sh`     | Run runner manually in foreground (non-service)                               |
+| `.github/runner/uninstall-runner.sh` | Unregister runner (remove token) and optionally remove local files            |
+| `.github/runner/cleanup.sh`          | Clean runner workspace only (`~/.github/actions-runner-workspace`)            |
+
+Notes:
+
+- `runner.service.sh logs` now follows live output (`tail -F`) for the active runner label only.
+- `runner.service.sh start` installs the service if missing, then starts it.
+- `cleanup.sh` no longer supports full cleanup; use `uninstall-runner.sh` for unregister/removal.
 
 ---
 

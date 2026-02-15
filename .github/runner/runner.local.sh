@@ -5,15 +5,15 @@ set -euo pipefail
 # Starts your self-hosted GitHub Actions runner MANUALLY (no background service).
 # Keep this terminal open while it runs — press Ctrl+C to stop it.
 
-# Store the runner runtime INSIDE THIS REPO so it can be ignored via .gitignore
+# Store the runner runtime under ~/.github so launchd can access it on macOS
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-RUNNER_BASE="${REPO_ROOT}/.github/runner/_"
+RUNNER_BASE="${HOME}/.github"
 RUNNER_DIR="${RUNNER_BASE}/actions-runner"
-WORKSPACE_DIR="${RUNNER_BASE}/workspace"
+WORKSPACE_DIR="${RUNNER_BASE}/actions-runner-workspace"
 
 # Helpful pointers
 REGISTER_HELP="${REPO_ROOT}/.github/runner/register-runner.sh"
-DOCS_HELP="${REPO_ROOT}/GITHUBACTIONS.md"
+DOCS_HELP="${REPO_ROOT}/docs/GITHUBACTIONS.md"
 
 if [ ! -d "${RUNNER_DIR}" ] || [ ! -f "${RUNNER_DIR}/run.sh" ]; then
   echo "❌ Runner binaries not found at:"

@@ -17,9 +17,9 @@ set -euo pipefail
 # - This script does NOT auto-install/register a runner; it only manages the service.
 # ============================================================================
 
-# Resolve repo root and runner directories (kept inside the repo)
+# Resolve repo root and runner directories (stored under ~/.github)
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-RUNNER_BASE="${REPO_ROOT}/.github/runner/_"
+RUNNER_BASE="${HOME}/.github"
 RUNNER_DIR="${RUNNER_BASE}/actions-runner"
 REGISTER_HELP="${REPO_ROOT}/.github/runner/register-runner.sh"
 
@@ -44,7 +44,7 @@ require_runner() {
 svc_status_raw() {
   # We rely on GitHub’s svc.sh status output; it uses launchctl under the hood.
   # Don’t fail the pipeline if status returns non-zero; we parse its output.
-  if ! out="$("${SVC}" status 2>&1 || true)"; then
+  if ! out="$(cd "${RUNNER_DIR}" && "${SVC}" status 2>&1 || true)"; then
     echo "${out}"
   else
     echo "${out}"
@@ -52,17 +52,23 @@ svc_status_raw() {
 }
 
 is_running() {
-  # Consider it running if status mentions "running" (case-insensitive)
+  # Consider it running if status mentions "running" or "Started" (case-insensitive)
   local out
   out="$(svc_status_raw)"
-  echo "${out}" | grep -qi "running"
+  echo "${out}" | grep -qiE "running|started"
 }
 
 is_installed() {
   # Installed if svc.sh status mentions a label/plist (heuristic) OR launchctl knows it
   # Fallback to checking LaunchAgents existence
+  local status_out
+  status_out="$(svc_status_raw)"
+  if echo "${status_out}" | grep -qi "not installed"; then
+    return 1
+  fi
+
   local label_hint
-  label_hint="$(svc_status_raw | grep -iE 'actions\.runner\.' || true)"
+  label_hint="$(echo "${status_out}" | grep -iE 'actions\.runner\.' || true)"
   if [[ -n "${label_hint}" ]]; then
     return 0
   fi
@@ -81,14 +87,9 @@ do_install_if_needed() {
     return 0
   fi
 
-  note "Installing runner service (may prompt for password)..."
-  if ! "${SVC}" install >/dev/null 2>&1; then
-    # Try with sudo if plain install fails due to permissions
-    if command -v sudo >/dev/null 2>&1; then
-      sudo "${SVC}" install
-    else
-      die "Failed to install service and sudo is not available."
-    fi
+  note "Installing runner service..."
+  if ! (cd "${RUNNER_DIR}" && "${SVC}" install >/dev/null 2>&1); then
+    die "Failed to install service. On macOS, svc.sh must not be run with sudo."
   fi
   ok "Service installed."
 }
@@ -103,12 +104,8 @@ cmd_start() {
   fi
 
   note "Starting runner service..."
-  if ! "${SVC}" start >/dev/null 2>&1; then
-    if command -v sudo >/dev/null 2>&1; then
-      sudo "${SVC}" start
-    else
-      die "Failed to start service and sudo is not available."
-    fi
+  if ! (cd "${RUNNER_DIR}" && "${SVC}" start >/dev/null 2>&1); then
+    die "Failed to start service. On macOS, svc.sh must not be run with sudo."
   fi
 
   # Brief wait & re-check
@@ -137,12 +134,8 @@ cmd_stop() {
   fi
 
   note "Stopping runner service..."
-  if ! "${SVC}" stop >/dev/null 2>&1; then
-    if command -v sudo >/dev/null 2>&1; then
-      sudo "${SVC}" stop
-    else
-      die "Failed to stop service and sudo is not available."
-    fi
+  if ! (cd "${RUNNER_DIR}" && "${SVC}" stop >/dev/null 2>&1); then
+    die "Failed to stop service. On macOS, svc.sh must not be run with sudo."
   fi
 
   # Brief wait & re-check
@@ -177,29 +170,55 @@ cmd_status() {
 }
 
 cmd_logs() {
-  # Try common log locations
-  # Newer runners often write logs under ~/Library/Logs/actions.runner.*/*.log
-  local log_globs=(
-    "${HOME}/Library/Logs/actions.runner."*"/"*.log
-    "${HOME}/Library/Logs/actions.runner."*"."*.log
-    "${HOME}/Library/Logs/actions.runner."*".log"
-  )
+  local status_out label
+  status_out="$(svc_status_raw)"
+  label="$(echo "${status_out}" | sed -n 's/^status \(actions\.runner\.[^:]*\):.*/\1/p' | head -n1)"
 
-  local found=""
-  for g in "${log_globs[@]}"; do
-    for f in $g; do
-      if [[ -f "$f" ]]; then
-        found="yes"
-        echo "==> Tailing: $f"
-        tail -n 200 "$f" || true
-        echo
-      fi
-    done
+  if [[ -z "${label}" ]]; then
+    warn "Could not determine runner label from service status."
+    echo "---- svc.sh status ----"
+    echo "${status_out}"
+    echo "-----------------------"
+    return 1
+  fi
+
+  local log_dir="${HOME}/Library/Logs/${label}"
+  local log_files=()
+  for f in "${log_dir}"/*.log; do
+    if [[ -f "$f" ]]; then
+      log_files+=("$f")
+    fi
   done
 
-  if [[ -z "${found}" ]]; then
-    warn "No runner logs found in ${HOME}/Library/Logs"
+  if [[ ${#log_files[@]} -eq 0 ]]; then
+    warn "No runner logs found for label '${label}' in ${log_dir}"
     echo "Tip: Check '$(dirname "$SVC")/_diag' or run: ${SVC} status"
+    return 1
+  fi
+
+  echo "ℹ️  Following logs for '${label}'. Press Ctrl+C to stop."
+  if [[ -t 1 ]]; then
+    tail -n 200 -F "${log_files[@]}" | awk '
+      BEGIN {
+        c_reset = "\033[0m";
+        c_hdr = "\033[1;36m";
+        c_out = "\033[0;37m";
+        c_err = "\033[1;31m";
+        stream = "stdout";
+      }
+      /^==> .* <==$/ {
+        if ($0 ~ /stderr\.log/) stream = "stderr";
+        else stream = "stdout";
+        print c_hdr $0 c_reset;
+        next;
+      }
+      {
+        if (stream == "stderr") print c_err $0 c_reset;
+        else print c_out $0 c_reset;
+      }
+    '
+  else
+    tail -n 200 -F "${log_files[@]}"
   fi
 }
 

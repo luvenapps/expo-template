@@ -105,7 +105,7 @@ jobs:
         run: |
           set -euo pipefail
           MAX_GB="${LOCAL_CACHE_MAX_GB:-100}"
-          CACHE_DIR="$HOME/.local-ci-cache"
+          CACHE_DIR="$HOME/.github/local-ci-cache"
           MAX_BYTES=$(( MAX_GB * 1024 * 1024 * 1024 ))
 
           echo "Cache dir: $CACHE_DIR"

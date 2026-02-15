@@ -15,7 +15,7 @@ jobs:
           CACHE_BUST_TOKEN: ${{ vars.CACHE_BUST_TOKEN }}
         run: |
           set -euo pipefail
-          CACHE_DIR="$HOME/.local-ci-cache"
+          CACHE_DIR="$HOME/.github/local-ci-cache"
           TOKEN_FILE="$CACHE_DIR/.bust-token"
 
           mkdir -p "$CACHE_DIR"

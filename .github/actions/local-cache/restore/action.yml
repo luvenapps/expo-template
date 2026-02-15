@@ -46,7 +46,7 @@ runs:
         set -euo pipefail
         KEY="${{ inputs.key }}"
         SAFE_KEY=$(printf '%s' "$KEY" | tr -cs 'a-zA-Z0-9._-' '_')
-        CACHE_DIR="$HOME/.local-ci-cache/$SAFE_KEY"
+        CACHE_DIR="$HOME/.github/local-ci-cache/$SAFE_KEY"
         HIT="false"
 
         echo "── Local cache restore ─────────────────────────────────────────"
@@ -57,8 +57,8 @@ runs:
         # Portable advisory lock: mkdir is atomic on all POSIX filesystems and
         # works on both Linux and macOS without any extra packages (flock is
         # Linux-only and not available on the macOS self-hosted runners).
-        mkdir -p "$HOME/.local-ci-cache"
-        CACHE_LOCK_DIR="$HOME/.local-ci-cache/.lockdir"
+        mkdir -p "$HOME/.github/local-ci-cache"
+        CACHE_LOCK_DIR="$HOME/.github/local-ci-cache/.lockdir"
         acquire_cache_lock() {
           local deadline=$(( $(date +%s) + 120 ))
           while ! mkdir "$CACHE_LOCK_DIR" 2>/dev/null; do
@@ -107,7 +107,7 @@ runs:
               prefix=$(echo "$prefix" | xargs 2>/dev/null || true)
               [ -z "$prefix" ] && continue
               SAFE_PREFIX=$(printf '%s' "$prefix" | tr -cs 'a-zA-Z0-9._-' '_')
-              MATCH=$(ls -1dt "$HOME/.local-ci-cache/${SAFE_PREFIX}"* 2>/dev/null | head -n1 || true)
+              MATCH=$(ls -1dt "$HOME/.github/local-ci-cache/${SAFE_PREFIX}"* 2>/dev/null | head -n1 || true)
               if [ -n "$MATCH" ] && [ -d "$MATCH" ]; then
                 echo "  Prefix '$prefix' → matched $(basename "$MATCH")"
                 restore_from_dir "$MATCH" && FOUND_PREFIX=true

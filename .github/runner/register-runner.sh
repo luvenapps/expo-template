@@ -3,13 +3,13 @@ set -euo pipefail
 
 # === GitHub Actions Runner Registration Script ===
 # Registers this Mac as a self-hosted runner *for this repo*.
-# Stores the runner under .github/runner/_ so it stays out of version control.
+# Stores the runner under ~/.github so launchd can access it on macOS.
 
-# Store the runner directory inside the repo under .github/runner/_
+# Store the runner directory under the user's home directory.
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-RUNTIME_ROOT="${REPO_ROOT}/.github/runner/_"
+RUNTIME_ROOT="${HOME}/.github"
 RUNNER_DIR="${RUNTIME_ROOT}/actions-runner"
-WORKSPACE_DIR="${RUNTIME_ROOT}/workspace"
+WORKSPACE_DIR="${RUNTIME_ROOT}/actions-runner-workspace"
 
 need() { command -v "$1" >/dev/null 2>&1 || { echo "❌ Missing dependency: $1"; exit 1; }; }
 need curl
@@ -26,10 +26,16 @@ echo "📦 Runner dir: ${RUNNER_DIR}"
 echo "🗂️  Workspace dir: ${WORKSPACE_DIR}"
 
 # Auto-detect repo and simplify input
-REPO_URL="$(git config --get remote.origin.url 2>/dev/null || echo '')"
+REPO_URL="$(git -C "$REPO_ROOT" config --get remote.origin.url 2>/dev/null || echo '')"
 if [[ -z "$REPO_URL" ]]; then
-  echo "❌ Could not detect remote.origin.url. Please set your GitHub remote first."
-  echo "   Example: git remote add origin https://github.com/<owner>/<repo>.git"
+  REPO_URL="$(git -C "$REPO_ROOT" remote get-url origin 2>/dev/null || echo '')"
+fi
+if [[ -z "$REPO_URL" ]]; then
+  echo "⚠️  Could not detect remote.origin.url."
+  read -rp "Enter repo URL (https://github.com/<owner>/<repo>.git or git@github.com:<owner>/<repo>.git): " REPO_URL
+fi
+if [[ -z "$REPO_URL" ]]; then
+  echo "❌ No repo URL provided. Aborting."
   exit 1
 fi
 
@@ -122,18 +128,15 @@ if [[ "$SCOPE" == "org" ]]; then
     --name "$RUNNER_NAME" \
     --labels "$LABELS" \
     --runnergroup "$RUNNER_GROUP" \
-    --work "../workspace/_work"
+    --work "${WORKSPACE_DIR}/_work"
 else
   ./config.sh \
     --url "$TARGET_URL" \
     --token "$TOKEN" \
     --name "$RUNNER_NAME" \
     --labels "$LABELS" \
-    --work "../workspace/_work"
+    --work "${WORKSPACE_DIR}/_work"
 fi
-
-# Create helpful runtime folders (ignored by .gitignore)
-mkdir -p "${RUNTIME_ROOT}/logs" || true
 
 cat <<EOF
 ✅ Runner registered successfully!
@@ -146,5 +149,5 @@ cat <<EOF
 💡 All build artifacts will be isolated in the workspace directory.
    Clean up anytime with: ${REPO_ROOT}/.github/runner/cleanup.sh
 
-(Ensure the runner folder .github/runner/_ is ignored by Git.)
+(Runner binaries live under ~/.github and are not tracked by git.)
 EOF
