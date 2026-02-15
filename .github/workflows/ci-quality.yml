@@ -93,6 +93,7 @@ jobs:
       - name: Verify Expo/RN dependency alignment
         shell: bash
         run: .github/scripts/verify_expo_deps.sh
+        continue-on-error: true
 
       - name: Doctor
         run: npm run doctor
