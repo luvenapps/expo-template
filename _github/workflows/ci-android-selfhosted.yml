@@ -140,9 +140,9 @@ jobs:
             ~/.gradle/caches
             ~/.gradle/wrapper
             android/.gradle
-          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'android/**/build.gradle', 'android/**/gradle.properties') }}
+          key: gradle-${{ runner.os }}-${{ github.repository }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'android/**/build.gradle', 'android/**/gradle.properties') }}
           restore-keys: |
-            gradle-${{ runner.os }}-
+            gradle-${{ runner.os }}-${{ github.repository }}-
           use-local-cache: ${{ vars.USE_LOCAL_CACHE == 'true' }}
 
       - name: Build e2erelease APK
@@ -352,7 +352,7 @@ jobs:
             ~/.gradle/caches
             ~/.gradle/wrapper
             android/.gradle
-          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'android/**/build.gradle', 'android/**/gradle.properties') }}
+          key: gradle-${{ runner.os }}-${{ github.repository }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'android/**/build.gradle', 'android/**/gradle.properties') }}
           use-local-cache: ${{ vars.USE_LOCAL_CACHE == 'true' }}
 
       # Self-hosted macOS (Apple Silicon) runner must have Android SDK & emulator installed; hardware accel uses Hypervisor.framework (no KVM).

@@ -217,11 +217,11 @@ Why not inside the workspace? The Android workflow runs `git clean -ffdx` at the
 
 ### What is cached
 
-| Cache key               | Contents                                                   | Workflow                    |
-| ----------------------- | ---------------------------------------------------------- | --------------------------- |
-| Android fingerprint key | `*.apk` in workspace root                                  | `ci-android-selfhosted.yml` |
-| `gradle-<OS>-<hash>`    | `~/.gradle/caches`, `~/.gradle/wrapper`, `android/.gradle` | `ci-android-selfhosted.yml` |
-| iOS fingerprint key     | `*.tar.gz` in workspace root                               | `ci-ios-selfhosted.yml`     |
+| Cache key                              | Contents                                                   | Workflow                    |
+| -------------------------------------- | ---------------------------------------------------------- | --------------------------- |
+| `android-<repo>-apk-<fingerprint>-...` | `*.apk` in workspace root                                  | `ci-android-selfhosted.yml` |
+| `gradle-<OS>-<repo>-<hash>`            | `~/.gradle/caches`, `~/.gradle/wrapper`, `android/.gradle` | `ci-android-selfhosted.yml` |
+| `ios-<repo>-app-<fingerprint>-...`     | `*.tar.gz` in workspace root                               | `ci-ios-selfhosted.yml`     |
 
 ### Concurrency and locking
 
