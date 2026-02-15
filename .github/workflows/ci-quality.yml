@@ -91,13 +91,27 @@ jobs:
           done
 
       - name: Verify Expo/RN dependency alignment
+        id: expo_deps
         shell: bash
         run: .github/scripts/verify_expo_deps.sh
         continue-on-error: true
 
+      - name: Annotate Expo/RN dependency drift
+        if: ${{ steps.expo_deps.outcome == 'failure' }}
+        shell: bash
+        run: |
+          echo "::error::Expo/RN dependency drift detected. Run 'npx expo install --fix' and commit the lockfile changes."
+
       - name: Doctor
+        id: expo_doctor
         run: npm run doctor
         continue-on-error: true
+
+      - name: Annotate Expo Doctor issues
+        if: ${{ steps.expo_doctor.outcome == 'failure' }}
+        shell: bash
+        run: |
+          echo "::error::Expo Doctor reported issues. Review the Doctor step logs for details."
 
       - name: Check formatting
         run: npm run format:check
