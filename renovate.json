@@ -5,9 +5,13 @@
   "packageRules": [
     {
       "groupName": "expo",
-      "description": "Expo SDK-managed packages (pinned with ~ or exact versions)",
+      "description": "Only update the expo package itself — run npx expo install --fix after merging",
+      "matchPackageNames": ["expo"]
+    },
+    {
+      "enabled": false,
+      "description": "Ignore Expo companion packages — update manually with npx expo install --fix",
       "matchPackageNames": [
-        "expo",
         "expo-apple-authentication",
         "expo-application",
         "expo-background-task",
@@ -49,9 +53,9 @@
       "groupName": "dev-dependencies",
       "matchDepTypes": ["devDependencies"],
       "excludePackageNames": [
+        "expo-dev-client",
         "@types/jest",
         "@types/react",
-        "expo-dev-client",
         "jest",
         "jest-expo",
         "typescript"
