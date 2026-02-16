@@ -1,5 +1,5 @@
-import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
 import { DOMAIN } from '@/config/domain.config';
+import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
 import { PrimaryButton, ScreenContainer, SettingsSection, useToast } from '@/ui';
 import { Mail } from '@tamagui/lucide-icons';
 import { useId, useState } from 'react';
@@ -15,6 +15,7 @@ export default function GetHelpScreen() {
   const [message, setMessage] = useState('');
   const topicId = useId();
   const supportEmail = DOMAIN.app.supportEmail;
+  const isWeb = Platform.OS === 'web';
   const subject =
     topic === 'bug' ? t('settings.getHelpBugSubject') : t('settings.getHelpFeedbackSubject');
 
@@ -75,20 +76,11 @@ export default function GetHelpScreen() {
                       color="$color"
                       lineHeight="$5"
                     >
-                      <YStack gap="$1">
-                        <Text
-                          fontWeight="600"
-                          fontSize="$4"
-                          color="$color"
-                          marginBottom={Platform.OS === 'web' ? -15 : '$0'}
-                        >
-                          {t('settings.getHelpFeedback')}
-                        </Text>
-                        <Text fontSize="$3" color="$colorMuted">
-                          {t('settings.getHelpFeedbackDescription')}
-                        </Text>
-                      </YStack>
+                      {t('settings.getHelpFeedback')}
                     </Label>
+                    <Text fontSize={isWeb ? '$4' : '$3'} color="$colorMuted">
+                      {t('settings.getHelpFeedbackDescription')}
+                    </Text>
                   </YStack>
                 </XStack>
 
@@ -106,21 +98,19 @@ export default function GetHelpScreen() {
                     <RadioGroup.Indicator />
                   </RadioGroup.Item>
                   <YStack flex={1} gap="$1">
-                    <Label htmlFor={`${topicId}-bug`} cursor="pointer" lineHeight="$5">
-                      <YStack gap="$1">
-                        <Text
-                          fontWeight="600"
-                          fontSize="$4"
-                          color="$color"
-                          marginBottom={Platform.OS === 'web' ? -15 : '$0'}
-                        >
-                          {t('settings.getHelpReportBug')}
-                        </Text>
-                        <Text fontSize="$3" color="$colorMuted">
-                          {t('settings.getHelpBugDescription')}
-                        </Text>
-                      </YStack>
+                    <Label
+                      htmlFor={`${topicId}-bug`}
+                      cursor="pointer"
+                      fontWeight="600"
+                      fontSize="$4"
+                      color="$color"
+                      lineHeight="$5"
+                    >
+                      {t('settings.getHelpReportBug')}
                     </Label>
+                    <Text fontSize={isWeb ? '$4' : '$3'} color="$colorMuted">
+                      {t('settings.getHelpBugDescription')}
+                    </Text>
                   </YStack>
                 </XStack>
               </YStack>
@@ -145,7 +135,7 @@ export default function GetHelpScreen() {
                 borderWidth: 2,
               }}
             />
-            <Text fontSize="$3" color="$colorMuted">
+            <Text fontSize={isWeb ? '$4' : '$3'} color="$colorMuted">
               {t('settings.getHelpMessageHint')}
             </Text>
           </YStack>
