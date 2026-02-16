@@ -23,10 +23,28 @@ mise trust
 echo "⬇️ Installing pinned runtimes from mise.toml..."
 mise install
 
-echo "\nToolchain check:"
-mise ls || true
-node -v || true
-npm -v || true
-java -version || true
+# Ensure mise is activated in the user's shell profile
+activate_cmd='eval "$(mise activate zsh)"'
+shell_rc="$HOME/.zshrc"
 
-echo "\nNext step: npm ci"
+if [ "$SHELL" = "/bin/bash" ] || [ "$SHELL" = "/usr/bin/bash" ]; then
+  activate_cmd='eval "$(mise activate bash)"'
+  shell_rc="$HOME/.bashrc"
+fi
+
+if ! grep -qF 'mise activate' "$shell_rc" 2>/dev/null; then
+  echo "" >> "$shell_rc"
+  echo "# Added by betterhabits setup:local" >> "$shell_rc"
+  echo "$activate_cmd" >> "$shell_rc"
+  echo "🐚 Added mise activation to $shell_rc — restart your terminal or run: source $shell_rc"
+else
+  echo "✅ mise activation already present in $shell_rc"
+fi
+
+echo "Toolchain check:"
+mise ls || true
+mise exec -- node -v || true
+mise exec -- npm -v || true
+mise exec -- java -version || true
+
+echo "Next step: npm ci"
