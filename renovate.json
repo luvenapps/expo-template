@@ -2,21 +2,60 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
   "schedule": ["every weekend"],
-  "allowedCommands": ["^npx expo install --fix$"],
   "packageRules": [
     {
       "groupName": "expo",
-      "matchPackagePatterns": ["^expo", "^@expo/", "^react-native"],
-      "postUpgradeTasks": {
-        "commands": ["npx expo install --fix"],
-        "fileFilters": ["package.json", "package-lock.json"],
-        "executionMode": "branch"
-      }
+      "description": "Expo SDK-managed packages (pinned with ~ or exact versions)",
+      "matchPackageNames": [
+        "expo",
+        "expo-apple-authentication",
+        "expo-application",
+        "expo-background-task",
+        "expo-build-properties",
+        "expo-constants",
+        "expo-crypto",
+        "expo-dev-client",
+        "expo-device",
+        "expo-linking",
+        "expo-localization",
+        "expo-notifications",
+        "expo-router",
+        "expo-secure-store",
+        "expo-sqlite",
+        "expo-status-bar",
+        "expo-system-ui",
+        "expo-task-manager",
+        "expo-updates",
+        "expo-web-browser",
+        "@types/jest",
+        "@types/react",
+        "jest",
+        "jest-expo",
+        "react",
+        "react-dom",
+        "react-native",
+        "react-native-gesture-handler",
+        "react-native-get-random-values",
+        "react-native-reanimated",
+        "react-native-safe-area-context",
+        "react-native-screens",
+        "react-native-svg",
+        "react-native-web",
+        "react-native-worklets",
+        "typescript"
+      ]
     },
     {
       "groupName": "dev-dependencies",
       "matchDepTypes": ["devDependencies"],
-      "excludePackagePatterns": ["^expo", "^@expo/", "^react-native"]
+      "excludePackageNames": [
+        "@types/jest",
+        "@types/react",
+        "expo-dev-client",
+        "jest",
+        "jest-expo",
+        "typescript"
+      ]
     },
     { "groupName": "github-actions", "matchManagers": ["github-actions"] }
   ],
