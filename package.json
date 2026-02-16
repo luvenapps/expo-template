@@ -18,6 +18,7 @@
     "lint:fix": "eslint . --fix",
     "format:check": "prettier --check .",
     "format": "prettier --write .",
+    "setup:local": "bash scripts/setup-local-deps.sh",
     "doctor": "expo-doctor --verbose",
     "start:ci": "expo start --dev-client --no-dev --minify --port 8081 --clear",
     "e2e:ios": "maestro test .maestro/flows/smoke.ios.yaml",

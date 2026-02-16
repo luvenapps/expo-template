@@ -86,13 +86,39 @@ fastlane --version
 brew install watchman
 ```
 
-#### 🧰 Node.js (latest LTS recommended)
+### ⚡ 4. Default setup with mise
+
+Use `mise` as the default local setup path for this repository.
 
 ```bash
-brew install node
+npm run setup:local
 ```
 
-### 🧭 Expo CLI (optional but recommended globally)
+That script installs missing Homebrew core dependencies (`mise`, `fastlane`, `watchman`), trusts `mise.toml`, installs pinned runtimes, and skips anything already installed.
+
+If you prefer to run steps manually:
+
+```bash
+brew install mise
+mise trust
+mise install
+mise ls
+node -v
+npm -v
+java -version
+npm ci
+```
+
+> This repository's canonical package manager for app workflows is `npm` with `package-lock.json`.
+> Use `npm ci` for CI/automation parity.
+
+With `mise` shell activation enabled, you generally do not need to manually export `JAVA_HOME` in your shell profile—the Java runtime from `mise.toml` is used in your activated environment.
+
+See [docs/mise.md](docs/mise.md) for more details and caveats.
+
+For Java pinning, this repo uses a vendor-pinned Java 17 entry in `mise.toml` for reproducibility.
+
+### 🧭 5. Expo CLI (optional but recommended globally)
 
 You can run Expo commands with `npx`, but installing globally is convenient:
 
@@ -106,21 +132,7 @@ Check:
 expo --version
 ```
 
-### 🧭 4. Expo CLI (optional but recommended globally)
-
-You can run Expo commands with `npx`, but installing globally is convenient:
-
-```bash
-npm install -g expo-cli
-```
-
-Check:
-
-```bash
-expo --version
-```
-
-### 🐋 Container Runtime (Supabase Local DB)
+### 🐋 6. Container Runtime (Supabase Local DB)
 
 Supabase’s local stack runs inside Docker. Install a container engine and keep it running before you start Supabase:
 
@@ -134,33 +146,6 @@ npx supabase start
 ```
 
 The CLI spins up Postgres/Auth/Storage via Docker Compose and prints local API credentials—copy them into `.env.local`.
-
-### ☕ Java Runtime (for Maestro and Android builds)
-
-Install OpenJDK 17 via Homebrew:
-
-```bash
-brew install openjdk@17
-```
-
-Then set it as the default JDK in your shell profile (~/.zshrc or ~/.bashrc):
-
-```bash
-export JAVA_HOME=$(/usr/libexec/java_home -v 17)
-export PATH="$JAVA_HOME/bin:$PATH"
-```
-
-Verify installation:
-
-```bash
-java -version
-```
-
-Expected output:
-
-```bash
-openjdk version "17.x.x"
-```
 
 ### 🧪 Maestro (E2E Testing)
 
@@ -513,7 +498,7 @@ Follow these steps in order when setting up the project for the first time:
    - Node 24.x
    - Expo toolchain
    - Container runtime (Rancher Desktop or Docker Desktop)
-   - Java 17 (for Android/Maestro)
+   - Java (for Android/Maestro)
    - Xcode (macOS only, for iOS)
 
 2. **Install dependencies**:

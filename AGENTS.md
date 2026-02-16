@@ -17,10 +17,17 @@ and codebase conventions so agents can run reliably without human context.
 
 - **Expo managed workflow** – Native `ios/` and `android/` folders are auto-generated during builds.
   Don't manually edit native code unless adding custom native modules.
-- Node `24.1.0` is pinned in `.nvmrc`. Use `nvm use` (or install that exact
-  version) before running any scripts.
+- Node and Java are pinned in `mise.toml`.
+- Use `mise` as the default local toolchain manager in this repo.
+  Quickstart:
+  1. Run `npm run setup:local` (installs missing Homebrew dependencies: `mise`, `fastlane`, `watchman`)
+  2. Script runs `mise trust && mise install`
+  3. Verify (`mise ls`, `node -v`, `npm -v`, `java -version`)
+  4. Install deps (`npm ci`) when needed
 - The project assumes the stock **npm** CLI. Keep `package-lock.json` in sync and
   avoid `yarn`/`pnpm` installs.
+- `mise` in this repo only pins runtimes (Node + Java). Keep system prerequisites explicit:
+  fastlane, watchman, Maestro CLI, and a container runtime for Supabase local.
 - Supabase CLI is bundled as a dev dependency; use `npm run supabase:push` or `npx supabase …` commands—no global install required.
 - Supabase local development requires a container runtime (Rancher Desktop recommended; Docker Desktop/Colima also work). Ensure it’s running before starting Supabase.
 - `npm run supabase:dev` boots the local Supabase stack, applies migrations, serves edge functions, and cleans up on exit—run it in a dedicated terminal before `npm start`.
@@ -28,7 +35,7 @@ and codebase conventions so agents can run reliably without human context.
   - `npm ci` for clean, repeatable installs (preferred for CI/agents).
   - `npm install` if you need to mutate dependencies locally.
 - `npm run troubleshoot` executes `scripts/troubleshoot.mjs`, which validates the
-  local toolchain (Node, npm, Expo CLI, Java 17, Android SDK/adb, Xcode, Watchman, Maestro).
+  local toolchain (Node, npm, Expo CLI, Java, Android SDK/adb, Xcode, Watchman, Maestro).
   CocoaPods is managed automatically by Expo during prebuild.
 - If Expo packages drift, run `npx expo install` to realign native peer deps.
 
@@ -45,22 +52,23 @@ and codebase conventions so agents can run reliably without human context.
 
 ## Core Commands
 
-| Purpose            | Command                           | Notes                                                              |
-| ------------------ | --------------------------------- | ------------------------------------------------------------------ |
-| Expo dev server    | `npm start`                       | Runs Metro/Expo; `prestart` triggers `npm run troubleshoot`.       |
-| iOS build (local)  | `npm run ios`                     | Requires Xcode + simulator.                                        |
-| Android build      | `npm run android`                 | Requires Android SDK + emulator.                                   |
-| Web preview        | `npm run web`                     | Expo web.                                                          |
-| Type check         | `npm run type-check`              | `tsc --noEmit`.                                                    |
-| Unit tests         | `npm test`                        | Uses `jest-expo`; coverage threshold is 80% overall.               |
-| Lint               | `npm run lint`                    | ESLint config lives in `eslint.config.js`.                         |
-| Format             | `npm run format` / `format:check` | Prettier 3.6 w/ repo-level ignore file.                            |
-| Expo doctor        | `npm run doctor`                  | Deep peer dependency check.                                        |
-| Supabase local     | `npm run supabase:dev`            | Starts Docker stack, runs migrations, serves functions.            |
-| Supabase deploy    | `npm run supabase:deploy`         | CI-friendly migrations + edge function publish (uses `.env.prod`). |
-| SQLite migrations  | `npm run db:generate` / `db:push` | Uses `drizzle-kit` (SQLite).                                       |
-| E2E (Maestro) iOS  | `npm run e2e:ios`                 | Flows in `.maestro/flows`.                                         |
-| E2E (Maestro) Andr | `npm run e2e:android`             | Saves artifacts under `e2e-artifacts/`.                            |
+| Purpose            | Command                           | Notes                                                                    |
+| ------------------ | --------------------------------- | ------------------------------------------------------------------------ |
+| Expo dev server    | `npm start`                       | Runs Metro/Expo; `prestart` triggers `npm run troubleshoot`.             |
+| iOS build (local)  | `npm run ios`                     | Requires Xcode + simulator.                                              |
+| Android build      | `npm run android`                 | Requires Android SDK + emulator.                                         |
+| Web preview        | `npm run web`                     | Expo web.                                                                |
+| Type check         | `npm run type-check`              | `tsc --noEmit`.                                                          |
+| Unit tests         | `npm test`                        | Uses `jest-expo`; coverage threshold is 80% overall.                     |
+| Lint               | `npm run lint`                    | ESLint config lives in `eslint.config.js`.                               |
+| Format             | `npm run format` / `format:check` | Prettier 3.6 w/ repo-level ignore file.                                  |
+| Setup local tools  | `npm run setup:local`             | Installs missing `mise`/`fastlane`/`watchman`, then runs `mise install`. |
+| Expo doctor        | `npm run doctor`                  | Deep peer dependency check.                                              |
+| Supabase local     | `npm run supabase:dev`            | Starts Docker stack, runs migrations, serves functions.                  |
+| Supabase deploy    | `npm run supabase:deploy`         | CI-friendly migrations + edge function publish (uses `.env.prod`).       |
+| SQLite migrations  | `npm run db:generate` / `db:push` | Uses `drizzle-kit` (SQLite).                                             |
+| E2E (Maestro) iOS  | `npm run e2e:ios`                 | Flows in `.maestro/flows`.                                               |
+| E2E (Maestro) Andr | `npm run e2e:android`             | Saves artifacts under `e2e-artifacts/`.                                  |
 
 ## Authentication & Session Management
 
@@ -309,7 +317,7 @@ Jest config; prefer them over relative imports.
 3. Rebuild locally:
    - iOS: `npm run ios` (runs `expo run:ios`)
    - Android: `npm run android` (runs `expo run:android`)
-4. Verify Java 17 for Android builds: `java -version`
+4. Verify Java for Android builds: `java -version`
 5. Check Expo configuration: `npm run doctor`
 6. Delete and regenerate native folders: `rm -rf ios android && npx expo prebuild`
 7. For persistent issues, try: `rm -rf node_modules package-lock.json && npm install`

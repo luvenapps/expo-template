@@ -47,16 +47,20 @@ jobs:
             watchman watch-del-all || true
           fi
 
-      - name: Setup Java 17
-        uses: actions/setup-java@v5
-        with:
-          distribution: 'temurin'
-          java-version: '17'
+      - name: Prepare isolated GnuPG home for mise
+        shell: bash
+        run: |
+          mkdir -p "${RUNNER_TEMP}/gnupg"
+          chmod 700 "${RUNNER_TEMP}/gnupg"
 
-      - name: Setup Node 24
-        uses: actions/setup-node@v6
+      - name: Setup mise toolchain
+        uses: jdx/mise-action@v3
         with:
-          node-version-file: '.nvmrc'
+          install: true
+          log_level: ${{ runner.debug == '1' && 'debug' || 'info' }}
+        env:
+          GNUPGHOME: ${{ runner.temp }}/gnupg
+          MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
 
       - name: Install deps
         run: npm ci
