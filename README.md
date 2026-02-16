@@ -64,29 +64,7 @@ brew update
 brew upgrade
 ```
 
-### 🧩 3. Core dependencies (via Homebrew)
-
-#### 🚀 Fastlane — for local iOS builds
-
-Fastlane is required for EAS local iOS builds.
-
-```bash
-brew install fastlane
-```
-
-Verify installation:
-
-```bash
-fastlane --version
-```
-
-#### 🕵️‍♂️ Watchman — for fast rebuilds
-
-```bash
-brew install watchman
-```
-
-### ⚡ 4. Default setup with mise
+### ⚡ 3. Default setup with mise
 
 Use `mise` as the default local setup path for this repository.
 
@@ -96,29 +74,15 @@ npm run setup:local
 
 That script installs missing Homebrew core dependencies (`mise`, `fastlane`, `watchman`), trusts `mise.toml`, installs pinned runtimes, and skips anything already installed.
 
-If you prefer to run steps manually:
-
-```bash
-brew install mise
-mise trust
-mise install
-mise ls
-node -v
-npm -v
-java -version
-npm ci
-```
-
 > This repository's canonical package manager for app workflows is `npm` with `package-lock.json`.
-> Use `npm ci` for CI/automation parity.
 
 With `mise` shell activation enabled, you generally do not need to manually export `JAVA_HOME` in your shell profile—the Java runtime from `mise.toml` is used in your activated environment.
 
 See [docs/mise.md](docs/mise.md) for more details and caveats.
 
-For Java pinning, this repo uses a vendor-pinned Java 17 entry in `mise.toml` for reproducibility.
+For Java pinning, this repo uses a vendor-pinned Java entry in `mise.toml` for reproducibility.
 
-### 🧭 5. Expo CLI (optional but recommended globally)
+### 🧭 4. Expo CLI (optional but recommended globally)
 
 You can run Expo commands with `npx`, but installing globally is convenient:
 
@@ -132,7 +96,7 @@ Check:
 expo --version
 ```
 
-### 🐋 6. Container Runtime (Supabase Local DB)
+### 🐋 5. Container Runtime (Supabase Local DB)
 
 Supabase’s local stack runs inside Docker. Install a container engine and keep it running before you start Supabase:
 
@@ -147,7 +111,7 @@ npx supabase start
 
 The CLI spins up Postgres/Auth/Storage via Docker Compose and prints local API credentials—copy them into `.env.local`.
 
-### 🧪 Maestro (E2E Testing)
+### 🧪 6. Maestro (E2E Testing)
 
 Maestro is used for cross-platform end-to-end (E2E) testing on iOS and Android.
 
@@ -160,46 +124,7 @@ After installing, verify it’s working:
 maestro --version
 ```
 
-If you see a message about Java missing, ensure you’ve installed it via:
-
-```bash
-brew install openjdk
-```
-
----
-
-### 🧩 Expo Template Install
-
-Run the following command to setup your project:
-
-```bash
-npx create-expo-app <repo_name> --template https://github.com/luvenapps/expo-template
-```
-
-## 🧱 Project Structure
-
-```
-beontime/
-├── .expo/                  # Expo project metadata
-├── .husky/                 # Git hooks (pre-commit, lint checks)
-├── .maestro/               # E2E tests (smoke.android.yaml, smoke.ios.yaml)
-├── .vscode/                # VSCode project settings
-├── android/                # Native Android project (created after 'expo run:android')
-├── ios/                    # Native iOS project (created after 'expo run:ios')
-├── app/                    # App source code and screens
-│   ├── index.tsx           # Main entry screen
-│   ├── index.test.tsx      # Unit test colocated with screen code
-│   └── otherScreens.tsx
-├──scripts/
-    └── postinstall.js      → One-time setup (auto deletes itself)
-├── assets/                 # Static images and fonts
-├── jest.config.js          # Jest configuration
-├── eslint.config.js        # ESLint configuration
-├── .prettierrc.json        # Prettier formatting rules
-├── tsconfig.json           # TypeScript configuration
-├── package.json            # Dependencies and scripts
-└── README.md               # Project documentation
-```
+If you see a message about Java missing, run `mise install` and ensure your shell has mise activation enabled.
 
 ---
 
