@@ -133,7 +133,7 @@
   },
   "private": true,
   "overrides": {
-    "react-server-dom-webpack": "19.1.2",
+    "react-server-dom-webpack": "19.1.5",
     "react-dom": "19.1.0",
     "react": "19.1.0",
     "react-native-web": "0.21.1"
