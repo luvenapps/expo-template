@@ -82,10 +82,20 @@ jobs:
           mkdir -p "${RUNNER_TEMP}/gnupg"
           chmod 700 "${RUNNER_TEMP}/gnupg"
 
+      - name: Pin mise cache to local disk (self-hosted)
+        if: ${{ inputs.runner_target == 'selfhosted' }}
+        shell: bash
+        run: |
+          MISE_LOCAL="$HOME/actions-runner/local-ci-cache/mise"
+          mkdir -p "$MISE_LOCAL/cache"
+          echo "MISE_DATA_DIR=$MISE_LOCAL"       >> "$GITHUB_ENV"
+          echo "MISE_CACHE_DIR=$MISE_LOCAL/cache" >> "$GITHUB_ENV"
+
       - name: Setup mise toolchain
         uses: jdx/mise-action@v3
         with:
           install: true
+          cache: ${{ inputs.runner_target != 'selfhosted' }}
           log_level: ${{ runner.debug == '1' && 'debug' || 'info' }}
         env:
           GNUPGHOME: ${{ runner.temp }}/gnupg
