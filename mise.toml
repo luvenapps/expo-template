@@ -1,4 +1,4 @@
 [tools]
 node = "24.13.1"
-java = "temurin-17"
+java = "temurin-17.0.18+8"
 ruby = "4.0.1"
