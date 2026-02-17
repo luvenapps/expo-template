@@ -52,16 +52,19 @@
     {
       "groupName": "dev-dependencies",
       "matchDepTypes": ["devDependencies"],
-      "excludePackageNames": [
-        "expo-dev-client",
-        "@types/jest",
-        "@types/react",
-        "jest",
-        "jest-expo",
-        "typescript"
+      "matchPackageNames": [
+        "!expo-dev-client",
+        "!@types/jest",
+        "!@types/react",
+        "!jest",
+        "!jest-expo",
+        "!typescript"
       ]
     },
-    { "groupName": "github-actions", "matchManagers": ["github-actions"] }
+    {
+      "groupName": "github-actions",
+      "matchManagers": ["github-actions"]
+    }
   ],
   "prHourlyLimit": 5,
   "prConcurrentLimit": 10
