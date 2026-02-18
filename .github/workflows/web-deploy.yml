@@ -1,0 +1,197 @@
+name: Web Deploy
+
+on:
+  workflow_call:
+    inputs:
+      env_prefix:
+        description: Environment prefix (PROD or DEV)
+        required: true
+        type: string
+      runner_target:
+        description: hosted or selfhosted
+        required: true
+        type: string
+      is_pull_request:
+        description: Whether caller event is pull_request
+        required: true
+        type: boolean
+      pr_number:
+        description: Pull request number when available
+        required: true
+        type: number
+      is_fork:
+        description: Whether pull request head repo is a fork
+        required: true
+        type: boolean
+
+env:
+  EXPO_USE_LOCAL_CLI: '1'
+
+concurrency:
+  group: web-deploy-${{ inputs.is_pull_request && format('pr-{0}', inputs.pr_number) || github.ref_name }}-${{ inputs.runner_target }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: >-
+      web deploy -
+      ${{ inputs.runner_target == 'selfhosted' && 'Self-hosted MacOS' || 'Hosted MacOS' }}
+    if: ${{ !inputs.is_pull_request || !inputs.is_fork }}
+    runs-on: ${{ fromJSON(inputs.runner_target == 'selfhosted' && '["self-hosted","macos","arm64"]' || '["macos-latest"]') }}
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN || '' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Clean workspace (self-hosted)
+        if: ${{ inputs.runner_target == 'selfhosted' }}
+        shell: bash
+        run: |
+          git clean -ffdx
+          git reset --hard HEAD
+
+      - name: Reset Watchman (self-hosted)
+        if: ${{ inputs.runner_target == 'selfhosted' }}
+        shell: bash
+        run: |
+          if command -v watchman >/dev/null 2>&1; then
+            echo "🔄 Resetting Watchman watches..."
+            watchman watch-del-all || true
+          fi
+
+      - name: Prepare isolated GnuPG home for mise
+        shell: bash
+        run: |
+          mkdir -p "${RUNNER_TEMP}/gnupg"
+          chmod 700 "${RUNNER_TEMP}/gnupg"
+
+      - name: Pin mise cache to local disk (self-hosted)
+        if: ${{ inputs.runner_target == 'selfhosted' }}
+        shell: bash
+        run: |
+          MISE_LOCAL="$HOME/.github/local-ci-cache/mise"
+          mkdir -p "$MISE_LOCAL/cache"
+          echo "MISE_DATA_DIR=$MISE_LOCAL"       >> "$GITHUB_ENV"
+          echo "MISE_CACHE_DIR=$MISE_LOCAL/cache" >> "$GITHUB_ENV"
+
+      - name: Setup mise toolchain
+        uses: jdx/mise-action@v3
+        with:
+          install: true
+          cache: ${{ inputs.runner_target != 'selfhosted' }}
+          log_level: ${{ runner.debug == '1' && 'debug' || 'info' }}
+        env:
+          GNUPGHOME: ${{ runner.temp }}/gnupg
+          MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sanity check versions
+        run: |
+          node -v
+          npm -v
+          npx expo --version
+          npx eas-cli --version
+
+      - name: Map runtime variables and secrets
+        shell: bash
+        env:
+          TURN_ON_FIREBASE: ${{ vars[format('{0}_TURN_ON_FIREBASE', inputs.env_prefix)] || vars.TURN_ON_FIREBASE || 'false' }}
+          RETRIES_VALUE: ${{ vars[format('{0}_RETRIES', inputs.env_prefix)] || vars.RETRIES || '2' }}
+          RETRY_DELAY_VALUE: ${{ vars[format('{0}_RETRY_DELAY', inputs.env_prefix)] || vars.RETRY_DELAY || '5' }}
+          PROD_PUBLIC_SUPABASE_URL: ${{ vars.PROD_PUBLIC_SUPABASE_URL || '' }}
+          DEV_PUBLIC_SUPABASE_URL: ${{ vars.DEV_PUBLIC_SUPABASE_URL || '' }}
+          PROD_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.PROD_PUBLIC_SUPABASE_ANON_KEY || '' }}
+          DEV_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.DEV_PUBLIC_SUPABASE_ANON_KEY || '' }}
+          PROD_SUPABASE_ACCESS_TOKEN: ${{ secrets.PROD_SUPABASE_ACCESS_TOKEN || '' }}
+          DEV_SUPABASE_ACCESS_TOKEN: ${{ secrets.DEV_SUPABASE_ACCESS_TOKEN || '' }}
+        run: .github/scripts/map_runtime_env.sh "${{ inputs.env_prefix }}"
+
+      - name: Export and deploy web
+        id: deploy_web
+        if: ${{ env.EXPO_TOKEN != '' && (inputs.is_pull_request || github.ref_name == 'main') }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          EVENT_NAME="push"
+          PR_NUMBER=''
+          if [ "${{ inputs.is_pull_request }}" = "true" ]; then
+            EVENT_NAME="pull_request"
+            PR_NUMBER='${{ inputs.pr_number }}'
+          fi
+
+          DEPLOY_URL=$(.github/scripts/export_and_deploy_web.sh "$EVENT_NAME" "$PR_NUMBER")
+
+          if [ -z "$DEPLOY_URL" ]; then
+            echo "Unable to find deploy URL in eas-cli output." >&2
+            exit 1
+          fi
+
+          {
+            echo 'deploy_url<<EOF'
+            echo "$DEPLOY_URL"
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Comment with deployment URL
+        if: ${{ inputs.is_pull_request && env.EXPO_TOKEN != '' }}
+        uses: actions/github-script@v8
+        env:
+          DEPLOY_URL: ${{ steps.deploy_web.outputs.deploy_url }}
+        with:
+          script: |
+            const marker = '<!-- web-deploy-preview -->';
+            const prNumber = Number('${{ inputs.pr_number }}');
+            const url = process.env.DEPLOY_URL;
+            const shortSha = context.sha.slice(0, 7);
+
+            const body = [
+              marker,
+              '## Web Preview Deploy',
+              '',
+              `✅ Deploy succeeded for \`${shortSha}\`.`,
+              '',
+              `🔗 ${url}`,
+            ].join('\n');
+
+            const { owner, repo } = context.repo;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner,
+              repo,
+              issue_number: prNumber,
+              per_page: 100,
+            });
+
+            const existing = comments.find((comment) =>
+              comment.user?.type === 'Bot' &&
+              typeof comment.body === 'string' &&
+              comment.body.includes(marker),
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: prNumber,
+                body,
+              });
+            }
+
+      - name: Clean self-hosted workspace
+        if: ${{ always() && inputs.runner_target == 'selfhosted' }}
+        shell: bash
+        run: .github/scripts/clean_selfhosted_workspace.sh

@@ -75,6 +75,18 @@ jobs:
       env_prefix: ${{ github.ref_name == 'main' && 'PROD' || 'DEV' }}
     secrets: inherit
 
+  web-deploy:
+    if: vars.USE_SELF_HOSTED == 'true'
+    needs: [quality, cache-bust]
+    uses: ./.github/workflows/web-deploy.yml
+    with:
+      env_prefix: ${{ github.ref_name == 'main' && 'PROD' || 'DEV' }}
+      runner_target: selfhosted
+      is_pull_request: ${{ github.event_name == 'pull_request' }}
+      pr_number: ${{ github.event.pull_request.number || 0 }}
+      is_fork: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork || false }}
+    secrets: inherit
+
   expo-go-preview:
     if: vars.USE_SELF_HOSTED == 'true'
     uses: ./.github/workflows/expo-go-preview.yml
@@ -90,7 +102,7 @@ jobs:
     # Runs after android + ios complete (pass or fail) to keep disk under budget.
     # Only active when local cache mode is enabled.
     if: always() && vars.USE_SELF_HOSTED == 'true' && vars.USE_LOCAL_CACHE == 'true'
-    needs: [android, ios]
+    needs: [android, ios, web-deploy]
     runs-on: [self-hosted, macos, arm64]
     # Serialize evictions across concurrent workflow runs so rm -rf never
     # races with another run's restore/save (which hold the same flock).
