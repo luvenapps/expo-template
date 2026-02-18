@@ -545,6 +545,7 @@ describe('ThemeProvider', () => {
   describe('Web platform', () => {
     let mediaQueryListeners: ((event: MediaQueryListEvent) => void)[];
     let mockMatchMedia: jest.Mock;
+    let metaTags: Record<string, { setAttribute: jest.Mock; getAttribute: jest.Mock }>;
 
     beforeEach(() => {
       mediaQueryListeners = [];
@@ -578,10 +579,65 @@ describe('ThemeProvider', () => {
           matchMedia: mockMatchMedia,
         },
       });
+
+      metaTags = {};
+      const getOrCreateTag = (name: string) => {
+        if (!metaTags[name]) {
+          const attributes: Record<string, string> = { name };
+          metaTags[name] = {
+            setAttribute: jest.fn((attrName: string, value: string) => {
+              attributes[attrName] = value;
+            }),
+            getAttribute: jest.fn((attrName: string) => attributes[attrName] ?? null),
+          };
+        }
+        return metaTags[name];
+      };
+
+      Object.defineProperty(globalThis, 'document', {
+        configurable: true,
+        writable: true,
+        value: {
+          querySelector: jest.fn((selector: string) => {
+            const match = selector.match(/^meta\[name="(.+)"\]$/);
+            if (!match) {
+              return null;
+            }
+            return metaTags[match[1]] ?? null;
+          }),
+          createElement: jest.fn(() => getOrCreateTag('')),
+          head: {
+            appendChild: jest.fn(
+              (metaTag: { setAttribute: (name: string, value: string) => void }) => {
+                const nameSetter = metaTag.setAttribute as jest.Mock;
+                const nameCalls = nameSetter.mock.calls.filter((call) => call[0] === 'name');
+                const tagName = nameCalls[nameCalls.length - 1]?.[1] as string | undefined;
+                if (tagName) {
+                  const attributes: Record<string, string> = { name: tagName };
+                  metaTags[tagName] = {
+                    setAttribute: jest.fn((attrName: string, value: string) => {
+                      attributes[attrName] = value;
+                    }),
+                    getAttribute: jest.fn((attrName: string) => attributes[attrName] ?? null),
+                  };
+                  return metaTags[tagName];
+                }
+                return metaTag;
+              },
+            ),
+          },
+          documentElement: {
+            style: {
+              colorScheme: '',
+            },
+          },
+        },
+      });
     });
 
     afterEach(() => {
       delete (globalThis as { window?: unknown }).window;
+      delete (globalThis as { document?: unknown }).document;
     });
 
     it('should use matchMedia to detect system theme on web', () => {
@@ -673,6 +729,41 @@ describe('ThemeProvider', () => {
 
       // Should still render without errors
       expect(result.current).toBeDefined();
+    });
+
+    it('updates browser chrome metadata for dark theme on web', () => {
+      const { result } = renderHook(() => useThemeContext(), { wrapper });
+
+      act(() => {
+        result.current.setPreference('light');
+      });
+      act(() => {
+        result.current.setPreference('dark');
+      });
+
+      const themeColorTag = document.querySelector('meta[name="theme-color"]');
+      const colorSchemeTag = document.querySelector('meta[name="color-scheme"]');
+
+      expect(result.current.resolvedTheme).toBe('dark');
+      expect(themeColorTag?.getAttribute('content')).toBe(expectedDarkPalette.background);
+      expect(colorSchemeTag?.getAttribute('content')).toBe('dark');
+      expect(document.documentElement.style.colorScheme).toBe('dark');
+    });
+
+    it('updates browser chrome metadata when switching from dark to light', () => {
+      const { result } = renderHook(() => useThemeContext(), { wrapper });
+
+      act(() => {
+        result.current.setPreference('light');
+      });
+
+      const themeColorTag = document.querySelector('meta[name="theme-color"]');
+      const colorSchemeTag = document.querySelector('meta[name="color-scheme"]');
+
+      expect(result.current.resolvedTheme).toBe('light');
+      expect(themeColorTag?.getAttribute('content')).toBe(expectedLightPalette.background);
+      expect(colorSchemeTag?.getAttribute('content')).toBe('light');
+      expect(document.documentElement.style.colorScheme).toBe('light');
     });
   });
 

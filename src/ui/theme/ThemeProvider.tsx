@@ -149,6 +149,31 @@ export function ThemeProvider({ children }: PropsWithChildren) {
     };
   }, [preference, systemTheme]);
 
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') {
+      return;
+    }
+
+    document.documentElement.style.colorScheme = value.resolvedTheme;
+
+    const getOrCreateMetaTag = (name: string) => {
+      const existingTag = document.querySelector(`meta[name="${name}"]`);
+      if (existingTag) {
+        return existingTag;
+      }
+      const metaTag = document.createElement('meta');
+      metaTag.setAttribute('name', name);
+      document.head.appendChild(metaTag);
+      return metaTag;
+    };
+
+    const browserThemeColor = getOrCreateMetaTag('theme-color');
+    browserThemeColor.setAttribute('content', value.palette.background);
+
+    const colorScheme = getOrCreateMetaTag('color-scheme');
+    colorScheme.setAttribute('content', value.resolvedTheme);
+  }, [value.palette.background, value.resolvedTheme]);
+
   if (!hydrated) return null;
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
