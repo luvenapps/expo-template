@@ -33,6 +33,7 @@ Both coordinators define:
 - `.github/workflows/ci-android-selfhosted.yml`
 - `.github/workflows/ci-ios-hosted.yml`
 - `.github/workflows/ci-ios-selfhosted.yml`
+- `.github/workflows/web-deploy.yml`
 - `.github/workflows/expo-go-preview.yml`
 
 All of the above are called by coordinators via `uses: ./.github/workflows/...` and `secrets: inherit`.
@@ -69,12 +70,19 @@ Each coordinator runs the same dependency graph:
 1. `quality`
 2. `android` (`needs: quality`)
 3. `ios` (`needs: quality`)
-4. `expo-go-preview` (parallel, no `needs`)
+4. `web-deploy` (`needs: quality`)
+5. `expo-go-preview` (parallel, no `needs`)
 
 The self-hosted coordinator adds two additional jobs:
 
-- `cache-bust` (parallel with `quality`, no `needs`) — wipes the local cache when `CACHE_BUST_TOKEN` changes; `android` and `ios` both `needs: [quality, cache-bust]`. See [Cache busting](#cache-busting).
-- `evict-local-cache` (`needs: [android, ios]`, `if: always()`) — only runs when `USE_LOCAL_CACHE == 'true'`; see [LRU eviction](#lru-eviction).
+- `cache-bust` (parallel with `quality`, no `needs`) — wipes the local cache when `CACHE_BUST_TOKEN` changes; `android`, `ios`, and `web-deploy` all `needs: [quality, cache-bust]`. See [Cache busting](#cache-busting).
+- `evict-local-cache` (`needs: [android, ios, web-deploy]`, `if: always()`) — only runs when `USE_LOCAL_CACHE == 'true'`; see [LRU eviction](#lru-eviction).
+
+Ordering summary:
+
+- Hosted: `quality` gates `android`, `ios`, and `web-deploy`; `expo-go-preview` runs independently.
+- Self-hosted: `quality` and `cache-bust` gate `android`, `ios`, and `web-deploy`; `expo-go-preview` runs independently.
+- Self-hosted eviction waits for `android`, `ios`, and `web-deploy` so cache cleanup starts after all build/deploy jobs complete.
 
 `auto-claude-review.yml` is outside this graph because it is direct PR comment automation.
 
@@ -87,6 +95,7 @@ The self-hosted coordinator adds two additional jobs:
 - Quality: `ubuntu-latest`
 - Android hosted: `ubuntu-latest`, timeout `90`
 - iOS hosted: `macos-latest`, timeout `90`
+- Web deploy hosted: `macos-latest`
 - Expo preview hosted: `macos-latest`
 - Auto Claude review hosted: `ubuntu-latest`
 
@@ -95,8 +104,25 @@ The self-hosted coordinator adds two additional jobs:
 - Quality: `[self-hosted, macos, arm64]`
 - Android self-hosted: `[self-hosted, macos, arm64]`, timeout `45`
 - iOS self-hosted: `[self-hosted, macos, arm64]`, timeout `45`
+- Web deploy self-hosted: `[self-hosted, macos, arm64]`
 - Expo preview self-hosted: `[self-hosted, macos, arm64]`
 - Auto Claude review self-hosted: `[self-hosted, macos, arm64]`
+
+Runner policy for web deploy:
+
+- Web deploy follows coordinator routing (`USE_SELF_HOSTED`) and receives `runner_target` from the coordinator.
+- Hosted mode uses GitHub-hosted macOS runners; self-hosted mode uses `[self-hosted, macos, arm64]` and performs workspace cleanup/reset before running.
+
+---
+
+## 🌐 Web deploy workflow behavior
+
+`web-deploy.yml` is a reusable workflow invoked by both coordinators.
+
+- PR events: deploys preview builds with an EAS alias `pr-<number>`.
+- Pushes to `main`: deploys production builds with `--prod`.
+- Fork PR safety: deployment is skipped when the PR head repository is a fork.
+- PR comment behavior: bot comments use the title `Web Preview` and only include the preview URL (the alias URL when available, e.g. `pr-123`).
 
 ---
 

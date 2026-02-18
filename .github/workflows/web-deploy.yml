@@ -150,11 +150,12 @@ jobs:
             const marker = '<!-- web-deploy-preview -->';
             const prNumber = Number('${{ inputs.pr_number }}');
             const url = process.env.DEPLOY_URL;
+
             const shortSha = context.sha.slice(0, 7);
 
             const body = [
               marker,
-              '## Web Preview Deploy',
+              '## Web Preview',
               '',
               `✅ Deploy succeeded for \`${shortSha}\`.`,
               '',
