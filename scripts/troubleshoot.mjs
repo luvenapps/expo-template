@@ -6,7 +6,7 @@
  * Checks:
  *  - Node & npm versions
  *  - Expo CLI
- *  - Java (JDK 17)
+ *  - Java (JDK 21)
  *  - Android SDK / adb
  *  - Xcode CLI tools & simctl (macOS)
  *  - CocoaPods (macOS)
@@ -90,24 +90,24 @@ function compareVersions(actual, expected) {
   cmd('npx', 'expo --version');
 
   // Java (JDK) - accept formats like:
-  // - openjdk version "17.0.16"
-  // - openjdk 17.0.16 2025-07-15
-  // - java version "17.0.12"
+  // - openjdk version "21.0.10"
+  // - openjdk 21.0.10 2026-01-20
+  // - java version "21.0.2"
   const j = cmd('java', '-version');
   if (!j.ok) {
-    warn('Java not detected. Install OpenJDK 17.');
+    warn('Java not detected. Install OpenJDK 21.');
   } else {
     const jtxt = j.out.toLowerCase();
-    const is17 =
-      /\bversion\s+"?17\./.test(jtxt) ||
-      /\bopenjdk\b.*\b17\./.test(jtxt) ||
-      /\bjava\b.*\b17\./.test(jtxt);
-    if (!is17) {
+    const is21 =
+      /\bversion\s+"?21\./.test(jtxt) ||
+      /\bopenjdk\b.*\b21\./.test(jtxt) ||
+      /\bjava\b.*\b21\./.test(jtxt);
+    if (!is21) {
       warn(
-        `Java detected but not v17. Recommend JDK 17 for RN 0.81. Detected: ${j.out.split('\n')[0]}`,
+        `Java detected but not v21. Recommend JDK 21 for RN 0.81. Detected: ${j.out.split('\n')[0]}`,
       );
     } else {
-      ok(`Java looks good (17.x). Detected: ${j.out.split('\n')[0]}`);
+      ok(`Java looks good (21.x). Detected: ${j.out.split('\n')[0]}`);
     }
   }
 

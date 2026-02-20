@@ -61,6 +61,9 @@ jest.mock('tamagui', () => {
     YStack,
     XStack,
     Button,
+    useTheme: () => ({
+      color: { get: () => '#111' },
+    }),
   };
 });
 

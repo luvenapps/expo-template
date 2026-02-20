@@ -66,12 +66,17 @@ export function NamePromptModal({
           alignSelf="center"
           width="100%"
           maxWidth={480}
-          height="90%"
+          height="87%"
         >
           <YStack gap="$4" flex={1} justifyContent="space-between">
             <YStack gap="$4">
               <Dialog.Title asChild>
-                <Paragraph fontSize="$5" fontWeight="700" lineHeight={60}>
+                <Paragraph
+                  fontSize="$5"
+                  fontWeight="700"
+                  lineHeight={60}
+                  textTransform="capitalize"
+                >
                   {title}
                 </Paragraph>
               </Dialog.Title>
