@@ -33,9 +33,7 @@ concurrency:
 
 jobs:
   deploy:
-    name: >-
-      web deploy -
-      ${{ inputs.runner_target == 'selfhosted' && 'Self-hosted MacOS' || 'Hosted MacOS' }}
+    name: Deploy To Expo
     if: ${{ !inputs.is_pull_request || !inputs.is_fork }}
     runs-on: ${{ fromJSON(inputs.runner_target == 'selfhosted' && '["self-hosted","macos","arm64"]' || '["macos-latest"]') }}
     permissions:
@@ -111,6 +109,14 @@ jobs:
           DEV_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.DEV_PUBLIC_SUPABASE_ANON_KEY || '' }}
           PROD_SUPABASE_ACCESS_TOKEN: ${{ secrets.PROD_SUPABASE_ACCESS_TOKEN || '' }}
           DEV_SUPABASE_ACCESS_TOKEN: ${{ secrets.DEV_SUPABASE_ACCESS_TOKEN || '' }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY || '' }}
+          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID || '' }}
+          FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN || '' }}
+          FIREBASE_MEASUREMENT_ID: ${{ secrets.FIREBASE_MEASUREMENT_ID || '' }}
+          FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID || '' }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID || '' }}
+          FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET || '' }}
+          FIREBASE_VAPID_KEY: ${{ secrets.FIREBASE_VAPID_KEY || '' }}
         run: .github/scripts/map_runtime_env.sh "${{ inputs.env_prefix }}"
 
       - name: Export and deploy web

@@ -142,7 +142,10 @@
   "appUpdate": {
     "title": "Update required",
     "description": "A newer version is required to continue. Please update the app to keep using it.",
-    "action": "Update app"
+    "action": "Update app",
+    "promptTitle": "Update available",
+    "promptDescription": "A new version is ready. Update now for the best experience.",
+    "notNow": "Not now"
   },
   "settings": {
     "syncUnavailableWeb": "Background sync requires the iOS or Android app to access the local database.",

@@ -29,6 +29,7 @@ import { getQueryClient, getQueryClientPersistOptions } from '@/state';
 import { pullUpdates, pushOutbox, useSync } from '@/sync';
 import { ForceUpgradeModal } from '@/ui/components/ForceUpgradeModal';
 import { NamePromptModal } from '@/ui/components/NamePromptModal';
+import { PromptUpgradeModal } from '@/ui/components/PromptUpgradeModal';
 import { SoftPromptModal } from '@/ui/components/SoftPromptModal';
 import { useThemeContext } from '@/ui/theme/ThemeProvider';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -68,6 +69,11 @@ export function AppProviders({ children }: PropsWithChildren) {
     'min_app_version',
     '',
   );
+  const { value: promptAppVersion, status: promptAppVersionStatus } = useFeatureFlag(
+    'prompt_app_version',
+    '',
+  );
+  const [dismissedPromptVersion, setDismissedPromptVersion] = useState<string | null>(null);
   const turnOnFirebase = useMemo(
     () =>
       process.env.EXPO_PUBLIC_TURN_ON_FIREBASE === 'true' ||
@@ -94,6 +100,28 @@ export function AppProviders({ children }: PropsWithChildren) {
 
     return semver.lt(parsedCurrent, parsedMin);
   }, [minAppVersion, minAppVersionStatus]);
+
+  const shouldPromptUpgrade = useMemo(() => {
+    if (isWeb || promptAppVersionStatus !== 'ready' || shouldForceUpgrade) {
+      return false;
+    }
+
+    const trimmedPromptVersion =
+      typeof promptAppVersion === 'string' ? promptAppVersion.trim() : '';
+    if (!trimmedPromptVersion || dismissedPromptVersion === trimmedPromptVersion) {
+      return false;
+    }
+
+    const currentVersion = Constants.nativeAppVersion ?? Constants.expoConfig?.version ?? '';
+    const parsedCurrent = semver.coerce(currentVersion)?.version;
+    const parsedPrompt = semver.coerce(trimmedPromptVersion)?.version;
+
+    if (!parsedCurrent || !parsedPrompt) {
+      return false;
+    }
+
+    return semver.lt(parsedCurrent, parsedPrompt);
+  }, [dismissedPromptVersion, promptAppVersion, promptAppVersionStatus, shouldForceUpgrade]);
 
   useEffect(() => {
     const initialize = async () => {
@@ -425,6 +453,18 @@ export function AppProviders({ children }: PropsWithChildren) {
             title={i18n.t('appUpdate.title')}
             message={i18n.t('appUpdate.description')}
             actionLabel={i18n.t('appUpdate.action')}
+          />
+          <PromptUpgradeModal
+            open={shouldPromptUpgrade}
+            title={i18n.t('appUpdate.promptTitle')}
+            message={i18n.t('appUpdate.promptDescription')}
+            actionLabel={i18n.t('appUpdate.action')}
+            notNowLabel={i18n.t('appUpdate.notNow')}
+            onNotNow={() => {
+              const currentPromptVersion =
+                typeof promptAppVersion === 'string' ? promptAppVersion.trim() : '';
+              setDismissedPromptVersion(currentPromptVersion || null);
+            }}
           />
           <SoftPromptModal
             open={softPrompt.open}

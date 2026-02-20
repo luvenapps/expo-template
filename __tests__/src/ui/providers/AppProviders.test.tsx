@@ -299,11 +299,20 @@ jest.mock('@/ui/components/SoftPromptModal', () => ({
 }));
 
 const mockForceUpgradeModal = jest.fn();
+const mockPromptUpgradeModal = jest.fn();
 jest.mock('@/ui/components/ForceUpgradeModal', () => ({
   ForceUpgradeModal: (props: any) => {
     mockForceUpgradeModal(props);
     const React = jest.requireActual('react');
     return React.createElement('ForceUpgradeModal', props);
+  },
+}));
+
+jest.mock('@/ui/components/PromptUpgradeModal', () => ({
+  PromptUpgradeModal: (props: any) => {
+    mockPromptUpgradeModal(props);
+    const React = jest.requireActual('react');
+    return React.createElement('PromptUpgradeModal', props);
   },
 }));
 
@@ -362,11 +371,12 @@ describe('AppProviders', () => {
       return jest.fn();
     });
     mockFeatureFlagClient.setContext.mockClear();
-    mockUseFeatureFlag.mockReturnValue({
+    mockUseFeatureFlag.mockImplementation((key: string) => ({
       value: '',
       status: 'ready',
       source: 'default',
-    });
+      key,
+    }));
     const { useNotificationSettings } = require('@/notifications/useNotificationSettings');
     useNotificationSettings.mockReturnValue({
       ...mockNotificationSettingsDefault,
@@ -411,6 +421,104 @@ describe('AppProviders', () => {
       await waitFor(() => {
         const lastCall = mockForceUpgradeModal.mock.calls.at(-1)?.[0];
         expect(lastCall?.open).toBe(true);
+      });
+    });
+
+    it('shows prompt upgrade modal when prompt_app_version is higher than app version', async () => {
+      mockUseFeatureFlag.mockImplementation((key: string) => {
+        if (key === 'prompt_app_version') {
+          return {
+            value: '2.0.0',
+            status: 'ready',
+            source: 'remote',
+          };
+        }
+
+        return {
+          value: '',
+          status: 'ready',
+          source: 'default',
+        };
+      });
+
+      render(
+        <AppProviders>
+          <Text>Test Content</Text>
+        </AppProviders>,
+      );
+
+      await waitFor(() => {
+        const lastCall = mockPromptUpgradeModal.mock.calls.at(-1)?.[0];
+        expect(lastCall?.open).toBe(true);
+      });
+    });
+
+    it('does not show prompt upgrade modal when force upgrade is required', async () => {
+      mockUseFeatureFlag.mockImplementation((key: string) => {
+        if (key === 'min_app_version') {
+          return {
+            value: '3.0.0',
+            status: 'ready',
+            source: 'remote',
+          };
+        }
+
+        if (key === 'prompt_app_version') {
+          return {
+            value: '2.0.0',
+            status: 'ready',
+            source: 'remote',
+          };
+        }
+
+        return {
+          value: '',
+          status: 'ready',
+          source: 'default',
+        };
+      });
+
+      render(
+        <AppProviders>
+          <Text>Test Content</Text>
+        </AppProviders>,
+      );
+
+      await waitFor(() => {
+        const lastForceCall = mockForceUpgradeModal.mock.calls.at(-1)?.[0];
+        const lastPromptCall = mockPromptUpgradeModal.mock.calls.at(-1)?.[0];
+        expect(lastForceCall?.open).toBe(true);
+        expect(lastPromptCall?.open).toBe(false);
+      });
+    });
+
+    it('keeps prompt version dismissal nullable when prompt flag is not a string', async () => {
+      mockUseFeatureFlag.mockImplementation((key: string) => {
+        if (key === 'prompt_app_version') {
+          return {
+            value: 2,
+            status: 'ready',
+            source: 'remote',
+          };
+        }
+
+        return {
+          value: '',
+          status: 'ready',
+          source: 'default',
+        };
+      });
+
+      render(
+        <AppProviders>
+          <Text>Test Content</Text>
+        </AppProviders>,
+      );
+
+      await waitFor(() => {
+        const lastPromptCall = mockPromptUpgradeModal.mock.calls.at(-1)?.[0];
+        expect(lastPromptCall).toBeDefined();
+        lastPromptCall?.onNotNow?.();
       });
     });
 

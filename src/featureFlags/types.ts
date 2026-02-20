@@ -5,6 +5,7 @@ export const DEFAULT_FLAGS = {
   legal_terms_url: '',
   legal_privacy_url: '',
   min_app_version: '',
+  prompt_app_version: '',
 } as const;
 
 export type FeatureFlagKey = keyof typeof DEFAULT_FLAGS;

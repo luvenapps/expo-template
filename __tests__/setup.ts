@@ -27,6 +27,7 @@ jest.mock('@/featureFlags/types', () => {
     DEFAULT_FLAGS: {
       test_feature_flag: false,
       min_app_version: '',
+      prompt_app_version: '',
     },
   };
 });

@@ -120,7 +120,7 @@ jobs:
         run: npm run lint
 
       - name: Unit tests
-        run: npm run test -- --coverage
+        run: npm run test -- --coverage --runInBand
 
       - name: Install GPG
         if: ${{ !cancelled() }}

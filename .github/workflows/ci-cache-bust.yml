@@ -5,6 +5,7 @@ on:
 
 jobs:
   cache-bust:
+    name: Cache Bust
     if: vars.USE_SELF_HOSTED == 'true'
     runs-on: [self-hosted, macos, arm64]
     steps:

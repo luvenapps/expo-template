@@ -70,10 +70,10 @@ jobs:
       env_prefix: ${{ github.ref_name == 'main' && 'PROD' || 'DEV' }}
     secrets: inherit
 
-  web-deploy:
+  web:
     if: vars.USE_SELF_HOSTED != 'true'
     needs: quality
-    uses: ./.github/workflows/web-deploy.yml
+    uses: ./.github/workflows/ci-web.yml
     with:
       env_prefix: ${{ github.ref_name == 'main' && 'PROD' || 'DEV' }}
       runner_target: hosted
@@ -82,9 +82,10 @@ jobs:
       is_fork: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork || false }}
     secrets: inherit
 
-  expo-go-preview:
+  expo-go:
     if: vars.USE_SELF_HOSTED != 'true'
-    uses: ./.github/workflows/expo-go-preview.yml
+    needs: quality
+    uses: ./.github/workflows/ci-expo-go.yml
     with:
       env_prefix: ${{ github.ref_name == 'main' && 'PROD' || 'DEV' }}
       runner_target: hosted
