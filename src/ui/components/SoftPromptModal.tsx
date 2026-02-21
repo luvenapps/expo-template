@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { useWindowDimensions } from 'react-native';
+import { Platform, useWindowDimensions } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { Dialog, Paragraph, XStack, YStack, useTheme } from 'tamagui';
 import { PrimaryButton } from '../components/PrimaryButton';
@@ -31,8 +31,10 @@ export function SoftPromptModal({
   const resolvedNotNowLabel = notNowLabel ?? '';
   // Require the user to press one of the actions before the modal can close.
   const allowCloseRef = useRef(false);
-  const { width } = useWindowDimensions();
+  const { width, height: windowHeight } = useWindowDimensions();
   const size = width < 390 ? 200 : 300;
+  const isWeb = Platform.OS === 'web';
+  const dialogHeight = isWeb ? windowHeight * 0.88 : windowHeight * 0.85;
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen && !allowCloseRef.current) {
@@ -64,9 +66,9 @@ export function SoftPromptModal({
           alignSelf="center"
           width="100%"
           maxWidth={480}
-          height="87%"
+          height={dialogHeight}
         >
-          <YStack gap="$4" flex={1} justifyContent="space-between">
+          <YStack gap="$4" flex={isWeb ? undefined : 1} justifyContent="space-between">
             <YStack gap="$3">
               <Dialog.Title asChild>
                 <Paragraph
@@ -82,7 +84,12 @@ export function SoftPromptModal({
                 <Paragraph fontSize="$4">{message}</Paragraph>
               </Dialog.Description>
             </YStack>
-            <XStack justifyContent="center" flex={1} alignItems="center">
+            <XStack
+              marginTop={isWeb ? 0 : -50}
+              justifyContent="center"
+              flex={1}
+              alignItems="center"
+            >
               <Svg width={size} height={size} viewBox="0 0 72 72" fill="none">
                 <Circle cx="36" cy="36" r="32" stroke={strokeColor} strokeWidth="2" />
                 <Path

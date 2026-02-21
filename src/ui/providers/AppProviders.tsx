@@ -448,24 +448,28 @@ export function AppProviders({ children }: PropsWithChildren) {
       <AnalyticsProvider>
         <GestureHandlerRootView style={{ flex: 1, backgroundColor: palette.background }}>
           <ForegroundReminderAnalyticsHost />
-          <ForceUpgradeModal
-            open={shouldForceUpgrade}
-            title={i18n.t('appUpdate.title')}
-            message={i18n.t('appUpdate.description')}
-            actionLabel={i18n.t('appUpdate.action')}
-          />
-          <PromptUpgradeModal
-            open={shouldPromptUpgrade}
-            title={i18n.t('appUpdate.promptTitle')}
-            message={i18n.t('appUpdate.promptDescription')}
-            actionLabel={i18n.t('appUpdate.action')}
-            notNowLabel={i18n.t('appUpdate.notNow')}
-            onNotNow={() => {
-              const currentPromptVersion =
-                typeof promptAppVersion === 'string' ? promptAppVersion.trim() : '';
-              setDismissedPromptVersion(currentPromptVersion || null);
-            }}
-          />
+          {isWeb ? null : (
+            <ForceUpgradeModal
+              open={shouldForceUpgrade}
+              title={i18n.t('appUpdate.title')}
+              message={i18n.t('appUpdate.description')}
+              actionLabel={i18n.t('appUpdate.action')}
+            />
+          )}
+          {isWeb ? null : (
+            <PromptUpgradeModal
+              open={shouldPromptUpgrade}
+              title={i18n.t('appUpdate.promptTitle')}
+              message={i18n.t('appUpdate.promptDescription')}
+              actionLabel={i18n.t('appUpdate.action')}
+              notNowLabel={i18n.t('appUpdate.notNow')}
+              onNotNow={() => {
+                const currentPromptVersion =
+                  typeof promptAppVersion === 'string' ? promptAppVersion.trim() : '';
+                setDismissedPromptVersion(currentPromptVersion || null);
+              }}
+            />
+          )}
           <SoftPromptModal
             open={softPrompt.open}
             title={softPrompt.title}

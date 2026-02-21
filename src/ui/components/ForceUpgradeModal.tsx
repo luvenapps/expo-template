@@ -21,8 +21,10 @@ export function ForceUpgradeModal({ open, title, message, actionLabel }: ForceUp
   const allowCloseRef = useRef(false);
   const theme = useTheme();
   const strokeColor = theme.color?.get() ?? '#111';
-  const { width } = useWindowDimensions();
+  const { width, height: windowHeight } = useWindowDimensions();
   const size = width < 390 ? 300 : 500;
+  const isWeb = Platform.OS === 'web';
+  const dialogHeight = isWeb ? windowHeight * 0.88 : windowHeight * 0.85;
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen && !allowCloseRef.current) {
@@ -99,7 +101,7 @@ export function ForceUpgradeModal({ open, title, message, actionLabel }: ForceUp
           alignSelf="center"
           width="100%"
           maxWidth={480}
-          height="87%"
+          height={dialogHeight}
         >
           <YStack gap="$4" flex={1} justifyContent="space-between">
             <YStack gap="$3">

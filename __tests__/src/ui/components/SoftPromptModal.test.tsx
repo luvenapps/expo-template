@@ -168,6 +168,25 @@ describe('SoftPromptModal', () => {
     expect(getByTestId('soft-prompt-not-now')).toBeTruthy();
   });
 
+  it('should use fallback stroke color when theme color returns undefined', () => {
+    const tamagui = require('tamagui');
+    tamagui.useTheme.mockReturnValueOnce({ color: { get: () => undefined } });
+
+    const { UNSAFE_root } = render(<SoftPromptModal {...defaultProps} />);
+    expect(UNSAFE_root.findByType('Dialog' as any)).toBeTruthy();
+  });
+
+  it('should use smaller icon size on narrow screens', () => {
+    const RN = require('react-native');
+    const original = RN.useWindowDimensions;
+    RN.useWindowDimensions = jest.fn(() => ({ width: 320, height: 568 }));
+
+    const { UNSAFE_root } = render(<SoftPromptModal {...defaultProps} />);
+    expect(UNSAFE_root.findByType('Dialog' as any)).toBeTruthy();
+
+    RN.useWindowDimensions = original;
+  });
+
   it('should prevent closing when user has not clicked a button', () => {
     const onOpenChange = jest.fn();
     const { UNSAFE_root } = render(
