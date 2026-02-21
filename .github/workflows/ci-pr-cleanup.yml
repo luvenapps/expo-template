@@ -39,6 +39,10 @@ jobs:
           GNUPGHOME: ${{ runner.temp }}/gnupg
           MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
 
+      - name: Install dependencies
+        # Required so EAS can resolve app config plugins (e.g. expo-router) during alias deletion.
+        run: npm ci
+
       - name: Sanity check versions
         run: |
           node -v
