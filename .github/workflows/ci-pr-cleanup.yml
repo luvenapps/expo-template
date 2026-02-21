@@ -21,7 +21,7 @@ jobs:
           mkdir -p "${RUNNER_TEMP}/gnupg"
           chmod 700 "${RUNNER_TEMP}/gnupg"
 
-      - name: Pin mise cache to local disk (self-hosted)
+      - name: Pin mise cache to local disk
         shell: bash
         run: |
           MISE_LOCAL="$HOME/.github/local-ci-cache/mise"

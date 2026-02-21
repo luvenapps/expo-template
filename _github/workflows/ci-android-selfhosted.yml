@@ -33,13 +33,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Clean workspace (self-hosted)
+      - name: Clean workspace
         shell: bash
         run: |
           git clean -ffdx
           git reset --hard HEAD
 
-      - name: Reset Watchman (self-hosted)
+      - name: Reset Watchman
         shell: bash
         run: |
           if command -v watchman >/dev/null 2>&1; then

@@ -46,14 +46,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Clean workspace (self-hosted)
+      - name: Clean workspace
         if: ${{ inputs.runner_target == 'selfhosted' }}
         shell: bash
         run: |
           git clean -ffdx
           git reset --hard HEAD
 
-      - name: Reset Watchman (self-hosted)
+      - name: Reset Watchman
         if: ${{ inputs.runner_target == 'selfhosted' }}
         shell: bash
         run: |
@@ -68,7 +68,7 @@ jobs:
           mkdir -p "${RUNNER_TEMP}/gnupg"
           chmod 700 "${RUNNER_TEMP}/gnupg"
 
-      - name: Pin mise cache to local disk (self-hosted)
+      - name: Pin mise cache to local disk
         if: ${{ inputs.runner_target == 'selfhosted' }}
         shell: bash
         run: |
