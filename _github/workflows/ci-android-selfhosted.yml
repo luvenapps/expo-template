@@ -80,21 +80,18 @@ jobs:
           TURN_ON_FIREBASE: ${{ vars[format('{0}_TURN_ON_FIREBASE', inputs.env_prefix)] || vars.TURN_ON_FIREBASE || 'false' }}
           RETRIES_VALUE: ${{ vars[format('{0}_RETRIES', inputs.env_prefix)] || vars.RETRIES || '2' }}
           RETRY_DELAY_VALUE: ${{ vars[format('{0}_RETRY_DELAY', inputs.env_prefix)] || vars.RETRY_DELAY || '5' }}
-          PROD_PUBLIC_SUPABASE_URL: ${{ vars.PROD_PUBLIC_SUPABASE_URL || '' }}
-          DEV_PUBLIC_SUPABASE_URL: ${{ vars.DEV_PUBLIC_SUPABASE_URL || '' }}
-          PROD_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.PROD_PUBLIC_SUPABASE_ANON_KEY || '' }}
-          DEV_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.DEV_PUBLIC_SUPABASE_ANON_KEY || '' }}
-          PROD_SUPABASE_ACCESS_TOKEN: ${{ secrets.PROD_SUPABASE_ACCESS_TOKEN || '' }}
-          DEV_SUPABASE_ACCESS_TOKEN: ${{ secrets.DEV_SUPABASE_ACCESS_TOKEN || '' }}
-          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY || '' }}
-          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID || '' }}
-          FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN || '' }}
-          FIREBASE_MEASUREMENT_ID: ${{ secrets.FIREBASE_MEASUREMENT_ID || '' }}
-          FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID || '' }}
-          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID || '' }}
-          FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET || '' }}
-          FIREBASE_VAPID_KEY: ${{ secrets.FIREBASE_VAPID_KEY || '' }}
-        run: .github/scripts/map_runtime_env.sh "${{ inputs.env_prefix }}"
+          PUBLIC_SUPABASE_URL: ${{ vars[format('{0}_PUBLIC_SUPABASE_URL', inputs.env_prefix)] || vars.PUBLIC_SUPABASE_URL || '' }}
+          PUBLIC_SUPABASE_ANON_KEY: ${{ secrets[format('{0}_PUBLIC_SUPABASE_ANON_KEY', inputs.env_prefix)] || secrets.PUBLIC_SUPABASE_ANON_KEY || '' }}
+          SUPABASE_ACCESS_TOKEN_VALUE: ${{ secrets[format('{0}_SUPABASE_ACCESS_TOKEN', inputs.env_prefix)] || secrets.SUPABASE_ACCESS_TOKEN || '' }}
+          FIREBASE_API_KEY: ${{ secrets[format('{0}_FIREBASE_API_KEY', inputs.env_prefix)] || secrets.FIREBASE_API_KEY || '' }}
+          FIREBASE_APP_ID: ${{ secrets[format('{0}_FIREBASE_APP_ID', inputs.env_prefix)] || secrets.FIREBASE_APP_ID || '' }}
+          FIREBASE_AUTH_DOMAIN: ${{ secrets[format('{0}_FIREBASE_AUTH_DOMAIN', inputs.env_prefix)] || secrets.FIREBASE_AUTH_DOMAIN || '' }}
+          FIREBASE_MEASUREMENT_ID: ${{ secrets[format('{0}_FIREBASE_MEASUREMENT_ID', inputs.env_prefix)] || secrets.FIREBASE_MEASUREMENT_ID || '' }}
+          FIREBASE_MESSAGING_SENDER_ID: ${{ secrets[format('{0}_FIREBASE_MESSAGING_SENDER_ID', inputs.env_prefix)] || secrets.FIREBASE_MESSAGING_SENDER_ID || '' }}
+          FIREBASE_PROJECT_ID: ${{ secrets[format('{0}_FIREBASE_PROJECT_ID', inputs.env_prefix)] || secrets.FIREBASE_PROJECT_ID || '' }}
+          FIREBASE_STORAGE_BUCKET: ${{ secrets[format('{0}_FIREBASE_STORAGE_BUCKET', inputs.env_prefix)] || secrets.FIREBASE_STORAGE_BUCKET || '' }}
+          FIREBASE_VAPID_KEY: ${{ secrets[format('{0}_FIREBASE_VAPID_KEY', inputs.env_prefix)] || secrets.FIREBASE_VAPID_KEY || '' }}
+        run: .github/scripts/map_runtime_env.sh
 
       - name: Check EAS CLI
         shell: bash
