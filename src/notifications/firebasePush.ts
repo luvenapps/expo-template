@@ -816,10 +816,21 @@ export async function ensureServiceWorkerRegistered(): Promise<PushRegistrationR
   try {
     const registration = await navigator.serviceWorker.getRegistration('/');
 
-    // If no service worker registration exists, re-register completely
+    // If no service worker registration exists, re-register only when
+    // the browser has already granted notification permission.  Otherwise
+    // `registerForWebPush` would call `Notification.requestPermission()`,
+    // showing the native browser prompt and bypassing the soft-prompt flow.
     if (!registration) {
+      if (
+        typeof Notification === 'undefined' ||
+        Notification.permission !== WEB_NOTIFICATION_PERMISSION.GRANTED
+      ) {
+        webLogger.debug(
+          'Service worker missing but notification permission not granted — skipping re-register',
+        );
+        return null;
+      }
       webLogger.info('Service worker missing, re-registering to restore push notifications');
-      // This will reuse the existing token if it's still valid
       return await registerForWebPush();
     }
 

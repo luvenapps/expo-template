@@ -850,12 +850,23 @@ describe('firebasePush Web', () => {
       await expect(ensureServiceWorkerRegistered()).resolves.toBeNull();
     });
 
-    it('re-registers when service worker is missing', async () => {
+    it('skips re-register when service worker is missing and permission is default', async () => {
+      ensureWebConfigEnv();
+      (Platform as any).OS = 'web';
+      (global as any).navigator.serviceWorker.getRegistration = jest.fn(async () => null);
+      (global as any).Notification.permission = 'default';
+      ensureWebGlobals();
+
+      const result = await ensureServiceWorkerRegistered();
+      expect(result).toBeNull();
+    });
+
+    it('re-registers when service worker is missing and permission is granted', async () => {
       ensureWebConfigEnv();
       ensureWebStorage();
       (Platform as any).OS = 'web';
       (global as any).navigator.serviceWorker.getRegistration = jest.fn(async () => null);
-      (global as any).Notification.permission = 'default';
+      (global as any).Notification.permission = 'granted';
       (global as any).Notification.requestPermission = jest.fn(async () => 'granted');
       ensureWebGlobals();
 
