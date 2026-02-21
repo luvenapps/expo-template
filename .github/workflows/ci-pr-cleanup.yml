@@ -1,0 +1,51 @@
+name: Cleanup PR
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  expo-alias-cleanup:
+    name: cleanup / Delete PR Alias In Expo
+    if: ${{ github.event.pull_request.merged == true && vars.USE_SELF_HOSTED == 'true' }}
+    runs-on: [self-hosted, macos, arm64]
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN || '' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Prepare isolated GnuPG home for mise
+        shell: bash
+        run: |
+          mkdir -p "${RUNNER_TEMP}/gnupg"
+          chmod 700 "${RUNNER_TEMP}/gnupg"
+
+      - name: Pin mise cache to local disk (self-hosted)
+        shell: bash
+        run: |
+          MISE_LOCAL="$HOME/.github/local-ci-cache/mise"
+          mkdir -p "$MISE_LOCAL/cache"
+          echo "MISE_DATA_DIR=$MISE_LOCAL"        >> "$GITHUB_ENV"
+          echo "MISE_CACHE_DIR=$MISE_LOCAL/cache" >> "$GITHUB_ENV"
+
+      - name: Setup mise toolchain
+        uses: jdx/mise-action@v3
+        with:
+          install: true
+          cache: false
+          log_level: ${{ runner.debug == '1' && 'debug' || 'info' }}
+        env:
+          GNUPGHOME: ${{ runner.temp }}/gnupg
+          MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+
+      - name: Sanity check versions
+        run: |
+          node -v
+          npm -v
+          npx expo --version
+          npx eas-cli --version
+
+      - name: Delete Alias
+        if: ${{ env.EXPO_TOKEN != '' }}
+        run: npx eas-cli@latest deploy:alias:delete "pr-${{ github.event.pull_request.number }}" --non-interactive

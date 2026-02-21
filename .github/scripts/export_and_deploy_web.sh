@@ -32,12 +32,17 @@ fi
 
 cat "$LOG_FILE" >&2
 
+DEPLOYMENT_URL=$(awk '/^Deployment URL[[:space:]]+/ { print $NF; exit }' "$LOG_FILE")
 if [ "$EVENT_NAME" = "pull_request" ]; then
   DEPLOY_URL=$(awk '/^Alias URL[[:space:]]+/ { print $NF; exit }' "$LOG_FILE")
 else
-  DEPLOY_URL=$(awk '/^Deployment URL[[:space:]]+/ { print $NF; found=1; exit } /^Alias URL[[:space:]]+/ { candidate=$NF } END { if (!found && candidate) print candidate }' "$LOG_FILE")
+  DEPLOY_URL="$DEPLOYMENT_URL"
+  if [ -z "$DEPLOY_URL" ]; then
+    DEPLOY_URL=$(awk '/^Alias URL[[:space:]]+/ { print $NF; exit }' "$LOG_FILE")
+  fi
 fi
 
 rm -f "$LOG_FILE"
 
-echo "$DEPLOY_URL"
+printf '%s\n' "$DEPLOY_URL"
+printf '%s\n' "$DEPLOYMENT_URL"

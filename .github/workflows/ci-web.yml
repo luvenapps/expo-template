@@ -133,7 +133,9 @@ jobs:
             PR_NUMBER='${{ inputs.pr_number }}'
           fi
 
-          DEPLOY_URL=$(.github/scripts/export_and_deploy_web.sh "$EVENT_NAME" "$PR_NUMBER")
+          DEPLOY_OUTPUT=$(.github/scripts/export_and_deploy_web.sh "$EVENT_NAME" "$PR_NUMBER")
+          DEPLOY_URL=$(printf '%s\n' "$DEPLOY_OUTPUT" | sed -n '1p')
+          DEPLOYMENT_URL=$(printf '%s\n' "$DEPLOY_OUTPUT" | sed -n '2p')
 
           if [ -z "$DEPLOY_URL" ]; then
             echo "Unable to find deploy URL in eas-cli output." >&2
@@ -144,6 +146,9 @@ jobs:
             echo 'deploy_url<<EOF'
             echo "$DEPLOY_URL"
             echo 'EOF'
+            echo 'deployment_url<<EOF'
+            echo "$DEPLOYMENT_URL"
+            echo 'EOF'
           } >> "$GITHUB_OUTPUT"
 
       - name: Comment with deployment URL
@@ -151,11 +156,13 @@ jobs:
         uses: actions/github-script@v8
         env:
           DEPLOY_URL: ${{ steps.deploy_web.outputs.deploy_url }}
+          DEPLOYMENT_URL: ${{ steps.deploy_web.outputs.deployment_url }}
         with:
           script: |
             const marker = '<!-- web-deploy-preview -->';
             const prNumber = Number('${{ inputs.pr_number }}');
             const url = process.env.DEPLOY_URL;
+            const deploymentUrl = process.env.DEPLOYMENT_URL;
 
             const shortSha = context.sha.slice(0, 7);
 
@@ -166,6 +173,12 @@ jobs:
               `✅ Deploy succeeded for \`${shortSha}\`.`,
               '',
               `🔗 ${url}`,
+              '',
+              '<details>',
+              '<summary>ℹ️ More Information</summary>',
+              '',
+              `Non-alias URL: ${deploymentUrl || 'Not available'}`,
+              '</details>',
             ].join('\n');
 
             const { owner, repo } = context.repo;
