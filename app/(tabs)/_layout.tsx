@@ -13,6 +13,16 @@ export default function TabsLayout() {
   const { palette } = useThemeContext();
   const { t } = useTranslation();
   const status = useSessionStore((state) => state.status);
+  const settingsHref = Platform.OS === 'web' ? '/settings' : undefined;
+  const settingsTabListeners =
+    Platform.OS === 'web'
+      ? {
+          tabPress: (event: { preventDefault: () => void }) => {
+            event.preventDefault();
+            router.replace('/settings');
+          },
+        }
+      : undefined;
 
   if (Platform.OS === 'web' && status === 'unknown') {
     return null;
@@ -39,15 +49,10 @@ export default function TabsLayout() {
       />
       <Tabs.Screen
         name="settings"
-        listeners={{
-          tabPress: (event) => {
-            event.preventDefault();
-            router.replace('/settings');
-          },
-        }}
+        listeners={settingsTabListeners}
         options={{
           title: t('common.settings'),
-          href: '/settings',
+          href: settingsHref,
           tabBarIcon: ({ color }) => <TabIcon color={color} Icon={Settings} />,
           headerShown: false,
         }}

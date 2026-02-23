@@ -26,9 +26,15 @@ jest.mock('react-native-safe-area-context', () => ({
 
 describe('RootRedirect', () => {
   const originalPlatform = Platform.OS;
+  const originalDocument = global.document;
 
   afterEach(() => {
     Object.defineProperty(Platform, 'OS', { value: originalPlatform, configurable: true });
+    if (originalDocument) {
+      global.document = originalDocument;
+    } else {
+      delete (global as { document?: Document }).document;
+    }
     mockPush.mockClear();
   });
 
@@ -57,5 +63,21 @@ describe('RootRedirect', () => {
 
     expect(mockPush).toHaveBeenCalledWith('/(auth)/login');
     expect(mockPush).toHaveBeenCalledWith('/(auth)/signup');
+  });
+
+  test('blurs active element on web before navigation', () => {
+    mockStatus = 'unauthenticated';
+    Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
+    const blur = jest.fn();
+    const activeElement = { blur } as unknown as Element;
+    (global as { document?: { activeElement?: Element } }).document = {
+      activeElement,
+    };
+
+    const { getByText } = render(<RootRedirect />);
+    fireEvent.press(getByText('landing.signIn'));
+
+    expect(blur).toHaveBeenCalledTimes(1);
+    expect(mockPush).toHaveBeenCalledWith('/(auth)/login');
   });
 });

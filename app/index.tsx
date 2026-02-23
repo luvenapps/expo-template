@@ -9,6 +9,15 @@ export default function RootRedirect() {
   const status = useSessionStore((state) => state.status);
   const router = useRouter();
   const { t } = useTranslation();
+  const navigateToAuth = (href: '/(auth)/login' | '/(auth)/signup') => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      const activeElement = document.activeElement;
+      if (activeElement && 'blur' in activeElement && typeof activeElement.blur === 'function') {
+        activeElement.blur();
+      }
+    }
+    router.push(href);
+  };
 
   if (Platform.OS === 'web' && status === 'unknown') {
     return null;
@@ -29,10 +38,10 @@ export default function RootRedirect() {
           {t('landing.subtitle')}
         </SubtitleText>
 
-        <PrimaryButton width="100%" onPress={() => router.push('/(auth)/login')}>
+        <PrimaryButton width="100%" onPress={() => navigateToAuth('/(auth)/login')}>
           {t('landing.signIn')}
         </PrimaryButton>
-        <SecondaryButton width="100%" onPress={() => router.push('/(auth)/signup')}>
+        <SecondaryButton width="100%" onPress={() => navigateToAuth('/(auth)/signup')}>
           {t('landing.signUp')}
         </SecondaryButton>
       </ScreenContainer>

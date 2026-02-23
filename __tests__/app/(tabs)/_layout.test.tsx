@@ -8,16 +8,24 @@ jest.mock('@/auth/session', () => ({
 
 jest.mock('expo-router', () => {
   const mockReact = jest.requireActual('react');
-
-  const Tabs = ({ children, screenOptions }: any) => {
-    return mockReact.createElement('Tabs', { testID: 'tabs', screenOptions }, children);
+  const router = {
+    replace: jest.fn(),
   };
 
-  const Screen = ({ name, options }: any) => {
+  const Tabs = ({ children, screenOptions }: any) => {
+    return mockReact.createElement(
+      'Tabs',
+      { testID: 'tabs', screenOptions },
+      children,
+    );
+  };
+
+  const Screen = ({ name, options, listeners }: any) => {
     return mockReact.createElement('TabsScreen', {
       testID: `tabs-screen-${name}`,
       name,
       options,
+      listeners,
     });
   };
 
@@ -25,7 +33,7 @@ jest.mock('expo-router', () => {
 
   const Redirect = ({ href }: { href: string }) => href;
 
-  return { Tabs, Redirect };
+  return { Tabs, Redirect, router };
 });
 
 // Mock ThemeProvider
@@ -36,6 +44,7 @@ jest.mock('@/ui/theme/ThemeProvider', () => ({
 
 import { useThemeContext } from '@/ui/theme/ThemeProvider';
 import { render } from '@testing-library/react-native';
+import { router } from 'expo-router';
 import { Platform } from 'react-native';
 import TabsLayout from '../../../app/(tabs)/_layout';
 
@@ -43,6 +52,7 @@ const mockUseThemeContext = useThemeContext as jest.Mock;
 
 describe('TabsLayout', () => {
   const originalPlatform = Platform.OS;
+  const mockRouterReplace = router.replace as jest.Mock;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -55,7 +65,10 @@ describe('TabsLayout', () => {
   });
 
   afterEach(() => {
-    Object.defineProperty(Platform, 'OS', { value: originalPlatform, configurable: true });
+    Object.defineProperty(Platform, 'OS', {
+      value: originalPlatform,
+      configurable: true,
+    });
   });
 
   describe('Theme Colors', () => {
@@ -125,7 +138,9 @@ describe('TabsLayout', () => {
 
       const { UNSAFE_root } = render(<TabsLayout />);
       const screens = UNSAFE_root.findAllByType('TabsScreen' as any);
-      const settingsScreen = screens.find((s: any) => s.props.name === 'settings');
+      const settingsScreen = screens.find(
+        (s: any) => s.props.name === 'settings',
+      );
 
       expect(settingsScreen).toBeDefined();
       expect(settingsScreen.props.options.title).toBe('common.settings');
@@ -156,7 +171,9 @@ describe('TabsLayout', () => {
       const screens = UNSAFE_root.findAllByType('TabsScreen' as any);
       const indexScreen = screens.find((s: any) => s.props.name === 'index');
 
-      const iconElement = indexScreen.props.options.tabBarIcon({ color: '#2563EB' });
+      const iconElement = indexScreen.props.options.tabBarIcon({
+        color: '#2563EB',
+      });
       const rendered = render(iconElement);
       const icon = rendered.getByTestId('home-icon');
 
@@ -172,9 +189,13 @@ describe('TabsLayout', () => {
 
       const { UNSAFE_root } = render(<TabsLayout />);
       const screens = UNSAFE_root.findAllByType('TabsScreen' as any);
-      const settingsScreen = screens.find((s: any) => s.props.name === 'settings');
+      const settingsScreen = screens.find(
+        (s: any) => s.props.name === 'settings',
+      );
 
-      const iconElement = settingsScreen.props.options.tabBarIcon({ color: '#94A3B8' });
+      const iconElement = settingsScreen.props.options.tabBarIcon({
+        color: '#94A3B8',
+      });
       const rendered = render(iconElement);
       const icon = rendered.getByTestId('settings-icon');
 
@@ -192,14 +213,22 @@ describe('TabsLayout', () => {
       const screens = UNSAFE_root.findAllByType('TabsScreen' as any);
       const indexScreen = screens.find((s: any) => s.props.name === 'index');
 
-      const activeIcon = indexScreen.props.options.tabBarIcon({ color: '#60A5FA' });
-      const inactiveIcon = indexScreen.props.options.tabBarIcon({ color: '#94A3B8' });
+      const activeIcon = indexScreen.props.options.tabBarIcon({
+        color: '#60A5FA',
+      });
+      const inactiveIcon = indexScreen.props.options.tabBarIcon({
+        color: '#94A3B8',
+      });
 
       const activeRendered = render(activeIcon);
       const inactiveRendered = render(inactiveIcon);
 
-      expect(activeRendered.getByTestId('home-icon').props.color).toBe('#60A5FA');
-      expect(inactiveRendered.getByTestId('home-icon').props.color).toBe('#94A3B8');
+      expect(activeRendered.getByTestId('home-icon').props.color).toBe(
+        '#60A5FA',
+      );
+      expect(inactiveRendered.getByTestId('home-icon').props.color).toBe(
+        '#94A3B8',
+      );
     });
   });
 
@@ -230,7 +259,10 @@ describe('TabsLayout', () => {
   describe('Web Guard', () => {
     it('returns null on web while session is unknown', () => {
       mockSessionStatus.mockReturnValue('unknown');
-      Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
+      Object.defineProperty(Platform, 'OS', {
+        value: 'web',
+        configurable: true,
+      });
 
       const result = render(<TabsLayout />);
       expect(result.toJSON()).toBeNull();
@@ -238,10 +270,49 @@ describe('TabsLayout', () => {
 
     it('redirects unauthenticated web users to login', () => {
       mockSessionStatus.mockReturnValue('unauthenticated');
-      Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
+      Object.defineProperty(Platform, 'OS', {
+        value: 'web',
+        configurable: true,
+      });
 
       const result = render(<TabsLayout />);
       expect(result.toJSON()).toMatchInlineSnapshot(`"/(auth)/login"`);
+    });
+
+    it('intercepts settings tab press on web and routes to /settings', () => {
+      Object.defineProperty(Platform, 'OS', {
+        value: 'web',
+        configurable: true,
+      });
+
+      const { UNSAFE_root } = render(<TabsLayout />);
+      const screens = UNSAFE_root.findAllByType('TabsScreen' as any);
+      const settingsScreen = screens.find(
+        (s: any) => s.props.name === 'settings',
+      );
+      const preventDefault = jest.fn();
+
+      settingsScreen.props.listeners.tabPress({ preventDefault });
+
+      expect(preventDefault).toHaveBeenCalledTimes(1);
+      expect(mockRouterReplace).toHaveBeenCalledWith('/settings');
+      expect(settingsScreen.props.options.href).toBe('/settings');
+    });
+
+    it('does not set web listeners or href on native settings tab', () => {
+      Object.defineProperty(Platform, 'OS', {
+        value: 'ios',
+        configurable: true,
+      });
+
+      const { UNSAFE_root } = render(<TabsLayout />);
+      const screens = UNSAFE_root.findAllByType('TabsScreen' as any);
+      const settingsScreen = screens.find(
+        (s: any) => s.props.name === 'settings',
+      );
+
+      expect(settingsScreen.props.listeners).toBeUndefined();
+      expect(settingsScreen.props.options.href).toBeUndefined();
     });
   });
 });
