@@ -6,7 +6,7 @@
  * Responsibilities (minimal + working Husky v9+):
  *  - Update package.json name (if still "template-starter")
  *  - Remove template-only metadata ("x-template") from package.json
- *  - Replace placeholders (__APP_NAME__, __APP_ID__) in app.config.ts
+ *  - Replace placeholders (__APP_NAME__, __APP_ID__) in app.config.ts and __tests__/app.config.test.ts
  *  - Replace placeholders in Maestro flows (.maestro/flows/*.yml|yaml)
  *  - Replace tokens in README.md (if present)
  *  - Replace tockens in Domain Config if present
@@ -149,6 +149,21 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
       console.log('✅ app.config.ts updated (name, slug, bundle IDs)');
     } catch (e) {
       console.log(`⚠️  app.config.ts update skipped (${e.message})`);
+    }
+  }
+
+  // __tests__/app.config.test.ts tokens
+  const appConfigTestPath = path.join(CWD, '__tests__', 'app.config.test.ts');
+  if (exists(appConfigTestPath)) {
+    try {
+      const before = fs.readFileSync(appConfigTestPath, 'utf8');
+      const after = before.replace(/__APP_NAME__/g, pkg.name);
+      if (after !== before) fs.writeFileSync(appConfigTestPath, after, 'utf8');
+      console.log('✅ __tests__/app.config.test.ts updated (app name)');
+    } catch (e) {
+      console.log(
+        `⚠️  __tests__/app.config.test.ts update skipped (${e.message})`,
+      );
     }
   }
 

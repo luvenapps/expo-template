@@ -4,8 +4,8 @@ import getConfig from '../app.config';
 
 describe('app.config', () => {
   const baseConfig: ExpoConfig = {
-    name: 'appname',
-    slug: 'appname',
+    name: '__APP_NAME__',
+    slug: '__APP_NAME__',
   };
 
   const makeConfig = () => getConfig({ config: baseConfig } as any);
@@ -20,20 +20,20 @@ describe('app.config', () => {
     process.env.APP_VARIANT = originalEnv;
   });
 
-  it('keeps slug as appname in preview mode', () => {
+  it('keeps slug as __APP_NAME__ in preview mode', () => {
     process.env.APP_VARIANT = 'preview';
     const config = makeConfig();
 
-    expect(config.slug).toBe('appname');
-    expect(config.name).toBe('appname (Preview)');
+    expect(config.slug).toBe('__APP_NAME__');
+    expect(config.name).toBe('__APP_NAME__ (Preview)');
   });
 
-  it('keeps slug as appname in production mode', () => {
+  it('keeps slug as __APP_NAME__ in production mode', () => {
     process.env.APP_VARIANT = 'production';
     const config = makeConfig();
 
-    expect(config.slug).toBe('appname');
-    expect(config.name).toBe('appname');
+    expect(config.slug).toBe('__APP_NAME__');
+    expect(config.name).toBe('__APP_NAME__');
   });
 
   it('enables Hermes globally and in build properties plugin', () => {
@@ -42,8 +42,14 @@ describe('app.config', () => {
     expect(config.jsEngine).toBe('hermes');
 
     const buildPropertiesPlugin = config.plugins?.find(
-      (plugin) => Array.isArray(plugin) && plugin[0] === 'expo-build-properties',
-    ) as [string, { android?: { jsEngine?: string }; ios?: { jsEngine?: string } }] | undefined;
+      (plugin) =>
+        Array.isArray(plugin) && plugin[0] === 'expo-build-properties',
+    ) as
+      | [
+          string,
+          { android?: { jsEngine?: string }; ios?: { jsEngine?: string } },
+        ]
+      | undefined;
 
     expect(buildPropertiesPlugin).toBeDefined();
     expect(buildPropertiesPlugin?.[1].android?.jsEngine).toBe('hermes');
