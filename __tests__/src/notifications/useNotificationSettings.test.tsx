@@ -14,6 +14,12 @@ jest.mock('@/config/constants', () => {
 });
 
 jest.mock('@/notifications/preferences', () => ({
+  DEFAULT_NOTIFICATION_PREFERENCES: {
+    notificationStatus: 'unknown',
+    pushManuallyDisabled: false,
+    softDeclineCount: 0,
+    softLastDeclinedAt: 0,
+  },
   loadNotificationPreferences: jest.fn(),
   persistNotificationPreferences: jest.fn(),
 }));
@@ -1000,7 +1006,6 @@ describe('useNotificationSettings', () => {
         await Promise.resolve();
       });
 
-      expect(result.current.permissionStatus).toBe('prompt');
       expect(persistNotificationPreferences).toHaveBeenCalledWith(
         expect.objectContaining({
           notificationStatus: 'unknown',
@@ -1029,7 +1034,6 @@ describe('useNotificationSettings', () => {
         await Promise.resolve();
       });
 
-      expect(result.current.permissionStatus).toBe('prompt');
       expect(result.current.notificationStatus).toBe('soft-declined');
 
       // Check that soft-declined status was not overwritten
@@ -1063,7 +1067,6 @@ describe('useNotificationSettings', () => {
         await Promise.resolve();
       });
 
-      expect(result.current.permissionStatus).toBe('prompt');
       expect(persistNotificationPreferences).toHaveBeenCalledWith(
         expect.objectContaining({
           notificationStatus: 'unknown',
@@ -1132,7 +1135,7 @@ describe('useNotificationSettings', () => {
   });
 
   describe('Web-specific behavior', () => {
-    it('uses web permission state when Notification is available', async () => {
+    it('syncs to browser permission state on web', async () => {
       Object.defineProperty(Platform, 'OS', { value: 'web' });
       const originalNotification = (globalThis as { Notification?: typeof Notification })
         .Notification;
@@ -1165,6 +1168,55 @@ describe('useNotificationSettings', () => {
       } else {
         delete (globalThis as { window?: Window }).window;
       }
+      (globalThis as { Notification?: typeof Notification }).Notification = originalNotification;
+    });
+
+    it('does not auto-register on web before stored preferences are loaded', async () => {
+      Object.defineProperty(Platform, 'OS', { value: 'web' });
+      const originalNotification = (globalThis as { Notification?: typeof Notification })
+        .Notification;
+      (globalThis as { Notification?: typeof Notification }).Notification = {
+        permission: 'granted',
+      } as typeof Notification;
+
+      loadNotificationPreferences.mockReturnValue({
+        notificationStatus: 'unknown',
+        pushManuallyDisabled: true,
+        softDeclineCount: 0,
+        softLastDeclinedAt: 0,
+      });
+
+      renderHook(() => useNotificationSettings());
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(ensureNotificationsEnabled).not.toHaveBeenCalled();
+
+      (globalThis as { Notification?: typeof Notification }).Notification = originalNotification;
+    });
+
+    it('does not auto-prompt on web when browser permission is already granted', async () => {
+      Object.defineProperty(Platform, 'OS', { value: 'web' });
+      const originalNotification = (globalThis as { Notification?: typeof Notification })
+        .Notification;
+      (globalThis as { Notification?: typeof Notification }).Notification = {
+        permission: 'granted',
+      } as typeof Notification;
+
+      const { result } = renderHook(() => useNotificationSettings());
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(result.current.permissionStatus).toBe('granted');
+      expect(result.current.softPrompt.open).toBe(false);
+      expect(trackEvent).not.toHaveBeenCalledWith('notifications:prompt-triggered', {
+        context: 'auto-soft',
+      });
+
       (globalThis as { Notification?: typeof Notification }).Notification = originalNotification;
     });
 
@@ -1279,7 +1331,6 @@ describe('useNotificationSettings', () => {
         await Promise.resolve();
       });
 
-      expect(result.current.permissionStatus).toBe('prompt');
       expect(trackEvent).toHaveBeenCalledWith('notifications:prompt-triggered', {
         context: 'auto-soft',
       });
@@ -1308,7 +1359,6 @@ describe('useNotificationSettings', () => {
         await Promise.resolve();
       });
 
-      expect(result.current.permissionStatus).toBe('prompt');
       expect(trackEvent).toHaveBeenCalledWith('notifications:prompt-triggered', {
         context: 'auto-soft',
       });

@@ -4,6 +4,7 @@ import {
   revokeNotifications,
 } from '@/notifications/notificationSystem';
 import {
+  DEFAULT_NOTIFICATION_PREFERENCES,
   type NotificationPreferences,
   loadNotificationPreferences,
   persistNotificationPreferences,
@@ -23,6 +24,11 @@ import { useTranslation } from 'react-i18next';
 import { AppState, Platform } from 'react-native';
 
 const logger = createLogger('PermSync');
+
+function getInitialPreferences(): NotificationPreferences {
+  const loaded = loadNotificationPreferences();
+  return loaded ?? DEFAULT_NOTIFICATION_PREFERENCES;
+}
 
 function mapPermission(
   status: Notifications.NotificationPermissionsStatus,
@@ -61,41 +67,27 @@ function mapPermission(
   return NOTIFICATION_PERMISSION_STATE.PROMPT;
 }
 
-function getInitialWebPermissionStatus(): NotificationPermissionState {
-  if (Platform.OS !== 'web') return NOTIFICATION_PERMISSION_STATE.UNAVAILABLE;
-
-  try {
-    if (typeof window === 'undefined' || typeof Notification === 'undefined') {
-      return NOTIFICATION_PERMISSION_STATE.PROMPT;
-    }
-
-    const permission = Notification.permission;
-    if (permission === WEB_NOTIFICATION_PERMISSION.GRANTED) {
-      return NOTIFICATION_PERMISSION_STATE.GRANTED;
-    }
-    if (permission === WEB_NOTIFICATION_PERMISSION.DENIED) {
-      return NOTIFICATION_PERMISSION_STATE.BLOCKED;
-    }
-    return NOTIFICATION_PERMISSION_STATE.PROMPT;
-  } catch {
-    return NOTIFICATION_PERMISSION_STATE.PROMPT;
-  }
-}
-
 export function useNotificationSettings() {
   const analytics = useAnalytics();
   const { t } = useTranslation();
   const [preferences, setPreferences] = useState<NotificationPreferences>(() =>
-    loadNotificationPreferences(),
+    Platform.OS === 'web' ? DEFAULT_NOTIFICATION_PREFERENCES : getInitialPreferences(),
   );
-  const [permissionStatus, setPermissionStatus] = useState<NotificationPermissionState>(() =>
-    Platform.OS === 'web' ? getInitialWebPermissionStatus() : NOTIFICATION_PERMISSION_STATE.PROMPT,
+  const [permissionStatus, setPermissionStatus] = useState<NotificationPermissionState>(
+    // Keep first render deterministic across SSR/client hydration on web.
+    NOTIFICATION_PERMISSION_STATE.PROMPT,
   );
   const [error, setError] = useState<string | null>(null);
   const [pushError, setPushError] = useState<string | null>(null);
   const [isChecking, setIsChecking] = useState(false);
   const [softPromptOpen, setSoftPromptOpen] = useState(false);
   const [softPromptContext, setSoftPromptContext] = useState<string | undefined>(undefined);
+  const [hasResolvedInitialPermission, setHasResolvedInitialPermission] = useState(
+    Platform.OS !== 'web',
+  );
+  const [hasResolvedInitialPreferences, setHasResolvedInitialPreferences] = useState(
+    Platform.OS !== 'web',
+  );
   const lastAutoSoftPromptRef = useRef<number | null>(null);
 
   const updatePreferences = useCallback(
@@ -145,19 +137,36 @@ export function useNotificationSettings() {
       return fallbackStatus;
     } finally {
       setIsChecking(false);
+      setHasResolvedInitialPermission(true);
     }
   }, [analytics, t]);
 
   const refreshPreferences = useCallback(() => {
-    setPreferences(loadNotificationPreferences());
+    setPreferences(getInitialPreferences());
   }, []);
 
   useEffect(() => {
     refreshPermissionStatus().catch(() => undefined);
   }, [refreshPermissionStatus]);
 
+  useEffect(() => {
+    if (Platform.OS !== 'web') {
+      return;
+    }
+
+    try {
+      setPreferences(getInitialPreferences());
+    } finally {
+      setHasResolvedInitialPreferences(true);
+    }
+  }, []);
+
   // Keep preferences in sync when OS/browser permission changes (e.g., user toggles in Settings)
   useEffect(() => {
+    if (Platform.OS === 'web' && !hasResolvedInitialPreferences) {
+      return;
+    }
+
     logger.debug('Effect triggered', {
       permissionStatus,
       pushManuallyDisabled: preferences.pushManuallyDisabled,
@@ -179,7 +188,7 @@ export function useNotificationSettings() {
       })
         .then((result) => {
           logger.debug('ensureNotificationsEnabled result:', result);
-          setPreferences(loadNotificationPreferences());
+          setPreferences(getInitialPreferences());
         })
         .catch((error) => {
           logger.error('ensureNotificationsEnabled error:', error);
@@ -225,6 +234,7 @@ export function useNotificationSettings() {
     }
   }, [
     analytics,
+    hasResolvedInitialPreferences,
     permissionStatus,
     preferences.pushManuallyDisabled,
     preferences.notificationStatus,
@@ -234,6 +244,7 @@ export function useNotificationSettings() {
   // If the OS/browser already granted permission (e.g., user toggled system settings),
   // but our stored status is not yet marked granted, register push again to obtain a token.
   useEffect(() => {
+    if (Platform.OS === 'web' && !hasResolvedInitialPreferences) return;
     if (permissionStatus !== NOTIFICATION_PERMISSION_STATE.GRANTED) return;
     if (preferences.notificationStatus === NOTIFICATION_STATUS.GRANTED) return;
     if (preferences.pushManuallyDisabled) return;
@@ -244,12 +255,13 @@ export function useNotificationSettings() {
       forceRegister: true,
     })
       .then(() => {
-        setPreferences(loadNotificationPreferences());
+        setPreferences(getInitialPreferences());
       })
       .catch((error) => {
         analytics.trackError(error as Error, { source: 'notifications:permission-sync' });
       });
   }, [
+    hasResolvedInitialPreferences,
     permissionStatus,
     preferences.notificationStatus,
     preferences.pushManuallyDisabled,
@@ -289,7 +301,7 @@ export function useNotificationSettings() {
     });
 
     // Reload persisted preferences after the unified API updates them (matches tryPromptForPush)
-    setPreferences(loadNotificationPreferences());
+    setPreferences(getInitialPreferences());
     setSoftPromptOpen(false);
     setSoftPromptContext(undefined);
 
@@ -372,7 +384,7 @@ export function useNotificationSettings() {
       });
 
       // Reload persisted preferences after the unified API updates them
-      const latestPreferences = loadNotificationPreferences();
+      const latestPreferences = getInitialPreferences();
       setPreferences(latestPreferences);
 
       if (result.status === 'enabled') {
@@ -416,6 +428,8 @@ export function useNotificationSettings() {
       NOTIFICATIONS.initialSoftPromptTrigger === 'app-install' ||
       (Platform.OS === 'web' && NOTIFICATIONS.initialSoftPromptTrigger === 'first-entry');
     if (!shouldAutoPrompt) return;
+    if (Platform.OS === 'web' && (!hasResolvedInitialPermission || !hasResolvedInitialPreferences))
+      return;
     if (permissionStatus !== NOTIFICATION_PERMISSION_STATE.PROMPT) return;
     if (preferences.pushManuallyDisabled) return;
     if (preferences.notificationStatus === NOTIFICATION_STATUS.GRANTED) return;
@@ -430,6 +444,8 @@ export function useNotificationSettings() {
     });
   }, [
     analytics,
+    hasResolvedInitialPermission,
+    hasResolvedInitialPreferences,
     permissionStatus,
     preferences.notificationStatus,
     preferences.pushManuallyDisabled,

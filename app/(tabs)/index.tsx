@@ -2,15 +2,24 @@ import { getLocalName } from '@/auth/nameStorage';
 import { DOMAIN } from '@/config/domain.config';
 import { PrimaryButton, ScreenContainer } from '@/ui';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Platform } from 'react-native';
 import { H2, Paragraph } from 'tamagui';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { t } = useTranslation();
-  const [localName, setLocalName] = useState(() => getLocalName());
+  const [localName, setLocalName] = useState(() => (Platform.OS === 'web' ? null : getLocalName()));
   const firstName = localName?.trim().split(/\s+/)[0];
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') {
+      return;
+    }
+
+    setLocalName(getLocalName());
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
