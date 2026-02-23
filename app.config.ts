@@ -115,7 +115,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       : { policy: 'appVersion' }, // Production-friendly
 
     updates: {
-      url: '',
+      url: 'UPDATE THIS',
     },
   };
 };

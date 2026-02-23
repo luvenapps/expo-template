@@ -13,7 +13,7 @@
  *  - Restore .gitignore from "gitignore" (if present)
  *  - Rename _prettierrc.json → .prettierrc.json if present
  *  - Rename _prettierignore → .prettierignore if present
- *  - Rename _nvmrc → .nvmrc if present
+ *  - Copy _mcp.json → .vscode/mcp.json (creates .vscode if needed)
  *  - Enable Husky hooks *without* using deprecated `husky install` (set hooksPath + chmod +x)
  *  - Materialize .maestro from _maestro if needed
  *  - Restore .github (delete existing .github and rename _github → .github
@@ -135,62 +135,17 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
 
   summary.slug = slugSafe;
   summary.appId = appId;
+  summary.singular = singularize(idSegmentBase);
 
   if (exists(appConfigPath)) {
     try {
-      const appConfig = readJson(appConfigPath);
-      const expo = appConfig.expo || appConfig;
-
-      expo.name =
-        typeof expo.name === 'string'
-          ? expo.name.replace(/__APP_NAME__/g, pkg.name)
-          : pkg.name;
-      expo.slug =
-        typeof expo.slug === 'string'
-          ? expo.slug.replace(/__APP_NAME__/g, slugSafe)
-          : slugSafe;
-      // URL scheme should follow the appId (deep links like app://)
-      expo.scheme =
-        typeof expo.scheme === 'string'
-          ? expo.scheme.replace(/__APP_NAME__/g, idSegmentBase)
-          : appId;
-
-      expo.ios = expo.ios || {};
-      expo.ios.bundleIdentifier =
-        typeof expo.ios.bundleIdentifier === 'string'
-          ? expo.ios.bundleIdentifier.replace(/__APP_ID__/g, appId)
-          : expo.ios.bundleIdentifier || appId;
-
-      expo.android = expo.android || {};
-      expo.android.package =
-        typeof expo.android.package === 'string'
-          ? expo.android.package.replace(/__APP_ID__/g, appId)
-          : expo.android.package || appId;
-
-      // Android intentFilters: populate/replace scheme tokens (e.g., { data: [{ scheme: "__APP_NAME__" }] })
-      try {
-        const filters = (expo.android.intentFilters ||= []);
-        for (const f of filters) {
-          // Normalize single object to array if needed
-          if (f && f.data && !Array.isArray(f.data)) f.data = [f.data];
-          if (Array.isArray(f?.data)) {
-            for (const d of f.data) {
-              if (!d || typeof d !== 'object') continue;
-              if (typeof d.scheme === 'string') {
-                // Replace placeholder with a safe scheme value
-                d.scheme = d.scheme.replace(/__APP_NAME__/g, idSegmentBase);
-              } else if (d.scheme == null) {
-                // Default missing scheme to a safe value
-                d.scheme = idSegmentBase;
-              }
-            }
-          }
-        }
-      } catch {}
-
-      if (appConfig.expo) appConfig.expo = expo;
-      else Object.assign(appConfig, expo);
-      writeJson(appConfigPath, appConfig);
+      const before = fs.readFileSync(appConfigPath, 'utf8');
+      const after = before
+        .replace(/__APP_NAME__SINGULAR__/g, summary.singular)
+        .replace(/__APP_SLUG__/g, slugSafe)
+        .replace(/__APP_NAME__/g, pkg.name)
+        .replace(/__APP_ID__/g, appId);
+      if (after !== before) fs.writeFileSync(appConfigPath, after, 'utf8');
       console.log('✅ app.config.ts updated (name, slug, bundle IDs)');
     } catch (e) {
       console.log(`⚠️  app.config.ts update skipped (${e.message})`);
@@ -236,7 +191,6 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
   }
 
   // Domain Config tokens
-  summary.singular = singularize(idSegmentBase);
   const domainConfigPath = path.join(CWD, 'src/config/domain.config.ts');
   if (exists(domainConfigPath)) {
     const before = fs.readFileSync(domainConfigPath, 'utf8');
@@ -315,24 +269,20 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
     );
   }
 
-  // Rename _nvmrc → .nvmrc if present
-  const nvmrcSrc = path.join(CWD, '_nvmrc');
-  const nvmrcDst = path.join(CWD, '.nvmrc');
-  if (exists(nvmrcSrc)) {
+  // Copy _mcp.json → .vscode/mcp.json if present
+  const mcpSrc = path.join(CWD, '_mcp.json');
+  const vscodeDst = path.join(CWD, '.vscode');
+  const mcpDst = path.join(vscodeDst, 'mcp.json');
+  if (exists(mcpSrc)) {
     try {
-      if (exists(nvmrcDst)) {
-        fs.unlinkSync(nvmrcDst);
-        console.log(
-          '🧹 Removed existing .nvmrc to replace with template version',
-        );
-      }
-      fs.renameSync(nvmrcSrc, nvmrcDst);
-      console.log('✅ Restored .nvmrc from template');
+      if (!exists(vscodeDst)) fs.mkdirSync(vscodeDst, { recursive: true });
+      fs.copyFileSync(mcpSrc, mcpDst);
+      console.log('✅ Copied _mcp.json → .vscode/mcp.json');
     } catch (e) {
-      console.log(`⚠️  Failed to restore .nvmrc (${e.message})`);
+      console.log(`⚠️  Failed to copy _mcp.json (${e.message})`);
     }
   } else {
-    console.log('⚠️  No _nvmrc found in template directory — skipping');
+    console.log('⚠️  No _mcp.json found in template directory — skipping');
   }
 
   // Husky v9+ (no `husky install`): set hooksPath + chmod, and materialize from _husky if needed

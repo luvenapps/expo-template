@@ -26,20 +26,58 @@ jobs:
     timeout-minutes: 90
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
-      - name: Setup Node 24
-        uses: actions/setup-node@v6
+      - name: Prepare isolated GnuPG home for mise
+        shell: bash
+        run: |
+          mkdir -p "${RUNNER_TEMP}/gnupg"
+          chmod 700 "${RUNNER_TEMP}/gnupg"
+
+      - name: Pin mise cache to local disk
+        if: ${{ inputs.runner_target == 'selfhosted' }}
+        shell: bash
+        run: |
+          MISE_LOCAL="$HOME/.github/local-ci-cache/mise"
+          mkdir -p "$MISE_LOCAL/cache"
+          echo "MISE_DATA_DIR=$MISE_LOCAL"       >> "$GITHUB_ENV"
+          echo "MISE_CACHE_DIR=$MISE_LOCAL/cache" >> "$GITHUB_ENV"
+
+      - name: Setup mise toolchain
+        uses: jdx/mise-action@v3
         with:
-          node-version-file: '.nvmrc'
-          cache: 'npm'
+          install: true
+          cache: ${{ inputs.runner_target != 'selfhosted' }}
+          log_level: ${{ runner.debug == '1' && 'debug' || 'info' }}
+        env:
+          GNUPGHOME: ${{ runner.temp }}/gnupg
+          MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
 
       - name: Install deps
         run: npm ci
 
+      - name: Verify Expo/RN dependency alignment
+        id: expo_deps
+        shell: bash
+        run: .github/scripts/verify_expo_deps.sh
+        continue-on-error: true
+
+      - name: Annotate Expo/RN dependency drift
+        if: ${{ steps.expo_deps.outcome == 'failure' }}
+        shell: bash
+        run: |
+          echo "::error::Expo/RN dependency drift detected. Run 'npx expo install --fix' and commit the lockfile changes."
+
       - name: Doctor
+        id: expo_doctor
         run: npm run doctor
         continue-on-error: true
+
+      - name: Annotate Expo Doctor issues
+        if: ${{ steps.expo_doctor.outcome == 'failure' }}
+        shell: bash
+        run: |
+          echo "::error::Expo Doctor reported issues. Review the Doctor step logs for details."
 
       - name: Check formatting
         run: npm run format:check
@@ -48,7 +86,7 @@ jobs:
         run: npm run lint
 
       - name: Unit tests
-        run: npm run test -- --coverage
+        run: npm run test -- --coverage --runInBand
 
       - name: Install GPG
         if: ${{ !cancelled() && inputs.runner_target != 'selfhosted' }}
@@ -62,7 +100,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
-          slug: org/repo
+          slug: org/repo # <-- UPDATE THIS
           flags: ${{ inputs.runner_target }}-quality
           fail_ci_if_error: false
 
@@ -72,7 +110,12 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./junit.xml
-          slug: org/repo
+          slug: org/repo # <-- UPDATE THIS
           flags: ${{ inputs.runner_target }}-quality
           report_type: test_results
           fail_ci_if_error: false
+
+      - name: Clean self-hosted workspace
+        if: ${{ always() && inputs.runner_target == 'selfhosted' }}
+        shell: bash
+        run: .github/scripts/clean_selfhosted_workspace.sh

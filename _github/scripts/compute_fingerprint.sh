@@ -18,6 +18,9 @@ if [ "$PLATFORM" != "ios" ] && [ "$PLATFORM" != "android" ]; then
 fi
 
 FIREBASE_FLAG="${EXPO_PUBLIC_TURN_ON_FIREBASE:-false}"
+REPO_SLUG="${GITHUB_REPOSITORY:-local-repo}"
+# Keep cache keys filesystem-safe and stable across shells/platforms.
+SAFE_REPO_SLUG=$(printf '%s' "$REPO_SLUG" | tr -cs 'a-zA-Z0-9._-' '_')
 
 # Use Expo's native fingerprint tool to detect changes that require a rebuild
 HASH=$(npx @expo/fingerprint fingerprint:generate --platform "$PLATFORM" | node -e "console.log(JSON.parse(require('fs').readFileSync(0, 'utf-8')).hash)")
@@ -44,9 +47,9 @@ fi
 
 # Output cache key (iOS uses "app", Android uses "apk")
 if [ "$PLATFORM" = "ios" ]; then
-  CACHE_KEY="ios-app-${HASH}-${FIREBASE_FLAG}-${CREDS_HASH}"
+  CACHE_KEY="ios-${SAFE_REPO_SLUG}-app-${HASH}-${FIREBASE_FLAG}-${CREDS_HASH}"
 else
-  CACHE_KEY="android-apk-${HASH}-${FIREBASE_FLAG}-${CREDS_HASH}"
+  CACHE_KEY="android-${SAFE_REPO_SLUG}-apk-${HASH}-${FIREBASE_FLAG}-${CREDS_HASH}"
 fi
 echo "key=${CACHE_KEY}"
-echo "🔑 $(echo "$PLATFORM" | tr '[:lower:]' '[:upper:]')_FINGERPRINT=${HASH} (firebase=${FIREBASE_FLAG}, creds=${CREDS_HASH})"
+echo "🔑 $(echo "$PLATFORM" | tr '[:lower:]' '[:upper:]')_FINGERPRINT=${HASH} (repo=${SAFE_REPO_SLUG}, firebase=${FIREBASE_FLAG}, creds=${CREDS_HASH})"

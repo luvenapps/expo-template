@@ -15,6 +15,10 @@ run_with_timeout() {
   shift
   local command=("$@")
 
+  # Disable job control messages for this subshell
+  set +m
+  
+  # Run command in background
   "${command[@]}" &
   local cmd_pid=$!
   local start_time
@@ -24,19 +28,21 @@ run_with_timeout() {
     local now
     now=$(date +%s)
     if [ $((now - start_time)) -ge "$timeout" ]; then
+      # Timeout occurred - kill the process
       kill -TERM "$cmd_pid" 2>/dev/null || true
       sleep 1
       kill -KILL "$cmd_pid" 2>/dev/null || true
       wait "$cmd_pid" 2>/dev/null || true
+      set -m
       return 124
     fi
     sleep 0.5
   done
 
+  # Command completed - get its exit code
   local exit_code=0
-  if ! wait "$cmd_pid"; then
-    exit_code=$?
-  fi
+  wait "$cmd_pid" 2>/dev/null || exit_code=$?
+  set -m
   return "$exit_code"
 }
 
@@ -179,10 +185,19 @@ boot_and_wait() {
           local sb_max=30
           
           while [ $sb_time -lt $sb_max ]; do
-            if run_with_timeout 5 xcrun simctl spawn "$udid" launchctl list 2>/dev/null | grep -q "com.apple.SpringBoard"; then
-              echo "✅ SpringBoard is running"
-              sleep 3  # Brief settle time
-              return 0
+            # Capture output to avoid pipe issues with background jobs
+            local sb_output=""
+            if run_with_timeout 5 sh -c "xcrun simctl spawn '$udid' launchctl list 2>/dev/null" > /tmp/sb_check_$ 2>&1; then
+              sb_output=$(cat /tmp/sb_check_$ 2>/dev/null || echo "")
+              rm -f /tmp/sb_check_$
+              
+              if echo "$sb_output" | grep -q "com.apple.SpringBoard"; then
+                echo "✅ SpringBoard is running"
+                sleep 3  # Brief settle time
+                return 0
+              fi
+            else
+              rm -f /tmp/sb_check_$
             fi
             sleep 2
             sb_time=$((sb_time + 2))
@@ -225,9 +240,16 @@ for attempt in $(seq 1 "$ATTEMPTS"); do
   if boot_and_wait "$UDID"; then
     echo ""
     echo "✅ SUCCESS: Simulator $DEVICE ($UDID) is fully booted and responsive"
+
+    # Save UDID to file for use by subsequent scripts
     echo "💾 Writing UDID to $UDID_FILE in $(pwd)"
     echo "$UDID" > "$UDID_FILE"
-    ls -la "$UDID_FILE" || echo "⚠️  Failed to create UDID file"
+    if [ -f "$UDID_FILE" ]; then
+      echo "✓ UDID file created successfully"
+    else
+      echo "⚠️  Failed to create UDID file"
+    fi
+
     exit 0
   fi
   

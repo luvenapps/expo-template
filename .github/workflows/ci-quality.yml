@@ -44,7 +44,6 @@ concurrency:
 jobs:
   quality-hosted:
     name: Quality Checks - Hosted Ubuntu
-    if: vars.USE_SELF_HOSTED != 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -53,11 +52,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Setup Node 24
-        uses: actions/setup-node@v6
+      - name: Prepare isolated GnuPG home for mise
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        run: |
+          mkdir -p "${RUNNER_TEMP}/gnupg"
+          chmod 700 "${RUNNER_TEMP}/gnupg"
+
+      - name: Setup mise toolchain
+        uses: jdx/mise-action@v3
         with:
-          node-version: 24.1.0
-          cache: 'npm'
+          install: true
+          log_level: ${{ runner.debug == '1' && 'debug' || 'info' }}
+        env:
+          GNUPGHOME: ${{ runner.temp }}/gnupg
+          MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
 
       - name: Scaffold & verify (retry once)
         working-directory: .
