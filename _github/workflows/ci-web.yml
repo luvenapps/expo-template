@@ -40,6 +40,7 @@ jobs:
       contents: read
       pull-requests: write
     env:
+      EAS_CLI_VERSION: ${{ vars.EAS_CLI_VERSION || '' }}
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN || '' }}
 
     steps:
@@ -90,12 +91,19 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Validate EAS CLI version variable
+        shell: bash
+        run: |
+          if [ -z "$EAS_CLI_VERSION" ]; then
+            echo "❌ Missing EAS_CLI_VERSION GitHub variable."
+            exit 1
+          fi
+
       - name: Sanity check versions
         run: |
           node -v
           npm -v
           npx expo --version
-          npx eas-cli --version
 
       - name: Map runtime variables and secrets
         shell: bash

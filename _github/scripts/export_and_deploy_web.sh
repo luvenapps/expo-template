@@ -3,9 +3,15 @@ set -euo pipefail
 
 EVENT_NAME="${1:-}"
 PR_NUMBER="${2:-}"
+EAS_CLI_VERSION="${EAS_CLI_VERSION:-}"
 
 if [ -z "$EVENT_NAME" ]; then
   echo "Usage: $0 <event_name> [pr_number]" >&2
+  exit 1
+fi
+
+if [ -z "$EAS_CLI_VERSION" ]; then
+  echo "EAS_CLI_VERSION environment variable is required." >&2
   exit 1
 fi
 
@@ -24,7 +30,7 @@ fi
 
 LOG_FILE="$(mktemp)"
 
-if ! npx eas-cli "${DEPLOY_ARGS[@]}" >"$LOG_FILE" 2>&1; then
+if ! npx "eas-cli@${EAS_CLI_VERSION}" "${DEPLOY_ARGS[@]}" >"$LOG_FILE" 2>&1; then
   cat "$LOG_FILE" >&2
   rm -f "$LOG_FILE"
   exit 1

@@ -43,13 +43,20 @@ jobs:
         # Required so EAS can resolve app config plugins (e.g. expo-router) during alias deletion.
         run: npm ci
 
+      - name: Validate EAS CLI version variable
+        shell: bash
+        run: |
+          if [ -z "${{ vars.EAS_CLI_VERSION }}" ]; then
+            echo "❌ Missing EAS_CLI_VERSION GitHub variable."
+            exit 1
+          fi
+
       - name: Sanity check versions
         run: |
           node -v
           npm -v
           npx expo --version
-          npx eas-cli --version
 
       - name: Delete Alias
         if: ${{ env.EXPO_TOKEN != '' }}
-        run: npx eas-cli@latest deploy:alias:delete "pr-${{ github.event.pull_request.number }}" --non-interactive
+        run: npx eas-cli@${{ vars.EAS_CLI_VERSION }} deploy:alias:delete "pr-${{ github.event.pull_request.number }}" --non-interactive

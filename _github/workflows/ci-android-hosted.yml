@@ -72,10 +72,18 @@ jobs:
           FIREBASE_VAPID_KEY: ${{ secrets[format('{0}_FIREBASE_VAPID_KEY', inputs.env_prefix)] || secrets.FIREBASE_VAPID_KEY || '' }}
         run: .github/scripts/map_runtime_env.sh
 
+      - name: Validate EAS CLI version variable
+        shell: bash
+        run: |
+          if [ -z "${{ vars.EAS_CLI_VERSION }}" ]; then
+            echo "❌ Missing EAS_CLI_VERSION GitHub variable."
+            exit 1
+          fi
+
       - name: Install EAS CLI
         shell: bash
         run: |
-          npm i -g eas-cli@16.23.0
+          npm i -g eas-cli@${{ vars.EAS_CLI_VERSION }}
           eas --version
 
       - name: Make CI scripts executable

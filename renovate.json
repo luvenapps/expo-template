@@ -10,7 +10,7 @@
     },
     {
       "enabled": false,
-      "description": "Ignore Expo companion packages — update manually with npx expo install --fix",
+      "description": "Ignore Expo SDK-coupled packages and core React/TypeScript test stack — update manually with npx expo install --fix",
       "matchPackageNames": [
         "expo-apple-authentication",
         "expo-application",
