@@ -20,6 +20,9 @@ jest.mock('@/errors/useFriendlyErrorHandler', () => ({
 }));
 
 let mockOnOpenChange: ((open: boolean) => void) | null = null;
+const mockUseTheme = jest.fn(() => ({
+  color: { get: () => '#111' },
+}));
 
 jest.mock('tamagui', () => {
   const React = jest.requireActual('react');
@@ -61,9 +64,7 @@ jest.mock('tamagui', () => {
     YStack,
     XStack,
     Button,
-    useTheme: () => ({
-      color: { get: () => '#111' },
-    }),
+    useTheme: () => mockUseTheme(),
   };
 });
 
@@ -83,6 +84,10 @@ describe('PromptUpgradeModal', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUseTheme.mockReset();
+    mockUseTheme.mockReturnValue({
+      color: { get: () => '#111' },
+    });
     canOpenUrlSpy.mockResolvedValue(true);
     openUrlSpy.mockResolvedValue(undefined);
     (Constants as any).expoConfig = {
@@ -327,5 +332,39 @@ describe('PromptUpgradeModal', () => {
       expect(canOpenUrlSpy).toHaveBeenCalled();
       expect(openUrlSpy).toHaveBeenCalled();
     });
+  });
+
+  it('renders correctly on web to cover web dialog sizing branch', () => {
+    Object.defineProperty(Platform, 'OS', { value: 'web' });
+
+    const { getByTestId } = render(
+      <PromptUpgradeModal
+        open
+        title="Update available"
+        message="Please update soon"
+        actionLabel="Update"
+        notNowLabel="Not now"
+        onNotNow={jest.fn()}
+      />,
+    );
+
+    expect(getByTestId('prompt-upgrade-action')).toBeTruthy();
+  });
+
+  it('falls back when theme color is missing', () => {
+    mockUseTheme.mockReturnValueOnce({} as any);
+
+    const { getByTestId } = render(
+      <PromptUpgradeModal
+        open
+        title="Update available"
+        message="Please update soon"
+        actionLabel="Update"
+        notNowLabel="Not now"
+        onNotNow={jest.fn()}
+      />,
+    );
+
+    expect(getByTestId('prompt-upgrade-action')).toBeTruthy();
   });
 });

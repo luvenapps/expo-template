@@ -33,16 +33,17 @@ export function ScreenContainer({
   const bottomPadding = Math.max(insets.bottom, 12) + 12;
 
   const resolvedBackground = backgroundColor ?? '$background';
+  const backgroundTokenMap: Record<string, string | undefined> = {
+    $background: palette?.background,
+    $backgroundStrong: palette?.surface,
+    $surface: palette?.surface,
+    $backgroundHover: palette?.secondaryBackground,
+  };
   const resolvedNativeBackground =
     typeof resolvedBackground === 'string' && resolvedBackground.startsWith('$')
-      ? resolvedBackground === '$background'
-        ? palette?.background
-        : resolvedBackground === '$backgroundStrong' || resolvedBackground === '$surface'
-          ? palette?.surface
-          : resolvedBackground === '$backgroundHover'
-            ? palette?.secondaryBackground
-            : palette?.background
+      ? (backgroundTokenMap[resolvedBackground] ?? palette?.background)
       : resolvedBackground;
+  const keyboardBehavior: 'padding' | 'height' = Platform.OS === 'ios' ? 'padding' : 'height';
 
   const content = (
     <YStack
@@ -81,7 +82,7 @@ export function ScreenContainer({
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: resolvedNativeBackground }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={keyboardBehavior}
       keyboardVerticalOffset={70}
     >
       {maybeScrollable}

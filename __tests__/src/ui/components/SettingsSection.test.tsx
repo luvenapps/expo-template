@@ -163,4 +163,27 @@ describe('SettingsSection', () => {
     expect(getByText('First fragment child')).toBeDefined();
     expect(getByText('Second fragment child')).toBeDefined();
   });
+
+  it('should render non-element children using fallback keys', () => {
+    const { getByText } = renderWithProviders(
+      <SettingsSection title="Test Section">
+        {'Plain text child'}
+        <Text>Element child</Text>
+      </SettingsSection>,
+    );
+
+    expect(getByText('Test Section')).toBeDefined();
+    expect(getByText('Element child')).toBeDefined();
+  });
+
+  it('should render children with explicit react keys', () => {
+    const { getByText } = renderWithProviders(
+      <SettingsSection title="Keyed Section">
+        <Text key="custom-key">Keyed child</Text>
+      </SettingsSection>,
+    );
+
+    expect(getByText('Keyed Section')).toBeDefined();
+    expect(getByText('Keyed child')).toBeDefined();
+  });
 });

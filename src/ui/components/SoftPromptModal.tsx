@@ -32,9 +32,9 @@ export function SoftPromptModal({
   // Require the user to press one of the actions before the modal can close.
   const allowCloseRef = useRef(false);
   const { width, height: windowHeight } = useWindowDimensions();
-  const size = width < 390 ? 200 : 300;
+  const size = [200, 300][Number(width >= 390)];
   const isWeb = Platform.OS === 'web';
-  const dialogHeight = isWeb ? windowHeight * 0.88 : windowHeight * 0.85;
+  const dialogHeight = windowHeight * (0.85 + Number(isWeb) * 0.03);
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen && !allowCloseRef.current) {

@@ -23,6 +23,7 @@ export default function AuthCallbackScreen() {
   const isProcessingRef = useRef(false);
   const hasLoggedSignInRef = useRef(false);
   const latestUrl = useURL();
+  const homeHref = Platform.OS === 'web' ? '/' : '/(tabs)';
 
   // Log component mount to verify it's rendering
   useEffect(() => {
@@ -37,9 +38,9 @@ export default function AuthCallbackScreen() {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace('/(tabs)');
+      router.replace(homeHref);
     }
-  }, [router]);
+  }, [homeHref, router]);
 
   const queryParams = useMemo(() => {
     const entries = Object.entries(params).map(([key, value]) => [
@@ -92,7 +93,7 @@ export default function AuthCallbackScreen() {
     // Small delay so analytics events can flush before navigation.
     await new Promise((resolve) => setTimeout(resolve, 250));
     if (typeof window.location?.replace === 'function') {
-      window.location.replace('/(tabs)');
+      window.location.replace('/');
     }
   }, []);
 

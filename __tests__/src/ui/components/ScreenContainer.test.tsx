@@ -33,13 +33,19 @@ jest.mock('@/ui/theme/ThemeProvider', () => {
 
 import { render } from '@testing-library/react-native';
 import React from 'react';
-import { Text } from 'react-native';
+import { KeyboardAvoidingView, Platform, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenContainer } from '@/ui/components/ScreenContainer';
 
 describe('ScreenContainer', () => {
+  const originalPlatform = Platform.OS;
+
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    Object.defineProperty(Platform, 'OS', { value: originalPlatform });
   });
 
   describe('Rendering', () => {
@@ -212,6 +218,17 @@ describe('ScreenContainer', () => {
       const container = getByTestId('screen-container');
       expect(container.props.backgroundColor).toBe('$backgroundStrong');
     });
+
+    it('should accept non-token backgroundColor values', () => {
+      const { getByTestId } = render(
+        <ScreenContainer backgroundColor="#123456">
+          <Text>Content</Text>
+        </ScreenContainer>,
+      );
+
+      const container = getByTestId('screen-container');
+      expect(container.props.backgroundColor).toBe('#123456');
+    });
   });
 
   describe('Safe Area Insets', () => {
@@ -341,6 +358,18 @@ describe('ScreenContainer', () => {
       );
 
       expect(getByTestId('screen-container')).toBeDefined();
+    });
+
+    it('should use height behavior for non-ios keyboard avoiding', () => {
+      Object.defineProperty(Platform, 'OS', { value: 'android' });
+      const { UNSAFE_getByType } = render(
+        <ScreenContainer>
+          <Text>Android Keyboard</Text>
+        </ScreenContainer>,
+      );
+
+      const keyboardView = UNSAFE_getByType(KeyboardAvoidingView);
+      expect(keyboardView.props.behavior).toBe('height');
     });
 
     it('should render with both scrollable=false and keyboardAvoiding=false', () => {

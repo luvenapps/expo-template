@@ -24,8 +24,8 @@ jobs:
     runs-on: [self-hosted, macos, arm64]
     timeout-minutes: 45
     concurrency:
-      group: selfhosted-mobile-${{ github.repository }}
-      cancel-in-progress: false
+      group: selfhosted-ios-${{ github.ref }}
+      cancel-in-progress: true
 
     steps:
       - name: Checkout

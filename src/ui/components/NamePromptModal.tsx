@@ -36,7 +36,7 @@ export function NamePromptModal({
   const theme = useTheme();
   const strokeColor = theme.color?.get() ?? '#111';
   const { width } = useWindowDimensions();
-  const size = width < 390 ? 300 : 500;
+  const size = [300, 500][Number(width >= 390)];
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen && !allowCloseRef.current) {

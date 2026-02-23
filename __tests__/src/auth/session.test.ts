@@ -296,6 +296,27 @@ describe('initSessionListener', () => {
     expect(useSessionStore.getState().status).toBe('unauthenticated');
   });
 
+  test('falls back to unauthenticated when initial getSession aborts', async () => {
+    mockGetSession.mockRejectedValueOnce(new Error('aborted'));
+
+    await initSessionListener();
+
+    expect(useSessionStore.getState().session).toBeNull();
+    expect(useSessionStore.getState().status).toBe('unauthenticated');
+  });
+
+  test('falls back to unauthenticated when auth listener registration throws', async () => {
+    mockOnAuthStateChange.mockImplementationOnce(() => {
+      throw new Error('listener registration failed');
+    });
+
+    const result = await initSessionListener();
+
+    expect(result).toBeUndefined();
+    expect(useSessionStore.getState().session).toBeNull();
+    expect(useSessionStore.getState().status).toBe('unauthenticated');
+  });
+
   test('returns early if listener already initialized', async () => {
     mockGetSession.mockResolvedValue({
       data: { session: mockSession },

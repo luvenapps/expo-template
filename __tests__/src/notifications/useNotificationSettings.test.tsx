@@ -295,6 +295,52 @@ describe('useNotificationSettings', () => {
     expect(result.current.permissionStatus).toBe('prompt');
   });
 
+  it('maps blocked permission status when denied and canAskAgain is missing', async () => {
+    getPermissionsAsync.mockResolvedValue({
+      granted: false,
+      status: expoNotifications.PermissionStatus.DENIED,
+    } as any);
+
+    const { result } = renderHook(() => useNotificationSettings());
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.permissionStatus).toBe('blocked');
+  });
+
+  it('refreshes preferences from persisted storage', async () => {
+    loadNotificationPreferences.mockReturnValue({
+      notificationStatus: 'unknown',
+      pushManuallyDisabled: false,
+      softDeclineCount: 0,
+      softLastDeclinedAt: 0,
+    });
+
+    const { result } = renderHook(() => useNotificationSettings());
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    loadNotificationPreferences.mockReturnValue({
+      notificationStatus: 'denied',
+      pushManuallyDisabled: true,
+      softDeclineCount: 2,
+      softLastDeclinedAt: 12345,
+    });
+
+    const beforeCalls = loadNotificationPreferences.mock.calls.length;
+
+    await act(async () => {
+      result.current.refreshPreferences();
+      await Promise.resolve();
+    });
+
+    expect(loadNotificationPreferences.mock.calls.length).toBeGreaterThan(beforeCalls);
+  });
+
   it('allows prompting for push when under limits', async () => {
     // Mock permission as granted so auto-soft prompt doesn't interfere
     getPermissionsAsync.mockResolvedValue({
@@ -1000,7 +1046,7 @@ describe('useNotificationSettings', () => {
         canAskAgain: true,
       });
 
-      const { result } = renderHook(() => useNotificationSettings());
+      renderHook(() => useNotificationSettings());
 
       await act(async () => {
         await Promise.resolve();
@@ -1061,7 +1107,7 @@ describe('useNotificationSettings', () => {
         canAskAgain: true,
       });
 
-      const { result } = renderHook(() => useNotificationSettings());
+      renderHook(() => useNotificationSettings());
 
       await act(async () => {
         await Promise.resolve();
@@ -1070,6 +1116,34 @@ describe('useNotificationSettings', () => {
       expect(persistNotificationPreferences).toHaveBeenCalledWith(
         expect.objectContaining({
           notificationStatus: 'unknown',
+        }),
+      );
+    });
+
+    it('preserves unrecognized status when permission is prompt', async () => {
+      loadNotificationPreferences.mockReturnValue({
+        notificationStatus: 'custom-state' as any,
+        pushManuallyDisabled: false,
+        softDeclineCount: 0,
+        softLastDeclinedAt: 0,
+      });
+
+      getPermissionsAsync.mockResolvedValue({
+        granted: false,
+        status: 'undetermined' as any,
+        canAskAgain: true,
+      });
+
+      const { result } = renderHook(() => useNotificationSettings());
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(result.current.notificationStatus).toBe('custom-state');
+      expect(persistNotificationPreferences).toHaveBeenCalledWith(
+        expect.objectContaining({
+          notificationStatus: 'custom-state',
         }),
       );
     });
@@ -1162,6 +1236,31 @@ describe('useNotificationSettings', () => {
       });
 
       expect(result.current.permissionStatus).toBe('blocked');
+
+      if (originalWindow) {
+        (globalThis as { window?: Window }).window = originalWindow;
+      } else {
+        delete (globalThis as { window?: Window }).window;
+      }
+      (globalThis as { Notification?: typeof Notification }).Notification = originalNotification;
+    });
+
+    it('falls back to prompt on web when Notification API is unavailable', async () => {
+      Object.defineProperty(Platform, 'OS', { value: 'web' });
+      const originalNotification = (globalThis as { Notification?: typeof Notification })
+        .Notification;
+      const originalWindow = (globalThis as { window?: Window }).window;
+
+      (globalThis as { window?: Window }).window = {} as Window;
+      delete (globalThis as { Notification?: typeof Notification }).Notification;
+
+      const { result } = renderHook(() => useNotificationSettings());
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(result.current.permissionStatus).toBe('prompt');
 
       if (originalWindow) {
         (globalThis as { window?: Window }).window = originalWindow;

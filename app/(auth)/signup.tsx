@@ -55,6 +55,7 @@ export default function SignUpScreen() {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [showRedirectSpinner, setShowRedirectSpinner] = useState(false);
   const { t } = useTranslation();
+  const homeHref = Platform.OS === 'web' ? '/' : '/(tabs)';
 
   useEffect(() => {
     if (status !== 'authenticated' || hasNavigatedRef.current) {
@@ -68,9 +69,9 @@ export default function SignUpScreen() {
     if (navigation.canGoBack()) {
       router.back();
     } else {
-      router.replace('/(tabs)');
+      router.replace(homeHref);
     }
-  }, [navigation, router, status]);
+  }, [homeHref, navigation, router, status]);
 
   useEffect(() => {
     const storedName = getLocalName();

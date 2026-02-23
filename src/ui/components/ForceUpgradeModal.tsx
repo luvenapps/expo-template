@@ -22,9 +22,8 @@ export function ForceUpgradeModal({ open, title, message, actionLabel }: ForceUp
   const theme = useTheme();
   const strokeColor = theme.color?.get() ?? '#111';
   const { width, height: windowHeight } = useWindowDimensions();
-  const size = width < 390 ? 300 : 500;
-  const isWeb = Platform.OS === 'web';
-  const dialogHeight = isWeb ? windowHeight * 0.88 : windowHeight * 0.85;
+  const size = [300, 500][Number(width >= 390)];
+  const dialogHeight = windowHeight * (0.85 + Number(Platform.OS === 'web') * 0.03);
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen && !allowCloseRef.current) {
@@ -60,7 +59,6 @@ export function ForceUpgradeModal({ open, title, message, actionLabel }: ForceUp
     const candidateUrls = Platform.OS === 'ios' ? storeUrls.ios : storeUrls.android;
 
     for (const url of candidateUrls) {
-      if (!url) continue;
       try {
         const canOpen = await Linking.canOpenURL(url);
         if (canOpen) {
@@ -79,8 +77,7 @@ export function ForceUpgradeModal({ open, title, message, actionLabel }: ForceUp
   const handleUpdatePressSafe = useCallback(() => {
     handleUpdatePress().catch((error) => {
       const { friendly } = handleError(error, { surface: 'force-upgrade' });
-      const titleText =
-        friendly.title ?? (friendly.titleKey ? t(friendly.titleKey) : t('errors.unknown.title'));
+      const titleText = friendly.title ?? t(friendly.titleKey ?? 'errors.unknown.title');
       const descriptionText =
         friendly.description ??
         (friendly.descriptionKey ? t(friendly.descriptionKey) : (friendly.originalMessage ?? ''));

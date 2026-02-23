@@ -41,11 +41,11 @@ jest.mock('tamagui', () => {
   const XStack = ({ children, ...props }: any) => React.createElement(View, props, children);
   XStack.displayName = 'XStack';
 
-  const useTheme = () => ({
+  const useTheme = jest.fn(() => ({
     color: {
       get: () => '#111',
     },
-  });
+  }));
 
   return {
     Dialog,
@@ -100,6 +100,7 @@ jest.mock('@/ui/components/PrimaryButton', () => {
 import { render, fireEvent } from '@testing-library/react-native';
 import React from 'react';
 import { NamePromptModal } from '@/ui/components/NamePromptModal';
+import { Platform } from 'react-native';
 
 describe('NamePromptModal', () => {
   const defaultProps = {
@@ -374,6 +375,33 @@ describe('NamePromptModal', () => {
       fireEvent.press(button);
 
       expect(onSave).toHaveBeenCalledWith('X');
+    });
+
+    it('falls back when theme color is missing', () => {
+      const tamagui = require('tamagui');
+      tamagui.useTheme.mockReturnValueOnce({});
+
+      const { getByTestId } = render(<NamePromptModal {...defaultProps} value="Test" />);
+      expect(getByTestId('name-prompt-save')).toBeTruthy();
+    });
+
+    it('renders on narrow and wide screens to cover icon size branches', () => {
+      const RN = require('react-native');
+      const originalUseWindowDimensions = RN.useWindowDimensions;
+      const originalPlatform = Platform.OS;
+
+      RN.useWindowDimensions = jest.fn(() => ({ width: 360, height: 700 }));
+      const narrow = render(<NamePromptModal {...defaultProps} value="Narrow" />);
+      expect(narrow.getByTestId('name-prompt-save')).toBeTruthy();
+      narrow.unmount();
+
+      RN.useWindowDimensions = jest.fn(() => ({ width: 420, height: 800 }));
+      const wide = render(<NamePromptModal {...defaultProps} value="Wide" />);
+      expect(wide.getByTestId('name-prompt-save')).toBeTruthy();
+      wide.unmount();
+
+      RN.useWindowDimensions = originalUseWindowDimensions;
+      Object.defineProperty(Platform, 'OS', { value: originalPlatform });
     });
   });
 });

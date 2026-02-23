@@ -471,6 +471,21 @@ describe('ForceUpgradeModal', () => {
     RN.useWindowDimensions = originalUseWindowDimensions;
   });
 
+  it('renders correctly on web to cover web dialog sizing branch', () => {
+    Object.defineProperty(Platform, 'OS', { value: 'web' });
+
+    const { getByTestId } = render(
+      <ForceUpgradeModal
+        open
+        title="Update required"
+        message="Please update."
+        actionLabel="Update"
+      />,
+    );
+
+    expect(getByTestId('force-upgrade-action')).toBeTruthy();
+  });
+
   it('handles error with titleKey fallback', async () => {
     mockHandleError.mockReturnValueOnce({
       friendly: {
@@ -579,6 +594,32 @@ describe('ForceUpgradeModal', () => {
 
     await waitFor(() => {
       expect(getByTestId('force-upgrade-error')).toBeTruthy();
+    });
+  });
+
+  it('falls back to unknown title key when friendly title and titleKey are missing', async () => {
+    mockHandleError.mockReturnValueOnce({
+      friendly: {
+        type: 'error',
+      } as any,
+    });
+
+    Object.defineProperty(Platform, 'OS', { value: 'ios' });
+    canOpenUrlSpy.mockResolvedValue(false);
+
+    const { getByTestId } = render(
+      <ForceUpgradeModal
+        open
+        title="Update required"
+        message="Please update."
+        actionLabel="Update"
+      />,
+    );
+
+    fireEvent.press(getByTestId('force-upgrade-action'));
+
+    await waitFor(() => {
+      expect(getByTestId('force-upgrade-error').props.children).toBe('errors.unknown.title');
     });
   });
 

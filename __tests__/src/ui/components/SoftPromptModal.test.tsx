@@ -187,6 +187,28 @@ describe('SoftPromptModal', () => {
     RN.useWindowDimensions = original;
   });
 
+  it('should use larger icon size on wide screens', () => {
+    const RN = require('react-native');
+    const original = RN.useWindowDimensions;
+    RN.useWindowDimensions = jest.fn(() => ({ width: 420, height: 900 }));
+
+    const { UNSAFE_root } = render(<SoftPromptModal {...defaultProps} />);
+    expect(UNSAFE_root.findByType('Dialog' as any)).toBeTruthy();
+
+    RN.useWindowDimensions = original;
+  });
+
+  it('should render on web to cover web dialog sizing branch', () => {
+    const RN = require('react-native');
+    const originalPlatform = RN.Platform.OS;
+    Object.defineProperty(RN.Platform, 'OS', { value: 'web' });
+
+    const { UNSAFE_root } = render(<SoftPromptModal {...defaultProps} />);
+    expect(UNSAFE_root.findByType('Dialog' as any)).toBeTruthy();
+
+    Object.defineProperty(RN.Platform, 'OS', { value: originalPlatform });
+  });
+
   it('should prevent closing when user has not clicked a button', () => {
     const onOpenChange = jest.fn();
     const { UNSAFE_root } = render(

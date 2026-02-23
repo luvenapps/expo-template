@@ -40,6 +40,7 @@ export default function LoginScreen() {
   const toast = useToast();
   const handleFriendlyError = useFriendlyErrorHandler();
   const { t } = useTranslation();
+  const homeHref = Platform.OS === 'web' ? '/' : '/(tabs)';
 
   const isFormValid = email.trim() !== '' && isValidEmail(email) && password.trim() !== '';
 
@@ -67,9 +68,9 @@ export default function LoginScreen() {
     if (navigation.canGoBack()) {
       router.back();
     } else {
-      router.replace('/(tabs)');
+      router.replace(homeHref);
     }
-  }, [navigation, router, status]);
+  }, [homeHref, navigation, router, status]);
 
   const handleAuthError = useCallback(
     (rawError: unknown) => {

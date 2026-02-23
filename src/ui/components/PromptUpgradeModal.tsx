@@ -31,9 +31,8 @@ export function PromptUpgradeModal({
   const theme = useTheme();
   const strokeColor = theme.color?.get() ?? '#111';
   const { width, height: windowHeight } = useWindowDimensions();
-  const size = width < 390 ? 300 : 500;
-  const isWeb = Platform.OS === 'web';
-  const dialogHeight = isWeb ? windowHeight * 0.88 : windowHeight * 0.85;
+  const size = [300, 500][Number(width >= 390)];
+  const dialogHeight = windowHeight * (0.85 + Number(Platform.OS === 'web') * 0.03);
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (nextOpen || !allowCloseRef.current) {

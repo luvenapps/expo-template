@@ -806,14 +806,14 @@ describe('AuthCallbackScreen - Web', () => {
     });
   });
 
-  it('redirects to tabs after successful session on web', async () => {
+  it('redirects to home after successful session on web', async () => {
     mockWindowLocation.hash = '#access_token=token123&refresh_token=refresh456';
     mockedSetSession.mockResolvedValue({ data: { session: {} }, error: null } as any);
 
     render(<AuthCallbackScreen />);
 
     await waitFor(() => {
-      expect(mockWindowLocation.replace).toHaveBeenCalledWith('/(tabs)');
+      expect(mockWindowLocation.replace).toHaveBeenCalledWith('/');
     });
     expect(analytics.trackEvent).toHaveBeenCalledWith('auth:sign_in', {
       method: 'oauth',
@@ -827,7 +827,7 @@ describe('AuthCallbackScreen - Web', () => {
     });
   });
 
-  it('redirects to tabs when no hash params but existing session on web', async () => {
+  it('redirects to home when no hash params but existing session on web', async () => {
     mockWindowLocation.hash = '';
     mockedGetSession.mockResolvedValue({
       data: { session: { user: { id: '123' } } },
@@ -837,7 +837,7 @@ describe('AuthCallbackScreen - Web', () => {
     render(<AuthCallbackScreen />);
 
     await waitFor(() => {
-      expect(mockWindowLocation.replace).toHaveBeenCalledWith('/(tabs)');
+      expect(mockWindowLocation.replace).toHaveBeenCalledWith('/');
     });
     expect(analytics.trackEvent).toHaveBeenCalledWith('auth:sign_in', {
       method: 'session',

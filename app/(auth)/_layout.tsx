@@ -10,20 +10,23 @@ export default function AuthLayout() {
   const { t } = useTranslation();
   const status = useSessionStore((state) => state.status);
   const pathname = usePathname();
+  const homeHref = Platform.OS === 'web' ? '/' : '/(tabs)';
+  const shouldRedirectToHome =
+    Platform.OS === 'web' && status === 'authenticated' && pathname !== '/auth-callback';
 
   if (Platform.OS === 'web' && status === 'unknown') {
     return null;
   }
 
-  if (Platform.OS === 'web' && status === 'authenticated' && pathname !== '/auth-callback') {
-    return <Redirect href="/(tabs)" />;
+  if (shouldRedirectToHome) {
+    return <Redirect href={homeHref} />;
   }
 
   const goBack = () => {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace('/(tabs)');
+      router.replace(homeHref);
     }
   };
 

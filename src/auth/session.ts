@@ -76,25 +76,44 @@ export const useSessionStore = create<SessionState>((set) => ({
 type ListenCallback = (session: SessionState['session']) => void;
 
 let listenerInitialized = false;
+let listenerInitializationPromise: Promise<unknown> | null = null;
 
 export const initSessionListener = async (callback?: ListenCallback) => {
   if (listenerInitialized) return;
+  if (listenerInitializationPromise) return listenerInitializationPromise;
 
-  listenerInitialized = true;
+  listenerInitializationPromise = (async () => {
+    try {
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
+        useSessionStore.getState().setSession(session);
+        callback?.(session);
+      });
 
-  const {
-    data: { subscription },
-  } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
-    useSessionStore.getState().setSession(session);
-    callback?.(session);
-  });
+      listenerInitialized = true;
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  useSessionStore.getState().setSession(session);
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        useSessionStore.getState().setSession(session);
+      } catch {
+        // Never leave the UI blocked in "unknown" state if an initial session read aborts.
+        useSessionStore.getState().setSession(null);
+      }
 
-  return subscription;
+      return subscription;
+    } catch {
+      listenerInitialized = false;
+      useSessionStore.getState().setSession(null);
+      return undefined;
+    } finally {
+      listenerInitializationPromise = null;
+    }
+  })();
+
+  return listenerInitializationPromise;
 };
 
 export const resetSessionStore = () => {
