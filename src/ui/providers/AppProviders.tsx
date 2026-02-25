@@ -64,7 +64,9 @@ export function AppProviders({ children }: PropsWithChildren) {
   const [isAppReady, setIsAppReady] = useState(false);
   const [namePromptOpen, setNamePromptOpen] = useState(false);
   const [namePromptValue, setNamePromptValue] = useState('');
-  const { tryPromptForPush, softPrompt } = useNotificationSettings();
+  const { tryPromptForPush, softPrompt } = useNotificationSettings({
+    autoPromptEnabled: Platform.OS === 'web' ? isAuthenticated : true,
+  });
   const { value: minAppVersion, status: minAppVersionStatus } = useFeatureFlag(
     'min_app_version',
     '',

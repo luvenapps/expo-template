@@ -73,7 +73,11 @@ function isMobileWebContext(): boolean {
   );
 }
 
-export function useNotificationSettings() {
+type UseNotificationSettingsOptions = {
+  autoPromptEnabled?: boolean;
+};
+
+export function useNotificationSettings(options?: UseNotificationSettingsOptions) {
   const analytics = useAnalytics();
   const { t } = useTranslation();
   const mobileWeb = isMobileWebContext();
@@ -379,6 +383,8 @@ export function useNotificationSettings() {
   // Auto-show the soft prompt on first load (or after cooldown) when OS/browser is still in
   // prompt/default state. Relies on tryPromptForPush to enforce cooldown/attempts.
   useEffect(() => {
+    if (options?.autoPromptEnabled === false) return;
+
     const shouldAutoPrompt =
       NOTIFICATIONS.initialSoftPromptTrigger === 'app-install' ||
       (Platform.OS === 'web' && NOTIFICATIONS.initialSoftPromptTrigger === 'first-entry');
@@ -403,6 +409,7 @@ export function useNotificationSettings() {
     preferences.notificationStatus,
     preferences.pushManuallyDisabled,
     tryPromptForPush,
+    options?.autoPromptEnabled,
   ]);
 
   const disablePushNotifications = useCallback(async () => {

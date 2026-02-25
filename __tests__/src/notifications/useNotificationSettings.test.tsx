@@ -1536,6 +1536,35 @@ describe('useNotificationSettings', () => {
       (globalThis as { Notification?: typeof Notification }).Notification = originalNotification;
     });
 
+    it('does not auto-prompt on web when autoPromptEnabled is false', async () => {
+      Object.defineProperty(Platform, 'OS', { value: 'web' });
+      const originalNotification = (globalThis as { Notification?: typeof Notification })
+        .Notification;
+      (globalThis as { Notification?: typeof Notification }).Notification = {
+        permission: 'default',
+      } as typeof Notification;
+
+      loadNotificationPreferences.mockReturnValue({
+        notificationStatus: 'unknown',
+        pushManuallyDisabled: false,
+        softDeclineCount: 0,
+        softLastDeclinedAt: 0,
+      });
+
+      const { result } = renderHook(() => useNotificationSettings({ autoPromptEnabled: false }));
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(trackEvent).not.toHaveBeenCalledWith('notifications:prompt-triggered', {
+        context: 'auto-soft',
+      });
+      expect(result.current.softPrompt.open).toBe(false);
+
+      (globalThis as { Notification?: typeof Notification }).Notification = originalNotification;
+    });
+
     it('auto-prompts on iOS when permission is prompt', async () => {
       Object.defineProperty(Platform, 'OS', { value: 'ios' });
 
