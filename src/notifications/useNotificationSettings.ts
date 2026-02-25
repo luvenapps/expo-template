@@ -16,14 +16,12 @@ import {
   type NotificationPermissionState,
 } from '@/notifications/status';
 import { useAnalytics } from '@/observability/AnalyticsProvider';
-import { createLogger } from '@/observability/logger';
+
 import { onNotificationEvent } from '@/observability/notificationEvents';
 import * as Notifications from 'expo-notifications';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppState, Platform } from 'react-native';
-
-const logger = createLogger('PermSync');
 
 function getInitialPreferences(): NotificationPreferences {
   const loaded = loadNotificationPreferences();
@@ -67,15 +65,24 @@ function mapPermission(
   return NOTIFICATION_PERMISSION_STATE.PROMPT;
 }
 
+function isMobileWebContext(): boolean {
+  return (
+    Platform.OS === 'web' &&
+    typeof navigator !== 'undefined' &&
+    /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+  );
+}
+
 export function useNotificationSettings() {
   const analytics = useAnalytics();
   const { t } = useTranslation();
+  const mobileWeb = isMobileWebContext();
   const [preferences, setPreferences] = useState<NotificationPreferences>(() =>
-    Platform.OS === 'web' ? DEFAULT_NOTIFICATION_PREFERENCES : getInitialPreferences(),
+    getInitialPreferences(),
   );
   const [permissionStatus, setPermissionStatus] = useState<NotificationPermissionState>(
     // Keep first render deterministic across SSR/client hydration on web.
-    NOTIFICATION_PERMISSION_STATE.PROMPT,
+    mobileWeb ? NOTIFICATION_PERMISSION_STATE.UNAVAILABLE : NOTIFICATION_PERMISSION_STATE.PROMPT,
   );
   const [error, setError] = useState<string | null>(null);
   const [pushError, setPushError] = useState<string | null>(null);
@@ -83,9 +90,6 @@ export function useNotificationSettings() {
   const [softPromptOpen, setSoftPromptOpen] = useState(false);
   const [softPromptContext, setSoftPromptContext] = useState<string | undefined>(undefined);
   const [hasResolvedInitialPermission, setHasResolvedInitialPermission] = useState(
-    Platform.OS !== 'web',
-  );
-  const [hasResolvedInitialPreferences, setHasResolvedInitialPreferences] = useState(
     Platform.OS !== 'web',
   );
   const lastAutoSoftPromptRef = useRef<number | null>(null);
@@ -99,7 +103,10 @@ export function useNotificationSettings() {
           typeof next === 'function'
             ? (next as (prev: NotificationPreferences) => NotificationPreferences)(prev)
             : next;
-        persistNotificationPreferences(value);
+        // Only persist when something actually changed to avoid overwriting valid storage state.
+        if (value !== prev) {
+          persistNotificationPreferences(value);
+        }
         return value;
       });
     },
@@ -109,6 +116,11 @@ export function useNotificationSettings() {
   const refreshPermissionStatus = useCallback(async () => {
     setIsChecking(true);
     try {
+      if (isMobileWebContext()) {
+        setPermissionStatus(NOTIFICATION_PERMISSION_STATE.UNAVAILABLE);
+        return NOTIFICATION_PERMISSION_STATE.UNAVAILABLE;
+      }
+
       if (Platform.OS === 'web') {
         const permission =
           typeof Notification !== 'undefined' ? Notification.permission : 'default';
@@ -149,53 +161,9 @@ export function useNotificationSettings() {
     refreshPermissionStatus().catch(() => undefined);
   }, [refreshPermissionStatus]);
 
+  // Keep preferences in sync when OS/browser permission changes (e.g., user blocks in Settings)
   useEffect(() => {
-    if (Platform.OS !== 'web') {
-      return;
-    }
-
-    try {
-      setPreferences(getInitialPreferences());
-    } finally {
-      setHasResolvedInitialPreferences(true);
-    }
-  }, []);
-
-  // Keep preferences in sync when OS/browser permission changes (e.g., user toggles in Settings)
-  useEffect(() => {
-    if (Platform.OS === 'web' && !hasResolvedInitialPreferences) {
-      return;
-    }
-
-    logger.debug('Effect triggered', {
-      permissionStatus,
-      pushManuallyDisabled: preferences.pushManuallyDisabled,
-      notificationStatus: preferences.notificationStatus,
-    });
-
-    if (permissionStatus === NOTIFICATION_PERMISSION_STATE.GRANTED) {
-      // Respect a manual off toggle: do not auto-enable/register if the user turned notifications off in-app.
-      if (preferences.pushManuallyDisabled) {
-        logger.debug('Skipping - manually disabled');
-        return;
-      }
-
-      logger.debug('Calling ensureNotificationsEnabled...');
-      ensureNotificationsEnabled({
-        context: 'permission-sync',
-        skipSoftPrompt: true,
-        forceRegister: true,
-      })
-        .then((result) => {
-          logger.debug('ensureNotificationsEnabled result:', result);
-          setPreferences(getInitialPreferences());
-        })
-        .catch((error) => {
-          logger.error('ensureNotificationsEnabled error:', error);
-          analytics.trackError(error as Error, { source: 'notifications:permission-sync' });
-        });
-      return;
-    }
+    if (Platform.OS === 'web' && !hasResolvedInitialPermission) return;
 
     if (
       permissionStatus === NOTIFICATION_PERMISSION_STATE.BLOCKED ||
@@ -209,63 +177,48 @@ export function useNotificationSettings() {
       return;
     }
 
+    if (permissionStatus === NOTIFICATION_PERMISSION_STATE.GRANTED) {
+      // OS/browser permission is granted. Silently re-register when we don't have a valid
+      // push token yet — covers storage reset, reinstall, and transient registration failures.
+      // Skip when the user explicitly disabled push or notifications are already registered.
+      // forceRegister bypasses the stored 'denied' early-return so a user who re-enables
+      // permission in OS settings gets a token without having to toggle the switch.
+      if (
+        !preferences.pushManuallyDisabled &&
+        preferences.notificationStatus !== NOTIFICATION_STATUS.GRANTED &&
+        preferences.notificationStatus !== NOTIFICATION_STATUS.SOFT_DECLINED
+      ) {
+        ensureNotificationsEnabled({ forceRegister: true }).then(() => {
+          setPreferences(getInitialPreferences());
+        });
+      }
+      return;
+    }
+
     if (permissionStatus === NOTIFICATION_PERMISSION_STATE.PROMPT) {
       // Permission reset to default: keep soft-decline history, only reset hard-denial state.
+      // Do NOT reset GRANTED here — if stored status is 'granted' but permission shows 'prompt',
+      // we may be in a transient initial-render state before refreshPermissionStatus resolves.
+      // Resetting 'granted' → 'unknown' here causes the toggle to flicker off on reload.
       updatePreferences((prev) => {
         if (prev.notificationStatus === NOTIFICATION_STATUS.SOFT_DECLINED) return prev;
         if (prev.notificationStatus === NOTIFICATION_STATUS.UNKNOWN) return prev;
+        if (prev.notificationStatus === NOTIFICATION_STATUS.GRANTED) return prev;
         if (
           prev.notificationStatus === NOTIFICATION_STATUS.DENIED ||
           prev.notificationStatus === NOTIFICATION_STATUS.UNAVAILABLE
         ) {
-          return {
-            ...prev,
-            notificationStatus: NOTIFICATION_STATUS.UNKNOWN,
-          };
-        }
-        if (prev.notificationStatus === NOTIFICATION_STATUS.GRANTED) {
-          return {
-            ...prev,
-            notificationStatus: NOTIFICATION_STATUS.UNKNOWN,
-          };
+          return { ...prev, notificationStatus: NOTIFICATION_STATUS.UNKNOWN };
         }
         return prev;
       });
     }
   }, [
-    analytics,
-    hasResolvedInitialPreferences,
+    hasResolvedInitialPermission,
     permissionStatus,
-    preferences.pushManuallyDisabled,
     preferences.notificationStatus,
+    preferences.pushManuallyDisabled,
     updatePreferences,
-  ]);
-
-  // If the OS/browser already granted permission (e.g., user toggled system settings),
-  // but our stored status is not yet marked granted, register push again to obtain a token.
-  useEffect(() => {
-    if (Platform.OS === 'web' && !hasResolvedInitialPreferences) return;
-    if (permissionStatus !== NOTIFICATION_PERMISSION_STATE.GRANTED) return;
-    if (preferences.notificationStatus === NOTIFICATION_STATUS.GRANTED) return;
-    if (preferences.pushManuallyDisabled) return;
-
-    ensureNotificationsEnabled({
-      context: 'permission-sync',
-      skipSoftPrompt: true,
-      forceRegister: true,
-    })
-      .then(() => {
-        setPreferences(getInitialPreferences());
-      })
-      .catch((error) => {
-        analytics.trackError(error as Error, { source: 'notifications:permission-sync' });
-      });
-  }, [
-    hasResolvedInitialPreferences,
-    permissionStatus,
-    preferences.notificationStatus,
-    preferences.pushManuallyDisabled,
-    analytics,
   ]);
 
   useEffect(() => {
@@ -300,24 +253,16 @@ export function useNotificationSettings() {
       forceRegister: true,
     });
 
-    // Reload persisted preferences after the unified API updates them (matches tryPromptForPush)
-    setPreferences(getInitialPreferences());
     setSoftPromptOpen(false);
     setSoftPromptContext(undefined);
 
-    if (result.status === 'enabled') {
-      // Clear manual-off flag now that the user has re-enabled notifications (matches tryPromptForPush)
-      updatePreferences((prev) => ({
-        ...prev,
-        pushManuallyDisabled: false,
-      }));
+    if (result.status !== 'denied') {
+      // Reload preferences from storage (ensureNotificationsEnabled owns the write).
+      // Then refresh permission status so permissionStatus reflects the live browser state.
+      setPreferences(getInitialPreferences());
+      await refreshPermissionStatus();
     }
-
-    // On web, reload to ensure full state sync
-    if (result.status === 'enabled' && Platform.OS === 'web') {
-      window.location.reload();
-    }
-  }, [setPreferences, softPromptContext, updatePreferences]);
+  }, [softPromptContext, refreshPermissionStatus]);
 
   const handleSoftPromptDecline = useCallback(() => {
     const now = Date.now();
@@ -399,6 +344,16 @@ export function useNotificationSettings() {
         return { status: 'denied' as const };
       }
       if (result.status === 'unavailable') {
+        // On web with Firebase gated off, push token registration is unavailable but the
+        // browser permission may already be granted. Clear the manual-off flag so the toggle
+        // reflects the granted permission state (in-app enable without a push token).
+        if (Platform.OS === 'web' && latestPermission === NOTIFICATION_PERMISSION_STATE.GRANTED) {
+          updatePreferences({
+            ...getInitialPreferences(),
+            pushManuallyDisabled: false,
+          });
+          return { status: 'triggered' as const, registered: false };
+        }
         return { status: 'unavailable' as const };
       }
       if (result.status === 'error') {
@@ -428,8 +383,7 @@ export function useNotificationSettings() {
       NOTIFICATIONS.initialSoftPromptTrigger === 'app-install' ||
       (Platform.OS === 'web' && NOTIFICATIONS.initialSoftPromptTrigger === 'first-entry');
     if (!shouldAutoPrompt) return;
-    if (Platform.OS === 'web' && (!hasResolvedInitialPermission || !hasResolvedInitialPreferences))
-      return;
+    if (Platform.OS === 'web' && !hasResolvedInitialPermission) return;
     if (permissionStatus !== NOTIFICATION_PERMISSION_STATE.PROMPT) return;
     if (preferences.pushManuallyDisabled) return;
     if (preferences.notificationStatus === NOTIFICATION_STATUS.GRANTED) return;
@@ -445,7 +399,6 @@ export function useNotificationSettings() {
   }, [
     analytics,
     hasResolvedInitialPermission,
-    hasResolvedInitialPreferences,
     permissionStatus,
     preferences.notificationStatus,
     preferences.pushManuallyDisabled,
@@ -476,7 +429,7 @@ export function useNotificationSettings() {
   return {
     ...preferences,
     permissionStatus,
-    isSupported: true,
+    isSupported: !mobileWeb,
     isChecking,
     error,
     pushError,

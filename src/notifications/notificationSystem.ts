@@ -5,11 +5,7 @@ import {
   type NotificationStatus,
 } from '@/notifications/status';
 import { Platform } from 'react-native';
-import {
-  DEFAULT_NOTIFICATION_PREFERENCES,
-  loadNotificationPreferences,
-  persistNotificationPreferences,
-} from './preferences';
+import { loadNotificationPreferences, persistNotificationPreferences } from './preferences';
 import * as web from './notificationPlatform.web';
 import * as native from './notificationPlatform.native';
 
@@ -72,26 +68,30 @@ export async function ensureNotificationsEnabled(options?: {
     return { status: 'unavailable', message: result.message };
   }
 
-  // Denied or error: mark as denied
-  logger.debug('Persisting denied status (result was:', result.status);
+  if (result.status === 'error') {
+    // Transient error: do not change stored status so the user can retry.
+    logger.debug('Registration error (not persisting denied):', result.message);
+    return { status: 'error', message: result.message };
+  }
+
+  // OS/browser explicitly denied: mark as denied
+  logger.debug('Persisting denied status');
   persistNotificationPreferences({
     ...prefs,
     notificationStatus: NOTIFICATION_STATUS.DENIED,
     pushManuallyDisabled: false,
   });
 
-  if (result.status === 'error') {
-    return { status: 'error', message: result.message };
-  }
-
   return { status: 'denied', message: result.message };
 }
 
 export async function revokeNotifications() {
-  // For now, just delegate to platform revoke (which deletes token) and reset prefs
+  // Delegate to platform revoke (which deletes token) and reset notification status.
+  // Preserve all other preferences (e.g. pushManuallyDisabled) so the caller can set them.
   await platform.revokePermission();
+  const prefs = loadNotificationPreferences();
   persistNotificationPreferences({
-    ...DEFAULT_NOTIFICATION_PREFERENCES,
+    ...prefs,
     notificationStatus: NOTIFICATION_STATUS.UNKNOWN,
   });
 }

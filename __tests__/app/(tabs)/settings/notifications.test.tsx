@@ -8,6 +8,8 @@ const mockDisablePushNotifications = jest.fn();
 const mockNotificationState: any = {
   permissionStatus: NOTIFICATION_PERMISSION_STATE.PROMPT,
   notificationStatus: NOTIFICATION_STATUS.UNKNOWN,
+  pushManuallyDisabled: false,
+  isSupported: true,
   tryPromptForPush: mockTryPromptForPush,
   disablePushNotifications: mockDisablePushNotifications,
   error: null as string | null,
@@ -59,8 +61,8 @@ jest.mock('tamagui', () => {
   const Paragraph = ({ children, testID }: any) => React.createElement(Text, { testID }, children);
   Paragraph.displayName = 'Paragraph';
 
-  const Switch = ({ testID, onCheckedChange }: any) =>
-    React.createElement(View, { testID, onCheckedChange });
+  const Switch = ({ testID, onCheckedChange, ...rest }: any) =>
+    React.createElement(View, { testID, onCheckedChange, ...rest });
   Switch.displayName = 'Switch';
   const SwitchThumb = () => React.createElement(View, null);
   SwitchThumb.displayName = 'Switch.Thumb';
@@ -93,6 +95,8 @@ describe('NotificationSettingsScreen', () => {
     setPlatform('ios');
     mockNotificationState.permissionStatus = NOTIFICATION_PERMISSION_STATE.PROMPT;
     mockNotificationState.notificationStatus = NOTIFICATION_STATUS.UNKNOWN;
+    mockNotificationState.pushManuallyDisabled = false;
+    mockNotificationState.isSupported = true;
     mockNotificationState.pushError = null;
     process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = 'false';
   });
@@ -154,7 +158,7 @@ describe('NotificationSettingsScreen', () => {
     );
   });
 
-  it('returns early when prompt result is denied', async () => {
+  it('calls tryPromptForPush when toggle is turned on and result is denied', async () => {
     mockNotificationState.permissionStatus = NOTIFICATION_PERMISSION_STATE.GRANTED;
     mockTryPromptForPush.mockResolvedValue({ status: NOTIFICATION_STATUS.DENIED });
 
@@ -213,6 +217,29 @@ describe('NotificationSettingsScreen', () => {
         skipSoftPrompt: true,
       });
     });
+  });
+
+  it('shows disabled text when permission granted but push manually disabled', () => {
+    mockNotificationState.permissionStatus = NOTIFICATION_PERMISSION_STATE.GRANTED;
+    mockNotificationState.pushManuallyDisabled = true;
+
+    const { getByTestId } = render(<NotificationSettingsScreen />);
+
+    expect(getByTestId('settings-push-status').props.children).toBe(
+      'settings.pushStatusDisabledSimple',
+    );
+  });
+
+  it('shows mobile-web disabled message and hides toggle on mobile web', () => {
+    setPlatform('web');
+    mockNotificationState.isSupported = false;
+
+    const { getByTestId, queryByTestId } = render(<NotificationSettingsScreen />);
+
+    expect(getByTestId('settings-notification-mobile-web').props.children).toBe(
+      'settings.pushStatusMobileWebDisabled',
+    );
+    expect(queryByTestId('settings-push-toggle')).toBeNull();
   });
 
   it('does not show open settings button on web when blocked', () => {

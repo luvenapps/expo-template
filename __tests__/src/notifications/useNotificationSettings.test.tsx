@@ -247,6 +247,77 @@ describe('useNotificationSettings', () => {
     expect(ensureNotificationsEnabled).not.toHaveBeenCalled();
   });
 
+  it('auto-registers when permission is granted but stored status is unknown', async () => {
+    loadNotificationPreferences.mockReturnValue({
+      notificationStatus: 'unknown',
+      pushManuallyDisabled: false,
+      softDeclineCount: 0,
+      softLastDeclinedAt: 0,
+    });
+    ensureNotificationsEnabled.mockResolvedValue({ status: 'enabled' });
+
+    getPermissionsAsync.mockResolvedValue({
+      granted: true,
+      status: expoNotifications.PermissionStatus.GRANTED,
+      canAskAgain: true,
+    });
+
+    renderHook(() => useNotificationSettings());
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    expect(ensureNotificationsEnabled).toHaveBeenCalledWith({ forceRegister: true });
+  });
+
+  it('auto-registers when permission is granted but stored status is unavailable', async () => {
+    loadNotificationPreferences.mockReturnValue({
+      notificationStatus: 'unavailable',
+      pushManuallyDisabled: false,
+      softDeclineCount: 0,
+      softLastDeclinedAt: 0,
+    });
+    ensureNotificationsEnabled.mockResolvedValue({ status: 'enabled' });
+
+    getPermissionsAsync.mockResolvedValue({
+      granted: true,
+      status: expoNotifications.PermissionStatus.GRANTED,
+      canAskAgain: true,
+    });
+
+    renderHook(() => useNotificationSettings());
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    expect(ensureNotificationsEnabled).toHaveBeenCalledWith({ forceRegister: true });
+  });
+
+  it('does not auto-register when permission is granted but status is soft-declined', async () => {
+    loadNotificationPreferences.mockReturnValue({
+      notificationStatus: 'soft-declined',
+      pushManuallyDisabled: false,
+      softDeclineCount: 1,
+      softLastDeclinedAt: Date.now(),
+    });
+
+    getPermissionsAsync.mockResolvedValue({
+      granted: true,
+      status: expoNotifications.PermissionStatus.GRANTED,
+      canAskAgain: true,
+    });
+
+    renderHook(() => useNotificationSettings());
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    expect(ensureNotificationsEnabled).not.toHaveBeenCalled();
+  });
+
   it('maps granted permission status correctly', async () => {
     getPermissionsAsync.mockResolvedValue({
       granted: true,
@@ -1059,6 +1130,36 @@ describe('useNotificationSettings', () => {
       );
     });
 
+    it('resets denied to unknown when browser re-grants permission', async () => {
+      // Simulates: user blocked in browser → our status is 'denied' → user re-allows in
+      // browser settings → page refresh → permissionStatus becomes 'granted'.
+      // Without this reset, tryPromptForPush hits the early-return for 'denied'.
+      loadNotificationPreferences.mockReturnValue({
+        notificationStatus: 'denied',
+        pushManuallyDisabled: false,
+        softDeclineCount: 0,
+        softLastDeclinedAt: 0,
+      });
+
+      getPermissionsAsync.mockResolvedValue({
+        granted: true,
+        status: expoNotifications.PermissionStatus.GRANTED,
+        canAskAgain: true,
+      });
+
+      renderHook(() => useNotificationSettings());
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(persistNotificationPreferences).toHaveBeenCalledWith(
+        expect.objectContaining({
+          notificationStatus: 'unknown',
+        }),
+      );
+    });
+
     it('preserves soft-declined status when permission is prompt', async () => {
       const initialPrefs = {
         notificationStatus: 'soft-declined' as const,
@@ -1093,7 +1194,10 @@ describe('useNotificationSettings', () => {
       }
     });
 
-    it('resets from granted to unknown when permission changes to prompt', async () => {
+    it('preserves granted status when permission changes to prompt (avoids toggle flicker on reload)', async () => {
+      // If stored status is 'granted' but OS reports 'prompt', we should NOT reset to 'unknown'.
+      // The browser may report 'prompt' transiently during initial-render before
+      // refreshPermissionStatus resolves — resetting would cause the toggle to flicker off.
       loadNotificationPreferences.mockReturnValue({
         notificationStatus: 'granted',
         pushManuallyDisabled: false,
@@ -1113,7 +1217,7 @@ describe('useNotificationSettings', () => {
         await Promise.resolve();
       });
 
-      expect(persistNotificationPreferences).toHaveBeenCalledWith(
+      expect(persistNotificationPreferences).not.toHaveBeenCalledWith(
         expect.objectContaining({
           notificationStatus: 'unknown',
         }),
@@ -1140,75 +1244,41 @@ describe('useNotificationSettings', () => {
         await Promise.resolve();
       });
 
+      // Unrecognized status is preserved in React state; no storage write happens because
+      // the updater returns prev unchanged (updatePreferences skips persist when value === prev).
       expect(result.current.notificationStatus).toBe('custom-state');
-      expect(persistNotificationPreferences).toHaveBeenCalledWith(
+      expect(persistNotificationPreferences).not.toHaveBeenCalledWith(
         expect.objectContaining({
-          notificationStatus: 'custom-state',
+          notificationStatus: 'unknown',
         }),
       );
-    });
-
-    it('auto-registers when permission granted and not manually disabled', async () => {
-      loadNotificationPreferences.mockReturnValue({
-        notificationStatus: 'unknown',
-        pushManuallyDisabled: false,
-        softDeclineCount: 0,
-        softLastDeclinedAt: 0,
-      });
-
-      getPermissionsAsync.mockResolvedValue({
-        granted: true,
-        status: expoNotifications.PermissionStatus.GRANTED,
-        canAskAgain: true,
-      });
-
-      ensureNotificationsEnabled.mockResolvedValue({ status: 'enabled' });
-
-      const { result } = renderHook(() => useNotificationSettings());
-
-      await act(async () => {
-        await Promise.resolve();
-      });
-
-      expect(result.current.permissionStatus).toBe('granted');
-      expect(ensureNotificationsEnabled).toHaveBeenCalledWith({
-        context: 'permission-sync',
-        skipSoftPrompt: true,
-        forceRegister: true,
-      });
-    });
-
-    it('handles ensureNotificationsEnabled error during permission sync', async () => {
-      loadNotificationPreferences.mockReturnValue({
-        notificationStatus: 'unknown',
-        pushManuallyDisabled: false,
-        softDeclineCount: 0,
-        softLastDeclinedAt: 0,
-      });
-
-      getPermissionsAsync.mockResolvedValue({
-        granted: true,
-        status: expoNotifications.PermissionStatus.GRANTED,
-        canAskAgain: true,
-      });
-
-      const syncError = new Error('Network failure');
-      ensureNotificationsEnabled.mockRejectedValue(syncError);
-
-      const { result } = renderHook(() => useNotificationSettings());
-
-      await act(async () => {
-        await Promise.resolve();
-      });
-
-      expect(result.current.permissionStatus).toBe('granted');
-      expect(trackError).toHaveBeenCalledWith(syncError, {
-        source: 'notifications:permission-sync',
-      });
     });
   });
 
   describe('Web-specific behavior', () => {
+    it('marks notifications unavailable on mobile web contexts', async () => {
+      Object.defineProperty(Platform, 'OS', { value: 'web' });
+      const originalUserAgent = navigator.userAgent;
+      Object.defineProperty(navigator, 'userAgent', {
+        configurable: true,
+        value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit',
+      });
+
+      const { result } = renderHook(() => useNotificationSettings());
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(result.current.isSupported).toBe(false);
+      expect(result.current.permissionStatus).toBe('unavailable');
+
+      Object.defineProperty(navigator, 'userAgent', {
+        configurable: true,
+        value: originalUserAgent,
+      });
+    });
+
     it('syncs to browser permission state on web', async () => {
       Object.defineProperty(Platform, 'OS', { value: 'web' });
       const originalNotification = (globalThis as { Notification?: typeof Notification })
@@ -1243,6 +1313,31 @@ describe('useNotificationSettings', () => {
         delete (globalThis as { window?: Window }).window;
       }
       (globalThis as { Notification?: typeof Notification }).Notification = originalNotification;
+    });
+
+    it('returns unavailable when prompting on mobile web contexts', async () => {
+      Object.defineProperty(Platform, 'OS', { value: 'web' });
+      const originalUserAgent = navigator.userAgent;
+      Object.defineProperty(navigator, 'userAgent', {
+        configurable: true,
+        value: 'Mozilla/5.0 (Android 14; Mobile) AppleWebKit',
+      });
+
+      const { result } = renderHook(() => useNotificationSettings());
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      await act(async () => {
+        const promptResult = await result.current.tryPromptForPush({ context: 'manual' });
+        expect(promptResult.status).toBe('unavailable');
+      });
+
+      Object.defineProperty(navigator, 'userAgent', {
+        configurable: true,
+        value: originalUserAgent,
+      });
     });
 
     it('falls back to prompt on web when Notification API is unavailable', async () => {
@@ -1343,21 +1438,32 @@ describe('useNotificationSettings', () => {
       expect(trackEvent).toHaveBeenCalledWith('notifications:test', { foo: 'bar' });
     });
 
-    it('reloads the page after soft prompt allow on web', async () => {
+    it('updates preferences from storage and refreshes permission after soft prompt allow on web', async () => {
       Object.defineProperty(Platform, 'OS', { value: 'web' });
-      const originalWindow = (globalThis as { window?: Window }).window;
-      (globalThis as { window?: Window }).window = {
-        location: { reload: jest.fn() },
-      } as unknown as Window;
 
       loadNotificationPreferences.mockReturnValue({
         notificationStatus: 'unknown',
-        pushManuallyDisabled: true,
+        pushManuallyDisabled: false,
         softDeclineCount: 0,
         softLastDeclinedAt: 0,
       });
 
       ensureNotificationsEnabled.mockResolvedValue({ status: 'enabled' });
+
+      // After ensureNotificationsEnabled writes 'granted', loadNotificationPreferences
+      // should return the updated value when called again.
+      loadNotificationPreferences.mockReturnValueOnce({
+        notificationStatus: 'unknown',
+        pushManuallyDisabled: false,
+        softDeclineCount: 0,
+        softLastDeclinedAt: 0,
+      });
+      loadNotificationPreferences.mockReturnValue({
+        notificationStatus: 'granted',
+        pushManuallyDisabled: false,
+        softDeclineCount: 0,
+        softLastDeclinedAt: 0,
+      });
 
       const { result } = renderHook(() => useNotificationSettings());
 
@@ -1369,16 +1475,38 @@ describe('useNotificationSettings', () => {
         await result.current.softPrompt.onAllow();
       });
 
-      expect(window.location.reload).toHaveBeenCalled();
-      expect(persistNotificationPreferences).toHaveBeenCalledWith(
-        expect.objectContaining({ pushManuallyDisabled: false }),
+      // Should have called ensureNotificationsEnabled and refreshed state from storage
+      expect(ensureNotificationsEnabled).toHaveBeenCalledWith(
+        expect.objectContaining({ forceRegister: true }),
       );
+      expect(result.current.notificationStatus).toBe('granted');
+    });
 
-      if (originalWindow) {
-        (globalThis as { window?: Window }).window = originalWindow;
-      } else {
-        delete (globalThis as { window?: Window }).window;
-      }
+    it('does not auto-prompt on web when soft-decline cooldown is active from persisted preferences', async () => {
+      Object.defineProperty(Platform, 'OS', { value: 'web' });
+      const originalNotification = (globalThis as { Notification?: typeof Notification })
+        .Notification;
+      (globalThis as { Notification?: typeof Notification }).Notification = {
+        permission: 'default',
+      } as typeof Notification;
+
+      loadNotificationPreferences.mockReturnValue({
+        notificationStatus: 'soft-declined',
+        pushManuallyDisabled: false,
+        softDeclineCount: 1,
+        softLastDeclinedAt: Date.now(),
+      });
+
+      const { result } = renderHook(() => useNotificationSettings());
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(result.current.softPrompt.open).toBe(false);
+      expect(ensureNotificationsEnabled).not.toHaveBeenCalled();
+
+      (globalThis as { Notification?: typeof Notification }).Notification = originalNotification;
     });
 
     it('auto-prompts on web when permission is prompt', async () => {
@@ -1624,6 +1752,73 @@ describe('useNotificationSettings', () => {
 
       expect(promptResult).toEqual({ status: 'unavailable' });
       expect(ensureNotificationsEnabled).not.toHaveBeenCalled();
+    });
+
+    it('returns triggered (no token) when web permission granted but push unavailable', async () => {
+      Object.defineProperty(Platform, 'OS', { value: 'web' });
+      const originalNotification = (globalThis as { Notification?: typeof Notification })
+        .Notification;
+      (globalThis as { Notification?: typeof Notification }).Notification = {
+        permission: 'granted',
+      } as typeof Notification;
+
+      loadNotificationPreferences.mockReturnValue({
+        notificationStatus: 'unknown',
+        pushManuallyDisabled: false,
+        softDeclineCount: 0,
+        softLastDeclinedAt: 0,
+      });
+      ensureNotificationsEnabled.mockResolvedValue({ status: 'unavailable' });
+
+      const { result } = renderHook(() => useNotificationSettings());
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      let promptResult;
+      await act(async () => {
+        promptResult = await result.current.tryPromptForPush({ skipSoftPrompt: true });
+      });
+
+      expect(promptResult).toEqual({ status: 'triggered', registered: false });
+
+      (globalThis as { Notification?: typeof Notification }).Notification = originalNotification;
+      Object.defineProperty(Platform, 'OS', { value: 'ios' });
+    });
+
+    it('tracks error when auto-prompt rejects', async () => {
+      // Make getPermissionsAsync resolve with PROMPT so auto-prompt fires, then make
+      // analytics.trackEvent throw so tryPromptForPush rejects and the .catch on
+      // line 388 calls analytics.trackError({ source: 'notifications:auto-soft' }).
+      getPermissionsAsync.mockResolvedValue({
+        granted: false,
+        status: expoNotifications.PermissionStatus.DENIED,
+        canAskAgain: true,
+      });
+
+      loadNotificationPreferences.mockReturnValue({
+        notificationStatus: 'unknown',
+        pushManuallyDisabled: false,
+        softDeclineCount: 0,
+        softLastDeclinedAt: 0,
+      });
+
+      const boom = new Error('auto-prompt failed');
+      trackEvent.mockImplementationOnce(() => {
+        throw boom;
+      });
+
+      const { result } = renderHook(() => useNotificationSettings());
+
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 0));
+      });
+
+      // Suppress unused-result warning
+      void result;
+
+      expect(trackError).toHaveBeenCalledWith(boom, { source: 'notifications:auto-soft' });
     });
   });
 });

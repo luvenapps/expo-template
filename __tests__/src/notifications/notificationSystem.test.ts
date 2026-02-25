@@ -187,7 +187,7 @@ describe('notificationSystem', () => {
         });
       });
 
-      it('handles error status', async () => {
+      it('handles error status without persisting denied (allows retry)', async () => {
         const prefs = {
           pushManuallyDisabled: false,
           notificationStatus: 'unknown' as const,
@@ -203,25 +203,30 @@ describe('notificationSystem', () => {
         const result = await ensureNotificationsEnabled();
 
         expect(result).toEqual({ status: 'error', message: 'Service worker failed' });
-        expect(persistNotificationPreferences).toHaveBeenCalledWith({
-          ...prefs,
-          notificationStatus: 'denied',
-          pushManuallyDisabled: false,
-        });
+        // Transient errors must NOT write 'denied' so the user can retry.
+        expect(persistNotificationPreferences).not.toHaveBeenCalled();
       });
     });
   });
 
   describe('revokeNotifications', () => {
-    it('calls platform revoke and resets preferences', async () => {
+    it('calls platform revoke and resets notificationStatus while preserving other prefs', async () => {
       mockWebRevokePermission.mockResolvedValue(undefined);
+      loadNotificationPreferences.mockReturnValue({
+        pushManuallyDisabled: true,
+        notificationStatus: 'granted',
+        softDeclineCount: 2,
+        softLastDeclinedAt: 1000,
+      });
 
       await revokeNotifications();
 
       expect(mockWebRevokePermission).toHaveBeenCalled();
       expect(persistNotificationPreferences).toHaveBeenCalledWith({
-        ...preferencesModule.DEFAULT_NOTIFICATION_PREFERENCES,
+        pushManuallyDisabled: true,
         notificationStatus: 'unknown',
+        softDeclineCount: 2,
+        softLastDeclinedAt: 1000,
       });
     });
   });
