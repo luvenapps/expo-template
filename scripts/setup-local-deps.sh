@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+MISE_VERSION=$(grep '^min_version' "$(dirname "$0")/../.mise.toml" | sed 's/.*= *"\(.*\)"/\1/')
+FASTLANE_VERSION="2.228.0"
+MAESTRO_VERSION="2.0.6"
+
 if ! command -v brew >/dev/null 2>&1; then
   echo "Homebrew is required for this setup script. Install it from https://brew.sh/ and re-run."
   exit 1
 fi
 
-packages=(mise fastlane watchman)
+packages=(watchman)
 
 for package in "${packages[@]}"; do
   if brew list --versions "$package" >/dev/null 2>&1; then
@@ -16,6 +20,28 @@ for package in "${packages[@]}"; do
     brew install "$package"
   fi
 done
+
+if brew list --versions mise >/dev/null 2>&1; then
+  echo "✅ mise already installed; skipping"
+else
+  echo "📦 Installing mise (required >= ${MISE_VERSION}) via Homebrew..."
+  brew install mise
+fi
+
+installed_fastlane=$(brew list --versions fastlane 2>/dev/null | awk '{print $2}')
+if [ "${installed_fastlane}" = "${FASTLANE_VERSION}" ]; then
+  echo "✅ fastlane ${FASTLANE_VERSION} already installed; skipping"
+else
+  echo "📦 Installing fastlane ${FASTLANE_VERSION} via Homebrew..."
+  brew install fastlane@${FASTLANE_VERSION} 2>/dev/null || brew install fastlane
+fi
+
+if brew list --cask --versions maestro 2>/dev/null | grep -q "${MAESTRO_VERSION}"; then
+  echo "✅ maestro ${MAESTRO_VERSION} already installed; skipping"
+else
+  echo "📦 Installing maestro ${MAESTRO_VERSION} via Homebrew..."
+  brew install --cask maestro
+fi
 
 echo "🔐 Trusting repo-local mise config..."
 mise trust

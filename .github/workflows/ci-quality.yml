@@ -62,6 +62,7 @@ jobs:
       - name: Setup mise toolchain
         uses: jdx/mise-action@v3
         with:
+          version: '2026.2.13'
           install: true
           log_level: ${{ runner.debug == '1' && 'debug' || 'info' }}
         env:
