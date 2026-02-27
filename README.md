@@ -64,20 +64,12 @@ brew update
 brew upgrade
 ```
 
-#### 🟢 2a. Node.js
-
-Install Node.js if you don't have it already:
-
-```bash
-brew install node
-```
-
 ### ⚡ 3. Default setup with mise
 
 Use `mise` as the default local setup path for this repository.
 
 ```bash
-npm run setup:local
+./scripts/setup-local-deps.sh
 ```
 
 That script installs missing Homebrew core dependencies (`mise`, `fastlane`, `watchman`), trusts `.mise.toml`, installs pinned runtimes, and skips anything already installed.
