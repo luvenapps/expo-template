@@ -17,7 +17,7 @@ and codebase conventions so agents can run reliably without human context.
 
 - **Expo managed workflow** – Native `ios/` and `android/` folders are auto-generated during builds.
   Don't manually edit native code unless adding custom native modules.
-- Node and Java are pinned in `mise.toml`.
+- Node and Java are pinned in `.mise.toml`.
 - Use `mise` as the default local toolchain manager in this repo.
   Quickstart:
   1. Run `npm run setup:local` (installs missing Homebrew dependencies: `mise`, `fastlane`, `watchman`)

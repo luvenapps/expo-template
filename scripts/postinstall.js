@@ -13,6 +13,7 @@
  *  - Restore .gitignore from "gitignore" (if present)
  *  - Rename _prettierrc.json → .prettierrc.json if present
  *  - Rename _prettierignore → .prettierignore if present
+ *  - Copy _mise.toml → .mise.toml (runtime toolchain pins)
  *  - Copy _mcp.json → .vscode/mcp.json (creates .vscode if needed)
  *  - Enable Husky hooks *without* using deprecated `husky install` (set hooksPath + chmod +x)
  *  - Materialize .maestro from _maestro if needed
@@ -284,6 +285,20 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
     );
   }
 
+  // Copy _mise.toml → .mise.toml if present
+  const miseSrc = path.join(CWD, '_mise.toml');
+  const miseDst = path.join(CWD, '.mise.toml');
+  if (exists(miseSrc)) {
+    try {
+      fs.copyFileSync(miseSrc, miseDst);
+      console.log('✅ Copied _mise.toml → .mise.toml');
+    } catch (e) {
+      console.log(`⚠️  Failed to copy _mise.toml (${e.message})`);
+    }
+  } else {
+    console.log('⚠️  No _mise.toml found in template directory — skipping');
+  }
+
   // Copy _mcp.json → .vscode/mcp.json if present
   const mcpSrc = path.join(CWD, '_mcp.json');
   const vscodeDst = path.join(CWD, '.vscode');
@@ -479,6 +494,9 @@ ${bar}
 📦 Name: ${summary.appName}
 🔖 Slug: ${summary.slug}
 🏷️  App ID: ${summary.appId}
+
+Next step: run \`npm run setup:local\` to install all local dependencies
+           (mise, fastlane, watchman) and activate the pinned runtimes.
 ${bar}
 `);
 })();

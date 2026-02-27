@@ -354,8 +354,8 @@ runs-on: [self-hosted, macos, arm64]
 
 Keep toolchains aligned with project requirements:
 
-- Node version from `mise.toml`
-- Java (pinned in `mise.toml`)
+- Node version from `.mise.toml`
+- Java (pinned in `.mise.toml`)
 - Xcode + iOS simulators
 - Android SDK + emulator tooling
 

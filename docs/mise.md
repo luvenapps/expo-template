@@ -1,6 +1,6 @@
 # Using mise for local development
 
-This repository includes first-class `mise` support via the root `mise.toml` and treats mise as the default setup path.
+This repository includes first-class `mise` support via the root `.mise.toml` and treats mise as the default setup path.
 
 ## Quickstart (default)
 
@@ -42,13 +42,13 @@ npm ci
 
 ## JAVA_HOME and shell profile notes
 
-With mise shell activation configured, Java from `mise.toml` is used in the activated shell, so manual `JAVA_HOME` exports are generally unnecessary.
+With mise shell activation configured, Java from `.mise.toml` is used in the activated shell, so manual `JAVA_HOME` exports are generally unnecessary.
 
 If you have not enabled shell activation yet, follow the official mise shell activation docs for your shell.
 
 ## Using mise in CI
 
-CI workflows should install and run tools via mise so `mise.toml` remains the single source of truth for Node/Java pins.
+CI workflows should install and run tools via mise so `.mise.toml` remains the single source of truth for Node/Java pins.
 
 Example pattern:
 
@@ -76,7 +76,7 @@ You can use either a generic major-version pin or a vendor-pinned entry, dependi
 - A generic pin lets mise choose a Java distribution based on plugin defaults/platform availability.
 - A vendor-pinned entry pins both the major version and vendor explicitly.
 
-This repo currently uses a vendor-pinned Java entry in `mise.toml` to keep Java runtime behavior consistent across local and CI environments.
+This repo currently uses a vendor-pinned Java entry in `.mise.toml` to keep Java runtime behavior consistent across local and CI environments.
 To inspect what mise resolved locally, run:
 
 ```bash
@@ -101,7 +101,7 @@ If your team prefers a looser pin later, switch to a generic major-version Java 
 
 ## What about fastlane, watchman, maestro, and supabase?
 
-- **fastlane**: not managed by this repo's `mise.toml`; install via Homebrew/Gem for native build/release flows.
-- **watchman**: not managed by this repo's `mise.toml`; install via Homebrew for faster Metro file watching.
-- **maestro**: not managed by this repo's `mise.toml`; install the Maestro CLI separately (Java runtime itself is pinned via mise).
+- **fastlane**: not managed by this repo's `.mise.toml`; install via Homebrew/Gem for native build/release flows.
+- **watchman**: not managed by this repo's `.mise.toml`; install via Homebrew for faster Metro file watching.
+- **maestro**: not managed by this repo's `.mise.toml`; install the Maestro CLI separately (Java runtime itself is pinned via mise).
 - **supabase**: Supabase CLI is provided by repo dev dependencies (`npx supabase ...` / npm scripts), but local Supabase still requires a running container runtime.

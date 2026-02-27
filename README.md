@@ -72,15 +72,15 @@ Use `mise` as the default local setup path for this repository.
 npm run setup:local
 ```
 
-That script installs missing Homebrew core dependencies (`mise`, `fastlane`, `watchman`), trusts `mise.toml`, installs pinned runtimes, and skips anything already installed.
+That script installs missing Homebrew core dependencies (`mise`, `fastlane`, `watchman`), trusts `.mise.toml`, installs pinned runtimes, and skips anything already installed.
 
 > This repository's canonical package manager for app workflows is `npm` with `package-lock.json`.
 
-With `mise` shell activation enabled, you generally do not need to manually export `JAVA_HOME` in your shell profile—the Java runtime from `mise.toml` is used in your activated environment.
+With `mise` shell activation enabled, you generally do not need to manually export `JAVA_HOME` in your shell profile—the Java runtime from `.mise.toml` is used in your activated environment.
 
 See [docs/mise.md](docs/mise.md) for more details and caveats.
 
-For Java pinning, this repo uses a vendor-pinned Java entry in `mise.toml` for reproducibility.
+For Java pinning, this repo uses a vendor-pinned Java entry in `.mise.toml` for reproducibility.
 
 ### 🧭 4. Expo CLI (optional but recommended globally)
 

@@ -20,7 +20,7 @@ done
 echo "🔐 Trusting repo-local mise config..."
 mise trust
 
-echo "⬇️ Installing pinned runtimes from mise.toml..."
+echo "⬇️ Installing pinned runtimes from .mise.toml..."
 mise install
 
 # Ensure mise is activated in the user's shell profile
