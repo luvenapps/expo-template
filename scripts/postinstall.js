@@ -14,7 +14,8 @@
  *  - Rename _prettierrc.json → .prettierrc.json if present
  *  - Rename _prettierignore → .prettierignore if present
  *  - Copy _mise.toml → .mise.toml (runtime toolchain pins)
- *  - Copy _mcp.json → .vscode/mcp.json (creates .vscode if needed)
+ *  - Copy _mcp-vscode.json → .vscode/mcp.json (creates .vscode if needed)
+ *  - Copy _mcp-claude.json → .mcp.json (repo root, Claude MCP config)
  *  - Enable Husky hooks *without* using deprecated `husky install` (set hooksPath + chmod +x)
  *  - Materialize .maestro from _maestro if needed
  *  - Restore .github (delete existing .github and rename _github → .github
@@ -299,20 +300,38 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
     console.log('⚠️  No _mise.toml found in template directory — skipping');
   }
 
-  // Copy _mcp.json → .vscode/mcp.json if present
-  const mcpSrc = path.join(CWD, '_mcp.json');
+  // Copy _mcp-vscode.json → .vscode/mcp.json if present
+  const mcpVscodeSrc = path.join(CWD, '_mcp-vscode.json');
   const vscodeDst = path.join(CWD, '.vscode');
-  const mcpDst = path.join(vscodeDst, 'mcp.json');
-  if (exists(mcpSrc)) {
+  const mcpVscodeDst = path.join(vscodeDst, 'mcp.json');
+  if (exists(mcpVscodeSrc)) {
     try {
       if (!exists(vscodeDst)) fs.mkdirSync(vscodeDst, { recursive: true });
-      fs.copyFileSync(mcpSrc, mcpDst);
-      console.log('✅ Copied _mcp.json → .vscode/mcp.json');
+      fs.copyFileSync(mcpVscodeSrc, mcpVscodeDst);
+      console.log('✅ Copied _mcp-vscode.json → .vscode/mcp.json');
     } catch (e) {
-      console.log(`⚠️  Failed to copy _mcp.json (${e.message})`);
+      console.log(`⚠️  Failed to copy _mcp-vscode.json (${e.message})`);
     }
   } else {
-    console.log('⚠️  No _mcp.json found in template directory — skipping');
+    console.log(
+      '⚠️  No _mcp-vscode.json found in template directory — skipping',
+    );
+  }
+
+  // Copy _mcp-claude.json → .mcp.json if present
+  const mcpClaudeSrc = path.join(CWD, '_mcp-claude.json');
+  const mcpClaudeDst = path.join(CWD, '.mcp.json');
+  if (exists(mcpClaudeSrc)) {
+    try {
+      fs.copyFileSync(mcpClaudeSrc, mcpClaudeDst);
+      console.log('✅ Copied _mcp-claude.json → .mcp.json');
+    } catch (e) {
+      console.log(`⚠️  Failed to copy _mcp-claude.json (${e.message})`);
+    }
+  } else {
+    console.log(
+      '⚠️  No _mcp-claude.json found in template directory — skipping',
+    );
   }
 
   // Husky v9+ (no `husky install`): set hooksPath + chmod, and materialize from _husky if needed
