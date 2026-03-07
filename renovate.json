@@ -46,6 +46,7 @@
         "react-native-svg",
         "react-native-web",
         "react-native-worklets",
+        "react-test-renderer",
         "typescript"
       ]
     },
@@ -62,10 +63,19 @@
       ]
     },
     {
+      "groupName": "tamagui-extras",
+      "description": "Group standalone Tamagui tooling packages separately from the tamagui monorepo",
+      "matchPackageNames": [
+        "@tamagui/babel-plugin",
+        "@tamagui/font-inter",
+        "@tamagui/lucide-icons",
+        "@tamagui/metro-plugin"
+      ]
+    },
+    {
       "groupName": "github-actions",
       "matchManagers": ["github-actions"]
     }
   ],
-  "prHourlyLimit": 5,
-  "prConcurrentLimit": 10
+  "prConcurrentLimit": 4
 }
