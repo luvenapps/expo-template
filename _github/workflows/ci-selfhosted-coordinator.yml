@@ -107,11 +107,12 @@ jobs:
     if: always() && vars.USE_SELF_HOSTED == 'true' && vars.USE_LOCAL_CACHE == 'true'
     needs: [android, ios]
     runs-on: [self-hosted, macos, arm64]
-    # Serialize evictions across concurrent workflow runs so rm -rf never
-    # races with another run's restore/save (which hold the same flock).
+    # Serialize evictions per ref so rm -rf never races with another run's
+    # restore/save on the same branch. Using github.ref avoids conflicts with
+    # runs on other branches/PRs that have their own cancel-in-progress group.
     concurrency:
-      group: local-cache-evict
-      cancel-in-progress: false
+      group: local-cache-evict-${{ github.ref }}
+      cancel-in-progress: true
     steps:
       - name: Evict stale local cache entries
         shell: bash
