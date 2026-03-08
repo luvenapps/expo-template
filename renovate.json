@@ -63,14 +63,9 @@
       ]
     },
     {
-      "groupName": "tamagui-extras",
-      "description": "Group standalone Tamagui tooling packages separately from the tamagui monorepo",
-      "matchPackageNames": [
-        "@tamagui/babel-plugin",
-        "@tamagui/font-inter",
-        "@tamagui/lucide-icons",
-        "@tamagui/metro-plugin"
-      ]
+      "groupName": "tamagui-monorepo",
+      "description": "Group all Tamagui packages together — they share internal React contexts and must stay on the same version",
+      "matchPackageNames": ["tamagui", "@tamagui/**"]
     },
     {
       "groupName": "github-actions",
