@@ -33,6 +33,7 @@
         "expo-task-manager",
         "expo-updates",
         "expo-web-browser",
+        "eslint-config-expo",
         "@types/jest",
         "@types/react",
         "jest",
@@ -57,12 +58,18 @@
       "matchDepTypes": ["devDependencies"],
       "matchPackageNames": [
         "!expo-dev-client",
+        "!eslint-config-expo",
         "!@types/jest",
         "!@types/react",
         "!jest",
         "!jest-expo",
         "!typescript"
       ]
+    },
+    {
+      "groupName": "nitro-mmkv",
+      "description": "react-native-nitro-modules and react-native-mmkv must update together — mmkv 4.x is built on Nitro",
+      "matchPackageNames": ["react-native-nitro-modules", "react-native-mmkv"]
     },
     {
       "groupName": "tamagui-monorepo",
