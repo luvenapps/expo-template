@@ -81,5 +81,5 @@
       "matchManagers": ["github-actions"]
     }
   ],
-  "prConcurrentLimit": 4
+  "prConcurrentLimit": 2
 }
