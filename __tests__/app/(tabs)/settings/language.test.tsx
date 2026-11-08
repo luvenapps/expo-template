@@ -63,10 +63,10 @@ describe('LanguageSettingsScreen', () => {
     mockSetLanguage.mockReset();
   });
 
-  it('calls setLanguage when a language option is selected', () => {
-    const { getByText } = render(<LanguageSettingsScreen />);
+  it('calls setLanguage when a language option is selected', async () => {
+    const { getByText } = await render(<LanguageSettingsScreen />);
 
-    fireEvent.press(getByText('Spanish'));
+    await fireEvent.press(getByText('Spanish'));
 
     expect(mockSetLanguage).toHaveBeenCalledWith('es');
   });

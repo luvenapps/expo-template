@@ -1,0 +1,393 @@
+name: Android CI - Hosted
+
+on:
+  workflow_call:
+    inputs:
+      env_prefix:
+        description: Environment prefix (PROD or DEV)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  EXPO_USE_LOCAL_CLI: '1'
+  METRO_CACHE_PATH: ${{ github.workspace }}/.metro-cache-ci
+  ANDROID_TARGET: 'google_apis'
+  ANDROID_API_LEVEL: 35
+  MAESTRO_VERSION: '2.0.6'
+  FASTLANE_VERSION: '2.228.0'
+
+concurrency:
+  group: android-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android-hosted:
+    name: Build • E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      ANDROID_SDK_DIR: $HOME/Library/Android/sdk
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Prepare isolated mise state and GnuPG home
+        shell: bash
+        run: |
+          mkdir -p "${RUNNER_TEMP}/gnupg" "${RUNNER_TEMP}/mise-state"
+          chmod 700 "${RUNNER_TEMP}/gnupg" "${RUNNER_TEMP}/mise-state"
+          echo "MISE_STATE_DIR=$RUNNER_TEMP/mise-state" >> "$GITHUB_ENV"
+
+      - name: Setup mise toolchain
+        uses: jdx/mise-action@v5
+        with:
+          version: '2026.10.25'
+          install: true
+          log_level: ${{ runner.debug == '1' && 'debug' || 'info' }}
+        env:
+          GNUPGHOME: ${{ runner.temp }}/gnupg
+          MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Map runtime variables and secrets
+        shell: bash
+        env:
+          TURN_ON_FIREBASE: ${{ vars[format('{0}_TURN_ON_FIREBASE', inputs.env_prefix)] || vars.TURN_ON_FIREBASE || 'false' }}
+          RETRIES_VALUE: ${{ vars[format('{0}_RETRIES', inputs.env_prefix)] || vars.RETRIES || '2' }}
+          RETRY_DELAY_VALUE: ${{ vars[format('{0}_RETRY_DELAY', inputs.env_prefix)] || vars.RETRY_DELAY || '5' }}
+          PUBLIC_SUPABASE_URL: ${{ vars[format('{0}_PUBLIC_SUPABASE_URL', inputs.env_prefix)] || vars.PUBLIC_SUPABASE_URL || '' }}
+          PUBLIC_SUPABASE_ANON_KEY: ${{ secrets[format('{0}_PUBLIC_SUPABASE_ANON_KEY', inputs.env_prefix)] || secrets.PUBLIC_SUPABASE_ANON_KEY || '' }}
+          SUPABASE_ACCESS_TOKEN_VALUE: ${{ secrets[format('{0}_SUPABASE_ACCESS_TOKEN', inputs.env_prefix)] || secrets.SUPABASE_ACCESS_TOKEN || '' }}
+          FIREBASE_API_KEY: ${{ secrets[format('{0}_FIREBASE_API_KEY', inputs.env_prefix)] || secrets.FIREBASE_API_KEY || '' }}
+          FIREBASE_APP_ID: ${{ secrets[format('{0}_FIREBASE_APP_ID', inputs.env_prefix)] || secrets.FIREBASE_APP_ID || '' }}
+          FIREBASE_AUTH_DOMAIN: ${{ secrets[format('{0}_FIREBASE_AUTH_DOMAIN', inputs.env_prefix)] || secrets.FIREBASE_AUTH_DOMAIN || '' }}
+          FIREBASE_MEASUREMENT_ID: ${{ secrets[format('{0}_FIREBASE_MEASUREMENT_ID', inputs.env_prefix)] || secrets.FIREBASE_MEASUREMENT_ID || '' }}
+          FIREBASE_MESSAGING_SENDER_ID: ${{ secrets[format('{0}_FIREBASE_MESSAGING_SENDER_ID', inputs.env_prefix)] || secrets.FIREBASE_MESSAGING_SENDER_ID || '' }}
+          FIREBASE_PROJECT_ID: ${{ secrets[format('{0}_FIREBASE_PROJECT_ID', inputs.env_prefix)] || secrets.FIREBASE_PROJECT_ID || '' }}
+          FIREBASE_STORAGE_BUCKET: ${{ secrets[format('{0}_FIREBASE_STORAGE_BUCKET', inputs.env_prefix)] || secrets.FIREBASE_STORAGE_BUCKET || '' }}
+          FIREBASE_VAPID_KEY: ${{ secrets[format('{0}_FIREBASE_VAPID_KEY', inputs.env_prefix)] || secrets.FIREBASE_VAPID_KEY || '' }}
+        run: .github/scripts/map_runtime_env.sh
+
+      - name: Validate EAS CLI version variable
+        shell: bash
+        run: |
+          if [ -z "${{ vars.EAS_CLI_VERSION }}" ]; then
+            echo "❌ Missing EAS_CLI_VERSION GitHub variable."
+            exit 1
+          fi
+
+      - name: Install EAS CLI
+        shell: bash
+        run: |
+          npm i -g eas-cli@${{ vars.EAS_CLI_VERSION }}
+          eas --version
+
+      - name: Make CI scripts executable
+        run: chmod +x .github/scripts/*.sh
+
+      - name: Setup Fastlane
+        shell: bash
+        run: .github/scripts/setup_fastlane.sh  "${{ env.FASTLANE_VERSION }}"
+
+      - name: Setup Maestro
+        shell: bash
+        run: .github/scripts/setup_maestro.sh "${{ env.MAESTRO_VERSION }}"
+
+      - name: Compute Android build fingerprint
+        id: android_fingerprint
+        shell: bash
+        env:
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
+          GOOGLE_SERVICE_INFO_PLIST_B64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_B64 }}
+        run: ./.github/scripts/compute_fingerprint.sh android >> "$GITHUB_OUTPUT"
+
+      - name: Restore cached APK
+        id: apk-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: ./*.apk
+          key: ${{ steps.android_fingerprint.outputs.key }}
+
+      - name: Create debug keystore
+        if: steps.apk-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p android
+          keytool -genkeypair -v \
+            -keystore "android/debug.keystore" \
+            -storepass android -keypass android \
+            -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US"
+
+      - name: Write signing props for Gradle
+        if: steps.apk-cache.outputs.cache-hit != 'true'
+        run: |
+          echo "android.injected.signing.store.file=$PWD/android/debug.keystore" >> android/gradle.properties
+          echo "android.injected.signing.store.password=android"               >> android/gradle.properties
+          echo "android.injected.signing.key.alias=androiddebugkey"            >> android/gradle.properties
+          echo "android.injected.signing.key.password=android"                 >> android/gradle.properties
+
+      # Lean caching: only Gradle to stay under 10GB org-wide cache budget
+      - name: Cache Gradle (caches + wrapper + project .gradle)
+        if: steps.apk-cache.outputs.cache-hit != 'true'
+        id: gradle-cache
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            android/.gradle
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'android/**/build.gradle', 'android/**/gradle.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: Build e2erelease APK
+        if: steps.apk-cache.outputs.cache-hit != 'true'
+        env:
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
+          GOOGLE_SERVICE_INFO_PLIST_B64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_B64 }}
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPO_PUBLIC_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          EXPO_PUBLIC_FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+          EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
+          EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID: ${{ secrets.FIREBASE_MEASUREMENT_ID }}
+          EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
+          EXPO_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET }}
+          EXPO_PUBLIC_SUPABASE_URL: ${{ vars.PROD_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.PROD_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.PROD_SUPABASE_ACCESS_TOKEN }}
+        run: |
+          set -e
+          ATTEMPTS="${RETRIES:-2}"
+          DELAY="${RETRY_DELAY:-5}"
+
+          for attempt in $(seq 1 "$ATTEMPTS"); do
+            echo "🏗️ Build attempt $attempt/$ATTEMPTS"
+            if eas build --platform android --profile e2eRelease --local --non-interactive; then
+              echo "✅ Build succeeded"
+              exit 0
+            fi
+            if [ "$attempt" -lt "$ATTEMPTS" ]; then
+              echo "⚠️ Build failed; retrying in $DELAY s..."
+              sleep "$DELAY"
+            fi
+          done
+
+          echo "❌ Build failed after $ATTEMPTS attempts"
+          exit 1
+
+      - name: Locate APK artifact & app.config.ts
+        id: find_apk
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="$(ls -1t ./*.apk 2>/dev/null | head -n1 || true)"
+          echo "APK=$APK"
+          echo "apk=$APK" >> $GITHUB_OUTPUT
+          [ -n "$APK" ] || (echo "No APK found in repo root."; ls -alh .; exit 1)
+
+          PKG=$(node -e "const { execSync } = require('node:child_process'); const config = JSON.parse(execSync('npx expo config --json', { encoding: 'utf8' })); process.stdout.write(config.android?.package ?? '');")
+          echo "PKG=$PKG"
+          echo "pkg=$PKG" >> $GITHUB_OUTPUT
+          [ -n "$PKG" ] || (echo "No PKG found in repo root."; ls -alh .; exit 1)
+
+      - name: Save APK to cache
+        if: steps.apk-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ${{ steps.find_apk.outputs.apk }}
+          key: ${{ steps.android_fingerprint.outputs.key }}
+
+      - name: Run context snippet (engine + native project state)
+        if: steps.apk-cache.outputs.cache-hit == 'true'
+        shell: bash
+        run: |
+          echo "[run-snippet] pwd"
+          pwd
+
+          echo "[run-snippet] android directory state"
+          if [ -d android ]; then
+            echo "android exists"
+          else
+            echo "android missing"
+          fi
+
+          if [ -f android/gradle.properties ]; then
+            echo "[run-snippet] android/gradle.properties (engine lines)"
+            grep -En "hermes|jsengine|jsEngine|newarch|newArch" android/gradle.properties || true
+          else
+            echo "[run-snippet] android/gradle.properties missing"
+          fi
+
+          if [ -f android/app/build.gradle ]; then
+            echo "[run-snippet] android/app/build.gradle (engine lines)"
+            grep -En "hermes|jsengine|jsEngine|newarch|newArch|enableHermes" android/app/build.gradle || true
+          else
+            echo "[run-snippet] android/app/build.gradle missing"
+          fi
+
+          echo "[run-snippet] expo public config (engine/runtime lines)"
+          node -e "const { execSync } = require('node:child_process'); const config = JSON.parse(execSync('npx expo config --json', { encoding: 'utf8' })); const payload = { jsEngine: config.jsEngine ?? null, newArchEnabled: config.newArchEnabled ?? null, runtimeVersion: config.runtimeVersion ?? null, androidPackage: config.android?.package ?? null }; console.log(JSON.stringify(payload, null, 2));"
+
+      - name: Repack Android app with latest JS bundle
+        if: steps.apk-cache.outputs.cache-hit == 'true'
+        shell: bash
+        env:
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
+          GOOGLE_SERVICE_INFO_PLIST_B64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_B64 }}
+          PLATFORM: android
+          SOURCE_APP: ${{ steps.find_apk.outputs.apk }}
+          METRO_CACHE_PATH: ${{ github.workspace }}/.metro-cache-ci
+        run: |
+          set -euo pipefail
+
+          RESOLVED_SDK_DIR="${ANDROID_SDK_DIR/#\$HOME/$HOME}"
+          if [ ! -d "$RESOLVED_SDK_DIR/build-tools" ]; then
+            for candidate in "$HOME/Library/Android/sdk" "${ANDROID_HOME:-}" "${ANDROID_SDK_ROOT:-}"; do
+              if [ -n "$candidate" ] && [ -d "$candidate/build-tools" ]; then
+                RESOLVED_SDK_DIR="$candidate"
+                break
+              fi
+            done
+          fi
+
+          if [ ! -d "$RESOLVED_SDK_DIR/build-tools" ]; then
+            echo "❌ Unable to find Android build-tools under expected SDK paths."
+            echo "Checked: $RESOLVED_SDK_DIR, $HOME/Library/Android/sdk, ${ANDROID_HOME:-<unset>}, ${ANDROID_SDK_ROOT:-<unset>}"
+            exit 1
+          fi
+
+          export ANDROID_SDK_ROOT="$RESOLVED_SDK_DIR"
+          export ANDROID_HOME="$RESOLVED_SDK_DIR"
+
+          echo "🧹 Removing native folders before JS export to avoid stale Hermes/native mismatch checks"
+          rm -rf ./android ./ios
+
+          echo "📦 Building embedded Android bundle for repack..."
+          rm -rf dist
+
+          npx expo export:embed \
+            --platform android \
+            --entry-file index.js \
+            --bundle-output dist/index.android.bundle \
+            --assets-dest dist/assets \
+            --dev false
+
+          echo "export:embed" > dist/.bundle-source
+
+          if [ ! -f dist/index.android.bundle ]; then
+            echo "❌ index.android.bundle not generated"
+            exit 1
+          fi
+
+          if [ ! -d dist/assets ]; then
+            echo "❌ assets directory not generated"
+            exit 1
+          fi
+
+          echo "🔍 Verifying dist folder contents:"
+          find ./dist -maxdepth 4 -print
+
+      - name: Validate Hermes + bundle compatibility before repack
+        if: steps.apk-cache.outputs.cache-hit == 'true'
+        shell: bash
+        run: .github/scripts/validate_hermes_bundle.sh android
+
+      - name: Repack Android app artifact with embedded bundle
+        if: steps.apk-cache.outputs.cache-hit == 'true'
+        shell: bash
+        env:
+          PLATFORM: android
+          SOURCE_APP: ${{ steps.find_apk.outputs.apk }}
+        run: |
+          set -euo pipefail
+
+          RESOLVED_SDK_DIR="${ANDROID_SDK_DIR/#\$HOME/$HOME}"
+          if [ ! -d "$RESOLVED_SDK_DIR/build-tools" ]; then
+            for candidate in "$HOME/Library/Android/sdk" "${ANDROID_HOME:-}" "${ANDROID_SDK_ROOT:-}"; do
+              if [ -n "$candidate" ] && [ -d "$candidate/build-tools" ]; then
+                RESOLVED_SDK_DIR="$candidate"
+                break
+              fi
+            done
+          fi
+
+          if [ ! -d "$RESOLVED_SDK_DIR/build-tools" ]; then
+            echo "❌ Unable to find Android build-tools for repack-app."
+            echo "Checked: $RESOLVED_SDK_DIR, $HOME/Library/Android/sdk, ${ANDROID_HOME:-<unset>}, ${ANDROID_SDK_ROOT:-<unset>}"
+            exit 1
+          fi
+
+          export ANDROID_SDK_ROOT="$RESOLVED_SDK_DIR"
+          export ANDROID_HOME="$RESOLVED_SDK_DIR"
+
+          TEMP_OUTPUT="repacked_output"
+          rm -rf "$TEMP_OUTPUT"
+          npx @expo/repack-app --platform "$PLATFORM" --source-app "$SOURCE_APP" --output "$TEMP_OUTPUT"
+          echo "Replacing $SOURCE_APP with repacked version..."
+          rm -rf "$SOURCE_APP"
+          mv "$TEMP_OUTPUT" "$SOURCE_APP"
+
+      - name: Upload Gradle reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: gradle-reports-android-hosted
+          path: |
+            android/build/reports/**
+            android/app/build/reports/**
+          if-no-files-found: ignore
+
+      - name: Save Gradle cache (post-build)
+        if: always() && steps.apk-cache.outputs.cache-hit != 'true' && steps.gradle-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            android/.gradle
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'android/**/build.gradle', 'android/**/gradle.properties') }}
+
+      - name: Enable KVM group perms
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run E2E tests
+        id: e2e_android
+        uses: reactivecircus/android-emulator-runner@v2
+        timeout-minutes: 30 # Android emulators are slow
+        with:
+          api-level: ${{ env.ANDROID_API_LEVEL }}
+          target: ${{ env.ANDROID_TARGET }}
+          arch: x86_64
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          disable-animations: true
+          script: .github/scripts/android_run_e2e.sh ${{ steps.find_apk.outputs.apk }} ${{ steps.find_apk.outputs.pkg }}
+
+      - name: Collect emulator logs on failure
+        if: failure() && steps.e2e_android.outcome == 'failure'
+        shell: bash
+        run: |
+          echo "Collecting emulator diagnostics..."
+          adb logcat -d > e2e-artifacts/emulator.log || true
+          adb shell "getprop" > e2e-artifacts/device-props.txt || true
+          mkdir -p e2e-artifacts
+          echo "✅ Logs collected"
+
+      - name: Upload E2E artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-artifacts-android-hosted
+          path: |
+            e2e-artifacts/**/*
+            android/app/build/reports/**
+          include-hidden-files: true

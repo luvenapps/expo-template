@@ -17,7 +17,8 @@ and codebase conventions so agents can run reliably without human context.
 
 - **Expo managed workflow** – Native `ios/` and `android/` folders are auto-generated during builds.
   Don't manually edit native code unless adding custom native modules.
-- Node and Java are pinned in `.mise.toml`.
+- Expo SDK 58 with React Native 0.88.1.
+- Node 26.13.0, Temurin Java 21.0.13+9.0.LTS, and Ruby 4.0.9 are pinned in `.mise.toml`.
 - Use `mise` as the default local toolchain manager in this repo.
   Quickstart:
   1. Run `npm run setup:local` (installs missing Homebrew dependencies: `mise`, `fastlane`, `watchman`)

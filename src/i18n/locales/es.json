@@ -285,6 +285,138 @@
     "privacyTitle": "Política de privacidad",
     "openTerms": "Abrir términos del servicio",
     "openPrivacy": "Abrir política de privacidad",
+    "termsContent": {
+      "lastUpdated": "Última actualización: 28 de enero de 2026",
+      "introduction": "Le damos la bienvenida a {{appName}} (\"la Aplicación\"), operada por {{companyName}} (\"nosotros\", \"nos\" o \"nuestro\"). Al acceder a la Aplicación o utilizarla, usted acepta quedar sujeto a estos Términos del servicio (\"Términos\"). Si no está de acuerdo con estos Términos, no utilice la Aplicación.",
+      "sections": [
+        {
+          "id": "eligibility",
+          "heading": "1. Elegibilidad",
+          "body": "Debe tener al menos 13 años (o la edad mínima legal exigida en su jurisdicción) para utilizar la Aplicación. Al utilizar la Aplicación, usted declara y garantiza que cumple este requisito."
+        },
+        {
+          "id": "accountAccess",
+          "heading": "2. Cuenta y acceso",
+          "body": "Usted es responsable de mantener la confidencialidad de las credenciales de su cuenta. Se compromete a proporcionar información exacta y completa al crear o utilizar una cuenta. Nos reservamos el derecho de suspender o cancelar el acceso si se infringen estos Términos."
+        },
+        {
+          "id": "useOfApp",
+          "heading": "3. Uso de la Aplicación",
+          "body": "Usted acepta utilizar la Aplicación únicamente con fines lícitos y de conformidad con estos Términos. No podrá: realizar ingeniería inversa, descompilar ni intentar extraer el código fuente; interferir con la Aplicación o sus servicios, ni interrumpir su funcionamiento; utilizar la Aplicación de una manera que infrinja las leyes o los reglamentos aplicables."
+        },
+        {
+          "id": "userDataContent",
+          "heading": "4. Datos y contenido del usuario",
+          "body": "Los datos o el contenido que cree en la Aplicación seguirán siendo suyos. Al utilizar la Aplicación, usted concede a Luven LLC permiso para almacenar y tratar sus datos únicamente con el fin de proporcionar y mejorar las funciones de la Aplicación. No reclamamos la titularidad de sus datos personales ni de su contenido. Para obtener detalles sobre cómo se recopilan y gestionan los datos, consulte nuestra Política de privacidad."
+        },
+        {
+          "id": "notificationsCommunications",
+          "heading": "5. Notificaciones y comunicaciones",
+          "body": "Si habilita las notificaciones, usted da su consentimiento para recibir notificaciones dentro de la aplicación o notificaciones push relacionadas con su uso de la Aplicación. Puede deshabilitar las notificaciones en cualquier momento desde la configuración de su dispositivo o de la aplicación."
+        },
+        {
+          "id": "availabilityChanges",
+          "heading": "6. Disponibilidad y cambios",
+          "body": "La Aplicación se proporciona \"tal cual\" y \"según disponibilidad\". Podemos modificar, suspender o dejar de ofrecer cualquier parte de la Aplicación en cualquier momento y sin previo aviso. Podemos actualizar estos Términos periódicamente. El uso continuado de la Aplicación después de que se publiquen los cambios constituye la aceptación de los Términos actualizados."
+        },
+        {
+          "id": "intellectualProperty",
+          "heading": "7. Propiedad intelectual",
+          "body": "Todas las marcas comerciales, los logotipos, los diseños y el contenido de la aplicación (excluidos los datos generados por los usuarios) son propiedad de Luven LLC y están protegidos por las leyes de propiedad intelectual aplicables. No puede utilizarlos sin autorización previa por escrito."
+        },
+        {
+          "id": "disclaimerWarranties",
+          "heading": "8. Exclusión de garantías",
+          "body": "No ofrecemos garantías ni aseguramos que: la Aplicación funcione sin interrupciones ni errores; los datos estén siempre disponibles o se conserven; la Aplicación satisfaga sus necesidades o expectativas específicas. Usted utiliza la Aplicación bajo su propia responsabilidad."
+        },
+        {
+          "id": "limitationLiability",
+          "heading": "9. Limitación de responsabilidad",
+          "body": "En la máxima medida permitida por la ley, Luven LLC no será responsable de ningún daño indirecto, incidental, consecuente o especial que se derive de su uso de la Aplicación o esté relacionado con dicho uso."
+        },
+        {
+          "id": "termination",
+          "heading": "10. Terminación",
+          "body": "Podemos suspender o cancelar su acceso a la Aplicación en cualquier momento si infringe estos Términos o hace un uso indebido del servicio."
+        },
+        {
+          "id": "governingLaw",
+          "heading": "11. Legislación aplicable",
+          "body": "Estos Términos se rigen por las leyes de Estados Unidos, sin tener en cuenta los principios sobre conflicto de leyes."
+        },
+        {
+          "id": "contact",
+          "heading": "12. Contacto",
+          "body": "Si tiene preguntas sobre estos Términos, póngase en contacto con nosotros:\nCorreo electrónico: {{supportEmail}}\nEmpresa: {{companyName}}"
+        }
+      ]
+    },
+    "privacyContent": {
+      "lastUpdated": "Última actualización: 28 de enero de 2026",
+      "introduction": "{{appName}} (\"la Aplicación\") es operada por {{companyName}} (\"nosotros\", \"nos\" o \"nuestro\"). Su privacidad es importante para nosotros. Esta Política de privacidad explica cómo recopilamos, utilizamos, almacenamos y protegemos su información cuando utiliza la Aplicación. Al utilizar la Aplicación, usted acepta las prácticas descritas en esta Política de privacidad.",
+      "sections": [
+        {
+          "id": "informationCollected",
+          "heading": "1. Información que recopilamos",
+          "body": "Recopilamos únicamente la información necesaria para proporcionar y mejorar la Aplicación."
+        },
+        {
+          "id": "informationProvided",
+          "heading": "a. Información que usted proporciona",
+          "body": "Información de la cuenta (como la dirección de correo electrónico, si decide iniciar sesión); datos de hábitos, recordatorios y preferencias de la aplicación que configure en la Aplicación; comunicaciones de soporte que nos envíe (p. ej., correos electrónicos)."
+        },
+        {
+          "id": "automaticallyCollectedInformation",
+          "heading": "b. Información recopilada automáticamente",
+          "body": "Información básica del dispositivo (plataforma, versión del sistema operativo); información sobre el uso de la aplicación necesaria para su funcionamiento y depuración; registros de fallos y errores (si están habilitados en su dispositivo). No recopilamos datos de ubicación precisa."
+        },
+        {
+          "id": "informationUse",
+          "heading": "2. Cómo usamos su información",
+          "body": "Usamos su información para proporcionar las funciones principales de la Aplicación; sincronizar y almacenar sus datos (si corresponde); mejorar el rendimiento y la fiabilidad de la aplicación; responder a solicitudes de soporte; enviar las notificaciones opcionales que usted habilite. No usamos sus datos con fines publicitarios."
+        },
+        {
+          "id": "dataStorageSecurity",
+          "heading": "3. Almacenamiento y seguridad de los datos",
+          "body": "Sus datos se almacenan de forma segura mediante prácticas estándar del sector. Adoptamos medidas razonables para proteger su información contra el acceso no autorizado, la pérdida o el uso indebido. Ningún sistema es 100 % seguro, pero trabajamos continuamente para proteger sus datos."
+        },
+        {
+          "id": "dataSharing",
+          "heading": "4. Divulgación de datos",
+          "body": "No vendemos, alquilamos ni intercambiamos sus datos personales. Podemos compartir datos limitados únicamente con proveedores de servicios que ayudan a operar la Aplicación (p. ej., alojamiento e informes de fallos), estrictamente para su funcionamiento; cuando así lo exija la ley o para cumplir obligaciones legales; para proteger los derechos, la seguridad o la integridad de los usuarios o de la Aplicación."
+        },
+        {
+          "id": "notifications",
+          "heading": "5. Notificaciones",
+          "body": "Si habilita las notificaciones, la Aplicación puede enviarle recordatorios o actualizaciones. Puede deshabilitar las notificaciones en cualquier momento desde la configuración de su dispositivo o de la aplicación."
+        },
+        {
+          "id": "dataRetentionDeletion",
+          "heading": "6. Conservación y eliminación de datos",
+          "body": "Sus datos se conservan únicamente durante el tiempo necesario para proporcionar la Aplicación. Puede eliminar su cuenta o sus datos locales desde la configuración de la Aplicación. Cuando se eliminan datos, estos se quitan de los sistemas activos en un plazo razonable."
+        },
+        {
+          "id": "childrensPrivacy",
+          "heading": "7. Privacidad de los menores",
+          "body": "La Aplicación no está dirigida a menores de 13 años. No recopilamos deliberadamente información personal de menores. Si cree que un menor nos ha proporcionado datos personales, póngase en contacto con nosotros y tomaremos las medidas oportunas."
+        },
+        {
+          "id": "yourRights",
+          "heading": "8. Sus derechos",
+          "body": "Según su jurisdicción, usted puede tener derecho a acceder a sus datos personales, solicitar su rectificación o eliminación, o retirar su consentimiento cuando corresponda. Para ejercer estos derechos, póngase en contacto con nosotros en la dirección de correo electrónico indicada a continuación."
+        },
+        {
+          "id": "policyChanges",
+          "heading": "9. Cambios en esta política",
+          "body": "Podemos actualizar esta Política de privacidad periódicamente. Cualquier cambio se reflejará mediante la actualización de la fecha de \"Última actualización\". El uso continuado de la Aplicación significa que usted acepta la política revisada."
+        },
+        {
+          "id": "contactUs",
+          "heading": "10. Contacto",
+          "body": "Si tiene preguntas o inquietudes sobre esta Política, póngase en contacto con nosotros en:\nCorreo electrónico: {{supportEmail}}\nEmpresa: {{companyName}}"
+        }
+      ]
+    },
     "remotePushTitle": "Push remoto",
     "remotePushDescription": "Push desde la nube para recordatorios, resúmenes y novedades.",
     "archiveBeforeToday": "Antes de hoy",

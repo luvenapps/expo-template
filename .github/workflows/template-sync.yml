@@ -1,0 +1,79 @@
+name: Prepare template source sync
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_repository:
+        description: Source repository in owner/name form
+        required: true
+        default: luvenapps/betterhabits
+        type: string
+      source_branch:
+        description: Source branch or tag to snapshot
+        required: true
+        default: main
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: template-source-sync
+  cancel-in-progress: false
+
+jobs:
+  prepare-sync:
+    name: Prepare reviewed sync PR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out expo-template main
+        uses: actions/checkout@v6
+        with:
+          ref: main
+
+      - name: Require source read token
+        env:
+          SOURCE_REPO_TOKEN: ${{ secrets.SOURCE_REPO_TOKEN }}
+          TEMPLATE_AUTOMATION_TOKEN: ${{ secrets.TEMPLATE_AUTOMATION_TOKEN }}
+        run: |
+          if [ -z "$SOURCE_REPO_TOKEN" ]; then
+            echo "::error::Add SOURCE_REPO_TOKEN with read access to the selected source repository."
+            exit 1
+          fi
+          if [ -z "$TEMPLATE_AUTOMATION_TOKEN" ]; then
+            echo "::error::Add TEMPLATE_AUTOMATION_TOKEN with contents and pull request write access to expo-template."
+            exit 1
+          fi
+
+      - name: Check out source snapshot
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ inputs.source_repository }}
+          ref: ${{ inputs.source_branch }}
+          token: ${{ secrets.SOURCE_REPO_TOKEN }}
+          path: source-repository
+          persist-credentials: false
+
+      - name: Sync source files into template form
+        id: sync
+        run: |
+          node scripts/sync-template-source.mjs \
+            --source-dir source-repository \
+            --target-dir .
+          echo "source_sha=$(git -C source-repository rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Create or update sync PR
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.TEMPLATE_AUTOMATION_TOKEN }}
+          base: main
+          branch: automation/template-source-sync
+          delete-branch: false
+          commit-message: 'chore: sync reusable app foundation'
+          title: 'chore: sync reusable app foundation'
+          body: |
+            Refresh the reusable app foundation from `${{ inputs.source_repository }}@${{ steps.sync.outputs.source_sha }}`.
+
+            Review the diff for product-specific code, credentials, template bootstrap behavior, and hidden-file materialization. Run the generated-app checks in CI before merging.
+
+            Source branch: `${{ inputs.source_branch }}`

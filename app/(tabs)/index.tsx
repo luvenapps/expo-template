@@ -30,13 +30,19 @@ export default function HomeScreen() {
   return (
     <>
       <ScreenContainer gap="$4" alignItems="center">
-        <H2 fontWeight="700" fontSize={40} testID="welcome-title" textAlign="center">
+        <H2
+          fontFamily={Platform.OS === 'web' ? 'serif' : undefined}
+          fontWeight="700"
+          fontSize={40}
+          testID="welcome-title"
+          textAlign="center"
+        >
           {(t as unknown as (k: string, opts?: Record<string, any>) => string)('home.title', {
             app: DOMAIN.app.displayName,
           })}
           {firstName ? `, ${firstName}` : ''}
         </H2>
-        <Paragraph textAlign="center" color="$colorMuted">
+        <Paragraph textAlign="center" color="colorMuted">
           {t('home.subtitle')}
         </Paragraph>
         <PrimaryButton

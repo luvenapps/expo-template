@@ -61,14 +61,14 @@ describe('HomeScreen', () => {
   });
 
   test('renders welcome copy and call to action', async () => {
-    render(
+    await render(
       <SafeAreaProvider
         initialMetrics={{
           frame: { x: 0, y: 0, width: 390, height: 844 },
           insets: { top: 0, left: 0, right: 0, bottom: 0 },
         }}
       >
-        <TamaguiProvider config={tamaguiConfig}>
+        <TamaguiProvider config={tamaguiConfig} defaultTheme="light">
           <HomeScreen />
         </TamaguiProvider>
       </SafeAreaProvider>,
@@ -79,21 +79,21 @@ describe('HomeScreen', () => {
   });
 
   test('navigates to settings when Get Started is pressed', async () => {
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <SafeAreaProvider
         initialMetrics={{
           frame: { x: 0, y: 0, width: 390, height: 844 },
           insets: { top: 0, left: 0, right: 0, bottom: 0 },
         }}
       >
-        <TamaguiProvider config={tamaguiConfig}>
+        <TamaguiProvider config={tamaguiConfig} defaultTheme="light">
           <HomeScreen />
         </TamaguiProvider>
       </SafeAreaProvider>,
     );
 
     const button = getByTestId('get-started-button');
-    fireEvent.press(button);
+    await fireEvent.press(button);
 
     expect(mockPush).toHaveBeenCalledWith('/(tabs)/settings');
   });
@@ -102,14 +102,14 @@ describe('HomeScreen', () => {
     Object.defineProperty(Platform, 'OS', { value: 'web' });
     (getLocalName as jest.Mock).mockReturnValue('Grace Hopper');
 
-    render(
+    await render(
       <SafeAreaProvider
         initialMetrics={{
           frame: { x: 0, y: 0, width: 390, height: 844 },
           insets: { top: 0, left: 0, right: 0, bottom: 0 },
         }}
       >
-        <TamaguiProvider config={tamaguiConfig}>
+        <TamaguiProvider config={tamaguiConfig} defaultTheme="light">
           <HomeScreen />
         </TamaguiProvider>
       </SafeAreaProvider>,
@@ -121,14 +121,14 @@ describe('HomeScreen', () => {
   test('shows the first name when stored locally', async () => {
     (getLocalName as jest.Mock).mockReturnValue('Ada Lovelace');
 
-    render(
+    await render(
       <SafeAreaProvider
         initialMetrics={{
           frame: { x: 0, y: 0, width: 390, height: 844 },
           insets: { top: 0, left: 0, right: 0, bottom: 0 },
         }}
       >
-        <TamaguiProvider config={tamaguiConfig}>
+        <TamaguiProvider config={tamaguiConfig} defaultTheme="light">
           <HomeScreen />
         </TamaguiProvider>
       </SafeAreaProvider>,

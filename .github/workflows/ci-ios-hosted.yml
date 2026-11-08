@@ -1,0 +1,297 @@
+name: iOS CI - Hosted
+
+on:
+  workflow_call:
+    inputs:
+      env_prefix:
+        description: Environment prefix (PROD or DEV)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  EXPO_USE_LOCAL_CLI: '1'
+  METRO_CACHE_PATH: ${{ github.workspace }}/.metro-cache-ci
+  IOS_DEVICE: 'iPhone 17'
+  MAESTRO_VERSION: '2.0.6'
+  FASTLANE_VERSION: '2.228.0'
+  MAESTRO_DRIVER_STARTUP_TIMEOUT: 60000
+
+concurrency:
+  group: ios-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios-hosted:
+    name: Build • E2E
+    runs-on: macos-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Prepare isolated mise state and GnuPG home
+        shell: bash
+        run: |
+          mkdir -p "${RUNNER_TEMP}/gnupg" "${RUNNER_TEMP}/mise-state"
+          chmod 700 "${RUNNER_TEMP}/gnupg" "${RUNNER_TEMP}/mise-state"
+          echo "MISE_STATE_DIR=$RUNNER_TEMP/mise-state" >> "$GITHUB_ENV"
+
+      - name: Setup mise toolchain
+        uses: jdx/mise-action@v5
+        with:
+          version: '2026.10.25'
+          install: true
+          log_level: ${{ runner.debug == '1' && 'debug' || 'info' }}
+        env:
+          GNUPGHOME: ${{ runner.temp }}/gnupg
+          MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Map runtime variables and secrets
+        shell: bash
+        env:
+          TURN_ON_FIREBASE: ${{ vars[format('{0}_TURN_ON_FIREBASE', inputs.env_prefix)] || vars.TURN_ON_FIREBASE || 'false' }}
+          RETRIES_VALUE: ${{ vars[format('{0}_RETRIES', inputs.env_prefix)] || vars.RETRIES || '2' }}
+          RETRY_DELAY_VALUE: ${{ vars[format('{0}_RETRY_DELAY', inputs.env_prefix)] || vars.RETRY_DELAY || '5' }}
+          PUBLIC_SUPABASE_URL: ${{ vars[format('{0}_PUBLIC_SUPABASE_URL', inputs.env_prefix)] || vars.PUBLIC_SUPABASE_URL || '' }}
+          PUBLIC_SUPABASE_ANON_KEY: ${{ secrets[format('{0}_PUBLIC_SUPABASE_ANON_KEY', inputs.env_prefix)] || secrets.PUBLIC_SUPABASE_ANON_KEY || '' }}
+          SUPABASE_ACCESS_TOKEN_VALUE: ${{ secrets[format('{0}_SUPABASE_ACCESS_TOKEN', inputs.env_prefix)] || secrets.SUPABASE_ACCESS_TOKEN || '' }}
+          FIREBASE_API_KEY: ${{ secrets[format('{0}_FIREBASE_API_KEY', inputs.env_prefix)] || secrets.FIREBASE_API_KEY || '' }}
+          FIREBASE_APP_ID: ${{ secrets[format('{0}_FIREBASE_APP_ID', inputs.env_prefix)] || secrets.FIREBASE_APP_ID || '' }}
+          FIREBASE_AUTH_DOMAIN: ${{ secrets[format('{0}_FIREBASE_AUTH_DOMAIN', inputs.env_prefix)] || secrets.FIREBASE_AUTH_DOMAIN || '' }}
+          FIREBASE_MEASUREMENT_ID: ${{ secrets[format('{0}_FIREBASE_MEASUREMENT_ID', inputs.env_prefix)] || secrets.FIREBASE_MEASUREMENT_ID || '' }}
+          FIREBASE_MESSAGING_SENDER_ID: ${{ secrets[format('{0}_FIREBASE_MESSAGING_SENDER_ID', inputs.env_prefix)] || secrets.FIREBASE_MESSAGING_SENDER_ID || '' }}
+          FIREBASE_PROJECT_ID: ${{ secrets[format('{0}_FIREBASE_PROJECT_ID', inputs.env_prefix)] || secrets.FIREBASE_PROJECT_ID || '' }}
+          FIREBASE_STORAGE_BUCKET: ${{ secrets[format('{0}_FIREBASE_STORAGE_BUCKET', inputs.env_prefix)] || secrets.FIREBASE_STORAGE_BUCKET || '' }}
+          FIREBASE_VAPID_KEY: ${{ secrets[format('{0}_FIREBASE_VAPID_KEY', inputs.env_prefix)] || secrets.FIREBASE_VAPID_KEY || '' }}
+        run: .github/scripts/map_runtime_env.sh
+
+      - name: Validate EAS CLI version variable
+        shell: bash
+        run: |
+          if [ -z "${{ vars.EAS_CLI_VERSION }}" ]; then
+            echo "❌ Missing EAS_CLI_VERSION GitHub variable."
+            exit 1
+          fi
+
+      - name: Install EAS CLI
+        shell: bash
+        run: |
+          npm i -g eas-cli@${{ vars.EAS_CLI_VERSION }}
+          eas --version
+
+      - name: Make CI scripts executable
+        run: chmod +x .github/scripts/*.sh
+
+      - name: Setup Fastlane
+        shell: bash
+        run: .github/scripts/setup_fastlane.sh  "${{ env.FASTLANE_VERSION }}"
+
+      - name: Setup Maestro
+        shell: bash
+        run: .github/scripts/setup_maestro.sh "${{ env.MAESTRO_VERSION }}"
+
+      - name: Compute iOS build fingerprint
+        id: ios_fp
+        shell: bash
+        env:
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
+          GOOGLE_SERVICE_INFO_PLIST_B64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_B64 }}
+        run: ./.github/scripts/compute_fingerprint.sh ios >> "$GITHUB_OUTPUT"
+
+      - name: Restore the tar.gz iOS app
+        id: ios_cache
+        uses: actions/cache/restore@v6
+        with:
+          path: ./*.tar.gz
+          key: ${{ steps.ios_fp.outputs.key }}
+
+      - name: Build e2erelease
+        if: steps.ios_cache.outputs.cache-hit != 'true'
+        shell: bash
+        env:
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
+          GOOGLE_SERVICE_INFO_PLIST_B64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_B64 }}
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPO_PUBLIC_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          EXPO_PUBLIC_FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+          EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
+          EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID: ${{ secrets.FIREBASE_MEASUREMENT_ID }}
+          EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
+          EXPO_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET }}
+          EXPO_PUBLIC_SUPABASE_URL: ${{ vars.PROD_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.PROD_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.PROD_SUPABASE_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          ATTEMPTS="${RETRIES:-2}"
+          DELAY="${RETRY_DELAY:-2}"
+          i=1
+          while [ "$i" -le "$ATTEMPTS" ]; do
+            echo "🏗️  iOS build attempt $i/$ATTEMPTS..."
+            if eas build --platform ios --profile e2eRelease --local --non-interactive; then
+              echo "✅ Build succeeded on attempt $i"
+              exit 0
+            fi
+            if [ "$i" -lt "$ATTEMPTS" ]; then
+              echo "❌ Build attempt $i failed — retrying in ${DELAY}s..."
+              sleep "$DELAY"
+            fi
+            i=$((i+1))
+          done
+          echo "❌ Build failed after $ATTEMPTS attempts"
+          exit 1
+
+      - name: Save the tar.gz iOS app
+        if: steps.ios_cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ./*.tar.gz
+          key: ${{ steps.ios_fp.outputs.key }}
+
+      - name: Locate .app artifact
+        id: find_app
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARTIFACT_TAR=$(ls -1t ./*.tar.gz 2>/dev/null | head -n1 || true)
+          rm -rf extracted_app
+          mkdir -p extracted_app
+          if [ -n "$ARTIFACT_TAR" ]; then
+            echo "📦 Extracting $ARTIFACT_TAR ..."
+            tar -xzf "$ARTIFACT_TAR" -C extracted_app
+          fi
+          APP=$(find extracted_app -maxdepth 6 -type d -name "*.app" | head -n1 || true)
+          echo "app=$APP" >> $GITHUB_OUTPUT
+          [ -n "$APP" ] || (echo "No .app found after extracting $ARTIFACT_TAR"; ls -alh extracted_app || true; exit 1)
+
+      - name: Run context snippet (engine + native project state)
+        if: steps.ios_cache.outputs.cache-hit == 'true'
+        shell: bash
+        run: |
+          echo "[run-snippet] pwd"
+          pwd
+
+          echo "[run-snippet] extracted app state"
+          if [ -d extracted_app ]; then
+            find extracted_app -maxdepth 4 -type d -name "*.app" -print || true
+          else
+            echo "extracted_app missing"
+          fi
+
+          echo "[run-snippet] expo public config (engine/runtime lines)"
+          node -e "const { execSync } = require('node:child_process'); const config = JSON.parse(execSync('npx expo config --json', { encoding: 'utf8' })); const payload = { jsEngine: config.jsEngine ?? null, newArchEnabled: config.newArchEnabled ?? null, runtimeVersion: config.runtimeVersion ?? null, iosBundleIdentifier: config.ios?.bundleIdentifier ?? null }; console.log(JSON.stringify(payload, null, 2));"
+
+      - name: Prepare iOS JS bundle for repack
+        if: steps.ios_cache.outputs.cache-hit == 'true'
+        shell: bash
+        env:
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
+          GOOGLE_SERVICE_INFO_PLIST_B64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_B64 }}
+          PLATFORM: ios
+          METRO_CACHE_PATH: ${{ github.workspace }}/.metro-cache-ci
+        run: |
+          set -euo pipefail
+          echo "📦 Exporting release bundle before repack..."
+          rm -rf ./dist
+          npx expo export --platform "$PLATFORM" --output-dir ./dist --clear
+          echo "🔍 Verifying dist folder contents:"
+          find ./dist -maxdepth 4 -print
+          echo "expo-export" > dist/.bundle-source
+
+      - name: Validate Hermes + bundle compatibility before repack
+        if: steps.ios_cache.outputs.cache-hit == 'true'
+        shell: bash
+        run: .github/scripts/validate_hermes_bundle.sh ios
+
+      - name: Repack iOS app artifact with latest JS bundle
+        if: steps.ios_cache.outputs.cache-hit == 'true'
+        shell: bash
+        env:
+          PLATFORM: ios
+          SOURCE_APP: ${{ steps.find_app.outputs.app }}
+        run: |
+          set -euo pipefail
+
+          REPACKED_APP="repacked_output.app"
+          rm -rf "$REPACKED_APP"
+          npx @expo/repack-app --platform "$PLATFORM" --source-app "$SOURCE_APP" --output "$REPACKED_APP"
+
+          if [ ! -d "$REPACKED_APP" ]; then
+            echo "❌ Repacked .app not found at $REPACKED_APP"
+            ls -la repacked_output* 2>/dev/null || true
+            exit 1
+          fi
+
+          echo "Replacing $SOURCE_APP with repacked app from $REPACKED_APP..."
+          rm -rf "$SOURCE_APP"
+          mkdir -p "$(dirname "$SOURCE_APP")"
+          mv "$REPACKED_APP" "$SOURCE_APP"
+
+      - name: Boot simulator
+        shell: bash
+        run: .github/scripts/ios_boot_simulator.sh
+
+      - name: Resolve app path for simulator install
+        id: install_app
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP="${{ steps.find_app.outputs.app }}"
+          if [ ! -d "$APP" ]; then
+            echo "⚠️ find_app output does not exist: $APP"
+            APP="$(find extracted_app -maxdepth 6 -type d -name "*.app" | head -n1 || true)"
+          fi
+
+          if [ -z "$APP" ] || [ ! -d "$APP" ]; then
+            echo "❌ Unable to resolve .app path for simulator install"
+            find extracted_app -maxdepth 6 -print || true
+            exit 1
+          fi
+
+          echo "Resolved app for install: $APP"
+          echo "app=$APP" >> "$GITHUB_OUTPUT"
+
+      - name: Install on simulator and warm up
+        shell: bash
+        timeout-minutes: 10
+        run: .github/scripts/ios_install_app.sh "${{ steps.install_app.outputs.app }}"
+
+      - name: Run E2E tests
+        shell: bash
+        run: .github/scripts/ios_run_e2e.sh
+
+      - name: Upload Xcode build artifacts
+        if: failure() && steps.ios_cache.outputs.cache-hit != 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: xcode-build-artifacts-ios-hosted
+          path: |
+            ios/build/**/*.xcresult
+            ios/build/**/*.log
+            ~/Library/Developer/Xcode/DerivedData/**/Logs/Build/*.log
+          if-no-files-found: ignore
+
+      - name: Upload E2E artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-artifacts-ios-hosted
+          path: |
+            e2e-artifacts/**/*
+            ios/build/**/*.log
+          include-hidden-files: true
+
+      - name: Clean workspace
+        if: always()
+        shell: bash
+        run: |
+          echo "🧹 Cleaning hosted workspace (removing iOS build artifacts and E2E outputs)..."
+          rm -rf ios/build e2e-artifacts || true

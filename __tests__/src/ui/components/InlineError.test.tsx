@@ -11,15 +11,17 @@ import React from 'react';
 import { InlineError } from '@/ui/components/InlineError';
 
 describe('InlineError', () => {
-  it('renders message when provided', () => {
-    const { getByTestId } = render(<InlineError message="Something went wrong" testID="error" />);
+  it('renders message when provided', async () => {
+    const { getByTestId } = await render(
+      <InlineError message="Something went wrong" testID="error" />,
+    );
 
     const error = getByTestId('error');
     expect(error.props.children).toBe('Something went wrong');
   });
 
-  it('returns null when message is empty', () => {
-    const { queryByTestId } = render(<InlineError message={null} testID="error" />);
+  it('returns null when message is empty', async () => {
+    const { queryByTestId } = await render(<InlineError message={null} testID="error" />);
 
     expect(queryByTestId('error')).toBeNull();
   });

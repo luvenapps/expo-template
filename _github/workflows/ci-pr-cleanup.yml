@@ -7,19 +7,20 @@ on:
 jobs:
   expo-alias-cleanup:
     name: cleanup / Delete PR Alias In Expo
-    if: ${{ github.event.pull_request.merged == true && vars.USE_SELF_HOSTED == 'true' }}
-    runs-on: [self-hosted, macos, arm64]
+    if: ${{ github.event.pull_request.merged == true }}
+    runs-on: ${{ fromJSON(vars.USE_SELF_HOSTED == 'true' && '["self-hosted","macos","arm64"]' || '["ubuntu-latest"]') }}
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN || '' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
-      - name: Prepare isolated GnuPG home for mise
+      - name: Prepare isolated mise state and GnuPG home
         shell: bash
         run: |
-          mkdir -p "${RUNNER_TEMP}/gnupg"
-          chmod 700 "${RUNNER_TEMP}/gnupg"
+          mkdir -p "${RUNNER_TEMP}/gnupg" "${RUNNER_TEMP}/mise-state"
+          chmod 700 "${RUNNER_TEMP}/gnupg" "${RUNNER_TEMP}/mise-state"
+          echo "MISE_STATE_DIR=$RUNNER_TEMP/mise-state" >> "$GITHUB_ENV"
 
       - name: Pin mise cache to local disk
         shell: bash
@@ -30,9 +31,9 @@ jobs:
           echo "MISE_CACHE_DIR=$MISE_LOCAL/cache" >> "$GITHUB_ENV"
 
       - name: Setup mise toolchain
-        uses: jdx/mise-action@v3
+        uses: jdx/mise-action@v5
         with:
-          version: '2026.2.13'
+          version: '2026.10.25'
           install: true
           cache: false
           log_level: ${{ runner.debug == '1' && 'debug' || 'info' }}

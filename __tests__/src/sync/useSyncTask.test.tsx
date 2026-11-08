@@ -86,7 +86,7 @@ describe('useSyncTask', () => {
 
   describe('basic functionality', () => {
     it('should run sync on mount when autoStart is true', async () => {
-      renderHook(() => useSyncTask({ engine: mockEngine as any, enabled: true }));
+      await renderHook(() => useSyncTask({ engine: mockEngine as any, enabled: true }));
       await act(async () => {
         await Promise.resolve();
       });
@@ -94,20 +94,22 @@ describe('useSyncTask', () => {
     });
 
     it('should not run sync on mount when autoStart is false', async () => {
-      renderHook(() => useSyncTask({ engine: mockEngine as any, enabled: true, autoStart: false }));
+      await renderHook(() =>
+        useSyncTask({ engine: mockEngine as any, enabled: true, autoStart: false }),
+      );
       await act(async () => {
         await Promise.resolve();
       });
       expect(mockEngine.runSync).not.toHaveBeenCalled();
     });
 
-    it('should return triggerSync function', () => {
-      const { result } = renderHook(() => useSyncTask({ engine: mockEngine as any }));
+    it('should return triggerSync function', async () => {
+      const { result } = await renderHook(() => useSyncTask({ engine: mockEngine as any }));
       expect(result.current.triggerSync).toBeInstanceOf(Function);
     });
 
     it('should trigger sync when triggerSync is called', async () => {
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useSyncTask({ engine: mockEngine as any, autoStart: false }),
       );
 
@@ -121,7 +123,7 @@ describe('useSyncTask', () => {
 
   describe('interval-based sync', () => {
     it('should run sync on interval', async () => {
-      renderHook(() =>
+      await renderHook(() =>
         useSyncTask({ engine: mockEngine as any, intervalMs: 1000, autoStart: false }),
       );
 
@@ -142,7 +144,7 @@ describe('useSyncTask', () => {
 
     it('clears the interval when intervalMs changes', async () => {
       const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
-      const { rerender } = renderHook(
+      const { rerender } = await renderHook(
         (props: { intervalMs: number }) =>
           useSyncTask({
             engine: mockEngine as any,
@@ -156,7 +158,7 @@ describe('useSyncTask', () => {
         await Promise.resolve();
       });
 
-      rerender({ intervalMs: 2000 });
+      await rerender({ intervalMs: 2000 });
 
       await act(async () => {
         await Promise.resolve();
@@ -169,7 +171,7 @@ describe('useSyncTask', () => {
 
   describe('app state change handling', () => {
     it('should run sync when app becomes active', async () => {
-      renderHook(() => useSyncTask({ engine: mockEngine as any, autoStart: false }));
+      await renderHook(() => useSyncTask({ engine: mockEngine as any, autoStart: false }));
 
       mockEngine.runSync.mockClear();
 
@@ -182,7 +184,7 @@ describe('useSyncTask', () => {
     });
 
     it('should not run sync when app goes to background', async () => {
-      renderHook(() => useSyncTask({ engine: mockEngine as any, autoStart: false }));
+      await renderHook(() => useSyncTask({ engine: mockEngine as any, autoStart: false }));
 
       mockEngine.runSync.mockClear();
 
@@ -213,7 +215,7 @@ describe('useSyncTask', () => {
         },
       });
 
-      renderHook(() => useSyncTask({ engine: mockEngine as any, autoStart: false }));
+      await renderHook(() => useSyncTask({ engine: mockEngine as any, autoStart: false }));
 
       expect(legacyAddEventListener).toHaveBeenCalledWith('change', expect.any(Function));
 
@@ -230,7 +232,7 @@ describe('useSyncTask', () => {
 
   describe('enabled/disabled state', () => {
     it('should not run sync when disabled', async () => {
-      renderHook(() => useSyncTask({ engine: mockEngine as any, enabled: false }));
+      await renderHook(() => useSyncTask({ engine: mockEngine as any, enabled: false }));
 
       await act(async () => {
         await Promise.resolve();
@@ -240,7 +242,7 @@ describe('useSyncTask', () => {
     });
 
     it('should clean up interval when disabled', async () => {
-      const { rerender } = renderHook(
+      const { rerender } = await renderHook(
         (props: { enabled: boolean }) =>
           useSyncTask({ engine: mockEngine as any, enabled: props.enabled, intervalMs: 1000 }),
         { initialProps: { enabled: true } },
@@ -249,7 +251,7 @@ describe('useSyncTask', () => {
       mockEngine.runSync.mockClear();
 
       // Disable
-      rerender({ enabled: false });
+      await rerender({ enabled: false });
 
       await act(async () => {
         jest.advanceTimersByTime(1000);
@@ -261,7 +263,7 @@ describe('useSyncTask', () => {
     });
 
     it('should remove app state listener when disabled', async () => {
-      const { rerender } = renderHook(
+      const { rerender } = await renderHook(
         (props: { enabled: boolean }) =>
           useSyncTask({ engine: mockEngine as any, enabled: props.enabled }),
         { initialProps: { enabled: true } },
@@ -270,7 +272,7 @@ describe('useSyncTask', () => {
       expect(listeners.length).toBe(1);
 
       // Disable
-      rerender({ enabled: false });
+      await rerender({ enabled: false });
 
       await act(async () => {
         await Promise.resolve();
@@ -282,7 +284,7 @@ describe('useSyncTask', () => {
     it('should clean up both interval and listener when disabling', async () => {
       const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
 
-      const { rerender } = renderHook(
+      const { rerender } = await renderHook(
         (props: { enabled: boolean }) =>
           useSyncTask({
             engine: mockEngine as any,
@@ -299,7 +301,7 @@ describe('useSyncTask', () => {
       expect(listeners.length).toBe(1);
 
       // Disable - should trigger cleanup of both interval and listener
-      rerender({ enabled: false });
+      await rerender({ enabled: false });
 
       await act(async () => {
         await Promise.resolve();
@@ -329,7 +331,7 @@ describe('useSyncTask', () => {
         return originalUseRef(initialValue);
       });
 
-      renderHook(() => useSyncTask({ engine: mockEngine as any, enabled: false }));
+      await renderHook(() => useSyncTask({ engine: mockEngine as any, enabled: false }));
 
       await act(async () => {
         await Promise.resolve();
@@ -350,7 +352,7 @@ describe('useSyncTask', () => {
         .mockImplementationOnce(() => firstRun.promise)
         .mockResolvedValueOnce(undefined);
 
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useSyncTask({
           engine: mockEngine as any,
           enabled: true,
@@ -392,7 +394,7 @@ describe('useSyncTask', () => {
         .mockImplementationOnce(() => firstRun.promise)
         .mockRejectedValueOnce(queuedError);
 
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useSyncTask({ engine: mockEngine as any, enabled: true, autoStart: false }),
       );
 
@@ -442,7 +444,7 @@ describe('useSyncTask', () => {
         return originalUseRef(initialValue);
       });
 
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useSyncTask({ engine: mockEngine as any, enabled: true, autoStart: false }),
       );
 
@@ -460,7 +462,9 @@ describe('useSyncTask', () => {
         .mockImplementationOnce(() => firstRun.promise)
         .mockResolvedValueOnce(undefined);
 
-      renderHook(() => useSyncTask({ engine: mockEngine as any, enabled: true, intervalMs: 1000 }));
+      await renderHook(() =>
+        useSyncTask({ engine: mockEngine as any, enabled: true, intervalMs: 1000 }),
+      );
 
       expect(mockEngine.runSync).toHaveBeenCalledTimes(1);
 
@@ -489,7 +493,9 @@ describe('useSyncTask', () => {
       mockEngine.runSync.mockRejectedValueOnce(new Error('fail'));
       mockEngine.runSync.mockResolvedValueOnce(undefined);
 
-      renderHook(() => useSyncTask({ engine: mockEngine as any, enabled: true, intervalMs: 1000 }));
+      await renderHook(() =>
+        useSyncTask({ engine: mockEngine as any, enabled: true, intervalMs: 1000 }),
+      );
 
       await act(async () => {
         jest.advanceTimersByTime(0);
@@ -523,7 +529,7 @@ describe('useSyncTask', () => {
       mockEngine.runSync.mockRejectedValueOnce(new Error('fail'));
       mockEngine.runSync.mockResolvedValueOnce(undefined);
 
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useSyncTask({ engine: mockEngine as any, enabled: true, autoStart: false }),
       );
 
@@ -543,7 +549,7 @@ describe('useSyncTask', () => {
 
   describe('background fetch', () => {
     it('should register background task when enabled', async () => {
-      renderHook(() =>
+      await renderHook(() =>
         useSyncTask({ engine: mockEngine as any, enabled: true, backgroundInterval: 900 }),
       );
 
@@ -558,7 +564,7 @@ describe('useSyncTask', () => {
       (BackgroundTask.getStatusAsync as jest.Mock).mockResolvedValue(1); // Restricted
       const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
-      renderHook(() =>
+      await renderHook(() =>
         useSyncTask({ engine: mockEngine as any, enabled: true, backgroundInterval: 900 }),
       );
 
@@ -579,7 +585,7 @@ describe('useSyncTask', () => {
     });
 
     it('should register task when not previously defined', async () => {
-      renderHook(() => useSyncTask({ engine: mockEngine as any, enabled: true }));
+      await renderHook(() => useSyncTask({ engine: mockEngine as any, enabled: true }));
 
       await waitFor(() => {
         expect(BackgroundTask.registerTaskAsync).toHaveBeenCalledWith(DOMAIN.app.syncTask, {
@@ -592,7 +598,7 @@ describe('useSyncTask', () => {
     it('should avoid redefining task when already defined', async () => {
       definedTasks[DOMAIN.app.syncTask] = jest.fn();
 
-      renderHook(() => useSyncTask({ engine: mockEngine as any, enabled: true }));
+      await renderHook(() => useSyncTask({ engine: mockEngine as any, enabled: true }));
 
       await waitFor(() => {
         expect(BackgroundTask.registerTaskAsync).toHaveBeenCalled();
@@ -602,7 +608,7 @@ describe('useSyncTask', () => {
     });
 
     it('should unregister background task when disabled', async () => {
-      const { rerender } = renderHook(
+      const { rerender } = await renderHook(
         (props: { enabled: boolean }) =>
           useSyncTask({ engine: mockEngine as any, enabled: props.enabled }),
         { initialProps: { enabled: true } },
@@ -615,7 +621,7 @@ describe('useSyncTask', () => {
       (BackgroundTask.getStatusAsync as jest.Mock).mockResolvedValue(2); // Available
 
       // Disable
-      rerender({ enabled: false });
+      await rerender({ enabled: false });
 
       await waitFor(() => {
         expect(BackgroundTask.unregisterTaskAsync).toHaveBeenCalled();
@@ -627,7 +633,7 @@ describe('useSyncTask', () => {
       statusMock.mockResolvedValueOnce(2); // Available for registration
       statusMock.mockResolvedValue(1); // Restricted for subsequent checks
 
-      const { rerender } = renderHook(
+      const { rerender } = await renderHook(
         (props: { enabled: boolean }) =>
           useSyncTask({ engine: mockEngine as any, enabled: props.enabled }),
         { initialProps: { enabled: true } },
@@ -640,7 +646,7 @@ describe('useSyncTask', () => {
       jest.clearAllMocks();
 
       // Disable
-      rerender({ enabled: false });
+      await rerender({ enabled: false });
 
       await act(async () => {
         await Promise.resolve();
@@ -653,7 +659,7 @@ describe('useSyncTask', () => {
     });
 
     it('should return Success when handler is missing', async () => {
-      const { unmount } = renderHook(() =>
+      const { unmount } = await renderHook(() =>
         useSyncTask({ engine: mockEngine as any, enabled: true }),
       );
 
@@ -661,7 +667,7 @@ describe('useSyncTask', () => {
         expect(definedTasks[DOMAIN.app.syncTask]).toBeDefined();
       });
 
-      unmount();
+      await unmount();
 
       const result = await definedTasks[DOMAIN.app.syncTask]!();
 
@@ -673,7 +679,7 @@ describe('useSyncTask', () => {
     it('should handle sync errors gracefully', async () => {
       mockEngine.runSync.mockRejectedValueOnce(new Error('Sync failed'));
 
-      renderHook(() => useSyncTask({ engine: mockEngine as any, enabled: true }));
+      await renderHook(() => useSyncTask({ engine: mockEngine as any, enabled: true }));
 
       await act(async () => {
         await Promise.resolve();
@@ -689,7 +695,7 @@ describe('useSyncTask', () => {
         new Error('Register failed'),
       );
 
-      renderHook(() => useSyncTask({ engine: mockEngine as any, enabled: true }));
+      await renderHook(() => useSyncTask({ engine: mockEngine as any, enabled: true }));
 
       await act(async () => {
         await Promise.resolve();
@@ -705,7 +711,7 @@ describe('useSyncTask', () => {
     });
 
     it('should handle unregister errors gracefully', async () => {
-      const { rerender } = renderHook(
+      const { rerender } = await renderHook(
         (props: { enabled: boolean }) =>
           useSyncTask({ engine: mockEngine as any, enabled: props.enabled }),
         { initialProps: { enabled: true } },
@@ -721,7 +727,7 @@ describe('useSyncTask', () => {
       (BackgroundTask.getStatusAsync as jest.Mock).mockResolvedValue(2); // Available
 
       // Disable to trigger unregister
-      rerender({ enabled: false });
+      await rerender({ enabled: false });
 
       await waitFor(() => {
         expect(BackgroundTask.unregisterTaskAsync).toHaveBeenCalled();
@@ -733,20 +739,20 @@ describe('useSyncTask', () => {
 
   describe('cleanup', () => {
     it('should clean up on unmount', async () => {
-      const { unmount } = renderHook(() =>
+      const { unmount } = await renderHook(() =>
         useSyncTask({ engine: mockEngine as any, enabled: true }),
       );
 
       expect(listeners.length).toBe(1);
 
-      unmount();
+      await unmount();
 
       expect(listeners.length).toBe(0);
     });
 
     it('clears the interval on unmount', async () => {
       const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
-      const { unmount } = renderHook(() =>
+      const { unmount } = await renderHook(() =>
         useSyncTask({ engine: mockEngine as any, enabled: true, intervalMs: 1000 }),
       );
 
@@ -754,7 +760,7 @@ describe('useSyncTask', () => {
         await Promise.resolve();
       });
 
-      unmount();
+      await unmount();
 
       expect(clearIntervalSpy).toHaveBeenCalled();
       clearIntervalSpy.mockRestore();
@@ -773,7 +779,7 @@ describe('useSyncTask', () => {
           configurable: true,
         });
 
-        const { result } = renderHook(() =>
+        const { result } = await renderHook(() =>
           useSyncTask({ engine: mockEngine as any, enabled: true }),
         );
 
@@ -808,7 +814,7 @@ describe('useSyncTask', () => {
           configurable: true,
         });
 
-        const { rerender } = renderHook(
+        const { rerender } = await renderHook(
           (props: { enabled: boolean }) =>
             useSyncTask({ engine: mockEngine as any, enabled: props.enabled }),
           { initialProps: { enabled: true } },
@@ -820,7 +826,7 @@ describe('useSyncTask', () => {
 
         jest.clearAllMocks();
 
-        rerender({ enabled: false });
+        await rerender({ enabled: false });
 
         await act(async () => {
           await Promise.resolve();
@@ -838,7 +844,7 @@ describe('useSyncTask', () => {
 
   describe('registerTask callback', () => {
     it('should return Success when task executes successfully', async () => {
-      renderHook(() => useSyncTask({ engine: mockEngine as any, enabled: true }));
+      await renderHook(() => useSyncTask({ engine: mockEngine as any, enabled: true }));
 
       await waitFor(() => {
         expect(definedTasks[DOMAIN.app.syncTask]).toBeDefined();
@@ -852,7 +858,7 @@ describe('useSyncTask', () => {
     });
 
     it('should return Failed when task execution throws error', async () => {
-      renderHook(() => useSyncTask({ engine: mockEngine as any, enabled: true }));
+      await renderHook(() => useSyncTask({ engine: mockEngine as any, enabled: true }));
 
       await waitFor(() => {
         expect(definedTasks[DOMAIN.app.syncTask]).toBeDefined();
@@ -868,7 +874,7 @@ describe('useSyncTask', () => {
 
   describe('edge cases', () => {
     it('should handle sync after unmount gracefully', async () => {
-      const { result, unmount } = renderHook(() =>
+      const { result, unmount } = await renderHook(() =>
         useSyncTask({ engine: mockEngine as any, enabled: true, autoStart: false }),
       );
 
@@ -877,7 +883,7 @@ describe('useSyncTask', () => {
       });
 
       mockEngine.runSync.mockClear();
-      unmount();
+      await unmount();
 
       await act(async () => {
         await result.current.triggerSync();

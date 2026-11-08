@@ -29,7 +29,7 @@ jest.mock('expo-router', () => {
 });
 
 describe('SettingsLayout', () => {
-  test('applies themed header colors when optional theme context is available', () => {
+  test('applies themed header colors when optional theme context is available', async () => {
     mockThemeContext = {
       palette: {
         background: '#101010',
@@ -37,8 +37,11 @@ describe('SettingsLayout', () => {
       },
     };
     capturedStackProps.length = 0;
-    render(<SettingsLayout />);
+    await render(<SettingsLayout />);
 
+    expect(capturedStackProps[0]?.screenOptions?.contentStyle).toEqual({
+      backgroundColor: '#101010',
+    });
     expect(capturedStackProps[0]?.screenOptions?.headerStyle).toEqual({
       backgroundColor: '#101010',
     });
@@ -48,10 +51,10 @@ describe('SettingsLayout', () => {
     });
   });
 
-  test('index screen disables back button with null headerLeft', () => {
+  test('index screen disables back button with null headerLeft', async () => {
     mockThemeContext = null;
     capturedScreenProps.length = 0;
-    render(<SettingsLayout />);
+    await render(<SettingsLayout />);
 
     const indexProps = capturedScreenProps.find((props) => props?.name === 'index');
     expect(indexProps).toBeDefined();
@@ -67,11 +70,11 @@ describe('SettingsLayout', () => {
     expect(options?.headerLeft?.()).toBeNull();
   });
 
-  test('renders without crashing', () => {
+  test('renders without crashing', async () => {
     mockThemeContext = null;
     capturedScreenProps.length = 0;
     capturedStackProps.length = 0;
-    const { toJSON } = render(<SettingsLayout />);
+    const { toJSON } = await render(<SettingsLayout />);
     expect(toJSON()).toMatchInlineSnapshot(`null`);
   });
 });

@@ -391,10 +391,10 @@ export default function AuthCallbackScreen() {
 
   return (
     <ScreenContainer justifyContent="center" alignItems="center" scrollable={false}>
-      <YStack gap="$3" alignItems="center">
+      <YStack gap="$2" alignItems="center">
         <XStack alignItems="center" gap="$2">
           <TitleText>{t('auth.signingIn')}</TitleText>
-          {!errorMessage ? <Spinner size="small" color="$accentColor" /> : null}
+          {!errorMessage ? <Spinner size="small" color="accent-color" /> : null}
         </XStack>
         <InlineError message={errorMessage} testID="auth-callback-error" />
         {errorMessage && (

@@ -3,6 +3,7 @@ jest.mock('tamagui', () => {
   const mockReact = jest.requireActual('react');
 
   return {
+    useTheme: () => ({ colorMuted: { get: () => '#777777' } }),
     YStack: ({ children, ...props }: any) => mockReact.createElement('View', props, children),
     View: ({ children, ...props }: any) => mockReact.createElement('View', props, children),
     Input: ({ value, ...props }: any) => mockReact.createElement('TextInput', { value, ...props }),
@@ -25,8 +26,23 @@ import React from 'react';
 import { FormField } from '@/ui/components/FormField';
 
 describe('FormField', () => {
-  it('renders with label and input', () => {
-    const { getByTestId, getByDisplayValue } = render(
+  it('resolves the muted placeholder and disables editing when requested', async () => {
+    const { getByTestId } = await render(
+      <FormField
+        label="Email"
+        inputTestID="email-input"
+        placeholderTextColor="colorMuted"
+        editable={false}
+        value=""
+        onChangeText={() => {}}
+      />,
+    );
+    expect(getByTestId('email-input').props.placeholderTextColor).toBe('#777777');
+    expect(getByTestId('email-input').props.disabled).toBe(true);
+  });
+
+  it('renders with label and input', async () => {
+    const { getByTestId, getByDisplayValue } = await render(
       <FormField
         label="Email"
         labelTestID="email-label"
@@ -40,8 +56,8 @@ describe('FormField', () => {
     expect(getByDisplayValue('test@example.com')).toBeDefined();
   });
 
-  it('renders with required indicator when required is true', () => {
-    const { getByTestId } = render(
+  it('renders with required indicator when required is true', async () => {
+    const { getByTestId } = await render(
       <FormField
         label="Email"
         labelTestID="email-label"
@@ -55,8 +71,8 @@ describe('FormField', () => {
     expect(label.props.children).toEqual(['Email', ' *']);
   });
 
-  it('renders without required indicator when required is false', () => {
-    const { getByTestId } = render(
+  it('renders without required indicator when required is false', async () => {
+    const { getByTestId } = await render(
       <FormField label="Email" labelTestID="email-label" value="" onChangeText={() => {}} />,
     );
 
@@ -64,8 +80,8 @@ describe('FormField', () => {
     expect(label.props.children).toEqual(['Email', '']);
   });
 
-  it('renders helperText when provided', () => {
-    const { getByTestId } = render(
+  it('renders helperText when provided', async () => {
+    const { getByTestId } = await render(
       <FormField
         label="Email"
         helperText="Enter your email address"
@@ -79,8 +95,8 @@ describe('FormField', () => {
     expect(helperText.props.children).toBe('Enter your email address');
   });
 
-  it('renders errorText when provided', () => {
-    const { getByTestId } = render(
+  it('renders errorText when provided', async () => {
+    const { getByTestId } = await render(
       <FormField
         label="Email"
         errorText="Invalid email"
@@ -94,8 +110,8 @@ describe('FormField', () => {
     expect(errorText.props.children).toBe('Invalid email');
   });
 
-  it('prioritizes errorText over helperText when both are provided', () => {
-    const { getByTestId } = render(
+  it('prioritizes errorText over helperText when both are provided', async () => {
+    const { getByTestId } = await render(
       <FormField
         label="Email"
         helperText="Enter your email address"
@@ -110,11 +126,11 @@ describe('FormField', () => {
     expect(helperOrError.props.children).toBe('Invalid email');
   });
 
-  it('renders rightElement when provided', () => {
+  it('renders rightElement when provided', async () => {
     const React = require('react');
     const { View: RNView, Text: RNText } = require('react-native');
 
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <FormField
         label="Password"
         value=""
@@ -130,8 +146,10 @@ describe('FormField', () => {
     expect(getByTestId('right-element')).toBeDefined();
   });
 
-  it('does not render helperText or errorText when neither is provided', () => {
-    const { queryByTestId } = render(<FormField label="Email" value="" onChangeText={() => {}} />);
+  it('does not render helperText or errorText when neither is provided', async () => {
+    const { queryByTestId } = await render(
+      <FormField label="Email" value="" onChangeText={() => {}} />,
+    );
 
     expect(queryByTestId('form-field-helper')).toBeNull();
   });

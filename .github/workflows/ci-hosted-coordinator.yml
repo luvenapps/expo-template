@@ -1,0 +1,110 @@
+name: CI Coordinator - Hosted
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.mdx'
+      - 'docs/**'
+      - 'scripts/**'
+      - '.editorconfig'
+      - '.gitattributes'
+      - '.gitignore'
+      - '.node-version'
+      - '.prettierignore'
+      - '.prettierrc*'
+      - '.eslintrc*'
+      - 'CODEOWNERS'
+      - 'LICENSE*'
+      - 'renovate.json'
+      - '.env.example'
+      - '.mcp.json'
+      - '.vscode/**'
+      - 'commitlint.config.js'
+      - 'lint-staged.config.js'
+      - '.husky/**'
+      - '.claude/**'
+      - '.codex/**'
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.mdx'
+      - 'docs/**'
+      - 'scripts/**'
+      - '.editorconfig'
+      - '.gitattributes'
+      - '.gitignore'
+      - '.node-version'
+      - '.prettierignore'
+      - '.prettierrc*'
+      - '.eslintrc*'
+      - 'CODEOWNERS'
+      - 'LICENSE*'
+      - 'renovate.json'
+      - '.env.example'
+      - '.mcp.json'
+      - '.vscode/**'
+      - 'commitlint.config.js'
+      - 'lint-staged.config.js'
+      - '.husky/**'
+      - '.claude/**'
+      - '.codex/**'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: ci-hosted-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    if: vars.USE_SELF_HOSTED != 'true'
+    uses: ./.github/workflows/ci-quality.yml
+    with:
+      env_prefix: ${{ github.ref_name == 'main' && 'PROD' || 'DEV' }}
+      runner_target: hosted
+    secrets: inherit
+
+  android:
+    if: vars.USE_SELF_HOSTED != 'true'
+    needs: quality
+    uses: ./.github/workflows/ci-android-hosted.yml
+    with:
+      env_prefix: ${{ github.ref_name == 'main' && 'PROD' || 'DEV' }}
+    secrets: inherit
+
+  ios:
+    if: vars.USE_SELF_HOSTED != 'true'
+    needs: quality
+    uses: ./.github/workflows/ci-ios-hosted.yml
+    with:
+      env_prefix: ${{ github.ref_name == 'main' && 'PROD' || 'DEV' }}
+    secrets: inherit
+
+  web:
+    if: vars.USE_SELF_HOSTED != 'true'
+    needs: quality
+    uses: ./.github/workflows/ci-web.yml
+    with:
+      env_prefix: ${{ github.ref_name == 'main' && 'PROD' || 'DEV' }}
+      runner_target: hosted
+      is_pull_request: ${{ github.event_name == 'pull_request' }}
+      pr_number: ${{ github.event.pull_request.number || 0 }}
+      is_fork: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork || false }}
+    secrets: inherit
+
+  expo-go:
+    if: vars.USE_SELF_HOSTED != 'true'
+    needs: quality
+    uses: ./.github/workflows/ci-expo-go.yml
+    with:
+      env_prefix: ${{ github.ref_name == 'main' && 'PROD' || 'DEV' }}
+      runner_target: hosted
+      is_pull_request: ${{ github.event_name == 'pull_request' }}
+      pr_number: ${{ github.event.pull_request.number || 0 }}
+      is_fork: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork || false }}
+    secrets: inherit

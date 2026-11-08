@@ -1,4 +1,3 @@
-/* istanbul ignore file */
 import { useSessionStore } from '@/auth/session';
 import { NOTIFICATIONS } from '@/config/constants';
 import { DOMAIN } from '@/config/domain.config';
@@ -19,6 +18,7 @@ import { useFriendlyErrorHandler } from '@/errors/useFriendlyErrorHandler';
 import { DEFAULT_FLAGS } from '@/featureFlags';
 import { useFeatureFlag } from '@/featureFlags/useFeatureFlag';
 import { cancelAllScheduledNotifications } from '@/notifications/notifications';
+import { getPushRegistrationStatus } from '@/notifications/pushRegistrationStatus';
 import {
   clearReminderSeriesConfigs,
   scheduleReminder,
@@ -43,7 +43,7 @@ import {
   useToast,
 } from '@/ui';
 import { useThemeContext } from '@/ui/theme/ThemeProvider';
-import { Calendar, Flame, RefreshCw } from '@tamagui/lucide-icons';
+import { Calendar, Flame, RefreshCw } from '@/ui/icons';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
@@ -175,7 +175,7 @@ export default function SettingsScreen() {
         label: t('settings.streakSampleDailyReview'),
         value: 4,
         max: 7,
-        icon: <Flame size={16} color="$accentColor" />,
+        icon: <Flame size={16} color="accent-color" />,
       },
       { label: t('settings.streakSampleFocus'), value: 3, max: 5 },
       { label: t('settings.streakSampleWindDown'), value: 2, max: 4 },
@@ -388,18 +388,14 @@ export default function SettingsScreen() {
     try {
       setDevStatus(null);
       const messagingModule = await import('@react-native-firebase/messaging');
-      const messaging = messagingModule.default;
-      if (!messaging) {
-        setDevStatus('Push registration unavailable on this platform.');
+      const registration = await getPushRegistrationStatus(messagingModule);
+      devPushLogger.info('isDeviceRegisteredForRemoteMessages:', registration.isRegistered);
+      devPushLogger.info('APNs token:', registration.apnsToken);
+      devPushLogger.info('FCM token:', registration.fcmToken);
+      if (!registration.isRegistered) {
+        setDevStatus('Device is not registered for remote messages; tokens are unavailable.');
         return;
       }
-      const instance = messaging();
-      const apnsToken = await instance.getAPNSToken();
-      const fcmToken = await instance.getToken();
-      const isRegistered = instance.isDeviceRegisteredForRemoteMessages;
-      devPushLogger.info('isDeviceRegisteredForRemoteMessages:', isRegistered);
-      devPushLogger.info('APNs token:', apnsToken);
-      devPushLogger.info('FCM token:', fcmToken);
       setDevStatus('Push registration status logged to console.');
     } catch (error) {
       const { friendly } = showFriendlyError(error, {
@@ -681,10 +677,11 @@ export default function SettingsScreen() {
       return;
     }
     try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const crashlytics = require('@react-native-firebase/crashlytics').default;
+      const crashlyticsModule =
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        require('@react-native-firebase/crashlytics') as typeof import('@react-native-firebase/crashlytics');
       setDevStatus('Triggering Crashlytics test crash...');
-      crashlytics().crash();
+      crashlyticsModule.crash(crashlyticsModule.getCrashlytics());
     } catch (error) {
       settingsLogger.error('Crashlytics test failed:', error);
       setDevStatus('Crashlytics test failed (see logs).');
@@ -776,7 +773,7 @@ export default function SettingsScreen() {
 
   const content = (
     <ScreenContainer contentContainerStyle={{ flexGrow: 1, marginBottom: 96 }}>
-      <YStack gap="$5">
+      <YStack gap="$4">
         <SettingsSection
           title={t('settings.streakPreviewTitle')}
           description={t('settings.streakPreviewDescription')}
@@ -804,7 +801,7 @@ export default function SettingsScreen() {
               testID="settings-sync-section"
               footerTestID={syncDisabledMessage ? 'settings-sync-disabled' : undefined}
             >
-              <XStack gap="$2" flexWrap="wrap">
+              <XStack flexDirection="row" gap="$2" flexWrap="wrap">
                 <StatCard
                   label={t('settings.queueSize')}
                   value={queueSize}
@@ -813,7 +810,7 @@ export default function SettingsScreen() {
                       ? t('settings.queueHelperPending')
                       : t('settings.queueHelperEmpty')
                   }
-                  icon={<RefreshCw size={14} color="$accentColor" />}
+                  icon={<RefreshCw size={14} color="accent-color" />}
                 />
                 <StatCard
                   label={t('settings.lastSyncedLabel')}
@@ -823,26 +820,26 @@ export default function SettingsScreen() {
                   helperText={
                     lastSyncedAt ? new Date(lastSyncedAt).toLocaleTimeString() : undefined
                   }
-                  icon={<Calendar size={14} color="$accentColor" />}
+                  icon={<Calendar size={14} color="accent-color" />}
                 />
               </XStack>
-              <Paragraph color="$colorMuted" textAlign="center">
+              <Paragraph color="colorMuted" textAlign="center">
                 {(t as unknown as (k: string, opts?: Record<string, any>) => string)(
                   'settings.statusLabel',
                   { status: syncStatus.toUpperCase() },
                 )}
               </Paragraph>
-              <YStack gap="$1">
+              <YStack gap="$2">
                 <Paragraph fontWeight="600">
                   {(t as unknown as (k: string, opts?: Record<string, any>) => string)(
                     'settings.outboxQueueLabel',
                     { percent: Math.round(queuePercent * 100) },
                   )}
                 </Paragraph>
-                <Progress value={queuePercent * 100} size="$3" height={18}>
-                  <Progress.Indicator backgroundColor="$accentColor" />
+                <Progress value={queuePercent * 100} size="3" height={18}>
+                  <Progress.Indicator backgroundColor="accent-color" />
                 </Progress>
-                <Paragraph color="$colorMuted" fontSize="$3">
+                <Paragraph color="colorMuted" fontSize="$3">
                   {(t as unknown as (k: string, opts?: Record<string, any>) => string)(
                     'settings.pendingItems',
                     {
@@ -852,21 +849,21 @@ export default function SettingsScreen() {
                   )}
                 </Paragraph>
               </YStack>
-              <Paragraph color="$colorMuted" textAlign="center">
+              <Paragraph color="colorMuted" textAlign="center">
                 {t('settings.lastSyncedLabel')}:{' '}
                 {lastSyncedAt ? new Date(lastSyncedAt).toLocaleString() : t('settings.never')}
               </Paragraph>
               {lastError ? (
-                <Paragraph color="$colorMuted" textAlign="center">
+                <Paragraph color="colorMuted" textAlign="center">
                   {(t as unknown as (k: string, opts?: Record<string, any>) => string)(
                     'settings.lastErrorLabel',
                     { error: lastError },
                   )}
                 </Paragraph>
               ) : null}
-              <XStack>
+              <XStack flexDirection="row">
                 <PrimaryButton
-                  size="$5"
+                  size="legacy5"
                   disabled={!canSync || isSyncing}
                   onPress={handleManualSync}
                   testID="settings-sync-now"
@@ -943,8 +940,8 @@ export default function SettingsScreen() {
                   >
                     Schedule one-time reminder
                   </SecondaryButton>
-                  <XStack>
-                    <XStack width="50%" marginRight="$2">
+                  <XStack flexDirection="row">
+                    <XStack flexDirection="row" width="50%" marginRight="2">
                       <SecondaryButton
                         testID="dev-schedule-reminder-button"
                         disabled={!isNative}
@@ -954,32 +951,36 @@ export default function SettingsScreen() {
                         Schedule R.
                       </SecondaryButton>
                     </XStack>
-                    <XStack alignItems="center">
+                    <XStack flexDirection="row" alignItems="center">
                       <RadioGroup
                         value={testReminderCadence}
                         onValueChange={(value) => setTestReminderCadence(value as '10s' | 'daily')}
                         aria-label="Test reminder cadence"
                         gap="$2"
                       >
-                        <XStack gap="$3" alignItems="center">
-                          <RadioGroup.Item value="10s" id={`${reminderCadenceId}-10s`} size="$6">
-                            <RadioGroup.Indicator />
+                        <XStack flexDirection="row" gap="$2" alignItems="center">
+                          <RadioGroup.Item
+                            value="10s"
+                            id={`${reminderCadenceId}-10s`}
+                            size="legacy6"
+                          >
+                            <RadioGroup.Indicator width="33%" height="33%" />
                           </RadioGroup.Item>
                           <Label htmlFor={`${reminderCadenceId}-10s`}>10s</Label>
 
                           <RadioGroup.Item
                             value="daily"
                             id={`${reminderCadenceId}-daily`}
-                            size="$6"
+                            size="legacy6"
                           >
-                            <RadioGroup.Indicator />
+                            <RadioGroup.Indicator width="33%" height="33%" />
                           </RadioGroup.Item>
                           <Label htmlFor={`${reminderCadenceId}-daily`}>Daily</Label>
                         </XStack>
                       </RadioGroup>
                     </XStack>
                   </XStack>
-                  <XStack>
+                  <XStack flexDirection="row">
                     <SecondaryButton
                       testID="dev-reset-reminders-button"
                       disabled={!isNative}
@@ -989,8 +990,8 @@ export default function SettingsScreen() {
                       Reset scheduled reminders
                     </SecondaryButton>
                   </XStack>
-                  <XStack>
-                    <XStack width="25%" marginRight="$2">
+                  <XStack flexDirection="row">
+                    <XStack flexDirection="row" width="25%" marginRight="2">
                       <SecondaryButton
                         testID="dev-run-reminder-action-button"
                         disabled={!isNative || !hasSession}
@@ -1000,7 +1001,7 @@ export default function SettingsScreen() {
                         R
                       </SecondaryButton>
                     </XStack>
-                    <XStack alignItems="center">
+                    <XStack flexDirection="row" alignItems="center">
                       <RadioGroup
                         value={devReminderAction}
                         onValueChange={(value) =>
@@ -1009,47 +1010,47 @@ export default function SettingsScreen() {
                         aria-label="Reminder action"
                         gap="$2"
                       >
-                        <XStack gap="$3" alignItems="center">
+                        <XStack flexDirection="row" gap="$2" alignItems="center">
                           <RadioGroup.Item
                             value="create"
                             id={`${reminderActionId}-create`}
-                            size="$6"
+                            size="legacy6"
                           >
-                            <RadioGroup.Indicator />
+                            <RadioGroup.Indicator width="33%" height="33%" />
                           </RadioGroup.Item>
                           <Label htmlFor={`${reminderActionId}-create`}>C</Label>
 
                           <RadioGroup.Item
                             value="disable"
                             id={`${reminderActionId}-disable`}
-                            size="$6"
+                            size="legacy6"
                           >
-                            <RadioGroup.Indicator />
+                            <RadioGroup.Indicator width="33%" height="33%" />
                           </RadioGroup.Item>
                           <Label htmlFor={`${reminderActionId}-disable`}>D</Label>
 
                           <RadioGroup.Item
                             value="update"
                             id={`${reminderActionId}-update`}
-                            size="$6"
+                            size="legacy6"
                           >
-                            <RadioGroup.Indicator />
+                            <RadioGroup.Indicator width="33%" height="33%" />
                           </RadioGroup.Item>
                           <Label htmlFor={`${reminderActionId}-update`}>U</Label>
 
                           <RadioGroup.Item
                             value="delete"
                             id={`${reminderActionId}-delete`}
-                            size="$6"
+                            size="legacy6"
                           >
-                            <RadioGroup.Indicator />
+                            <RadioGroup.Indicator width="33%" height="33%" />
                           </RadioGroup.Item>
                           <Label htmlFor={`${reminderActionId}-delete`}>DL</Label>
                         </XStack>
                       </RadioGroup>
                     </XStack>
                   </XStack>
-                  <XStack>
+                  <XStack flexDirection="row">
                     <SecondaryButton
                       testID="dev-log-notification-store-button"
                       onPress={handleLogNotificationStore}
@@ -1058,7 +1059,7 @@ export default function SettingsScreen() {
                       Log notification MMKV
                     </SecondaryButton>
                   </XStack>
-                  <XStack>
+                  <XStack flexDirection="row">
                     <SecondaryButton
                       testID="dev-log-mmkv-stores-button"
                       onPress={handleLogAllMmkvStores}
@@ -1067,7 +1068,7 @@ export default function SettingsScreen() {
                       Log all MMKV stores
                     </SecondaryButton>
                   </XStack>
-                  <XStack>
+                  <XStack flexDirection="row">
                     <SecondaryButton
                       testID="dev-crashlytics-crash-button"
                       disabled={!isNative}
@@ -1078,7 +1079,12 @@ export default function SettingsScreen() {
                     </SecondaryButton>
                   </XStack>
                   <YStack gap="$2">
-                    <XStack gap="$3" alignItems="center" justifyContent="space-between">
+                    <XStack
+                      flexDirection="row"
+                      gap="$2"
+                      alignItems="center"
+                      justifyContent="space-between"
+                    >
                       <SecondaryButton
                         disabled={isArchiving}
                         onPress={handleArchiveOldEntries}
@@ -1089,25 +1095,25 @@ export default function SettingsScreen() {
                       <YStack gap="$2" alignItems="center">
                         <Switch
                           testID="dev-archive-toggle"
-                          size="$7"
-                          disabled={isArchiving}
-                          checked={archiveOffsetDays === -1}
-                          onCheckedChange={(val) => setArchiveOffsetDays(val ? -1 : 0)}
-                          borderColor={Platform.OS === 'web' ? '$borderColor' : undefined}
+                          size="legacy7"
+                          borderColor={Platform.OS === 'web' ? 'border-color' : undefined}
                           borderWidth={Platform.OS === 'web' ? 1 : undefined}
                           backgroundColor={
                             archiveOffsetDays === -1 ? palette.accent : palette.secondaryBackground
                           }
-                          pressStyle={{ opacity: 0.9 }}
+                          opacity="press:0.9"
+                          disabled={isArchiving}
+                          checked={archiveOffsetDays === -1}
+                          onCheckedChange={(val) => setArchiveOffsetDays(val ? -1 : 0)}
                         >
-                          <Switch.Thumb borderWidth={1} borderColor="$borderColor" />
+                          <Switch.Thumb borderWidth={1} borderColor="border-color" />
                         </Switch>
-                        <Text fontSize="$3" color="$colorMuted">
+                        <Text fontSize="$3" color="colorMuted">
                           {t('settings.archiveIncludeToday')}
                         </Text>
                       </YStack>
                     </XStack>
-                    <Paragraph textAlign="center" color="$colorMuted" fontSize="$3">
+                    <Paragraph textAlign="center" color="colorMuted" fontSize="$3">
                       {archiveOptionHelper}
                     </Paragraph>
                   </YStack>
@@ -1117,94 +1123,94 @@ export default function SettingsScreen() {
               <YStack
                 key="notification-debug"
                 gap="$2"
-                marginTop="$4"
-                paddingTop="$4"
+                marginTop="4"
+                paddingTop="4"
                 borderTopWidth={1}
-                borderTopColor="$borderColor"
+                borderTopColor="border-color"
                 width="100%"
               >
                 <Text
                   fontWeight="600"
-                  fontSize={Platform.OS === 'web' ? '$5' : '$4'}
-                  marginBottom="$2"
+                  fontSize={`${Platform.OS === 'web' ? '$5' : '$4'}`}
+                  marginBottom="2"
                 >
                   Notification Debug
                 </Text>
-                <XStack alignItems="center">
+                <XStack flexDirection="row" alignItems="center">
                   <Text
-                    fontSize={Platform.OS === 'web' ? '$4' : '$3'}
-                    color="$colorMuted"
-                    marginRight="$2"
+                    fontSize={`${Platform.OS === 'web' ? '$4' : '$3'}`}
+                    color="colorMuted"
+                    marginRight="2"
                   >
                     permissionStatus:
                   </Text>
                   <Text
-                    fontSize={Platform.OS === 'web' ? '$4' : '$3'}
-                    color="$accentColor"
+                    fontSize={`${Platform.OS === 'web' ? '$4' : '$3'}`}
+                    color="accent-color"
                     fontWeight="600"
                   >
                     {permissionStatus}
                   </Text>
                 </XStack>
-                <XStack alignItems="center">
+                <XStack flexDirection="row" alignItems="center">
                   <Text
-                    fontSize={Platform.OS === 'web' ? '$4' : '$3'}
-                    color="$colorMuted"
-                    marginRight="$2"
+                    fontSize={`${Platform.OS === 'web' ? '$4' : '$3'}`}
+                    color="colorMuted"
+                    marginRight="2"
                   >
                     notificationStatus:
                   </Text>
                   <Text
-                    fontSize={Platform.OS === 'web' ? '$4' : '$3'}
-                    color="$accentColor"
+                    fontSize={`${Platform.OS === 'web' ? '$4' : '$3'}`}
+                    color="accent-color"
                     fontWeight="600"
                   >
                     {notificationStatus}
                   </Text>
                 </XStack>
-                <XStack alignItems="center">
+                <XStack flexDirection="row" alignItems="center">
                   <Text
-                    fontSize={Platform.OS === 'web' ? '$4' : '$3'}
-                    color="$colorMuted"
-                    marginRight="$2"
+                    fontSize={`${Platform.OS === 'web' ? '$4' : '$3'}`}
+                    color="colorMuted"
+                    marginRight="2"
                   >
                     permission.rawStatus:
                   </Text>
                   <Text
-                    fontSize={Platform.OS === 'web' ? '$4' : '$3'}
-                    color="$accentColor"
+                    fontSize={`${Platform.OS === 'web' ? '$4' : '$3'}`}
+                    color="accent-color"
                     fontWeight="600"
                   >
                     {rawPermissionStatus}
                   </Text>
                 </XStack>
-                <XStack alignItems="center">
+                <XStack flexDirection="row" alignItems="center">
                   <Text
-                    fontSize={Platform.OS === 'web' ? '$4' : '$3'}
-                    color="$colorMuted"
-                    marginRight="$2"
+                    fontSize={`${Platform.OS === 'web' ? '$4' : '$3'}`}
+                    color="colorMuted"
+                    marginRight="2"
                   >
                     permission.canAskAgain:
                   </Text>
                   <Text
-                    fontSize={Platform.OS === 'web' ? '$4' : '$3'}
-                    color="$accentColor"
+                    fontSize={`${Platform.OS === 'web' ? '$4' : '$3'}`}
+                    color="accent-color"
                     fontWeight="600"
                   >
                     {canAskAgain}
                   </Text>
                 </XStack>
-                <XStack alignItems="center">
+                <XStack flexDirection="row" alignItems="center">
                   <Text
-                    fontSize={Platform.OS === 'web' ? '$4' : '$3'}
-                    color="$colorMuted"
-                    marginRight="$2"
+                    fontSize={`${Platform.OS === 'web' ? '$4' : '$3'}`}
+                    color="colorMuted"
+                    marginRight="2"
                   >
                     softPrompt.timeLeft:
                   </Text>
                   <Text
-                    fontSize={Platform.OS === 'web' ? '$4' : '$3'}
-                    color="$accentColor"
+                    fontSize={`${Platform.OS === 'web' ? '$4' : '$3'}`}
+                    color="accent-color"
                     fontWeight="600"
                   >
                     {softPromptCooldownLabel}
@@ -1212,13 +1218,13 @@ export default function SettingsScreen() {
                 </XStack>
               </YStack>
 
-              <Separator borderColor="$borderColor" marginTop="$4" />
+              <Separator borderColor="border-color" marginTop="4" />
 
               <YStack key="feature-flags-debug" gap="$2" width="100%">
                 <Text
                   fontWeight="600"
-                  fontSize={Platform.OS === 'web' ? '$5' : '$4'}
-                  marginBottom="$2"
+                  fontSize={`${Platform.OS === 'web' ? '$5' : '$4'}`}
+                  marginBottom="2"
                 >
                   Feature Flags
                 </Text>
@@ -1230,6 +1236,7 @@ export default function SettingsScreen() {
 
                   return (
                     <XStack
+                      flexDirection="row"
                       key={flagKey}
                       justifyContent="space-between"
                       alignItems="center"
@@ -1237,16 +1244,16 @@ export default function SettingsScreen() {
                       gap="$2"
                     >
                       <Text
-                        fontSize={Platform.OS === 'web' ? '$4' : '$3'}
-                        color="$colorMuted"
-                        marginRight="$2"
+                        fontSize={`${Platform.OS === 'web' ? '$4' : '$3'}`}
+                        color="colorMuted"
+                        marginRight="2"
                         flexShrink={0}
                       >
                         {flagKey}:
                       </Text>
                       <Text
-                        fontSize={Platform.OS === 'web' ? '$4' : '$3'}
-                        color="$accentColor"
+                        fontSize={`${Platform.OS === 'web' ? '$4' : '$3'}`}
+                        color="accent-color"
                         fontWeight="600"
                         flexShrink={1}
                         textAlign="right"
@@ -1261,16 +1268,16 @@ export default function SettingsScreen() {
               <YStack
                 key="feature-flag-example"
                 gap="$2"
-                marginTop="$4"
-                paddingTop="$4"
+                marginTop="4"
+                paddingTop="4"
                 borderTopWidth={1}
-                borderTopColor="$borderColor"
+                borderTopColor="border-color"
                 width="100%"
               >
                 <Text
                   fontWeight="600"
-                  fontSize={Platform.OS === 'web' ? '$5' : '$4'}
-                  marginBottom="$2"
+                  fontSize={`${Platform.OS === 'web' ? '$5' : '$4'}`}
+                  marginBottom="2"
                 >
                   Feature Flags example
                 </Text>
@@ -1286,8 +1293,8 @@ export default function SettingsScreen() {
 
         <Paragraph
           textAlign="center"
-          color="$colorMuted"
-          marginBottom="$4"
+          color="colorMuted"
+          marginBottom="4"
           testID="settings-footer-note"
         >
           {t('settings.upcomingFeatures')}

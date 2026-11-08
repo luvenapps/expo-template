@@ -17,12 +17,12 @@ describe('UserOnly', () => {
     jest.clearAllMocks();
   });
 
-  it('renders children when authenticated', () => {
+  it('renders children when authenticated', async () => {
     (useSessionStore as unknown as jest.Mock).mockImplementation((selector) =>
       selector({ status: 'authenticated' }),
     );
 
-    const { getByText } = render(
+    const { getByText } = await render(
       <UserOnly>
         <Text>Secret Content</Text>
       </UserOnly>,
@@ -37,7 +37,7 @@ describe('UserOnly', () => {
       selector({ status: 'unauthenticated' }),
     );
 
-    render(
+    await render(
       <UserOnly>
         <Text>Secret Content</Text>
       </UserOnly>,
@@ -48,12 +48,12 @@ describe('UserOnly', () => {
     });
   });
 
-  it('renders nothing and does not redirect when status is unknown', () => {
+  it('renders nothing and does not redirect when status is unknown', async () => {
     (useSessionStore as unknown as jest.Mock).mockImplementation((selector) =>
       selector({ status: 'unknown' }),
     );
 
-    const { queryByText } = render(
+    const { queryByText } = await render(
       <UserOnly>
         <Text>Secret Content</Text>
       </UserOnly>,

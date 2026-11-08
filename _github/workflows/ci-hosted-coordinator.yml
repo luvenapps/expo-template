@@ -18,6 +18,14 @@ on:
       - 'CODEOWNERS'
       - 'LICENSE*'
       - 'renovate.json'
+      - '.env.example'
+      - '.mcp.json'
+      - '.vscode/**'
+      - 'commitlint.config.js'
+      - 'lint-staged.config.js'
+      - '.husky/**'
+      - '.claude/**'
+      - '.codex/**'
   pull_request:
     types: [opened, synchronize, reopened]
     paths-ignore:
@@ -35,6 +43,14 @@ on:
       - 'CODEOWNERS'
       - 'LICENSE*'
       - 'renovate.json'
+      - '.env.example'
+      - '.mcp.json'
+      - '.vscode/**'
+      - 'commitlint.config.js'
+      - 'lint-staged.config.js'
+      - '.husky/**'
+      - '.claude/**'
+      - '.codex/**'
 
 permissions:
   contents: read

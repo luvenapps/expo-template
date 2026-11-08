@@ -34,7 +34,7 @@ export default function RootRedirect() {
             { app: DOMAIN.app.displayName },
           )}
         </TitleText>
-        <SubtitleText textAlign="center" color="$colorMuted">
+        <SubtitleText textAlign="center" color="colorMuted">
           {t('landing.subtitle')}
         </SubtitleText>
 

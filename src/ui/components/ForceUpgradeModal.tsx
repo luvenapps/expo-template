@@ -94,29 +94,29 @@ export function ForceUpgradeModal({ open, title, message, actionLabel }: ForceUp
           key="force-upgrade-content"
           bordered
           elevate
-          padding="$4"
+          padding="4"
           alignSelf="center"
           width="100%"
           maxWidth={480}
           height={dialogHeight}
         >
           <YStack gap="$4" flex={1} justifyContent="space-between">
-            <YStack gap="$3">
+            <YStack gap="$2">
               <Dialog.Title asChild>
                 <Paragraph
-                  fontSize="$5"
+                  fontSize="5"
                   fontWeight="700"
-                  lineHeight={60}
+                  lineHeight="60px"
                   textTransform="capitalize"
                 >
                   {title}
                 </Paragraph>
               </Dialog.Title>
               <Dialog.Description asChild>
-                <Paragraph fontSize="$4">{message}</Paragraph>
+                <Paragraph fontSize="4">{message}</Paragraph>
               </Dialog.Description>
               {errorMessage ? (
-                <Paragraph fontSize="$3" color="$red10" testID="force-upgrade-error">
+                <Paragraph fontSize="3" color="red10" testID="force-upgrade-error">
                   {errorMessage}
                 </Paragraph>
               ) : null}

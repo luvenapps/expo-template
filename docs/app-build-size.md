@@ -1,22 +1,22 @@
 # Build Size Playbook
 
-Keeping the Better Habits binaries small helps installs finish quickly and keeps telemetry snappy. Use this checklist before shipping preview/production builds.
+Keeping the {{APP_NAME}} binaries small helps installs finish quickly and keeps telemetry snappy. Use this checklist before shipping preview/production builds.
 
 ## 1. Measure IPA/AAB output
 
 1. Run the desired build profile:
 
    ```bash
-   eas build --platform ios --profile production --local --output build/youdomain.ipa
-   eas build --platform android --profile production --local --output build/youdomain.aab
+   eas build --platform ios --profile production --local --output build/{{APP_SLUG}}.ipa
+   eas build --platform android --profile production --local --output build/{{APP_SLUG}}.aab
    ```
 
 2. Inspect the artifacts:
 
    ```bash
    # Report size in MB
-   node scripts/report-build-size.mjs build/youdomain.ipa
-   node scripts/report-build-size.mjs build/youdomain.aab
+   node scripts/report-build-size.mjs build/{{APP_SLUG}}.ipa
+   node scripts/report-build-size.mjs build/{{APP_SLUG}}.aab
    ```
 
 3. Target budgets:
@@ -66,4 +66,4 @@ node scripts/report-build-size.mjs build/bundles/index.ios.bundle --breakdown
 - Commit the output from `node scripts/report-build-size.mjs ... --breakdown` when large assets land, so PR reviewers can see the delta.
 - The deploy checklist should include “Android/iOS artifact size within budget.” Failing the check blocks releases until the regression is understood.
 
-Keeping these reports up to date means the Stage 7 database work—and eventual habit UI—won’t surprise us with bloated binaries later.\*\*\*
+Keeping these reports up to date helps spot size increases as the app grows.

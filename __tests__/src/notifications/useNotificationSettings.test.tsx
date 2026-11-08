@@ -158,7 +158,7 @@ describe('useNotificationSettings', () => {
   });
 
   it('loads preferences and evaluates permission status on mount', async () => {
-    const { result } = renderHook(() => useNotificationSettings());
+    const { result } = await renderHook(() => useNotificationSettings());
 
     await act(async () => {
       await Promise.resolve();
@@ -169,7 +169,7 @@ describe('useNotificationSettings', () => {
 
   it('sets isSupported based on platform', async () => {
     // Platform.OS is evaluated at module load time, so we test the current platform
-    const { result } = renderHook(() => useNotificationSettings());
+    const { result } = await renderHook(() => useNotificationSettings());
 
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -182,7 +182,7 @@ describe('useNotificationSettings', () => {
   it('handles permission check errors gracefully', async () => {
     getPermissionsAsync.mockRejectedValue(new Error('Permission check failed'));
 
-    const { result } = renderHook(() => useNotificationSettings());
+    const { result } = await renderHook(() => useNotificationSettings());
 
     await act(async () => {
       await Promise.resolve();
@@ -209,7 +209,7 @@ describe('useNotificationSettings', () => {
       canAskAgain: true,
     });
 
-    const { result } = renderHook(() => useNotificationSettings());
+    const { result } = await renderHook(() => useNotificationSettings());
 
     await act(async () => {
       await Promise.resolve();
@@ -234,7 +234,7 @@ describe('useNotificationSettings', () => {
       canAskAgain: true,
     });
 
-    const { result } = renderHook(() => useNotificationSettings());
+    const { result } = await renderHook(() => useNotificationSettings());
 
     await act(async () => {
       await Promise.resolve();
@@ -262,7 +262,7 @@ describe('useNotificationSettings', () => {
       canAskAgain: true,
     });
 
-    renderHook(() => useNotificationSettings());
+    await renderHook(() => useNotificationSettings());
 
     await act(async () => {
       await new Promise((r) => setTimeout(r, 0));
@@ -286,7 +286,7 @@ describe('useNotificationSettings', () => {
       canAskAgain: true,
     });
 
-    renderHook(() => useNotificationSettings());
+    await renderHook(() => useNotificationSettings());
 
     await act(async () => {
       await new Promise((r) => setTimeout(r, 0));
@@ -309,7 +309,7 @@ describe('useNotificationSettings', () => {
       canAskAgain: true,
     });
 
-    renderHook(() => useNotificationSettings());
+    await renderHook(() => useNotificationSettings());
 
     await act(async () => {
       await new Promise((r) => setTimeout(r, 0));
@@ -325,7 +325,7 @@ describe('useNotificationSettings', () => {
       canAskAgain: false,
     });
 
-    const { result } = renderHook(() => useNotificationSettings());
+    const { result } = await renderHook(() => useNotificationSettings());
 
     await act(async () => {
       await Promise.resolve();
@@ -341,7 +341,7 @@ describe('useNotificationSettings', () => {
       canAskAgain: false,
     });
 
-    const { result } = renderHook(() => useNotificationSettings());
+    const { result } = await renderHook(() => useNotificationSettings());
 
     await act(async () => {
       await Promise.resolve();
@@ -357,7 +357,7 @@ describe('useNotificationSettings', () => {
       canAskAgain: true,
     });
 
-    const { result } = renderHook(() => useNotificationSettings());
+    const { result } = await renderHook(() => useNotificationSettings());
 
     await act(async () => {
       await Promise.resolve();
@@ -372,7 +372,7 @@ describe('useNotificationSettings', () => {
       status: expoNotifications.PermissionStatus.DENIED,
     } as any);
 
-    const { result } = renderHook(() => useNotificationSettings());
+    const { result } = await renderHook(() => useNotificationSettings());
 
     await act(async () => {
       await Promise.resolve();
@@ -389,7 +389,7 @@ describe('useNotificationSettings', () => {
       softLastDeclinedAt: 0,
     });
 
-    const { result } = renderHook(() => useNotificationSettings());
+    const { result } = await renderHook(() => useNotificationSettings());
 
     await act(async () => {
       await Promise.resolve();
@@ -440,7 +440,7 @@ describe('useNotificationSettings', () => {
       softLastDeclinedAt: 0,
     });
 
-    const { result } = renderHook(() => useNotificationSettings());
+    const { result } = await renderHook(() => useNotificationSettings());
 
     // Wait for initial effects to settle (auto-soft prompt may trigger)
     await act(async () => {
@@ -489,7 +489,7 @@ describe('useNotificationSettings', () => {
 
     ensureNotificationsEnabled.mockResolvedValue({ status: 'denied' });
 
-    const { result } = renderHook(() => useNotificationSettings());
+    const { result } = await renderHook(() => useNotificationSettings());
 
     await act(async () => {
       await result.current.refreshPermissionStatus();
@@ -519,7 +519,7 @@ describe('useNotificationSettings', () => {
       return { status: 'denied' };
     });
 
-    const { result } = renderHook(() => useNotificationSettings());
+    const { result } = await renderHook(() => useNotificationSettings());
 
     // Wait for initial effects to settle (auto-soft prompt may trigger)
     await act(async () => {
@@ -550,7 +550,7 @@ describe('useNotificationSettings', () => {
 
   it('disables push notifications and revokes token', async () => {
     revokeNotifications.mockResolvedValue({ status: 'revoked' });
-    const { result } = renderHook(() => useNotificationSettings());
+    const { result } = await renderHook(() => useNotificationSettings());
 
     await act(async () => {
       await result.current.disablePushNotifications();
@@ -569,7 +569,7 @@ describe('useNotificationSettings', () => {
 
   it('handles revoke errors gracefully', async () => {
     revokeNotifications.mockResolvedValue({ status: 'error', message: 'fail' });
-    const { result } = renderHook(() => useNotificationSettings());
+    const { result } = await renderHook(() => useNotificationSettings());
 
     await act(async () => {
       await result.current.disablePushNotifications();
@@ -595,7 +595,7 @@ describe('useNotificationSettings', () => {
       });
       ensureNotificationsEnabled.mockResolvedValue({ status: 'enabled' });
 
-      const { result } = renderHook(() => useNotificationSettings());
+      const { result } = await renderHook(() => useNotificationSettings());
 
       // Wait for initial permission check
       await act(async () => {
@@ -634,7 +634,7 @@ describe('useNotificationSettings', () => {
       // When status is 'already-enabled', ensureNotificationsEnabled returns this
       ensureNotificationsEnabled.mockResolvedValue({ status: 'already-enabled' });
 
-      const { result } = renderHook(() => useNotificationSettings());
+      const { result } = await renderHook(() => useNotificationSettings());
 
       // Wait for initial permission check
       await act(async () => {
@@ -660,7 +660,7 @@ describe('useNotificationSettings', () => {
 
       ensureNotificationsEnabled.mockResolvedValue({ status: 'denied' });
 
-      const { result } = renderHook(() => useNotificationSettings());
+      const { result } = await renderHook(() => useNotificationSettings());
 
       let promptResult;
       await act(async () => {
@@ -690,7 +690,7 @@ describe('useNotificationSettings', () => {
       });
       ensureNotificationsEnabled.mockResolvedValue({ status: 'unavailable' });
 
-      const { result } = renderHook(() => useNotificationSettings());
+      const { result } = await renderHook(() => useNotificationSettings());
 
       // Wait for initial permission check
       await act(async () => {
@@ -717,7 +717,7 @@ describe('useNotificationSettings', () => {
       });
       ensureNotificationsEnabled.mockResolvedValue({ status: 'error', message: 'Network error' });
 
-      const { result } = renderHook(() => useNotificationSettings());
+      const { result } = await renderHook(() => useNotificationSettings());
 
       // Wait for initial permission check
       await act(async () => {
@@ -742,7 +742,7 @@ describe('useNotificationSettings', () => {
         status: 'undetermined' as any,
         canAskAgain: true,
       });
-      const { result } = renderHook(() => useNotificationSettings());
+      const { result } = await renderHook(() => useNotificationSettings());
 
       // Wait for initial permission check
       await act(async () => {
@@ -773,7 +773,7 @@ describe('useNotificationSettings', () => {
         canAskAgain: true,
       });
 
-      const { result } = renderHook(() => useNotificationSettings());
+      const { result } = await renderHook(() => useNotificationSettings());
 
       // Wait for initial permission check
       await act(async () => {
@@ -814,7 +814,7 @@ describe('useNotificationSettings', () => {
         canAskAgain: true,
       });
 
-      const { result } = renderHook(() => useNotificationSettings());
+      const { result } = await renderHook(() => useNotificationSettings());
 
       await act(async () => {
         await Promise.resolve();
@@ -845,7 +845,7 @@ describe('useNotificationSettings', () => {
 
       ensureNotificationsEnabled.mockResolvedValue({ status: 'enabled' });
 
-      const { result } = renderHook(() => useNotificationSettings());
+      const { result } = await renderHook(() => useNotificationSettings());
 
       await act(async () => {
         await Promise.resolve();
@@ -881,7 +881,7 @@ describe('useNotificationSettings', () => {
         canAskAgain: true,
       });
 
-      const { result } = renderHook(() => useNotificationSettings());
+      const { result } = await renderHook(() => useNotificationSettings());
 
       await act(async () => {
         await Promise.resolve();
@@ -916,7 +916,7 @@ describe('useNotificationSettings', () => {
 
       ensureNotificationsEnabled.mockResolvedValue({ status: 'enabled' });
 
-      const { result } = renderHook(() => useNotificationSettings());
+      const { result } = await renderHook(() => useNotificationSettings());
 
       await act(async () => {
         await Promise.resolve();
@@ -949,7 +949,7 @@ describe('useNotificationSettings', () => {
 
       ensureNotificationsEnabled.mockResolvedValue({ status: 'enabled' });
 
-      const { result } = renderHook(() => useNotificationSettings());
+      const { result } = await renderHook(() => useNotificationSettings());
 
       await act(async () => {
         await Promise.resolve();
@@ -990,7 +990,7 @@ describe('useNotificationSettings', () => {
         canAskAgain: true,
       });
 
-      const { result } = renderHook(() => useNotificationSettings());
+      const { result } = await renderHook(() => useNotificationSettings());
 
       await act(async () => {
         await Promise.resolve();
@@ -1031,7 +1031,7 @@ describe('useNotificationSettings', () => {
 
       ensureNotificationsEnabled.mockResolvedValue({ status: 'enabled' });
 
-      const { result } = renderHook(() => useNotificationSettings());
+      const { result } = await renderHook(() => useNotificationSettings());
 
       await act(async () => {
         await Promise.resolve();
@@ -1061,7 +1061,7 @@ describe('useNotificationSettings', () => {
         canAskAgain: false,
       });
 
-      const { result } = renderHook(() => useNotificationSettings());
+      const { result } = await renderHook(() => useNotificationSettings());
 
       await act(async () => {
         await Promise.resolve();
@@ -1089,7 +1089,7 @@ describe('useNotificationSettings', () => {
         canAskAgain: false,
       });
 
-      const { result } = renderHook(() => useNotificationSettings());
+      const { result } = await renderHook(() => useNotificationSettings());
 
       await act(async () => {
         await Promise.resolve();
@@ -1117,7 +1117,7 @@ describe('useNotificationSettings', () => {
         canAskAgain: true,
       });
 
-      renderHook(() => useNotificationSettings());
+      await renderHook(() => useNotificationSettings());
 
       await act(async () => {
         await Promise.resolve();
@@ -1147,7 +1147,7 @@ describe('useNotificationSettings', () => {
         canAskAgain: true,
       });
 
-      renderHook(() => useNotificationSettings());
+      await renderHook(() => useNotificationSettings());
 
       await act(async () => {
         await Promise.resolve();
@@ -1175,7 +1175,7 @@ describe('useNotificationSettings', () => {
         canAskAgain: true,
       });
 
-      const { result } = renderHook(() => useNotificationSettings());
+      const { result } = await renderHook(() => useNotificationSettings());
 
       await act(async () => {
         await Promise.resolve();
@@ -1211,7 +1211,7 @@ describe('useNotificationSettings', () => {
         canAskAgain: true,
       });
 
-      renderHook(() => useNotificationSettings());
+      await renderHook(() => useNotificationSettings());
 
       await act(async () => {
         await Promise.resolve();
@@ -1238,7 +1238,7 @@ describe('useNotificationSettings', () => {
         canAskAgain: true,
       });
 
-      const { result } = renderHook(() => useNotificationSettings());
+      const { result } = await renderHook(() => useNotificationSettings());
 
       await act(async () => {
         await Promise.resolve();
@@ -1264,7 +1264,7 @@ describe('useNotificationSettings', () => {
         value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit',
       });
 
-      const { result } = renderHook(() => useNotificationSettings());
+      const { result } = await renderHook(() => useNotificationSettings());
 
       await act(async () => {
         await Promise.resolve();
@@ -1289,7 +1289,7 @@ describe('useNotificationSettings', () => {
         permission: 'granted',
       } as typeof Notification;
 
-      const { result } = renderHook(() => useNotificationSettings());
+      const { result } = await renderHook(() => useNotificationSettings());
 
       await act(async () => {
         await Promise.resolve();
@@ -1323,7 +1323,7 @@ describe('useNotificationSettings', () => {
         value: 'Mozilla/5.0 (Android 14; Mobile) AppleWebKit',
       });
 
-      const { result } = renderHook(() => useNotificationSettings());
+      const { result } = await renderHook(() => useNotificationSettings());
 
       await act(async () => {
         await Promise.resolve();
@@ -1349,7 +1349,7 @@ describe('useNotificationSettings', () => {
       (globalThis as { window?: Window }).window = {} as Window;
       delete (globalThis as { Notification?: typeof Notification }).Notification;
 
-      const { result } = renderHook(() => useNotificationSettings());
+      const { result } = await renderHook(() => useNotificationSettings());
 
       await act(async () => {
         await Promise.resolve();
@@ -1380,7 +1380,7 @@ describe('useNotificationSettings', () => {
         softLastDeclinedAt: 0,
       });
 
-      renderHook(() => useNotificationSettings());
+      await renderHook(() => useNotificationSettings());
 
       await act(async () => {
         await Promise.resolve();
@@ -1399,7 +1399,7 @@ describe('useNotificationSettings', () => {
         permission: 'granted',
       } as typeof Notification;
 
-      const { result } = renderHook(() => useNotificationSettings());
+      const { result } = await renderHook(() => useNotificationSettings());
 
       await act(async () => {
         await Promise.resolve();
@@ -1424,15 +1424,14 @@ describe('useNotificationSettings', () => {
         return jest.fn();
       });
 
-      renderHook(() => useNotificationSettings());
+      await renderHook(() => useNotificationSettings());
 
       await act(async () => {
         await Promise.resolve();
       });
 
       const handler = webHandler as
-        | ((event: { name: string; payload: Record<string, unknown> }) => void)
-        | null;
+        ((event: { name: string; payload: Record<string, unknown> }) => void) | null;
       handler?.({ name: 'notifications:test', payload: { foo: 'bar' } });
 
       expect(trackEvent).toHaveBeenCalledWith('notifications:test', { foo: 'bar' });
@@ -1465,7 +1464,7 @@ describe('useNotificationSettings', () => {
         softLastDeclinedAt: 0,
       });
 
-      const { result } = renderHook(() => useNotificationSettings());
+      const { result } = await renderHook(() => useNotificationSettings());
 
       await act(async () => {
         await Promise.resolve();
@@ -1497,7 +1496,7 @@ describe('useNotificationSettings', () => {
         softLastDeclinedAt: Date.now(),
       });
 
-      const { result } = renderHook(() => useNotificationSettings());
+      const { result } = await renderHook(() => useNotificationSettings());
 
       await act(async () => {
         await Promise.resolve();
@@ -1523,7 +1522,7 @@ describe('useNotificationSettings', () => {
         softLastDeclinedAt: 0,
       });
 
-      renderHook(() => useNotificationSettings());
+      await renderHook(() => useNotificationSettings());
 
       await act(async () => {
         await Promise.resolve();
@@ -1551,7 +1550,9 @@ describe('useNotificationSettings', () => {
         softLastDeclinedAt: 0,
       });
 
-      const { result } = renderHook(() => useNotificationSettings({ autoPromptEnabled: false }));
+      const { result } = await renderHook(() =>
+        useNotificationSettings({ autoPromptEnabled: false }),
+      );
 
       await act(async () => {
         await Promise.resolve();
@@ -1581,7 +1582,7 @@ describe('useNotificationSettings', () => {
         canAskAgain: true,
       });
 
-      const { result } = renderHook(() => useNotificationSettings());
+      const { result } = await renderHook(() => useNotificationSettings());
 
       await act(async () => {
         await Promise.resolve();
@@ -1609,7 +1610,7 @@ describe('useNotificationSettings', () => {
         canAskAgain: true,
       });
 
-      const { result } = renderHook(() => useNotificationSettings());
+      const { result } = await renderHook(() => useNotificationSettings());
 
       await act(async () => {
         await Promise.resolve();
@@ -1632,7 +1633,7 @@ describe('useNotificationSettings', () => {
         canAskAgain: true,
       });
 
-      renderHook(() => useNotificationSettings());
+      await renderHook(() => useNotificationSettings());
 
       await act(async () => {
         await Promise.resolve();
@@ -1652,7 +1653,7 @@ describe('useNotificationSettings', () => {
     it('does not refresh permission when app becomes inactive', async () => {
       Object.defineProperty(Platform, 'OS', { value: 'ios' });
 
-      renderHook(() => useNotificationSettings());
+      await renderHook(() => useNotificationSettings());
 
       await act(async () => {
         await Promise.resolve();
@@ -1685,7 +1686,7 @@ describe('useNotificationSettings', () => {
         canAskAgain: true,
       });
 
-      const { result } = renderHook(() => useNotificationSettings());
+      const { result } = await renderHook(() => useNotificationSettings());
 
       await act(async () => {
         await Promise.resolve();
@@ -1720,7 +1721,7 @@ describe('useNotificationSettings', () => {
         message: 'Firebase not initialized',
       });
 
-      const { result } = renderHook(() => useNotificationSettings());
+      const { result } = await renderHook(() => useNotificationSettings());
 
       await act(async () => {
         await Promise.resolve();
@@ -1751,7 +1752,7 @@ describe('useNotificationSettings', () => {
       // Return an unexpected status
       ensureNotificationsEnabled.mockResolvedValue({ status: 'weird-status' } as any);
 
-      const { result } = renderHook(() => useNotificationSettings());
+      const { result } = await renderHook(() => useNotificationSettings());
 
       await act(async () => {
         await Promise.resolve();
@@ -1768,7 +1769,7 @@ describe('useNotificationSettings', () => {
     it('returns unavailable when refreshPermissionStatus fails before prompting', async () => {
       getPermissionsAsync.mockRejectedValue(new Error('no permissions'));
 
-      const { result } = renderHook(() => useNotificationSettings());
+      const { result } = await renderHook(() => useNotificationSettings());
 
       await act(async () => {
         await Promise.resolve();
@@ -1799,7 +1800,7 @@ describe('useNotificationSettings', () => {
       });
       ensureNotificationsEnabled.mockResolvedValue({ status: 'unavailable' });
 
-      const { result } = renderHook(() => useNotificationSettings());
+      const { result } = await renderHook(() => useNotificationSettings());
 
       await act(async () => {
         await Promise.resolve();
@@ -1838,7 +1839,7 @@ describe('useNotificationSettings', () => {
         throw boom;
       });
 
-      const { result } = renderHook(() => useNotificationSettings());
+      const { result } = await renderHook(() => useNotificationSettings());
 
       await act(async () => {
         await new Promise((r) => setTimeout(r, 0));

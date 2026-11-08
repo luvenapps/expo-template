@@ -4,6 +4,7 @@ import {
   incrementBadgeCount,
 } from '@/notifications/notifications';
 import * as Notifications from 'expo-notifications';
+import { AndroidImportance } from 'expo-notifications';
 import dayjs from 'dayjs';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
@@ -185,7 +186,7 @@ export async function registerNotificationCategories() {
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync(REMINDER_CHANNEL_ID, {
       name: 'Reminders',
-      importance: Notifications.AndroidImportance.DEFAULT,
+      importance: AndroidImportance.DEFAULT,
     });
   }
 }

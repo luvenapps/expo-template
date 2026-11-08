@@ -30,11 +30,11 @@ describe('metro.config', () => {
     }
   });
 
-  it('adds wasm support without overriding resolveRequest', () => {
+  it('adds wasm support and installs the project alias resolver', () => {
     const config = require('../metro.config');
 
     expect(config.resolver.assetExts).toContain('wasm');
-    expect(config.resolver.resolveRequest).toBeUndefined();
+    expect(config.resolver.resolveRequest).toEqual(expect.any(Function));
   });
 
   it('uses isolated cache store when METRO_CACHE_PATH is provided', () => {

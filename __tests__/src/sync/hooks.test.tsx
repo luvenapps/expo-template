@@ -36,8 +36,8 @@ describe('useSync', () => {
     jest.clearAllMocks();
   });
 
-  it('should return sync state and triggerSync function', () => {
-    const { result } = renderHook(() =>
+  it('should return sync state and triggerSync function', async () => {
+    const { result } = await renderHook(() =>
       useSync({
         push: mockPush,
         enabled: false,
@@ -53,8 +53,8 @@ describe('useSync', () => {
     });
   });
 
-  it('should use default enabled value when not provided', () => {
-    const { result } = renderHook(() =>
+  it('should use default enabled value when not provided', async () => {
+    const { result } = await renderHook(() =>
       useSync({
         push: mockPush,
       }),
@@ -64,10 +64,10 @@ describe('useSync', () => {
     expect(result.current.triggerSync).toBeDefined();
   });
 
-  it('should accept all optional parameters', () => {
+  it('should accept all optional parameters', async () => {
     const mockPull = jest.fn();
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useSync({
         push: mockPush,
         pull: mockPull,

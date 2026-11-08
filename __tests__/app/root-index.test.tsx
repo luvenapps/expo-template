@@ -1,6 +1,7 @@
 import { fireEvent, render } from '@testing-library/react-native';
 import React from 'react';
 import { Platform } from 'react-native';
+import { findByType } from '../helpers/testInstance';
 import RootRedirect from '../../app/index';
 
 let mockStatus: 'unknown' | 'authenticated' | 'unauthenticated' = 'unauthenticated';
@@ -11,10 +12,14 @@ jest.mock('@/auth/session', () => ({
     selector({ status: mockStatus }),
 }));
 
-jest.mock('expo-router', () => ({
-  Redirect: ({ href }: { href: string }) => href,
-  useRouter: () => ({ push: mockPush }),
-}));
+jest.mock('expo-router', () => {
+  const mockReact = jest.requireActual('react');
+
+  return {
+    Redirect: ({ href }: { href: string }) => mockReact.createElement('Redirect', { href }),
+    useRouter: () => ({ push: mockPush }),
+  };
+});
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -38,34 +43,36 @@ describe('RootRedirect', () => {
     mockPush.mockClear();
   });
 
-  test('redirects all native users to tabs', () => {
+  test('redirects all native users to tabs', async () => {
     mockStatus = 'unauthenticated';
     Object.defineProperty(Platform, 'OS', { value: 'ios', configurable: true });
-    const result = render(<RootRedirect />);
-    expect(result.toJSON()).toMatchInlineSnapshot(`"/(tabs)"`);
+    const { root: rootValue } = await render(<RootRedirect />);
+    const redirect = findByType(rootValue!, 'Redirect');
+
+    expect(redirect.props.href).toBe('/(tabs)');
   });
 
-  test('returns null on web while status is unknown', () => {
+  test('returns null on web while status is unknown', async () => {
     mockStatus = 'unknown';
     Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
 
-    const result = render(<RootRedirect />);
+    const result = await render(<RootRedirect />);
     expect(result.toJSON()).toBeNull();
   });
 
-  test('renders auth buttons on web when unauthenticated', () => {
+  test('renders auth buttons on web when unauthenticated', async () => {
     mockStatus = 'unauthenticated';
     Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
 
-    const { getByText } = render(<RootRedirect />);
-    fireEvent.press(getByText('landing.signIn'));
-    fireEvent.press(getByText('landing.signUp'));
+    const { getByText } = await render(<RootRedirect />);
+    await fireEvent.press(getByText('landing.signIn'));
+    await fireEvent.press(getByText('landing.signUp'));
 
     expect(mockPush).toHaveBeenCalledWith('/(auth)/login');
     expect(mockPush).toHaveBeenCalledWith('/(auth)/signup');
   });
 
-  test('blurs active element on web before navigation', () => {
+  test('blurs active element on web before navigation', async () => {
     mockStatus = 'unauthenticated';
     Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
     const blur = jest.fn();
@@ -74,8 +81,8 @@ describe('RootRedirect', () => {
       activeElement,
     };
 
-    const { getByText } = render(<RootRedirect />);
-    fireEvent.press(getByText('landing.signIn'));
+    const { getByText } = await render(<RootRedirect />);
+    await fireEvent.press(getByText('landing.signIn'));
 
     expect(blur).toHaveBeenCalledTimes(1);
     expect(mockPush).toHaveBeenCalledWith('/(auth)/login');

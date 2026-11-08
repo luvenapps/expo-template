@@ -1,6 +1,22 @@
-# 🧭 **APP_NAME**
+# 🧭 **{{APP_NAME}}**
 
 A modern, production-ready Expo React Native template with **TypeScript**, **Jest**, **ESLint**, **Prettier**, **Maestro (E2E)**, and a clean folder structure.
+
+## Create a new app
+
+1. Create a repository from this GitHub template and clone it locally.
+2. Run `npm ci`. The one-time postinstall bootstraps the app name, slug, bundle
+   IDs, hidden configuration files, and database migrations from the repository
+   name.
+3. Run `npm run setup:local` to install the pinned Node/Java toolchain and local
+   prerequisites. Then configure your Supabase project and Firebase credentials
+   as described below.
+4. Start local Supabase with `npm run supabase:dev` in one terminal and the app
+   with `npm start` in another. Run `npm run ios`, `npm run android`, or
+   `npm run web` for the platform you want to verify.
+
+See [the refresh guide](docs/template-refresh.md) for how the base is updated
+and how to validate a fresh app before you add product features.
 
 ---
 
@@ -82,18 +98,12 @@ See [docs/mise.md](docs/mise.md) for more details and caveats.
 
 For Java pinning, this repo uses a vendor-pinned Java entry in `.mise.toml` for reproducibility.
 
-### 🧭 4. Expo CLI (optional but recommended globally)
+### 🧭 Expo CLI
 
-You can run Expo commands with `npx`, but installing globally is convenient:
-
-```bash
-npm install -g expo-cli
-```
-
-Check:
+Expo CLI is installed with the project dependencies. Verify it with:
 
 ```bash
-expo --version
+npx expo --version
 ```
 
 ### 🐋 5. Container Runtime (Supabase Local DB)
@@ -405,11 +415,11 @@ Logging and analytics conventions (logger usage, analytics helpers, and backend 
 
 This project includes a comprehensive GitHub Actions workflow to automate testing, linting, and building for multiple platforms. The CI pipeline runs unit tests with Jest, linting checks with ESLint, and end-to-end tests using Maestro on both iOS and Android environments. It also supports building the app for production to ensure the build process remains stable.
 
-For teams using self-hosted runners, detailed setup instructions are provided to configure macOS and Linux runners with all necessary dependencies installed, including Node.js, Expo CLI, Java (for Maestro), and Android/iOS build tools. Environment variables and secrets are managed securely via GitHub repository settings.
+Self-hosted workflows expect a runner managed on your machine. Runner registration and service setup are machine-level configuration and are not stored in this repository. Environment variables and secrets are configured in GitHub repository settings.
 
 The workflows are designed to trigger on pull requests and pushes to main branches, providing fast feedback on code quality and preventing regressions before merging. This setup enables a smooth and reliable continuous integration process tailored for React Native projects using Expo and Maestro.
 
-For full detailed instructions on configuring the GitHub Actions workflows and setting up self-hosted runners, please see the [Github Actions document](docs/GITHUBACTIONS.md).
+For details on workflow routing, variables, and required secrets, see the [GitHub Actions document](docs/GITHUBACTIONS.md).
 
 ---
 
@@ -420,16 +430,16 @@ For full detailed instructions on configuring the GitHub Actions workflows and s
 Follow these steps in order when setting up the project for the first time:
 
 1. **Install prerequisites**
-   - Node 24.x
+   - Node 26.x (pinned by `.mise.toml`)
    - Expo toolchain
    - Container runtime (Rancher Desktop or Docker Desktop)
-   - Java (for Android/Maestro)
+   - Java 21 (pinned by `.mise.toml`, for Android/Maestro)
    - Xcode (macOS only, for iOS)
 
 2. **Install dependencies**:
 
    ```bash
-   npm install
+   npm ci
    ```
 
 3. **Create `.env.local` file**:
@@ -518,7 +528,7 @@ Follow these steps in order when setting up the project for the first time:
 
 ### Build size checklist
 
-Before shipping preview/production builds, follow [`docs/build-size.md`](docs/build-size.md):
+Before shipping preview/production builds, follow [`docs/app-build-size.md`](docs/app-build-size.md):
 
 - Measure IPA/AAB artifacts via `node scripts/report-build-size.mjs <path>`.
 - Generate bundle reports with the commands in the doc (based on `npx react-native bundle`).
@@ -536,8 +546,8 @@ Before shipping preview/production builds, follow [`docs/build-size.md`](docs/bu
 We implement Supabase’s [Expo React Native social auth quickstart](https://supabase.com/docs/guides/auth/quickstarts/with-expo-react-native-social-auth), which uses Expo Linking + AuthSession to drive Supabase’s hosted OAuth flows. Use that guide as your source of truth; the notes below capture **APP_NAME**-specific details.
 
 1. **Register callback URLs**
-   - In Supabase Studio’s _Authentication → URL Configuration_, add both `__APP_NAME__://auth-callback` and your deployed web URL (e.g., `https://yourdomain.com/auth-callback`).
-   - The native scheme `__APP_NAME__` is already declared in `app.json`; don’t change it unless you update every OAuth redirect.
+   - In Supabase Studio’s _Authentication → URL Configuration_, add both `{{APP_SLUG}}://auth-callback` and your deployed web URL (e.g., `https://yourdomain.com/auth-callback`).
+   - The native scheme `{{APP_SLUG}}` is already declared in `app.config.ts`; don’t change it unless you update every OAuth redirect.
 2. **Enable providers (Studio)**
    - Go to _Authentication → Providers_ and toggle Apple + Google on.
    - Paste the client IDs/secrets from Apple Developer/Google Cloud. Supabase stores them securely and the Expo app reuses the same anon key.
@@ -546,13 +556,13 @@ We implement Supabase’s [Expo React Native social auth quickstart](https://sup
    - If you run Supabase locally (`npm run supabase:dev`), restart it so the provider config takes effect.
    - Restart Metro (`npm start`) and rebuild native dev clients after flipping providers on/off.
 4. **Test the flows**
-   - Native: tapping “Continue with …” opens the system browser overlay (Chrome Custom Tabs or ASWebAuthenticationSession). Once the Supabase redirect hits `__APP_NAME__://auth-callback`, the session listener updates Zustand.
+   - Native: tapping “Continue with …” opens the system browser overlay (Chrome Custom Tabs or ASWebAuthenticationSession). Once the Supabase redirect hits `{{APP_SLUG}}://auth-callback`, the session listener updates Zustand.
    - Web: the login page redirects in the same tab; after sign-in, Supabase sends the browser back to `https://<project>.supabase.co/auth/v1/callback` which returns to your app.
 
 **Provider-specific tips**:
 
 - **Apple** – You need an Apple Developer Program membership. Create a Services ID + Sign in with Apple key, set the callback to `https://<project>.supabase.co/auth/v1/callback`, and paste the credentials into Supabase.
-- **Google** – Create OAuth client IDs for iOS, Android, and Web. Use the bundle id/package `__APP_ID__` for native clients, and the Supabase callback URL for web.
+- **Google** – Create OAuth client IDs for iOS, Android, and Web. Use the bundle id/package `{{APP_ID}}` for native clients, and the Supabase callback URL for web.
 - **CLI-only setups** – If you prefer not to open the hosted Studio, you can configure providers through SQL per the quickstart doc (insert rows in `auth.external_providers`). Either way, the Expo client doesn’t need additional env vars beyond `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY`.
 
 After following the quickstart, the “Continue with Apple/Google” buttons in `app/(auth)/login.tsx` should launch the appropriate flows on iOS, Android, and web without additional code changes.
@@ -764,10 +774,10 @@ During development, you may need to clear your local databases to start with a c
 
 ```bash
 # iOS Simulator
-rm ~/Library/Developer/CoreSimulator/Devices/*/data/Containers/Data/Application/*/Library/LocalDatabase/__APP_NAME__.db
+rm ~/Library/Developer/CoreSimulator/Devices/*/data/Containers/Data/Application/*/Library/LocalDatabase/{{APP_NAME}}.db
 
 # Android Emulator
-adb shell run-as __APP_ID__ rm /data/data/__APP_ID__/databases/__APP_NAME__.db
+adb shell run-as {{APP_ID}} rm /data/data/{{APP_ID}}/databases/{{APP_NAME}}.db
 
 # Or just uninstall/reinstall the app
 ```
@@ -837,7 +847,6 @@ Before resetting databases:
 - **[Database Migrations](docs/database-migrations.md)** - Schema changes and migration workflows
 - **[Schema Architecture](docs/schema-architecture.md)** - Why two schemas and how they stay in sync
 - **[Web Caching Strategy](docs/web-caching-strategy.md)** - Planned React Query implementation
-- **[Roadmap](docs/roadmap.md)** - Current status and upcoming milestones
 
 ---
 
@@ -848,16 +857,16 @@ Before resetting databases:
 Follow these steps in order when setting up the project for the first time:
 
 1. **Install prerequisites**
-   - Node 24.x
+   - Node 26.x (pinned by `.mise.toml`)
    - Expo toolchain
    - Container runtime (Rancher Desktop or Docker Desktop)
-   - Java 17 (for Android/Maestro)
+   - Java 21 (pinned by `.mise.toml`, for Android/Maestro)
    - Xcode (macOS only, for iOS)
 
 2. **Install dependencies**:
 
    ```bash
-   npm install
+   npm ci
    ```
 
 3. **Create `.env.local` file**:
@@ -1005,7 +1014,6 @@ This project uses **Drizzle ORM** for both SQLite (local) and Postgres (Supabase
 - **[Database Migrations](docs/database-migrations.md)** - Schema changes and migration workflows
 - **[Schema Architecture](docs/schema-architecture.md)** - Why two schemas and how they stay in sync
 - **[Web Caching Strategy](docs/web-caching-strategy.md)** - Planned React Query implementation
-- **[Roadmap](docs/roadmap.md)** - Current status and upcoming milestones
 
 ---
 
@@ -1013,10 +1021,10 @@ This project uses **Drizzle ORM** for both SQLite (local) and Postgres (Supabase
 
 ### Initial Setup
 
-1. **Install prerequisites** (Node 24.x, Expo toolchain, container runtime such as Rancher Desktop, Java 17, etc.).
+1. **Install prerequisites** (Node 26.x and Java 21 from `.mise.toml`, Expo toolchain, container runtime such as Rancher Desktop, etc.).
 2. **Install dependencies**:
    ```bash
-   npm install
+   npm ci
    ```
 3. **Start the local Supabase stack** (new terminal):
 
@@ -1097,7 +1105,7 @@ Add to your selfhosted workflow and ci-quality.yml after the unit test run with 
   with:
     token: ${{ secrets.CODECOV_TOKEN }}
     files: ./coverage/lcov.info
-    slug: luvenapps/__APP_NAME__
+    slug: luvenapps/{{APP_SLUG}}
     flag: quality                         # Optional
     fail_ci_if_error: false
 ```
@@ -1119,7 +1127,7 @@ Add to your selfhosted workflow and ci-quality.yml after the unit test run with 
   with:
     token: ${{ secrets.CODECOV_TOKEN }}
     files: ./coverage/lcov.info
-    slug: luvenapps/__APP_NAME__
+    slug: luvenapps/{{APP_SLUG}}
     flag: quality                         # Optional
     fail_ci_if_error: false
 ```

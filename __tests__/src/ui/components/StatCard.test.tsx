@@ -24,23 +24,25 @@ import { Text } from 'react-native';
 import { StatCard } from '@/ui/components/StatCard';
 
 describe('StatCard', () => {
-  it('renders label and value', () => {
-    const { getByText } = render(<StatCard label="Streak" value={7} />);
+  it('renders label and value', async () => {
+    const { getByText } = await render(<StatCard label="Streak" value={7} />);
 
     expect(getByText('Streak')).toBeTruthy();
     expect(getByText('7')).toBeTruthy();
   });
 
-  it('renders helper text when provided', () => {
-    const { getByText } = render(
+  it('renders helper text when provided', async () => {
+    const { getByText } = await render(
       <StatCard label="Progress" value="42%" helperText="Last 7 days" />,
     );
 
     expect(getByText('Last 7 days')).toBeTruthy();
   });
 
-  it('renders icon when provided', () => {
-    const { getByText } = render(<StatCard label="Score" value={10} icon={<Text>Icon</Text>} />);
+  it('renders icon when provided', async () => {
+    const { getByText } = await render(
+      <StatCard label="Score" value={10} icon={<Text>Icon</Text>} />,
+    );
 
     expect(getByText('Icon')).toBeTruthy();
   });

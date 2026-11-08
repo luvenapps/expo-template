@@ -1,4 +1,5 @@
 import { fireEvent, render } from '@testing-library/react-native';
+import { mockTranslate, mockTranslationLanguage } from '../../../helpers/i18nTranslationMock';
 
 const mockOpenBrowserAsync = jest.fn();
 const mockUseFeatureFlag = jest.fn();
@@ -19,7 +20,8 @@ jest.mock('@/errors/useFriendlyErrorHandler', () => ({
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => key,
+    t: mockTranslate,
+    i18n: { language: mockTranslationLanguage.current },
   }),
 }));
 
@@ -44,22 +46,37 @@ describe('TermsScreen', () => {
     mockOpenBrowserAsync.mockReset();
     mockUseFeatureFlag.mockReset();
     mockFriendlyError.mockReset();
+    mockTranslationLanguage.current = 'en';
   });
 
-  it('shows fallback terms content when no url is provided', () => {
+  it('shows fallback terms content when no url is provided', async () => {
     mockUseFeatureFlag.mockReturnValue({ value: '' });
-    const { queryByText } = render(<TermsScreen />);
+    const { getByText, queryByText } = await render(<TermsScreen />);
 
-    expect(queryByText('settings.openTerms')).toBeNull();
+    expect(queryByText('Open Terms of Service')).toBeNull();
+    expect(getByText('Last updated: January 28, 2026')).toBeDefined();
+    expect(getByText('1. Eligibility')).toBeDefined();
   });
 
-  it('opens the browser when a terms url exists', () => {
+  it('shows translated terms content in Spanish when Spanish is selected', async () => {
+    mockTranslationLanguage.current = 'es';
+    mockUseFeatureFlag.mockReturnValue({ value: '' });
+    const { getByText, queryByText } = await render(<TermsScreen />);
+
+    expect(getByText('Términos del servicio')).toBeDefined();
+    expect(getByText('Última actualización: 28 de enero de 2026')).toBeDefined();
+    expect(getByText('1. Elegibilidad')).toBeDefined();
+    expect(getByText(/Le damos la bienvenida a/)).toBeDefined();
+    expect(queryByText('1. Eligibility')).toBeNull();
+  });
+
+  it('opens the browser when a terms url exists', async () => {
     const url = 'https://example.com/terms';
     mockUseFeatureFlag.mockReturnValue({ value: url });
-    const { getByText } = render(<TermsScreen />);
+    const { getByText } = await render(<TermsScreen />);
 
-    const button = getByText('settings.openTerms');
-    fireEvent.press(button);
+    const button = getByText('Open Terms of Service');
+    await fireEvent.press(button);
 
     expect(mockOpenBrowserAsync).toHaveBeenCalledWith(url);
   });
@@ -69,9 +86,9 @@ describe('TermsScreen', () => {
     const error = new Error('open failed');
     mockUseFeatureFlag.mockReturnValue({ value: url });
     mockOpenBrowserAsync.mockRejectedValueOnce(error);
-    const { getByText } = render(<TermsScreen />);
+    const { getByText } = await render(<TermsScreen />);
 
-    await fireEvent.press(getByText('settings.openTerms'));
+    await fireEvent.press(getByText('Open Terms of Service'));
 
     expect(mockFriendlyError).toHaveBeenCalledWith(error, { surface: 'settings.terms' });
   });

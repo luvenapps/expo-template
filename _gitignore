@@ -34,8 +34,13 @@ yarn-error.*
 .DS_Store
 *.pem
 
+# local SSL certificates
+certs/
+
 # local env files
 .env*.local
+.env.prod
+.env.preview
 
 # typescript
 *.tsbuildinfo
@@ -44,6 +49,7 @@ yarn-error.*
 /ios
 /android
 .tamagui/
+credentials/
 
 # GitHub Actions Self-Hosted Runner (Local Runtime)
 .github/runner/_
@@ -56,6 +62,7 @@ coverage
 junit.xml
 supabase/.temp/
 supabase/.branches/
+codecov*
 
 # Drizzle ORM snapshots (auto-generated state tracking)
 **/migrations/meta/

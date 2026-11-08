@@ -1,0 +1,64 @@
+name: Cleanup PR
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  expo-alias-cleanup:
+    name: cleanup / Delete PR Alias In Expo
+    if: ${{ github.event.pull_request.merged == true }}
+    runs-on: ${{ fromJSON(vars.USE_SELF_HOSTED == 'true' && '["self-hosted","macos","arm64"]' || '["ubuntu-latest"]') }}
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN || '' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Prepare isolated mise state and GnuPG home
+        shell: bash
+        run: |
+          mkdir -p "${RUNNER_TEMP}/gnupg" "${RUNNER_TEMP}/mise-state"
+          chmod 700 "${RUNNER_TEMP}/gnupg" "${RUNNER_TEMP}/mise-state"
+          echo "MISE_STATE_DIR=$RUNNER_TEMP/mise-state" >> "$GITHUB_ENV"
+
+      - name: Pin mise cache to local disk
+        shell: bash
+        run: |
+          MISE_LOCAL="$HOME/.github/local-ci-cache/mise"
+          mkdir -p "$MISE_LOCAL/cache"
+          echo "MISE_DATA_DIR=$MISE_LOCAL"        >> "$GITHUB_ENV"
+          echo "MISE_CACHE_DIR=$MISE_LOCAL/cache" >> "$GITHUB_ENV"
+
+      - name: Setup mise toolchain
+        uses: jdx/mise-action@v5
+        with:
+          version: '2026.10.25'
+          install: true
+          cache: false
+          log_level: ${{ runner.debug == '1' && 'debug' || 'info' }}
+        env:
+          GNUPGHOME: ${{ runner.temp }}/gnupg
+          MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+
+      - name: Install dependencies
+        # Required so EAS can resolve app config plugins (e.g. expo-router) during alias deletion.
+        run: npm ci
+
+      - name: Validate EAS CLI version variable
+        shell: bash
+        run: |
+          if [ -z "${{ vars.EAS_CLI_VERSION }}" ]; then
+            echo "❌ Missing EAS_CLI_VERSION GitHub variable."
+            exit 1
+          fi
+
+      - name: Sanity check versions
+        run: |
+          node -v
+          npm -v
+          npx expo --version
+
+      - name: Delete Alias
+        if: ${{ env.EXPO_TOKEN != '' }}
+        run: npx eas-cli@${{ vars.EAS_CLI_VERSION }} deploy:alias:delete "pr-${{ github.event.pull_request.number }}" --non-interactive

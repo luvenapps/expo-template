@@ -18,6 +18,9 @@ module.exports = defineConfig([
   // Ignore Supabase Deno edge functions (they use Deno-specific imports)
   { ignores: ['supabase/functions/**'] },
 
+  // Ignore agent tool directories (third-party bundled files)
+  { ignores: ['.claude/**', '.codex/**'] },
+
   // Existing Expo base config
   expoConfig,
 
@@ -25,6 +28,31 @@ module.exports = defineConfig([
   {
     rules: {
       'import/no-unresolved': ['error', { ignore: ['expo-sqlite/next', '@supabase/supabase-js'] }],
+    },
+  },
+  // The SDK 58 Expo config enables this compiler diagnostic for existing
+  // effect-driven state synchronization in these screens and providers.
+  {
+    files: [
+      'app/(auth)/auth-callback.tsx',
+      'app/(auth)/signup.tsx',
+      'app/(tabs)/index.tsx',
+      'app/(tabs)/settings/account.tsx',
+      'app/(tabs)/settings/database.tsx',
+      'app/(tabs)/settings/developer-utilities.tsx',
+      'app/(tabs)/settings/profile.tsx',
+      'src/notifications/useNotificationSettings.ts',
+      'src/ui/providers/AppProviders.tsx',
+      'src/ui/theme/ThemeProvider.tsx',
+    ],
+    rules: {
+      'react-hooks/set-state-in-effect': 'off',
+    },
+  },
+  {
+    files: ['app/(tabs)/settings/developer-utilities.tsx'],
+    rules: {
+      'react-hooks/purity': 'off',
     },
   },
   // Project-specific plugin for error handling/toast usage

@@ -1,6 +1,6 @@
-/* istanbul ignore file */
 import { HeaderBackButton } from '@react-navigation/elements';
 import { useSessionStore } from '@/auth/session';
+import { useOptionalThemeContext } from '@/ui/theme/ThemeProvider';
 import { Redirect, Stack, usePathname, useRouter } from 'expo-router';
 import { Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -10,6 +10,7 @@ export default function AuthLayout() {
   const { t } = useTranslation();
   const status = useSessionStore((state) => state.status);
   const pathname = usePathname();
+  const palette = useOptionalThemeContext()?.palette;
   const homeHref = Platform.OS === 'web' ? '/' : '/(tabs)';
   const shouldRedirectToHome =
     Platform.OS === 'web' && status === 'authenticated' && pathname !== '/auth-callback';
@@ -33,10 +34,17 @@ export default function AuthLayout() {
   return (
     <Stack
       screenOptions={{
+        ...(palette
+          ? {
+              headerStyle: { backgroundColor: palette.background },
+              headerTintColor: palette.text,
+              headerTitleStyle: { color: palette.text },
+            }
+          : {}),
         headerBackButtonDisplayMode: 'minimal',
         headerTitleAlign: 'center',
         headerShadowVisible: false,
-        headerLeft: (props) => <HeaderBackButton {...props} label="" onPress={goBack} />,
+        headerLeft: () => <HeaderBackButton label="" tintColor={palette?.text} onPress={goBack} />,
       }}
     >
       <Stack.Screen name="login" options={{ title: t('auth.header.signIn') }} />

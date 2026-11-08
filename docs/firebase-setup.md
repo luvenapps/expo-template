@@ -25,14 +25,14 @@ Inside the same Firebase project, register each platform:
 1. Click **Add app → iOS**.
 2. Use your bundle identifier.
 3. Download the generated `GoogleService-Info.plist`.
-4. Place the file at `credentials/GoogleService-Info.plist` (this path is gitignored and referenced by `app.json`).
+4. Place the file at `credentials/GoogleService-Info.plist` in the primary Git checkout. This path is gitignored and used by Expo's native config.
 
 ### Android
 
 1. Click **Add app → Android**.
 2. Use the bundle identifier as the package name.
 3. Download the generated `google-services.json`.
-4. Place the file at `credentials/google-services.json`.
+4. Place the file at `credentials/google-services.json` in the primary Git checkout.
 
 ### Web
 
@@ -54,6 +54,8 @@ Inside the same Firebase project, register each platform:
 
 - The `credentials/` directory is part of the workspace but should remain in `.gitignore`.
 - Expo’s config plugin (`@react-native-firebase/app`) reads from that directory during native builds.
+- When starting Expo or running a native platform command from another Git worktree, the setup helper copies a missing `.env.local` from the primary checkout. `npm start` also copies any available missing Firebase files for both platforms so Expo can resolve config while using an already-installed development app. Native commands copy only their platform’s Firebase file. Existing files in the active worktree are preserved, and credentials are never copied from sibling worktrees.
+- If `.env.local` is unavailable, provide `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` in the shell. For Firebase files, the native command accepts `GOOGLE_SERVICE_INFO_PLIST_B64` on iOS or `GOOGLE_SERVICES_JSON_B64` on Android.
 - For CI/EAS builds (including store deploys), provide the config files via secrets and decode them before the build:
   - `GOOGLE_SERVICE_INFO_PLIST_B64` — base64 of `credentials/GoogleService-Info.plist`
   - `GOOGLE_SERVICES_JSON_B64` — base64 of `credentials/google-services.json`
@@ -62,9 +64,14 @@ Inside the same Firebase project, register each platform:
 
 ## 4. Verify locally
 
-1. After dropping the plist/json, run `npm start` for Metro and `npm run ios` / `npm run android` to rebuild dev clients so the Firebase config is embedded.
-2. Open the app (native + web) and trigger a few actions (e.g., toggles in Settings). In the Firebase Console → Analytics → DebugView you should see events like `notifications:reminders` and IAM lifecycle events (`iam:displayed`, `iam:clicked`, `iam:dismissed`) appear almost immediately.
-3. For Android push: tap **Settings → Developer Utilities → Register push token (Android)** to log the FCM token in Metro, then in Firebase Console → Cloud Messaging use “Send test message” with that token (notification message). Foreground and background delivery should work; iOS/web push are deferred to Stage 11.
+1. Start Metro with `npm start` in one terminal. In another terminal, run `npm run ios` or `npm run android` to build and install the native app and connect it to that Metro server; these commands use Expo's `--no-bundler` option. Expo handles native project generation and dependency installation. For an already installed compatible development build, run `npm start` and press `i` or `a` instead. Rebuild after changing native dependencies or app configuration; creating a worktree by itself does not require a rebuild.
+2. Each Metro server serves the worktree where it started. Use a separate port when running multiple worktrees and connect the app to the intended server. Xcode is optional for native debugging.
+3. Open the app (native + web) and trigger a few actions (e.g., toggles in Settings). In the Firebase Console → Analytics → DebugView you should see events like `notifications:reminders` and IAM lifecycle events (`iam:displayed`, `iam:clicked`, `iam:dismissed`) appear almost immediately.
+4. For Android push: tap **Settings → Developer Utilities → Register push token (Android)** to log the FCM token in Metro, then in Firebase Console → Cloud Messaging use “Send test message” with that token (notification message). Foreground and background delivery should work; iOS/web push are deferred to Stage 11.
+
+### Analytics DebugView
+
+Use `npm run ios -- --debug` or `npm run android -- --debug` to enable Firebase Analytics DebugView while keeping Expo's interactive device picker. Physical iOS devices running iOS 16 or earlier require `ios-deploy`; install it once with `brew install ios-deploy`. Simulators and iOS 17+ devices use Xcode's built-in launch tools.
 
 ## 5. Remote Config (Feature Flags)
 

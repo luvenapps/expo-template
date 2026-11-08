@@ -1,104 +1,63 @@
 name: Quality CI
 
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - '**/*.md'
-      - '**/*.mdx'
-      - 'docs/**'
-      - '.editorconfig'
-      - '.gitattributes'
-      - '.gitignore'
-      - '.nvmrc'
-      - '.node-version'
-      - '.prettierignore'
-      - '.prettierrc*'
-      - '.eslintrc*'
-      - 'CODEOWNERS'
-      - 'LICENSE*'
-  pull_request:
-    paths-ignore:
-      - '**/*.md'
-      - '**/*.mdx'
-      - 'docs/**'
-      - '.editorconfig'
-      - '.gitattributes'
-      - '.gitignore'
-      - '.nvmrc'
-      - '.node-version'
-      - '.prettierignore'
-      - '.prettierrc*'
-      - '.eslintrc*'
-      - 'CODEOWNERS'
-      - 'LICENSE*'
-  workflow_dispatch:
+  workflow_call:
+    inputs:
+      env_prefix:
+        description: Environment prefix (PROD or DEV)
+        required: true
+        type: string
+      runner_target:
+        description: hosted or selfhosted
+        required: true
+        type: string
 
 permissions:
   contents: read
+  pull-requests: write
 
 concurrency:
-  group: quality-${{ github.ref }}
+  group: quality-${{ github.workflow }}-${{ github.run_id }}
   cancel-in-progress: true
 
 jobs:
-  quality-hosted:
-    name: Quality Checks - Hosted Ubuntu
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: expo-template-testing
+  quality:
+    name: Quality Checks
+    runs-on: ${{ fromJSON(inputs.runner_target == 'selfhosted' && '["self-hosted","macos","arm64"]' || '["ubuntu-latest"]') }}
+    timeout-minutes: 90
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
-      - name: Prepare isolated GnuPG home for mise
+      - name: Prepare isolated mise state and GnuPG home
         shell: bash
-        working-directory: ${{ github.workspace }}
         run: |
-          mkdir -p "${RUNNER_TEMP}/gnupg"
-          chmod 700 "${RUNNER_TEMP}/gnupg"
+          mkdir -p "${RUNNER_TEMP}/gnupg" "${RUNNER_TEMP}/mise-state"
+          chmod 700 "${RUNNER_TEMP}/gnupg" "${RUNNER_TEMP}/mise-state"
+          echo "MISE_STATE_DIR=$RUNNER_TEMP/mise-state" >> "$GITHUB_ENV"
+
+      - name: Pin mise cache to local disk
+        if: ${{ inputs.runner_target == 'selfhosted' }}
+        shell: bash
+        run: |
+          MISE_LOCAL="$HOME/.github/local-ci-cache/mise"
+          mkdir -p "$MISE_LOCAL/cache"
+          echo "MISE_DATA_DIR=$MISE_LOCAL"       >> "$GITHUB_ENV"
+          echo "MISE_CACHE_DIR=$MISE_LOCAL/cache" >> "$GITHUB_ENV"
 
       - name: Setup mise toolchain
-        uses: jdx/mise-action@v3
+        uses: jdx/mise-action@v5
         with:
-          version: '2026.2.13'
+          version: '2026.10.25'
           install: true
+          cache: ${{ inputs.runner_target != 'selfhosted' }}
           log_level: ${{ runner.debug == '1' && 'debug' || 'info' }}
         env:
           GNUPGHOME: ${{ runner.temp }}/gnupg
           MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
 
-      - name: Scaffold & verify (retry once)
-        working-directory: .
-        shell: bash
-        run: |
-          set -euo pipefail
-          max=2
-          attempt=1
-          while [ "$attempt" -le "$max" ]; do
-            echo "==> Attempt $attempt/$max: scaffold + verify"
-            rm -rf expo-template-testing || true
-            npx create-expo-app expo-template-testing --template "$GITHUB_WORKSPACE" --yes
-            pushd expo-template-testing >/dev/null
-            npx expo --version || true
-            node -e "console.log('react-native', require('react-native/package.json').version)" || true
-            node -e "console.log('expo', require('expo/package.json').version)" || true
-            if npx expo install --check; then
-              echo "✅ Expo dependency alignment OK"
-              popd >/dev/null
-              break
-            fi
-            popd >/dev/null
-            if [ "$attempt" -lt "$max" ]; then
-              echo "⚠️ Verification failed. Retrying from scratch..." >&2
-              attempt=$((attempt+1))
-              continue
-            else
-              echo "❌ Verification failed after $max attempts." >&2
-              exit 1
-            fi
-          done
+      - name: Install deps
+        run: npm ci
 
       - name: Verify Expo/RN dependency alignment
         id: expo_deps
@@ -123,6 +82,49 @@ jobs:
         run: |
           echo "::error::Expo Doctor reported issues. Review the Doctor step logs for details."
 
+      - name: Update Expo Doctor PR comment
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && (steps.expo_doctor.outcome == 'failure' || steps.expo_doctor.outcome == 'success') }}
+        uses: actions/github-script@v9
+        continue-on-error: true
+        env:
+          DOCTOR_OUTCOME: ${{ steps.expo_doctor.outcome }}
+          EXPO_DEPS_OUTCOME: ${{ steps.expo_deps.outcome }}
+        with:
+          script: |
+            const marker = '<!-- expo-doctor-report -->';
+            const passedMarker = '<!-- expo-doctor-passed -->';
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+            const existing = comments.find((comment) =>
+              comment.user?.login === 'github-actions[bot]' && comment.body?.includes(marker),
+            );
+            const passed = process.env.DOCTOR_OUTCOME === 'success';
+            if (passed && (!existing || existing.body.includes(passedMarker))) return;
+
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+            const sha = context.payload.pull_request.head.sha.slice(0, 7);
+            const body = passed
+              ? [marker, passedMarker, `✅ Expo Doctor passed for \`${sha}\`.`, `[View CI run](${runUrl})`].join('\n')
+              : [
+                  marker,
+                  `⚠️ Expo Doctor reported issues for \`${sha}\`.`,
+                  `[View the CI run](${runUrl}) and open the Doctor step for details.`,
+                  ...(process.env.EXPO_DEPS_OUTCOME === 'failure'
+                    ? ['Expo dependencies are also out of alignment. Run `npx expo install --fix` and commit the changes.']
+                    : []),
+                ].join('\n');
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
+
       - name: Check formatting
         run: npm run format:check
 
@@ -133,28 +135,33 @@ jobs:
         run: npm run test -- --coverage --runInBand
 
       - name: Install GPG
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && inputs.runner_target != 'selfhosted' }}
         run: |
           sudo apt-get update
           sudo apt-get install -y gnupg
 
       - name: Upload coverage to Codecov
         if: ${{ !cancelled() }}
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
-          slug: luvenapps/expo-template
-          flags: quality
+          slug: ${{ github.repository }}
+          flags: ${{ inputs.runner_target }}-quality
           fail_ci_if_error: false
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./junit.xml
-          slug: luvenapps/expo-template
-          flags: quality
+          slug: ${{ github.repository }}
+          flags: ${{ inputs.runner_target }}-quality
           report_type: test_results
           fail_ci_if_error: false
+
+      - name: Clean self-hosted workspace
+        if: ${{ always() && inputs.runner_target == 'selfhosted' }}
+        shell: bash
+        run: .github/scripts/clean_selfhosted_workspace.sh

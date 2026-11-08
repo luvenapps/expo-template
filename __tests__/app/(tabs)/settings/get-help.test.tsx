@@ -1,5 +1,5 @@
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
-import { Linking } from 'react-native';
+import { Linking, Platform } from 'react-native';
 
 const mockOpenUrl = jest.fn();
 const mockFriendlyError = jest.fn();
@@ -29,8 +29,20 @@ jest.mock('@/ui', () => {
     React.createElement(View, null, React.createElement(Text, null, title), children);
   SettingsSection.displayName = 'SettingsSection';
 
-  const PrimaryButton = ({ children, onPress }: { children: any; onPress: () => void }) =>
-    React.createElement(Pressable, { onPress }, React.createElement(Text, null, children));
+  const PrimaryButton = ({
+    children,
+    gap,
+    onPress,
+  }: {
+    children: any;
+    gap?: string;
+    onPress: () => void;
+  }) =>
+    React.createElement(
+      Pressable,
+      { onPress, gap, testID: 'send-email-button' },
+      React.createElement(Text, null, children),
+    );
   PrimaryButton.displayName = 'PrimaryButton';
 
   return {
@@ -102,7 +114,7 @@ jest.mock('tamagui', () => {
   };
 });
 
-jest.mock('@tamagui/lucide-icons', () => {
+jest.mock('@/ui/icons', () => {
   const React = require('react');
   const { View } = require('react-native');
   const Mail = () => React.createElement(View, null);
@@ -110,8 +122,8 @@ jest.mock('@tamagui/lucide-icons', () => {
   return { __esModule: true, Mail };
 });
 
-import GetHelpScreen from '../../../../app/(tabs)/settings/get-help';
 import { DOMAIN } from '@/config/domain.config';
+import GetHelpScreen from '../../../../app/(tabs)/settings/get-help';
 
 describe('GetHelpScreen', () => {
   beforeEach(() => {
@@ -119,11 +131,11 @@ describe('GetHelpScreen', () => {
     mockFriendlyError.mockReset();
   });
 
-  it('builds a feedback email by default', () => {
-    const { getByText, getByTestId } = render(<GetHelpScreen />);
+  it('builds a feedback email by default', async () => {
+    const { getByText, getByTestId } = await render(<GetHelpScreen />);
 
-    fireEvent.changeText(getByTestId('message-input'), 'Hello there');
-    fireEvent.press(getByText('settings.getHelpSendEmail'));
+    await fireEvent.changeText(getByTestId('message-input'), 'Hello there');
+    await fireEvent.press(getByText('settings.getHelpSendEmail'));
 
     expect(mockOpenUrl).toHaveBeenCalledWith(
       expect.stringContaining(`mailto:${DOMAIN.app.supportEmail}`),
@@ -132,11 +144,11 @@ describe('GetHelpScreen', () => {
     expect(mockOpenUrl.mock.calls[0][0]).toContain('body=Hello%20there');
   });
 
-  it('builds a bug report email when topic changes', () => {
-    const { getByLabelText, getByText } = render(<GetHelpScreen />);
+  it('builds a bug report email when topic changes', async () => {
+    const { getByLabelText, getByText } = await render(<GetHelpScreen />);
 
-    fireEvent(getByLabelText('Support topic'), 'onValueChange', 'bug');
-    fireEvent.press(getByText('settings.getHelpSendEmail'));
+    await fireEvent(getByLabelText('Support topic'), 'onValueChange', 'bug');
+    await fireEvent.press(getByText('settings.getHelpSendEmail'));
 
     expect(mockOpenUrl.mock.calls[0][0]).toContain('subject=settings.getHelpBugSubject');
   });
@@ -144,12 +156,34 @@ describe('GetHelpScreen', () => {
   it('reports errors when the mail client fails to open', async () => {
     const error = new Error('cannot open');
     mockOpenUrl.mockRejectedValueOnce(error);
-    const { getByText } = render(<GetHelpScreen />);
+    const { getByText } = await render(<GetHelpScreen />);
 
-    fireEvent.press(getByText('settings.getHelpSendEmail'));
+    await fireEvent.press(getByText('settings.getHelpSendEmail'));
 
     await waitFor(() => {
       expect(mockFriendlyError).toHaveBeenCalledWith(error, { surface: 'settings.get-help' });
     });
+  });
+
+  it('renders the browser-specific support controls', async () => {
+    const originalPlatform = Platform.OS;
+    Object.defineProperty(Platform, 'OS', {
+      value: 'web',
+      writable: true,
+      configurable: true,
+    });
+
+    try {
+      const { getByText, getByTestId } = await render(<GetHelpScreen />);
+
+      expect(getByText('settings.getHelpSendEmail')).toBeDefined();
+      expect(getByTestId('send-email-button').props.gap).toBe('6px');
+    } finally {
+      Object.defineProperty(Platform, 'OS', {
+        value: originalPlatform,
+        writable: true,
+        configurable: true,
+      });
+    }
   });
 });

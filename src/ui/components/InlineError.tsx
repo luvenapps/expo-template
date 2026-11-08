@@ -8,7 +8,7 @@ type InlineErrorProps = {
 export function InlineError({ message, testID }: InlineErrorProps) {
   if (!message) return null;
   return (
-    <Paragraph color="$dangerColor" fontSize="$3" textAlign="center" testID={testID}>
+    <Paragraph color="dangerColor" fontSize="3" textAlign="center" testID={testID}>
       {message}
     </Paragraph>
   );

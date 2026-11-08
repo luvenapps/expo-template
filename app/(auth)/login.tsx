@@ -14,18 +14,28 @@ import {
   useToast,
 } from '@/ui';
 import type { NavigationProp, ParamListBase } from '@react-navigation/native';
-import { Eye, EyeOff } from '@tamagui/lucide-icons';
+import { Eye, EyeOff } from '@/ui/icons';
 import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Platform, TextInput } from 'react-native';
+import { Platform, type TextInputInstance } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import { Button, Card, Form, Separator, Spinner, View, YStack, useThemeName } from 'tamagui';
+import {
+  Button,
+  Card,
+  Form,
+  Separator,
+  Spinner,
+  View,
+  XStack,
+  YStack,
+  useThemeName,
+} from 'tamagui';
 
 export default function LoginScreen() {
   const navigation = useNavigation<NavigationProp<ParamListBase>>();
   const router = useRouter();
-  const passwordInputRef = useRef<TextInput>(null);
+  const passwordInputRef = useRef<TextInputInstance>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -295,20 +305,25 @@ export default function LoginScreen() {
       }}
     >
       <Card
-        bordered
-        elevate
-        padding="$6"
+        borderWidth={1}
+        borderColor="border-color"
+        borderRadius={12}
+        shadowColor="shadowColor"
+        shadowOffset={{ width: 0, height: 2 }}
+        shadowOpacity={0.15}
+        shadowRadius={4}
+        padding="6"
         width="100%"
         maxWidth={440}
-        backgroundColor="$backgroundStrong"
+        backgroundColor="backgroundStrong"
       >
-        <YStack gap="$5" width="100%">
+        <YStack gap="5" width="100%">
           <YStack gap="$2" alignItems="center">
             <TitleText textAlign="center">{t('auth.loginTitle')}</TitleText>
             <SubtitleText textAlign="center">{t('auth.loginSubtitle')}</SubtitleText>
           </YStack>
 
-          <YStack gap="$3" width="100%" alignItems="center">
+          <YStack gap="3" width="100%" alignItems="center">
             {oauthButtons.map(
               ({
                 provider,
@@ -333,42 +348,40 @@ export default function LoginScreen() {
                 <Button
                   key={provider}
                   testID={`oauth-${provider}-button`}
-                  flex={1}
                   width="100%"
                   minWidth={minWidth}
                   height={buttonHeight ?? 40}
+                  alignItems="center"
+                  justifyContent="center"
                   paddingHorizontal={horizontalPadding ?? 12}
-                  backgroundColor={backgroundColor ?? '$surface'}
-                  borderRadius="$2"
+                  backgroundColor={{
+                    default: backgroundColor ?? 'surface',
+                    hover: hoverBackgroundColor ?? backgroundColor ?? 'surface',
+                  }}
+                  borderRadius="2"
                   borderWidth={1}
-                  borderColor={borderColor ?? '$borderColor'}
-                  color={textColor ?? '$color'}
+                  borderColor={{
+                    default: borderColor ?? 'border-color',
+                    hover: hoverBorderColor ?? borderColor ?? '#1F1F1F',
+                  }}
+                  color={{
+                    default: textColor ?? 'color',
+                    hover: hoverTextColor ?? textColor ?? 'color',
+                  }}
+                  boxShadow={{ hover: '0 1px 3px rgba(60,64,67,0.3)' }}
+                  opacity="press:0.9 disabled:0.5"
                   disabled={disabled || isLoading}
                   aria-label={`oauth-${provider}`}
-                  hoverStyle={{
-                    backgroundColor: hoverBackgroundColor ?? backgroundColor ?? '$surface',
-                    borderColor: hoverBorderColor ?? borderColor ?? '#1F1F1F',
-                    shadowColor: 'rgba(60, 64, 67, 0.3)',
-                    shadowRadius: 3,
-                    shadowOffset: { width: 0, height: 1 },
-                    shadowOpacity: 1,
-                  }}
-                  pressStyle={{
-                    opacity: 0.9,
-                  }}
-                  disabledStyle={{
-                    opacity: 0.5,
-                  }}
                   onPress={() => {
                     void handleOAuthSignIn(provider);
                   }}
                 >
-                  <View
-                    flexDirection="row"
+                  <XStack
                     alignItems="center"
                     justifyContent="center"
                     gap="$2"
                     width="100%"
+                    height={buttonHeight ?? 40}
                   >
                     <View
                       width={iconSize ?? 20}
@@ -381,47 +394,48 @@ export default function LoginScreen() {
                       {icon}
                     </View>
                     <BodyText
-                      color={textColor ?? '$color'}
+                      fontFamily="body"
+                      color={{
+                        default: textColor ?? 'color',
+                        hover: hoverTextColor ?? textColor ?? 'color',
+                      }}
                       fontWeight="600"
                       fontSize={fontSize ?? 16}
+                      lineHeight="20px"
                       flexShrink={1}
                       paddingRight={titlePaddingEnd ?? 16}
-                      hoverStyle={{
-                        color: hoverTextColor ?? textColor ?? '$color',
-                      }}
                     >
                       {label}
                     </BodyText>
-                  </View>
+                  </XStack>
                 </Button>
               ),
             )}
-            <View
+            <XStack
               marginTop={Platform.OS === 'web' ? 0 : 10}
-              flexDirection="row"
               alignItems="center"
-              gap="$3"
+              gap="3"
               accessible
               accessibilityLabel={t('auth.oauthDivider')}
             >
               <View
                 flex={1}
                 height={1}
-                backgroundColor="$colorMuted"
+                backgroundColor="colorMuted"
                 aria-hidden
                 accessibilityElementsHidden
                 importantForAccessibility="no-hide-descendants"
               />
-              <CaptionText color="$colorMuted">{t('auth.oauthDivider')}</CaptionText>
+              <CaptionText color="colorMuted">{t('auth.oauthDivider')}</CaptionText>
               <View
                 flex={1}
                 height={1}
-                backgroundColor="$colorMuted"
+                backgroundColor="colorMuted"
                 aria-hidden
                 accessibilityElementsHidden
                 importantForAccessibility="no-hide-descendants"
               />
-            </View>
+            </XStack>
           </YStack>
 
           <Form onSubmit={handleSubmit} width="100%" gap="$4">
@@ -431,7 +445,7 @@ export default function LoginScreen() {
               inputTestID="email-input"
               label={t('auth.emailLabel')}
               placeholder={t('auth.emailPlaceholder')}
-              placeholderTextColor="$colorMuted"
+              placeholderTextColor="colorMuted"
               keyboardType="email-address"
               autoCapitalize="none"
               value={email}
@@ -447,27 +461,27 @@ export default function LoginScreen() {
               inputTestID="password-input"
               label={t('auth.passwordLabel')}
               placeholder={t('auth.passwordPlaceholder')}
-              placeholderTextColor="$colorMuted"
+              placeholderTextColor="colorMuted"
               secureTextEntry={!showPassword}
               value={password}
               onChangeText={setPassword}
               returnKeyType="done"
               onSubmitEditing={handleSubmit}
-              paddingRight="$10"
+              paddingRight="10"
               rightElement={
                 <View
-                  padding="$1"
+                  padding="1"
+                  cursor="hover:pointer"
+                  opacity="hover:0.7 press:0.5"
                   testID="toggle-password-visibility"
                   aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
                   onPress={() => setShowPassword((prev) => !prev)}
-                  hoverStyle={{ opacity: 0.7, cursor: 'pointer' }}
-                  pressStyle={{ opacity: 0.5 }}
                   role="button"
                 >
                   {showPassword ? (
-                    <EyeOff size={20} color="$colorMuted" />
+                    <EyeOff size={20} color="colorMuted" />
                   ) : (
-                    <Eye size={20} color="$colorMuted" />
+                    <Eye size={20} color="colorMuted" />
                   )}
                 </View>
               }
@@ -476,10 +490,11 @@ export default function LoginScreen() {
             <CaptionText
               testID="forgot-password-link"
               textAlign="right"
-              color="$accentColor"
+              color="accent-color"
               fontWeight="600"
               onPress={() => router.push('/(auth)/forgot-password')}
-              hoverStyle={{ opacity: 0.8, cursor: 'pointer' }}
+              opacity="hover:0.8"
+              cursor="hover:pointer"
             >
               {t('auth.forgotPasswordLink')}
             </CaptionText>
@@ -497,15 +512,15 @@ export default function LoginScreen() {
             </Form.Trigger>
           </Form>
 
-          <Separator marginTop={Platform.OS === 'web' ? '$0' : '$4'}></Separator>
+          <Separator marginTop={`${Platform.OS === 'web' ? '0' : '4'}`}></Separator>
 
           <YStack
             gap="$2"
             width="100%"
             alignItems="center"
-            marginBottom={Platform.OS === 'web' ? -10 : '$4'}
+            marginBottom={Platform.OS === 'web' ? -10 : '4'}
           >
-            <CaptionText color="$colorMuted">{t('auth.noAccountPrompt')}</CaptionText>
+            <CaptionText color="colorMuted">{t('auth.noAccountPrompt')}</CaptionText>
             <PrimaryButton
               testID="create-account-button"
               width="100%"
@@ -534,7 +549,7 @@ export default function LoginScreen() {
           backgroundColor="rgba(0,0,0,0.2)"
           style={{ pointerEvents: 'auto' }}
         >
-          <Spinner size="large" color="$accentColor" />
+          <Spinner size="large" color="accent-color" />
         </View>
       ) : null}
       <ToastContainer messages={toast.messages} dismiss={toast.dismiss} />

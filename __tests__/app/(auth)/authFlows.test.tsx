@@ -21,7 +21,7 @@ jest.mock('@/auth/service', () => ({
   sendPasswordReset: jest.fn(),
 }));
 
-jest.mock('@tamagui/lucide-icons', () => ({
+jest.mock('@/ui/icons', () => ({
   Eye: () => null,
   EyeOff: () => null,
 }));
@@ -98,9 +98,9 @@ const mockedSignUp = signUpWithEmail as jest.Mock;
 const mockedPasswordReset = sendPasswordReset as jest.Mock;
 
 // Helper to render components with Tamagui providers
-const renderWithProviders = (component: React.ReactElement) => {
-  return render(
-    <TamaguiProvider config={tamaguiConfig}>
+const renderWithProviders = async (component: React.ReactElement) => {
+  return await render(
+    <TamaguiProvider config={tamaguiConfig} defaultTheme="light">
       <Theme name="light">{component}</Theme>
     </TamaguiProvider>,
   );
@@ -115,14 +115,14 @@ describe('Auth auxiliary flows', () => {
   describe('SignUpScreen', () => {
     it('submits sign up form successfully', async () => {
       mockedSignUp.mockResolvedValueOnce({ success: true });
-      const { getByTestId } = renderWithProviders(<SignUpScreen />);
+      const { getByTestId } = await renderWithProviders(<SignUpScreen />);
 
-      fireEvent.changeText(getByTestId('name-input'), 'Test User');
-      fireEvent.changeText(getByTestId('email-input'), 'new@example.com');
-      fireEvent.changeText(getByTestId('password-input'), 'password123');
-      fireEvent.changeText(getByTestId('confirm-password-input'), 'password123');
+      await fireEvent.changeText(getByTestId('name-input'), 'Test User');
+      await fireEvent.changeText(getByTestId('email-input'), 'new@example.com');
+      await fireEvent.changeText(getByTestId('password-input'), 'password123');
+      await fireEvent.changeText(getByTestId('confirm-password-input'), 'password123');
 
-      fireEvent.press(getByTestId('create-account-button'));
+      await fireEvent.press(getByTestId('create-account-button'));
 
       await waitFor(() => {
         expect(mockedSignUp).toHaveBeenCalledWith('new@example.com', 'password123', {
@@ -135,14 +135,14 @@ describe('Auth auxiliary flows', () => {
 
     it('trims whitespace from email before submission', async () => {
       mockedSignUp.mockResolvedValueOnce({ success: true });
-      const { getByTestId } = renderWithProviders(<SignUpScreen />);
+      const { getByTestId } = await renderWithProviders(<SignUpScreen />);
 
-      fireEvent.changeText(getByTestId('name-input'), 'Test User');
-      fireEvent.changeText(getByTestId('email-input'), '  spaced@example.com  ');
-      fireEvent.changeText(getByTestId('password-input'), 'password123');
-      fireEvent.changeText(getByTestId('confirm-password-input'), 'password123');
+      await fireEvent.changeText(getByTestId('name-input'), 'Test User');
+      await fireEvent.changeText(getByTestId('email-input'), '  spaced@example.com  ');
+      await fireEvent.changeText(getByTestId('password-input'), 'password123');
+      await fireEvent.changeText(getByTestId('confirm-password-input'), 'password123');
 
-      fireEvent.press(getByTestId('create-account-button'));
+      await fireEvent.press(getByTestId('create-account-button'));
 
       await waitFor(() => {
         expect(mockedSignUp).toHaveBeenCalledWith('spaced@example.com', 'password123', {
@@ -153,14 +153,14 @@ describe('Auth auxiliary flows', () => {
     });
 
     it('shows error when passwords do not match', async () => {
-      const { getByTestId } = renderWithProviders(<SignUpScreen />);
+      const { getByTestId } = await renderWithProviders(<SignUpScreen />);
 
-      fireEvent.changeText(getByTestId('name-input'), 'Test User');
-      fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
-      fireEvent.changeText(getByTestId('password-input'), 'password123');
-      fireEvent.changeText(getByTestId('confirm-password-input'), 'different123');
+      await fireEvent.changeText(getByTestId('name-input'), 'Test User');
+      await fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
+      await fireEvent.changeText(getByTestId('password-input'), 'password123');
+      await fireEvent.changeText(getByTestId('confirm-password-input'), 'different123');
 
-      fireEvent.press(getByTestId('create-account-button'));
+      await fireEvent.press(getByTestId('create-account-button'));
 
       await waitFor(() => {
         expect(mockedSignUp).not.toHaveBeenCalled();
@@ -168,14 +168,14 @@ describe('Auth auxiliary flows', () => {
     });
 
     it('shows error when form is incomplete', async () => {
-      const { getByTestId } = renderWithProviders(<SignUpScreen />);
+      const { getByTestId } = await renderWithProviders(<SignUpScreen />);
 
-      fireEvent.changeText(getByTestId('email-input'), '');
-      fireEvent.changeText(getByTestId('name-input'), '');
-      fireEvent.changeText(getByTestId('password-input'), 'short');
-      fireEvent.changeText(getByTestId('confirm-password-input'), 'short');
+      await fireEvent.changeText(getByTestId('email-input'), '');
+      await fireEvent.changeText(getByTestId('name-input'), '');
+      await fireEvent.changeText(getByTestId('password-input'), 'short');
+      await fireEvent.changeText(getByTestId('confirm-password-input'), 'short');
 
-      fireEvent.press(getByTestId('create-account-button'));
+      await fireEvent.press(getByTestId('create-account-button'));
 
       await waitFor(() => {
         expect(mockedSignUp).not.toHaveBeenCalled();
@@ -183,14 +183,14 @@ describe('Auth auxiliary flows', () => {
     });
 
     it('shows error when password is too short', async () => {
-      const { getByTestId } = renderWithProviders(<SignUpScreen />);
+      const { getByTestId } = await renderWithProviders(<SignUpScreen />);
 
-      fireEvent.changeText(getByTestId('name-input'), 'Test User');
-      fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
-      fireEvent.changeText(getByTestId('password-input'), 'short');
-      fireEvent.changeText(getByTestId('confirm-password-input'), 'short');
+      await fireEvent.changeText(getByTestId('name-input'), 'Test User');
+      await fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
+      await fireEvent.changeText(getByTestId('password-input'), 'short');
+      await fireEvent.changeText(getByTestId('confirm-password-input'), 'short');
 
-      fireEvent.press(getByTestId('create-account-button'));
+      await fireEvent.press(getByTestId('create-account-button'));
 
       await waitFor(() => {
         expect(mockedSignUp).not.toHaveBeenCalled();
@@ -203,14 +203,14 @@ describe('Auth auxiliary flows', () => {
         error: 'User already exists',
       });
 
-      const { getByTestId } = renderWithProviders(<SignUpScreen />);
+      const { getByTestId } = await renderWithProviders(<SignUpScreen />);
 
-      fireEvent.changeText(getByTestId('name-input'), 'Test User');
-      fireEvent.changeText(getByTestId('email-input'), 'existing@example.com');
-      fireEvent.changeText(getByTestId('password-input'), 'password123');
-      fireEvent.changeText(getByTestId('confirm-password-input'), 'password123');
+      await fireEvent.changeText(getByTestId('name-input'), 'Test User');
+      await fireEvent.changeText(getByTestId('email-input'), 'existing@example.com');
+      await fireEvent.changeText(getByTestId('password-input'), 'password123');
+      await fireEvent.changeText(getByTestId('confirm-password-input'), 'password123');
 
-      fireEvent.press(getByTestId('create-account-button'));
+      await fireEvent.press(getByTestId('create-account-button'));
 
       await waitFor(() => {
         expect(mockedSignUp).toHaveBeenCalled();
@@ -224,14 +224,14 @@ describe('Auth auxiliary flows', () => {
         friendlyError: 'This email is already registered',
       });
 
-      const { getByTestId } = renderWithProviders(<SignUpScreen />);
+      const { getByTestId } = await renderWithProviders(<SignUpScreen />);
 
-      fireEvent.changeText(getByTestId('name-input'), 'Test User');
-      fireEvent.changeText(getByTestId('email-input'), 'existing@example.com');
-      fireEvent.changeText(getByTestId('password-input'), 'password123');
-      fireEvent.changeText(getByTestId('confirm-password-input'), 'password123');
+      await fireEvent.changeText(getByTestId('name-input'), 'Test User');
+      await fireEvent.changeText(getByTestId('email-input'), 'existing@example.com');
+      await fireEvent.changeText(getByTestId('password-input'), 'password123');
+      await fireEvent.changeText(getByTestId('confirm-password-input'), 'password123');
 
-      fireEvent.press(getByTestId('create-account-button'));
+      await fireEvent.press(getByTestId('create-account-button'));
 
       await waitFor(() => {
         expect(mockedSignUp).toHaveBeenCalled();
@@ -239,8 +239,8 @@ describe('Auth auxiliary flows', () => {
       });
     });
 
-    it('toggles password visibility', () => {
-      const { getByTestId } = renderWithProviders(<SignUpScreen />);
+    it('toggles password visibility', async () => {
+      const { getByTestId } = await renderWithProviders(<SignUpScreen />);
 
       const passwordField = getByTestId('password-input');
       const toggleButton = getByTestId('toggle-password-visibility');
@@ -249,16 +249,16 @@ describe('Auth auxiliary flows', () => {
       expect(passwordField.props.secureTextEntry).toBe(true);
 
       // Toggle to show
-      fireEvent.press(toggleButton);
+      await fireEvent.press(toggleButton);
       expect(passwordField.props.secureTextEntry).toBe(false);
 
       // Toggle to hide
-      fireEvent.press(toggleButton);
+      await fireEvent.press(toggleButton);
       expect(passwordField.props.secureTextEntry).toBe(true);
     });
 
-    it('toggles confirm password visibility', () => {
-      const { getByTestId } = renderWithProviders(<SignUpScreen />);
+    it('toggles confirm password visibility', async () => {
+      const { getByTestId } = await renderWithProviders(<SignUpScreen />);
 
       const confirmPasswordField = getByTestId('confirm-password-input');
       const toggleButton = getByTestId('toggle-confirm-password-visibility');
@@ -267,18 +267,18 @@ describe('Auth auxiliary flows', () => {
       expect(confirmPasswordField.props.secureTextEntry).toBe(true);
 
       // Toggle to show
-      fireEvent.press(toggleButton);
+      await fireEvent.press(toggleButton);
       expect(confirmPasswordField.props.secureTextEntry).toBe(false);
 
       // Toggle to hide
-      fireEvent.press(toggleButton);
+      await fireEvent.press(toggleButton);
       expect(confirmPasswordField.props.secureTextEntry).toBe(true);
     });
 
-    it('navigates to login screen when sign in button is pressed', () => {
-      const { getByTestId } = renderWithProviders(<SignUpScreen />);
+    it('navigates to login screen when sign in button is pressed', async () => {
+      const { getByTestId } = await renderWithProviders(<SignUpScreen />);
 
-      fireEvent.press(getByTestId('sign-in-button'));
+      await fireEvent.press(getByTestId('sign-in-button'));
 
       expect(mockReplace).toHaveBeenCalledWith('/(auth)/login');
     });
@@ -287,10 +287,10 @@ describe('Auth auxiliary flows', () => {
   describe('ForgotPasswordScreen', () => {
     it('submits forgot password form successfully', async () => {
       mockedPasswordReset.mockResolvedValueOnce({ success: true });
-      const { getByTestId } = renderWithProviders(<ForgotPasswordScreen />);
+      const { getByTestId } = await renderWithProviders(<ForgotPasswordScreen />);
 
-      fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
-      fireEvent.press(getByTestId('send-reset-link-button'));
+      await fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
+      await fireEvent.press(getByTestId('send-reset-link-button'));
 
       await waitFor(() => {
         expect(mockedPasswordReset).toHaveBeenCalledWith('user@example.com');
@@ -300,10 +300,10 @@ describe('Auth auxiliary flows', () => {
 
     it('trims whitespace from email before submission', async () => {
       mockedPasswordReset.mockResolvedValueOnce({ success: true });
-      const { getByTestId } = renderWithProviders(<ForgotPasswordScreen />);
+      const { getByTestId } = await renderWithProviders(<ForgotPasswordScreen />);
 
-      fireEvent.changeText(getByTestId('email-input'), '  spaced@example.com  ');
-      fireEvent.press(getByTestId('send-reset-link-button'));
+      await fireEvent.changeText(getByTestId('email-input'), '  spaced@example.com  ');
+      await fireEvent.press(getByTestId('send-reset-link-button'));
 
       await waitFor(() => {
         expect(mockedPasswordReset).toHaveBeenCalledWith('spaced@example.com');
@@ -311,10 +311,10 @@ describe('Auth auxiliary flows', () => {
     });
 
     it('shows error when email is empty', async () => {
-      const { getByTestId } = renderWithProviders(<ForgotPasswordScreen />);
+      const { getByTestId } = await renderWithProviders(<ForgotPasswordScreen />);
 
-      fireEvent.changeText(getByTestId('email-input'), '');
-      fireEvent.press(getByTestId('send-reset-link-button'));
+      await fireEvent.changeText(getByTestId('email-input'), '');
+      await fireEvent.press(getByTestId('send-reset-link-button'));
 
       await waitFor(() => {
         expect(mockedPasswordReset).not.toHaveBeenCalled();
@@ -322,10 +322,10 @@ describe('Auth auxiliary flows', () => {
     });
 
     it('shows error when email is only whitespace', async () => {
-      const { getByTestId } = renderWithProviders(<ForgotPasswordScreen />);
+      const { getByTestId } = await renderWithProviders(<ForgotPasswordScreen />);
 
-      fireEvent.changeText(getByTestId('email-input'), '   ');
-      fireEvent.press(getByTestId('send-reset-link-button'));
+      await fireEvent.changeText(getByTestId('email-input'), '   ');
+      await fireEvent.press(getByTestId('send-reset-link-button'));
 
       await waitFor(() => {
         expect(mockedPasswordReset).not.toHaveBeenCalled();
@@ -338,10 +338,10 @@ describe('Auth auxiliary flows', () => {
         error: 'Email not found',
       });
 
-      const { getByTestId } = renderWithProviders(<ForgotPasswordScreen />);
+      const { getByTestId } = await renderWithProviders(<ForgotPasswordScreen />);
 
-      fireEvent.changeText(getByTestId('email-input'), 'notfound@example.com');
-      fireEvent.press(getByTestId('send-reset-link-button'));
+      await fireEvent.changeText(getByTestId('email-input'), 'notfound@example.com');
+      await fireEvent.press(getByTestId('send-reset-link-button'));
 
       await waitFor(() => {
         expect(mockedPasswordReset).toHaveBeenCalled();
@@ -355,10 +355,10 @@ describe('Auth auxiliary flows', () => {
         friendlyError: 'No account found with this email',
       });
 
-      const { getByTestId } = renderWithProviders(<ForgotPasswordScreen />);
+      const { getByTestId } = await renderWithProviders(<ForgotPasswordScreen />);
 
-      fireEvent.changeText(getByTestId('email-input'), 'notfound@example.com');
-      fireEvent.press(getByTestId('send-reset-link-button'));
+      await fireEvent.changeText(getByTestId('email-input'), 'notfound@example.com');
+      await fireEvent.press(getByTestId('send-reset-link-button'));
 
       await waitFor(() => {
         expect(mockedPasswordReset).toHaveBeenCalled();
@@ -366,10 +366,10 @@ describe('Auth auxiliary flows', () => {
       });
     });
 
-    it('navigates to login screen when back button is pressed', () => {
-      const { getByTestId } = renderWithProviders(<ForgotPasswordScreen />);
+    it('navigates to login screen when back button is pressed', async () => {
+      const { getByTestId } = await renderWithProviders(<ForgotPasswordScreen />);
 
-      fireEvent.press(getByTestId('back-to-sign-in-button'));
+      await fireEvent.press(getByTestId('back-to-sign-in-button'));
 
       expect(mockReplace).toHaveBeenCalledWith('/(auth)/login');
     });

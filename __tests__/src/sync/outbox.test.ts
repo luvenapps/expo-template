@@ -22,10 +22,10 @@ import {
 import { describe, expect, test } from '@jest/globals';
 
 function createSelectChain(result: unknown) {
-  const limit = jest.fn().mockResolvedValue(result);
-  const orderBy = jest.fn(() => ({ limit }));
-  const from = jest.fn(() => ({ orderBy }));
-  const select = jest.fn(() => ({ from }));
+  const limit = jest.fn((..._args: any[]) => Promise.resolve(result));
+  const orderBy = jest.fn((..._args: any[]) => ({ limit }));
+  const from = jest.fn((..._args: any[]) => ({ orderBy }));
+  const select = jest.fn((..._args: any[]) => ({ from }));
   return { select, from, orderBy, limit };
 }
 
@@ -36,7 +36,7 @@ describe('outbox helpers', () => {
 
   test('enqueue stores payload via insert', async () => {
     const values = jest.fn().mockResolvedValue(undefined);
-    const insert = jest.fn(() => ({ values }));
+    const insert = jest.fn((..._args: any[]) => ({ values }));
 
     setOutboxDatabase({
       insert,
@@ -95,7 +95,7 @@ describe('outbox helpers', () => {
 
   test('markProcessed deletes in batch', async () => {
     const where = jest.fn();
-    const deleteFn = jest.fn(() => ({ where }));
+    const deleteFn = jest.fn((..._args: any[]) => ({ where }));
 
     setOutboxDatabase({
       insert: jest.fn(),
@@ -126,8 +126,8 @@ describe('outbox helpers', () => {
 
   test('incrementAttempt updates attempts column', async () => {
     const where = jest.fn();
-    const set = jest.fn(() => ({ where }));
-    const update = jest.fn(() => ({ set }));
+    const set = jest.fn((..._args: any[]) => ({ where }));
+    const update = jest.fn((..._args: any[]) => ({ set }));
 
     setOutboxDatabase({
       insert: jest.fn(),
@@ -145,7 +145,7 @@ describe('outbox helpers', () => {
 
   test('clearTable deletes by table name', async () => {
     const where = jest.fn();
-    const deleteFn = jest.fn(() => ({ where }));
+    const deleteFn = jest.fn((..._args: any[]) => ({ where }));
 
     setOutboxDatabase({
       insert: jest.fn(),
@@ -176,7 +176,7 @@ describe('outbox helpers', () => {
 
   test('enqueueWithDatabase uses provided database instance', async () => {
     const values = jest.fn().mockResolvedValue(undefined);
-    const insert = jest.fn(() => ({ values }));
+    const insert = jest.fn((..._args: any[]) => ({ values }));
 
     const customDb = {
       insert,
