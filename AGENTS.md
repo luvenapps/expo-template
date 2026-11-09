@@ -50,6 +50,8 @@ behavior in a newly generated app, not in this worktree.
 
 ## Review and validation
 
+- Use Commitizen-style titles for every pull request: `<type>: <short description>`
+  (for example, `feat: timestamp template sync branches`).
 - Choose a source branch that contains the intended reusable app foundation and
   no unfinished product work.
 - Review package and lockfile changes, app identity, deletions, workflow changes,
