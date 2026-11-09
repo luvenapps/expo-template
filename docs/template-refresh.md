@@ -39,8 +39,10 @@ checks for the generated update.
    intend to build.
 5. Merge the PR only after the diff and checks are acceptable.
 
-Repeated runs update the same `automation/template-source-sync` PR so the diff
-stays reviewable. They never change `main` directly.
+Each run creates a separate PR from a new branch named
+`automation/template-source-sync-YYYYMMDD-HHMMSSZ`, using UTC time. Existing sync
+PRs and their branches remain unchanged. The workflow never changes `main`
+directly.
 
 ## Promote a later app
 

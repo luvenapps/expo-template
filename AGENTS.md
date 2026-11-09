@@ -14,8 +14,9 @@ behavior in a newly generated app, not in this worktree.
 - The workflow needs `SOURCE_REPO_TOKEN` with source Contents read access and
   `TEMPLATE_AUTOMATION_TOKEN` with Contents and Pull requests write access to
   `expo-template`.
-- It creates or updates `automation/template-source-sync`; it does not update
-  `main` directly. Review and merge the PR manually.
+- Each run creates a PR from a new branch named
+  `automation/template-source-sync-YYYYMMDD-HHMMSSZ` using UTC time; it does not
+  update `main` directly. Review and merge each PR manually.
 - For a local preview, run
   `node scripts/sync-template-source.mjs --source-dir <source-checkout> --target-dir <template-checkout> --dry-run`.
   Remove `--dry-run` only when you intend to apply the snapshot. Both directories

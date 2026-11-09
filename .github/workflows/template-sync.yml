@@ -62,12 +62,16 @@ jobs:
             --target-dir .
           echo "source_sha=$(git -C source-repository rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
-      - name: Create or update sync PR
+      - name: Name sync branch
+        id: branch
+        run: echo "name=automation/template-source-sync-$(date -u +'%Y%m%d-%H%M%SZ')" >> "$GITHUB_OUTPUT"
+
+      - name: Create sync PR
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.TEMPLATE_AUTOMATION_TOKEN }}
           base: main
-          branch: automation/template-source-sync
+          branch: ${{ steps.branch.outputs.name }}
           delete-branch: false
           commit-message: 'chore: sync reusable app foundation'
           title: 'chore: sync reusable app foundation'
