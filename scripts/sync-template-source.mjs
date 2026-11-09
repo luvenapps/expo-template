@@ -332,7 +332,7 @@ function outputPaths(sourcePath) {
     ['AGENTS.md', ['_AGENTS.md']],
     ['CLAUDE.md', ['_CLAUDE.md']],
     ['.gitignore', ['.gitignore', '_gitignore']],
-    ['.mise.toml', ['_mise.toml']],
+    ['.mise.toml', ['.mise.toml', '_mise.toml']],
     ['.prettierignore', ['_prettierignore']],
     ['.prettierrc.json', ['_prettierrc.json']],
   ]);
