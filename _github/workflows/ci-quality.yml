@@ -146,7 +146,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
-          slug: org/repo # <-- UPDATE THIS
+          slug: ${{ github.repository }}
           flags: ${{ inputs.runner_target }}-quality
           fail_ci_if_error: false
 
@@ -156,7 +156,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./junit.xml
-          slug: org/repo # <-- UPDATE THIS
+          slug: ${{ github.repository }}
           flags: ${{ inputs.runner_target }}-quality
           report_type: test_results
           fail_ci_if_error: false
