@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 /**
  * Copy a source app snapshot into the reusable template while preserving the
- * template bootstrap and converting ignored dot paths to visible placeholders.
+ * template bootstrap and converting selected paths to visible placeholders.
+ * Root guidance files are copied under underscore names so the template's own
+ * root instructions remain separate from the generated app's instructions.
  * Source files are copied as data; this script never executes source code.
  */
 import fs from 'node:fs';
@@ -10,6 +12,7 @@ import { Buffer } from 'node:buffer';
 
 const TEMPLATE_ONLY = new Set([
   'AGENTS.md',
+  'CLAUDE.md',
   'README.md',
   'LICENSE',
   'scripts/postinstall.js',
@@ -22,6 +25,8 @@ const TEMPLATE_ONLY = new Set([
   '_mcp-vscode.json',
   'credentials.json',
 ]);
+
+const SYNCED_ROOT_GUIDANCE_FILES = new Set(['AGENTS.md', 'CLAUDE.md']);
 
 // credentials/ is copied when present, but is not managed for stale-file removal.
 const MANAGED_ROOTS = [
@@ -46,6 +51,8 @@ const MANAGED_ROOT_FILES = new Set([
   '.env.example',
   '.gitignore',
   '_gitignore',
+  '_AGENTS.md',
+  '_CLAUDE.md',
   '.mise.toml',
   '_mise.toml',
   '.prettierignore',
@@ -137,7 +144,7 @@ function walkFiles(root, relative = '') {
 function shouldExclude(sourcePath) {
   const basename = path.posix.basename(sourcePath);
   if (EXCLUDED_FILES.has(basename)) return true;
-  if (['AGENTS.md', 'CLAUDE.md', 'claude.md', 'README.md', 'LICENSE'].includes(sourcePath)) {
+  if (['claude.md', 'README.md', 'LICENSE'].includes(sourcePath)) {
     return true;
   }
   if (sourcePath.startsWith('assets/')) return true;
@@ -297,6 +304,8 @@ function outputPaths(sourcePath) {
     }
   }
   const hiddenFileMappings = new Map([
+    ['AGENTS.md', ['_AGENTS.md']],
+    ['CLAUDE.md', ['_CLAUDE.md']],
     ['.gitignore', ['.gitignore', '_gitignore']],
     ['.mise.toml', ['.mise.toml', '_mise.toml']],
     ['.prettierignore', ['.prettierignore', '_prettierignore']],
@@ -331,7 +340,12 @@ function main() {
 
   const desired = new Map();
   for (const sourcePath of walkFiles(sourceRoot)) {
-    if (shouldExclude(sourcePath) || TEMPLATE_ONLY.has(sourcePath)) continue;
+    if (
+      shouldExclude(sourcePath) ||
+      (TEMPLATE_ONLY.has(sourcePath) && !SYNCED_ROOT_GUIDANCE_FILES.has(sourcePath))
+    ) {
+      continue;
+    }
     const sourceFile = path.join(sourceRoot, sourcePath);
     let content = fs.readFileSync(sourceFile);
     const text = content.toString('utf8');

@@ -25,9 +25,11 @@ checks for the generated update.
    always `expo-template` `main`.
 3. Review the generated PR. Check app identity, package and lock
    file changes, source deletions, hidden-file copies, and product-specific
-   material. The sync keeps template-owned identity/bootstrap files, maps
+   material. The sync keeps template-owned identity/bootstrap files, maps source
+   `AGENTS.md` and `CLAUDE.md` to `_AGENTS.md` and `_CLAUDE.md`, and maps
    `.github`, `.husky`, `.maestro`, and selected root dotfiles to underscore
-   paths, copies `credentials/` when it exists in the source checkout, and
+   paths. Postinstall materializes the source guidance in the generated app.
+   Sync also copies `credentials/` when it exists in the source checkout, and
    excludes runner registration scripts and Betterhabits planning documents.
    Credential files remain gitignored, so they are copied locally but aren't
    included in the generated PR. A GitHub-hosted sync only sees files present

@@ -87,6 +87,7 @@ describe('sync-template-source', () => {
     );
     writeFile(source, 'README.md', 'Source README\n');
     writeFile(source, 'AGENTS.md', 'Source instructions\n');
+    writeFile(source, 'CLAUDE.md', '@AGENTS.md\n');
     writeFile(source, '.env.local', 'SECRET=value\n');
     writeFile(source, '__tests__/scripts/sync-template-source.test.js', 'source version\n');
     writeFile(source, 'docs/roadmap.md', 'Product roadmap\n');
@@ -127,6 +128,9 @@ describe('sync-template-source', () => {
 
     writeFile(target, 'README.md', 'Template README\n');
     writeFile(target, 'AGENTS.md', 'Template instructions\n');
+    writeFile(target, 'CLAUDE.md', 'Template Claude instructions\n');
+    writeFile(target, '_AGENTS.md', 'Old source instructions\n');
+    writeFile(target, '_CLAUDE.md', 'Old source Claude instructions\n');
     writeFile(target, 'scripts/postinstall.js', 'template bootstrap\n');
     writeFile(target, '__tests__/scripts/sync-template-source.test.js', 'template sync test\n');
     writeFile(target, '.github/workflows/ci-quality.yml', 'template quality workflow\n');
@@ -192,6 +196,8 @@ describe('sync-template-source', () => {
     );
     expect(fs.existsSync(path.join(target, '.github/workflows/ci.yml'))).toBe(false);
     expect(fs.existsSync(path.join(target, '_github/workflows/ci.yml'))).toBe(true);
+    expect(fs.readFileSync(path.join(target, '_AGENTS.md'), 'utf8')).toBe('Source instructions\n');
+    expect(fs.readFileSync(path.join(target, '_CLAUDE.md'), 'utf8')).toBe('@AGENTS.md\n');
     expect(fs.existsSync(path.join(target, '.github/workflows/template-sync.yml'))).toBe(true);
     expect(fs.existsSync(path.join(target, '_husky/pre-commit'))).toBe(true);
     expect(fs.existsSync(path.join(target, '.husky/pre-commit'))).toBe(false);
@@ -208,6 +214,9 @@ describe('sync-template-source', () => {
     expect(fs.existsSync(path.join(target, 'README.md'))).toBe(true);
     expect(fs.readFileSync(path.join(target, 'README.md'), 'utf8')).toBe('Template README\n');
     expect(fs.readFileSync(path.join(target, 'AGENTS.md'), 'utf8')).toBe('Template instructions\n');
+    expect(fs.readFileSync(path.join(target, 'CLAUDE.md'), 'utf8')).toBe(
+      'Template Claude instructions\n',
+    );
     expect(fs.readFileSync(path.join(target, 'scripts/postinstall.js'), 'utf8')).toBe(
       'template bootstrap\n',
     );

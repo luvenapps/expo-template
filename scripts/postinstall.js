@@ -9,6 +9,7 @@
  *  - Replace placeholders (__APP_NAME__, __APP_ID__) in app.config.ts and __tests__/app.config.test.ts
  *  - Replace placeholders in Maestro flows (.maestro/flows/*.yml|yaml)
  *  - Replace app identity tokens in README.md and generated docs (if present)
+ *  - Materialize _AGENTS.md and _CLAUDE.md as generated app root instructions
  *  - Replace tockens in Domain Config if present
  * *  - Restore .gitignore from "gitignore" (if present)
  *  - Rename _prettierrc.json → .prettierrc.json if present
@@ -131,6 +132,32 @@ const updateFirebaseCredentialIds = (appId) => {
   }
 };
 
+const materializeRootGuidance = (summary) => {
+  for (const [templateName, appName] of [
+    ['_AGENTS.md', 'AGENTS.md'],
+    ['_CLAUDE.md', 'CLAUDE.md'],
+  ]) {
+    const templatePath = path.join(CWD, templateName);
+    if (!exists(templatePath)) continue;
+
+    try {
+      const before = fs.readFileSync(templatePath, 'utf8');
+      const after = before
+        .replace(/\{\{APP_NAME\}\}/g, summary.appName)
+        .replace(/\{\{APP_SLUG\}\}/g, summary.slug)
+        .replace(/\{\{APP_ID\}\}/g, summary.appId)
+        .replace(/__APP_NAME__SINGULAR__/g, summary.singular)
+        .replace(/__APP_NAME__/g, summary.appName)
+        .replace(/__APP_SLUG__/g, summary.slug)
+        .replace(/__APP_ID__/g, summary.appId);
+      fs.writeFileSync(path.join(CWD, appName), after, 'utf8');
+      console.log(`✅ ${appName} materialized from ${templateName}`);
+    } catch (e) {
+      console.log(`⚠️  ${appName} materialization skipped (${e.message})`);
+    }
+  }
+};
+
 const singularize = (word) => {
   const endings = {
     ves: 'f', // wives -> wife
@@ -217,6 +244,8 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
   summary.slug = slugSafe;
   summary.appId = appId;
   summary.singular = singularize(idSegmentBase);
+
+  materializeRootGuidance(summary);
 
   if (isGeneratedFromLocalTemplate) updateFirebaseCredentialIds(appId);
 
@@ -540,6 +569,8 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
   // Remove underscore placeholders only after their generated counterparts exist.
   // These are template source files, not part of a generated app.
   const materializedTemplatePaths = [
+    ['_AGENTS.md', 'AGENTS.md'],
+    ['_CLAUDE.md', 'CLAUDE.md'],
     ['_mise.toml', '.mise.toml'],
     ['_mcp-vscode.json', '.vscode/mcp.json'],
     ['_mcp-claude.json', '.mcp.json'],
