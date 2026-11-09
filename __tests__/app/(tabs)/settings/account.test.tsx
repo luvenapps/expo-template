@@ -1,6 +1,6 @@
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { findByType } from '../../../helpers/testInstance';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { Platform } from 'react-native';
-import { Dialog } from 'tamagui';
 
 const mockPush = jest.fn();
 const mockReplace = jest.fn();
@@ -159,7 +159,8 @@ jest.mock('tamagui', () => {
   const React = require('react');
   const { View, Text } = require('react-native');
 
-  const Dialog = ({ children }: any) => React.createElement(View, null, children);
+  const Dialog = ({ children, onOpenChange }: any) =>
+    React.createElement('Dialog', { onOpenChange }, children);
   Dialog.displayName = 'Dialog';
   const DialogPortal = ({ children }: any) => React.createElement(View, null, children);
   DialogPortal.displayName = 'Dialog.Portal';
@@ -238,7 +239,7 @@ describe('AccountSettingsScreen', () => {
   });
 
   it('redirects to login when unauthenticated', async () => {
-    render(<AccountSettingsScreen />);
+    await render(<AccountSettingsScreen />);
 
     await waitFor(() => {
       expect(mockReplace).toHaveBeenCalledWith('/(auth)/login');
@@ -249,9 +250,9 @@ describe('AccountSettingsScreen', () => {
     mockSessionState.status = 'authenticated';
     mockSessionState.session = { user: { id: 'user-1', email: 'me@example.com' } };
 
-    const { getByText } = render(<AccountSettingsScreen />);
+    const { getByText } = await render(<AccountSettingsScreen />);
 
-    fireEvent.press(getByText('settings.signOut'));
+    await fireEvent.press(getByText('settings.signOut'));
 
     await waitFor(() => {
       expect(mockSignOut).toHaveBeenCalled();
@@ -264,9 +265,9 @@ describe('AccountSettingsScreen', () => {
     mockSessionState.status = 'authenticated';
     mockSessionState.session = { user: { id: 'user-native', email: 'me@example.com' } };
 
-    const { getByText } = render(<AccountSettingsScreen />);
+    const { getByText } = await render(<AccountSettingsScreen />);
 
-    fireEvent.press(getByText('settings.signOut'));
+    await fireEvent.press(getByText('settings.signOut'));
 
     await waitFor(() => {
       expect(mockSignOut).toHaveBeenCalled();
@@ -279,9 +280,9 @@ describe('AccountSettingsScreen', () => {
     mockSessionState.status = 'authenticated';
     mockSessionState.session = null;
 
-    const { getByText } = render(<AccountSettingsScreen />);
+    const { getByText } = await render(<AccountSettingsScreen />);
 
-    fireEvent.press(getByText('settings.resetConfirmAction'));
+    await fireEvent.press(getByText('settings.resetConfirmAction'));
 
     await waitFor(() => {
       expect(mockClearAllTables).toHaveBeenCalled();
@@ -295,9 +296,9 @@ describe('AccountSettingsScreen', () => {
     mockSessionState.status = 'authenticated';
     mockSessionState.session = { user: { id: 'user-2', email: 'me@example.com' } };
 
-    const { getByText } = render(<AccountSettingsScreen />);
+    const { getByText } = await render(<AccountSettingsScreen />);
 
-    fireEvent.press(getByText('settings.resetConfirmAction'));
+    await fireEvent.press(getByText('settings.resetConfirmAction'));
 
     await waitFor(() => {
       expect(mockDeleteRemoteUserData).toHaveBeenCalledWith('user-2');
@@ -307,13 +308,13 @@ describe('AccountSettingsScreen', () => {
     });
   });
 
-  it('opens profile screen when authenticated', () => {
+  it('opens profile screen when authenticated', async () => {
     mockSessionState.status = 'authenticated';
     mockSessionState.session = { user: { id: 'user-3', email: 'me@example.com' } };
 
-    const { getByTestId } = render(<AccountSettingsScreen />);
+    const { getByTestId } = await render(<AccountSettingsScreen />);
 
-    fireEvent.press(getByTestId('settings-profile-button'));
+    await fireEvent.press(getByTestId('settings-profile-button'));
 
     expect(mockPush).toHaveBeenCalledWith('/(tabs)/settings/profile');
   });
@@ -322,7 +323,7 @@ describe('AccountSettingsScreen', () => {
     setPlatform('ios');
     mockHasData.mockRejectedValueOnce(new Error('db fail'));
 
-    render(<AccountSettingsScreen />);
+    await render(<AccountSettingsScreen />);
 
     await waitFor(() => {
       expect(mockLogger.error).toHaveBeenCalledWith(
@@ -336,7 +337,7 @@ describe('AccountSettingsScreen', () => {
     setPlatform('web');
     mockHasData.mockResolvedValueOnce(true);
 
-    render(<AccountSettingsScreen />);
+    await render(<AccountSettingsScreen />);
 
     await waitFor(() => {
       expect(mockHasData).not.toHaveBeenCalled();
@@ -351,9 +352,9 @@ describe('AccountSettingsScreen', () => {
     mockClearAllTables.mockRejectedValueOnce(error);
     mockFriendlyError.mockReturnValue({ friendly: { description: 'Oops' } });
 
-    const { getByText } = render(<AccountSettingsScreen />);
+    const { getByText } = await render(<AccountSettingsScreen />);
 
-    fireEvent.press(getByText('settings.resetConfirmAction'));
+    await fireEvent.press(getByText('settings.resetConfirmAction'));
 
     await waitFor(() => {
       expect(mockFriendlyError).toHaveBeenCalledWith(error, {
@@ -373,9 +374,9 @@ describe('AccountSettingsScreen', () => {
       friendly: { descriptionKey: 'errors.reset' },
     });
 
-    const { getByText } = render(<AccountSettingsScreen />);
+    const { getByText } = await render(<AccountSettingsScreen />);
 
-    fireEvent.press(getByText('settings.resetConfirmAction'));
+    await fireEvent.press(getByText('settings.resetConfirmAction'));
 
     await waitFor(() => {
       expect(getByText('errors.reset')).toBeTruthy();
@@ -392,9 +393,9 @@ describe('AccountSettingsScreen', () => {
       friendly: { titleKey: 'errors.reset.title' },
     });
 
-    const { getByText } = render(<AccountSettingsScreen />);
+    const { getByText } = await render(<AccountSettingsScreen />);
 
-    fireEvent.press(getByText('settings.resetConfirmAction'));
+    await fireEvent.press(getByText('settings.resetConfirmAction'));
 
     await waitFor(() => {
       expect(getByText('errors.reset.title')).toBeTruthy();
@@ -409,9 +410,9 @@ describe('AccountSettingsScreen', () => {
     mockDeleteRemoteUserData.mockRejectedValueOnce(error);
     mockFriendlyError.mockReturnValue({ friendly: { description: 'Oops' } });
 
-    const { getByText } = render(<AccountSettingsScreen />);
+    const { getByText } = await render(<AccountSettingsScreen />);
 
-    fireEvent.press(getByText('settings.resetConfirmAction'));
+    await fireEvent.press(getByText('settings.resetConfirmAction'));
 
     await waitFor(() => {
       expect(mockFriendlyError).toHaveBeenCalledWith(error, {
@@ -421,35 +422,35 @@ describe('AccountSettingsScreen', () => {
     });
   });
 
-  it('shows loading state on the auth button', () => {
+  it('shows loading state on the auth button', async () => {
     mockSessionState.isLoading = true;
     mockSessionState.status = 'authenticated';
     mockSessionState.session = { user: { id: 'user-loading', email: 'me@example.com' } };
 
-    const { getByText } = render(<AccountSettingsScreen />);
+    const { getByText } = await render(<AccountSettingsScreen />);
 
     expect(getByText('settings.loading')).toBeTruthy();
   });
 
-  it('closes the reset modal via onOpenChange', () => {
+  it('closes the reset modal via onOpenChange', async () => {
     mockSessionState.status = 'authenticated';
     mockSessionState.session = { user: { id: 'user-5', email: 'me@example.com' } };
 
-    const { UNSAFE_getByType } = render(<AccountSettingsScreen />);
-    const dialog = UNSAFE_getByType(Dialog);
+    const { container } = await render(<AccountSettingsScreen />);
+    const dialog = findByType(container, 'Dialog');
 
     expect(() => dialog.props.onOpenChange(false)).not.toThrow();
     expect(() => dialog.props.onOpenChange(true)).not.toThrow();
   });
 
-  it('opens and closes the reset dialog via buttons', () => {
+  it('opens and closes the reset dialog via buttons', async () => {
     mockSessionState.status = 'authenticated';
     mockSessionState.session = { user: { id: 'user-6', email: 'me@example.com' } };
 
-    const { getByTestId, getByText } = render(<AccountSettingsScreen />);
+    const { getByTestId, getByText } = await render(<AccountSettingsScreen />);
 
-    fireEvent.press(getByTestId('settings-reset-app-button'));
-    fireEvent.press(getByText('settings.resetCancel'));
+    await fireEvent.press(getByTestId('settings-reset-app-button'));
+    await fireEvent.press(getByText('settings.resetCancel'));
   });
 
   it('ignores onOpenChange while resetting', async () => {
@@ -458,10 +459,12 @@ describe('AccountSettingsScreen', () => {
     mockSessionState.session = { user: { id: 'user-7', email: 'me@example.com' } };
     mockClearAllTables.mockImplementation(() => new Promise<void>(() => {}));
 
-    const { getByText, UNSAFE_getByType } = render(<AccountSettingsScreen />);
+    const { getByTestId, container } = await render(<AccountSettingsScreen />);
 
-    fireEvent.press(getByText('settings.resetConfirmAction'));
-    const dialog = UNSAFE_getByType(Dialog);
+    await act(() => {
+      void fireEvent.press(getByTestId('settings-reset-confirm-button'));
+    });
+    const dialog = findByType(container, 'Dialog');
 
     expect(() => dialog.props.onOpenChange(false)).not.toThrow();
   });
@@ -478,17 +481,19 @@ describe('AccountSettingsScreen', () => {
     });
     mockClearAllTables.mockReturnValue(clearTablesPromise);
 
-    const { getByTestId, getByText } = render(<AccountSettingsScreen />);
+    const { getByTestId } = await render(<AccountSettingsScreen />);
 
-    fireEvent.press(getByTestId('settings-reset-app-button'));
+    await fireEvent.press(getByTestId('settings-reset-app-button'));
 
     // Click confirm button twice - second click should be ignored
-    const confirmButton = getByText('settings.resetConfirmAction');
-    fireEvent.press(confirmButton);
+    const confirmButton = getByTestId('settings-reset-confirm-button');
+    await act(() => {
+      void fireEvent.press(confirmButton);
+    });
 
     // After first click, button is disabled and shows spinner
     // Try clicking via testID (button should ignore the click due to disabled state)
-    fireEvent.press(getByTestId('settings-reset-confirm-button'));
+    await fireEvent.press(getByTestId('settings-reset-confirm-button'));
 
     // Now resolve the promise to let the operation complete
     resolveClearTables!();
@@ -506,9 +511,9 @@ describe('AccountSettingsScreen', () => {
     mockSessionState.status = 'authenticated';
     mockSessionState.session = null;
 
-    const { getByText } = render(<AccountSettingsScreen />);
+    const { getByText } = await render(<AccountSettingsScreen />);
 
-    fireEvent.press(getByText('settings.resetConfirmAction'));
+    await fireEvent.press(getByText('settings.resetConfirmAction'));
 
     await waitFor(() => {
       expect(mockClearNotificationPreferences).toHaveBeenCalled();
@@ -527,9 +532,9 @@ describe('AccountSettingsScreen', () => {
       friendly: { originalMessage: 'Original error' },
     });
 
-    const { getByText } = render(<AccountSettingsScreen />);
+    const { getByText } = await render(<AccountSettingsScreen />);
 
-    fireEvent.press(getByText('settings.resetConfirmAction'));
+    await fireEvent.press(getByText('settings.resetConfirmAction'));
 
     await waitFor(() => {
       expect(getByText('Original error')).toBeTruthy();

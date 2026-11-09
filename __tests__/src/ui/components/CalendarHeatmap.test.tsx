@@ -24,8 +24,8 @@ import { View, Text } from 'react-native';
 import { CalendarHeatmap } from '@/ui/components/CalendarHeatmap';
 
 describe('CalendarHeatmap', () => {
-  it('renders correct number of cells', () => {
-    const { getAllByTestId } = render(
+  it('renders correct number of cells', async () => {
+    const { getAllByTestId } = await render(
       <CalendarHeatmap
         weeks={2}
         values={[
@@ -41,8 +41,8 @@ describe('CalendarHeatmap', () => {
     expect(cells).toHaveLength(14);
   });
 
-  it('maps intensity values to cells', () => {
-    const { getByTestId } = render(
+  it('maps intensity values to cells', async () => {
+    const { getByTestId } = await render(
       <CalendarHeatmap
         weeks={1}
         values={[[0, 1, 2, 3, 4, 0, 1]]}
@@ -55,8 +55,8 @@ describe('CalendarHeatmap', () => {
     expect(getByTestId('cell-0-6')).toBeDefined();
   });
 
-  it('handles missing values with default 0 intensity', () => {
-    const { getByTestId } = render(
+  it('handles missing values with default 0 intensity', async () => {
+    const { getByTestId } = await render(
       <CalendarHeatmap
         weeks={2}
         values={[[1, 2, 3]]} // Only partial week data
@@ -69,8 +69,8 @@ describe('CalendarHeatmap', () => {
     expect(getByTestId('cell-1-6')).toBeDefined();
   });
 
-  it('clamps negative intensity to 0', () => {
-    const { getByTestId } = render(
+  it('clamps negative intensity to 0', async () => {
+    const { getByTestId } = await render(
       <CalendarHeatmap
         weeks={1}
         values={[[-5, 1, 2, 3, 4, 0, 1]]}
@@ -82,8 +82,8 @@ describe('CalendarHeatmap', () => {
     expect(getByTestId('cell-0-0')).toBeDefined();
   });
 
-  it('clamps excessive intensity to max color index', () => {
-    const { getByTestId } = render(
+  it('clamps excessive intensity to max color index', async () => {
+    const { getByTestId } = await render(
       <CalendarHeatmap
         weeks={1}
         values={[[999, 1, 2, 3, 4, 0, 1]]}
@@ -95,8 +95,8 @@ describe('CalendarHeatmap', () => {
     expect(getByTestId('cell-0-0')).toBeDefined();
   });
 
-  it('renders default day labels', () => {
-    const { getByTestId } = render(
+  it('renders default day labels', async () => {
+    const { getByTestId } = await render(
       <CalendarHeatmap
         weeks={2}
         values={[
@@ -110,8 +110,8 @@ describe('CalendarHeatmap', () => {
     expect(getByTestId('day-labels')).toHaveTextContent('S M T W T F S');
   });
 
-  it('renders custom day labels', () => {
-    const { getByTestId } = render(
+  it('renders custom day labels', async () => {
+    const { getByTestId } = await render(
       <CalendarHeatmap
         weeks={2}
         values={[
@@ -126,8 +126,8 @@ describe('CalendarHeatmap', () => {
     expect(getByTestId('day-labels')).toHaveTextContent('Sun Mon Tue Wed Thu Fri Sat');
   });
 
-  it('renders default legend when not provided', () => {
-    const { getByTestId } = render(
+  it('renders default legend when not provided', async () => {
+    const { getByTestId } = await render(
       <CalendarHeatmap
         weeks={2}
         values={[
@@ -141,14 +141,14 @@ describe('CalendarHeatmap', () => {
     expect(getByTestId('default-legend')).toBeDefined();
   });
 
-  it('renders custom legend when provided', () => {
+  it('renders custom legend when provided', async () => {
     const customLegend = (
       <View testID="custom-legend">
         <Text>Custom Legend</Text>
       </View>
     );
 
-    const { getByTestId, queryByTestId } = render(
+    const { getByTestId, queryByTestId } = await render(
       <CalendarHeatmap
         weeks={2}
         values={[
@@ -164,8 +164,8 @@ describe('CalendarHeatmap', () => {
     expect(queryByTestId('default-legend')).toBeNull();
   });
 
-  it('renders with container testID', () => {
-    const { getByTestId } = render(
+  it('renders with container testID', async () => {
+    const { getByTestId } = await render(
       <CalendarHeatmap
         testID="heatmap-container"
         weeks={2}
@@ -179,8 +179,8 @@ describe('CalendarHeatmap', () => {
     expect(getByTestId('heatmap-container')).toBeDefined();
   });
 
-  it('handles empty values array', () => {
-    const { getByTestId } = render(
+  it('handles empty values array', async () => {
+    const { getByTestId } = await render(
       <CalendarHeatmap
         weeks={2}
         values={[]}
@@ -193,8 +193,8 @@ describe('CalendarHeatmap', () => {
     expect(getByTestId('cell-1-6')).toBeDefined();
   });
 
-  it('renders correct number of weeks', () => {
-    const { getAllByTestId } = render(
+  it('renders correct number of weeks', async () => {
+    const { getAllByTestId } = await render(
       <CalendarHeatmap
         weeks={4}
         values={[
@@ -212,8 +212,8 @@ describe('CalendarHeatmap', () => {
     expect(cells).toHaveLength(28);
   });
 
-  it('handles zero weeks gracefully', () => {
-    const { queryAllByTestId } = render(
+  it('handles zero weeks gracefully', async () => {
+    const { queryAllByTestId } = await render(
       <CalendarHeatmap
         weeks={0}
         values={[]}

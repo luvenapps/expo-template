@@ -8,6 +8,7 @@ describe('i18n', () => {
     jest.resetModules();
     jest.dontMock('react-native-mmkv');
     jest.dontMock('expo-localization');
+    jest.dontMock('react-native');
     logSpy.mockClear();
     infoSpy.mockClear();
     warnSpy.mockClear();
@@ -21,8 +22,12 @@ describe('i18n', () => {
 
   it('initializes with fallback language and returns strings', () => {
     const mod = require('@/i18n') as typeof import('@/i18n');
+    const mockI18n = require('i18next') as {
+      __lastInitConfig: { compatibilityJSON?: string };
+    };
     expect(mod.default.isInitialized).toBe(true);
     expect(mod.default.t('common.settings')).toBeDefined();
+    expect(mockI18n.__lastInitConfig.compatibilityJSON).toBe('v4');
   });
 
   it('changes language and returns a translation string', () => {
@@ -49,6 +54,7 @@ describe('i18n', () => {
     mockI18n.language = 'en';
     mockI18n.__lastInitConfig = null;
     jest.doMock('react-native', () => ({ Platform: { OS: 'web' } }));
+    jest.doMock('expo-localization', () => ({ getLocales: () => [] }));
     (globalThis as any).localStorage = {
       getItem,
       setItem: (k: string, v: string) => {

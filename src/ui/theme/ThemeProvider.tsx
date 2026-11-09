@@ -1,5 +1,6 @@
 import { DOMAIN } from '@/config/domain.config';
 import { themePalettes, ThemePalette } from '@/ui/theme/palette';
+import { THEME_STORAGE_KEY } from '@/ui/theme/constants';
 import Constants from 'expo-constants';
 import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from 'react';
 import { Appearance, Platform } from 'react-native';
@@ -24,7 +25,6 @@ type ThemeContextValue = {
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
-const STORAGE_KEY = `${DOMAIN.app.storageKey}-theme-preference`;
 const STORAGE_NAMESPACE = `${DOMAIN.app.cursorStorageId}-theme`;
 const isExpoGo =
   Constants.executionEnvironment === 'storeClient' || Constants.appOwnership === 'expo';
@@ -53,12 +53,12 @@ function loadStoredPreference(): ThemePreference {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { createMMKV } = require('react-native-mmkv');
       const store = createMMKV({ id: STORAGE_NAMESPACE });
-      const stored = store.getString(STORAGE_KEY);
+      const stored = store.getString(THEME_STORAGE_KEY);
       if (stored === 'light' || stored === 'dark' || stored === 'system') {
         return stored;
       }
     } else if (typeof globalThis !== 'undefined' && 'localStorage' in globalThis) {
-      const stored = globalThis.localStorage.getItem(STORAGE_KEY);
+      const stored = globalThis.localStorage.getItem(THEME_STORAGE_KEY);
       if (stored === 'light' || stored === 'dark' || stored === 'system') {
         return stored;
       }
@@ -78,9 +78,9 @@ function persistPreference(preference: ThemePreference) {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { createMMKV } = require('react-native-mmkv');
       const store = createMMKV({ id: STORAGE_NAMESPACE });
-      store.set(STORAGE_KEY, preference);
+      store.set(THEME_STORAGE_KEY, preference);
     } else if (typeof globalThis !== 'undefined' && 'localStorage' in globalThis) {
-      globalThis.localStorage.setItem(STORAGE_KEY, preference);
+      globalThis.localStorage.setItem(THEME_STORAGE_KEY, preference);
     }
   } catch {
     // ignore persistence errors
@@ -154,7 +154,15 @@ export function ThemeProvider({ children }: PropsWithChildren) {
       return;
     }
 
+    document.documentElement.dataset.theme = value.resolvedTheme;
     document.documentElement.style.colorScheme = value.resolvedTheme;
+    document.documentElement.style.setProperty('--app-background', value.palette.background);
+    document.documentElement.style.backgroundColor = value.palette.background;
+    document.body.style.backgroundColor = value.palette.background;
+    const appRoot = document.getElementById('root');
+    if (appRoot) {
+      appRoot.style.backgroundColor = value.palette.background;
+    }
 
     const getOrCreateMetaTag = (name: string) => {
       const existingTag = document.querySelector(`meta[name="${name}"]`);

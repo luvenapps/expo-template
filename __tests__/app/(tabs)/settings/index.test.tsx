@@ -1,3 +1,5 @@
+import { findAllByType } from '../../../helpers/testInstance';
+
 // Mock expo-router
 const mockPush = jest.fn();
 
@@ -225,7 +227,7 @@ jest.mock('@/i18n', () => ({
 }));
 
 // Mock Tamagui Lucide Icons
-jest.mock('@tamagui/lucide-icons', () => ({
+jest.mock('@/ui/icons', () => ({
   Bell: ({ size, color }: any) => {
     const mockReact = jest.requireActual('react');
     return mockReact.createElement('View', { testID: 'bell-icon', size, color });
@@ -389,13 +391,13 @@ describe('SettingsScreen', () => {
   });
 
   describe('General Rendering', () => {
-    it('should render without crashing', () => {
-      const { UNSAFE_root } = render(<SettingsScreen />);
-      expect(UNSAFE_root).toBeDefined();
+    it('should render without crashing', async () => {
+      const { root: rootValue } = await render(<SettingsScreen />);
+      expect(rootValue!).toBeDefined();
     });
 
-    it('should render all settings rows', () => {
-      const { getByText } = render(<SettingsScreen />);
+    it('should render all settings rows', async () => {
+      const { getByText } = await render(<SettingsScreen />);
 
       expect(getByText('Theme')).toBeDefined();
       expect(getByText('Language')).toBeDefined();
@@ -409,12 +411,12 @@ describe('SettingsScreen', () => {
   });
 
   describe('Theme Row', () => {
-    it('should display current theme preference', () => {
-      const { getByText } = render(<SettingsScreen />);
+    it('should display current theme preference', async () => {
+      const { getByText } = await render(<SettingsScreen />);
       expect(getByText('System')).toBeDefined();
     });
 
-    it('should display light theme when selected', () => {
+    it('should display light theme when selected', async () => {
       mockedUseThemeContext.mockReturnValue({
         theme: 'light',
         setTheme: jest.fn(),
@@ -422,11 +424,11 @@ describe('SettingsScreen', () => {
         palette: themePalettes.light,
       });
 
-      const { getByText } = render(<SettingsScreen />);
+      const { getByText } = await render(<SettingsScreen />);
       expect(getByText('Light')).toBeDefined();
     });
 
-    it('should display dark theme when selected', () => {
+    it('should display dark theme when selected', async () => {
       mockedUseThemeContext.mockReturnValue({
         theme: 'dark',
         setTheme: jest.fn(),
@@ -434,77 +436,120 @@ describe('SettingsScreen', () => {
         palette: themePalettes.dark,
       });
 
-      const { getByText } = render(<SettingsScreen />);
+      const { getByText } = await render(<SettingsScreen />);
       expect(getByText('Dark')).toBeDefined();
     });
 
-    it('should navigate to appearance screen when pressed', () => {
-      const { getByText } = render(<SettingsScreen />);
-      fireEvent.press(getByText('Theme'));
+    it('should navigate to appearance screen when pressed', async () => {
+      const { getByText } = await render(<SettingsScreen />);
+      await fireEvent.press(getByText('Theme'));
       expect(mockPush).toHaveBeenCalledWith('/(tabs)/settings/appearance');
     });
   });
 
   describe('Language Row', () => {
-    it('should display current language', () => {
-      const { getByText } = render(<SettingsScreen />);
+    it('should display current language', async () => {
+      const { getByText } = await render(<SettingsScreen />);
       expect(getByText('English')).toBeDefined();
     });
 
-    it('should display Spanish when selected', () => {
+    it('should display Spanish when selected', async () => {
       (globalThis as any).__TEST_LANG = 'es';
-      const { getByText } = render(<SettingsScreen />);
+      const { getByText } = await render(<SettingsScreen />);
       expect(getByText('Español')).toBeDefined();
     });
 
-    it('falls back to the raw language code when unsupported', () => {
+    it('falls back to the raw language code when unsupported', async () => {
       (globalThis as any).__TEST_LANG = 'fr';
-      const { getByText } = render(<SettingsScreen />);
+      const { getByText } = await render(<SettingsScreen />);
       expect(getByText('fr')).toBeDefined();
     });
 
-    it('handles region-tagged locales', () => {
+    it('handles region-tagged locales', async () => {
       (globalThis as any).__TEST_LANG = 'en-US';
-      const { getByText } = render(<SettingsScreen />);
+      const { getByText } = await render(<SettingsScreen />);
       expect(getByText('English')).toBeDefined();
     });
 
-    it('should navigate to language screen when pressed', () => {
-      const { getByText } = render(<SettingsScreen />);
-      fireEvent.press(getByText('Language'));
+    it('should navigate to language screen when pressed', async () => {
+      const { getByText } = await render(<SettingsScreen />);
+      await fireEvent.press(getByText('Language'));
       expect(mockPush).toHaveBeenCalledWith('/(tabs)/settings/language');
     });
   });
 
   describe('SettingsRow', () => {
-    it('uses the default icon background when none is provided', () => {
-      const { UNSAFE_root } = render(
+    it('keeps row groups horizontal and applies web-safe label sizing', async () => {
+      Object.defineProperty(Platform, 'OS', {
+        value: 'web',
+        writable: true,
+        configurable: true,
+      });
+
+      const { root: rootValue } = await render(
+        <SettingsRow
+          title="Row"
+          value="System"
+          onPress={jest.fn()}
+          icon={<Text testID="row-icon" />}
+        />,
+      );
+
+      const rowGroups = findAllByType(rootValue!, 'View').filter(
+        (node) => node.props.style?.flexDirection === 'row',
+      );
+      const title = findAllByType(rootValue!, 'Text').find((node) => node.props.children === 'Row');
+      const value = findAllByType(rootValue!, 'Text').find(
+        (node) => node.props.children === 'System',
+      );
+
+      expect(rowGroups).toHaveLength(3);
+      expect(rowGroups[0]?.props.style).toMatchObject({
+        justifyContent: 'space-between',
+        padding: 16,
+      });
+      expect(rowGroups[2]?.props.style).toMatchObject({ maxWidth: '55%' });
+      expect(title?.props.fontSize).toBe('$4');
+      expect(title?.props.style).toMatchObject({ fontSize: 16, fontFamily: 'Arial' });
+      expect(value?.props.style).toMatchObject({
+        fontSize: 16,
+        fontFamily: 'Arial',
+        minWidth: 0,
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+      });
+      expect(value?.props.minWidth).toBe(0);
+    });
+
+    it('uses the default icon background when none is provided', async () => {
+      const { root: rootValue } = await render(
         <SettingsRow title="Row" onPress={jest.fn()} icon={<Text testID="row-icon" />} />,
       );
 
-      const iconWrapper = UNSAFE_root.findAllByType('View').find(
+      const iconWrapper = findAllByType(rootValue!, 'View').find(
         (node: { props: { width?: number; height?: number } }) => {
           return node.props.width === 32 && node.props.height === 32;
         },
       );
 
-      expect(iconWrapper?.props.backgroundColor).toBe('$backgroundHover');
+      expect(iconWrapper?.props.backgroundColor).toBe('background-hover');
     });
   });
 
   describe('Notifications Row', () => {
-    it('should display "Setup Needed" when notifications are blocked', () => {
+    it('should display "Setup Needed" when notifications are blocked', async () => {
       mockedUseNotificationSettings.mockReturnValue(
         buildNotificationSettings({
           permissionStatus: NOTIFICATION_PERMISSION_STATE.BLOCKED,
         }),
       );
 
-      const { getByText } = render(<SettingsScreen />);
+      const { getByText } = await render(<SettingsScreen />);
       expect(getByText('Setup Needed')).toBeDefined();
     });
 
-    it('should display "On" when notifications are enabled', () => {
+    it('should display "On" when notifications are enabled', async () => {
       mockedUseNotificationSettings.mockReturnValue(
         buildNotificationSettings({
           permissionStatus: NOTIFICATION_PERMISSION_STATE.GRANTED,
@@ -512,11 +557,11 @@ describe('SettingsScreen', () => {
         }),
       );
 
-      const { getByText } = render(<SettingsScreen />);
+      const { getByText } = await render(<SettingsScreen />);
       expect(getByText('On')).toBeDefined();
     });
 
-    it('should display "Off" when notifications permission is prompt (not granted)', () => {
+    it('should display "Off" when notifications permission is prompt (not granted)', async () => {
       mockedUseNotificationSettings.mockReturnValue(
         buildNotificationSettings({
           permissionStatus: NOTIFICATION_PERMISSION_STATE.PROMPT,
@@ -524,17 +569,17 @@ describe('SettingsScreen', () => {
         }),
       );
 
-      const { getByText } = render(<SettingsScreen />);
+      const { getByText } = await render(<SettingsScreen />);
       expect(getByText('Off')).toBeDefined();
     });
 
-    it('should navigate to notifications screen when pressed', () => {
-      const { getByText } = render(<SettingsScreen />);
-      fireEvent.press(getByText('Notifications'));
+    it('should navigate to notifications screen when pressed', async () => {
+      const { getByText } = await render(<SettingsScreen />);
+      await fireEvent.press(getByText('Notifications'));
       expect(mockPush).toHaveBeenCalledWith('/(tabs)/settings/notifications');
     });
 
-    it('uses web-only blocked state logic when on web', () => {
+    it('uses web-only blocked state logic when on web', async () => {
       Object.defineProperty(Platform, 'OS', {
         value: 'web',
         writable: true,
@@ -546,7 +591,7 @@ describe('SettingsScreen', () => {
         }),
       );
 
-      const { getByText } = render(<SettingsScreen />);
+      const { getByText } = await render(<SettingsScreen />);
       expect(getByText('Off')).toBeDefined();
     });
   });
@@ -563,14 +608,14 @@ describe('SettingsScreen', () => {
       );
     });
 
-    it('should display "Sign In" when unauthenticated', () => {
-      const { getAllByText } = render(<SettingsScreen />);
+    it('should display "Sign In" when unauthenticated', async () => {
+      const { getAllByText } = await render(<SettingsScreen />);
       expect(getAllByText('Sign In')[0]).toBeDefined();
     });
 
-    it('should navigate to account screen when pressed', () => {
-      const { getByText } = render(<SettingsScreen />);
-      fireEvent.press(getByText('Account'));
+    it('should navigate to account screen when pressed', async () => {
+      const { getByText } = await render(<SettingsScreen />);
+      await fireEvent.press(getByText('Account'));
       expect(mockPush).toHaveBeenCalledWith('/(tabs)/settings/account');
     });
   });
@@ -591,12 +636,12 @@ describe('SettingsScreen', () => {
       );
     });
 
-    it('should display user email when authenticated', () => {
-      const { getAllByText } = render(<SettingsScreen />);
+    it('should display user email when authenticated', async () => {
+      const { getAllByText } = await render(<SettingsScreen />);
       expect(getAllByText('test@example.com')[0]).toBeDefined();
     });
 
-    it('should display "Signed in" when authenticated without email', () => {
+    it('should display "Signed in" when authenticated without email', async () => {
       mockedUseSessionStore.mockImplementation((selector: any) =>
         selector({
           status: 'authenticated',
@@ -608,53 +653,53 @@ describe('SettingsScreen', () => {
         }),
       );
 
-      const { getAllByText } = render(<SettingsScreen />);
+      const { getAllByText } = await render(<SettingsScreen />);
       expect(getAllByText('Signed in')[0]).toBeDefined();
     });
 
-    it('should navigate to account screen when pressed', () => {
-      const { getByText } = render(<SettingsScreen />);
-      fireEvent.press(getByText('Account'));
+    it('should navigate to account screen when pressed', async () => {
+      const { getByText } = await render(<SettingsScreen />);
+      await fireEvent.press(getByText('Account'));
       expect(mockPush).toHaveBeenCalledWith('/(tabs)/settings/account');
     });
   });
 
   describe('Developer Utilities Row', () => {
-    it('should navigate to developer utilities screen when pressed', () => {
-      const { getByText } = render(<SettingsScreen />);
-      fireEvent.press(getByText('Developer Utilities'));
+    it('should navigate to developer utilities screen when pressed', async () => {
+      const { getByText } = await render(<SettingsScreen />);
+      await fireEvent.press(getByText('Developer Utilities'));
       expect(mockPush).toHaveBeenCalledWith('/(tabs)/settings/developer-utilities');
     });
 
-    it('hides developer utilities when not in dev mode', () => {
+    it('hides developer utilities when not in dev mode', async () => {
       (globalThis as typeof globalThis & { __DEV__?: boolean }).__DEV__ = false;
 
-      const { queryByText } = render(<SettingsScreen />);
+      const { queryByText } = await render(<SettingsScreen />);
       expect(queryByText('Developer Utilities')).toBeNull();
     });
   });
 
   describe('Get Help Row', () => {
-    it('should navigate to get help screen when pressed', () => {
-      const { getByText } = render(<SettingsScreen />);
-      fireEvent.press(getByText('Get Help'));
+    it('should navigate to get help screen when pressed', async () => {
+      const { getByText } = await render(<SettingsScreen />);
+      await fireEvent.press(getByText('Get Help'));
       expect(mockPush).toHaveBeenCalledWith('/(tabs)/settings/get-help');
     });
   });
 
   describe('Terms Row', () => {
-    it('should navigate to terms screen when pressed', () => {
-      const { getByText } = render(<SettingsScreen />);
-      fireEvent.press(getByText('Terms of Service'));
+    it('should navigate to terms screen when pressed', async () => {
+      const { getByText } = await render(<SettingsScreen />);
+      await fireEvent.press(getByText('Terms of Service'));
       expect(mockPush).toHaveBeenCalledWith('/(tabs)/settings/terms');
     });
 
-    it('opens the in-app browser when terms url is configured', () => {
+    it('opens the in-app browser when terms url is configured', async () => {
       mockUseFeatureFlag
         .mockReturnValueOnce({ value: 'https://example.com/terms' })
         .mockReturnValueOnce({ value: '' });
-      const { getByText } = render(<SettingsScreen />);
-      fireEvent.press(getByText('Terms of Service'));
+      const { getByText } = await render(<SettingsScreen />);
+      await fireEvent.press(getByText('Terms of Service'));
       expect(mockOpenBrowserAsync).toHaveBeenCalledWith('https://example.com/terms');
       expect(mockPush).not.toHaveBeenCalledWith('/(tabs)/settings/terms');
     });
@@ -665,7 +710,7 @@ describe('SettingsScreen', () => {
         .mockReturnValueOnce({ value: 'https://example.com/terms' })
         .mockReturnValueOnce({ value: '' });
       mockOpenBrowserAsync.mockRejectedValueOnce(error);
-      const { getByText } = render(<SettingsScreen />);
+      const { getByText } = await render(<SettingsScreen />);
 
       await fireEvent.press(getByText('Terms of Service'));
 
@@ -674,18 +719,18 @@ describe('SettingsScreen', () => {
   });
 
   describe('Privacy Row', () => {
-    it('should navigate to privacy screen when pressed', () => {
-      const { getByText } = render(<SettingsScreen />);
-      fireEvent.press(getByText('Privacy Policy'));
+    it('should navigate to privacy screen when pressed', async () => {
+      const { getByText } = await render(<SettingsScreen />);
+      await fireEvent.press(getByText('Privacy Policy'));
       expect(mockPush).toHaveBeenCalledWith('/(tabs)/settings/privacy');
     });
 
-    it('opens the in-app browser when privacy url is configured', () => {
+    it('opens the in-app browser when privacy url is configured', async () => {
       mockUseFeatureFlag
         .mockReturnValueOnce({ value: '' })
         .mockReturnValueOnce({ value: 'https://example.com/privacy' });
-      const { getByText } = render(<SettingsScreen />);
-      fireEvent.press(getByText('Privacy Policy'));
+      const { getByText } = await render(<SettingsScreen />);
+      await fireEvent.press(getByText('Privacy Policy'));
       expect(mockOpenBrowserAsync).toHaveBeenCalledWith('https://example.com/privacy');
       expect(mockPush).not.toHaveBeenCalledWith('/(tabs)/settings/privacy');
     });
@@ -696,7 +741,7 @@ describe('SettingsScreen', () => {
         .mockReturnValueOnce({ value: '' })
         .mockReturnValueOnce({ value: 'https://example.com/privacy' });
       mockOpenBrowserAsync.mockRejectedValueOnce(error);
-      const { getByText } = render(<SettingsScreen />);
+      const { getByText } = await render(<SettingsScreen />);
 
       await fireEvent.press(getByText('Privacy Policy'));
 
@@ -711,7 +756,7 @@ describe('SettingsScreen', () => {
       process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = originalEnv;
     });
 
-    it('should check notification status correctly when Firebase is enabled', () => {
+    it('should check notification status correctly when Firebase is enabled', async () => {
       process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = 'true';
       mockedUseNotificationSettings.mockReturnValue(
         buildNotificationSettings({
@@ -720,11 +765,11 @@ describe('SettingsScreen', () => {
         }),
       );
 
-      const { getByText } = render(<SettingsScreen />);
+      const { getByText } = await render(<SettingsScreen />);
       expect(getByText('On')).toBeDefined();
     });
 
-    it('should check permission status when Firebase is disabled', () => {
+    it('should check permission status when Firebase is disabled', async () => {
       process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = 'false';
       mockedUseNotificationSettings.mockReturnValue(
         buildNotificationSettings({
@@ -733,20 +778,20 @@ describe('SettingsScreen', () => {
         }),
       );
 
-      const { getByText } = render(<SettingsScreen />);
+      const { getByText } = await render(<SettingsScreen />);
       expect(getByText('On')).toBeDefined();
     });
   });
 
   describe('MarqueeText Component', () => {
-    it('renders simple text with ellipsis on web', () => {
+    it('renders simple text with ellipsis on web', async () => {
       Object.defineProperty(Platform, 'OS', {
         value: 'web',
         writable: true,
         configurable: true,
       });
 
-      const { getAllByText } = render(
+      const { getAllByText, root: rootValue } = await render(
         <SettingsRow
           title="Test"
           value="Long email address"
@@ -757,9 +802,18 @@ describe('SettingsScreen', () => {
 
       // Should render the text (even though it's web, we just check it renders)
       expect(getAllByText('Long email address').length).toBeGreaterThan(0);
+      const value = findAllByType(rootValue!, 'Text').find(
+        (node) => node.props.children === 'Long email address',
+      );
+      expect(value?.props.style).toMatchObject({
+        minWidth: 0,
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+      });
     });
 
-    it('renders MarqueeTextNative on native platforms', () => {
+    it('renders MarqueeTextNative on native platforms', async () => {
       Object.defineProperty(Platform, 'OS', {
         value: 'ios',
         writable: true,
@@ -779,12 +833,12 @@ describe('SettingsScreen', () => {
         }),
       );
 
-      const { getAllByText } = render(<SettingsScreen />);
+      const { getAllByText } = await render(<SettingsScreen />);
       // Should render the email text (in MarqueeTextNative)
       expect(getAllByText('very.long.email.address@example.com').length).toBeGreaterThan(0);
     });
 
-    it('triggers onLayout callback for container width measurement', () => {
+    it('triggers onLayout callback for container width measurement', async () => {
       Object.defineProperty(Platform, 'OS', {
         value: 'ios',
         writable: true,
@@ -804,10 +858,10 @@ describe('SettingsScreen', () => {
         }),
       );
 
-      const { UNSAFE_root } = render(<SettingsScreen />);
+      const { root: rootValue } = await render(<SettingsScreen />);
 
       // Find the container View with onLayout callback
-      const containers = UNSAFE_root.findAllByType('View');
+      const containers = findAllByType(rootValue!, 'View');
       const containerWithOnLayout = containers.find(
         (node: any) => node.props.onLayout && node.props.style?.overflow === 'hidden',
       );
@@ -816,7 +870,7 @@ describe('SettingsScreen', () => {
 
       // Simulate layout event
       if (containerWithOnLayout) {
-        act(() => {
+        await act(() => {
           containerWithOnLayout.props.onLayout({
             nativeEvent: {
               layout: { width: 200, height: 20, x: 0, y: 0 },
@@ -826,7 +880,7 @@ describe('SettingsScreen', () => {
       }
     });
 
-    it('triggers onTextLayout callback for text width measurement', () => {
+    it('triggers onTextLayout callback for text width measurement', async () => {
       Object.defineProperty(Platform, 'OS', {
         value: 'ios',
         writable: true,
@@ -846,17 +900,17 @@ describe('SettingsScreen', () => {
         }),
       );
 
-      const { UNSAFE_root } = render(<SettingsScreen />);
+      const { root: rootValue } = await render(<SettingsScreen />);
 
       // Find the Text component with onTextLayout callback
-      const textElements = UNSAFE_root.findAllByType('Text');
+      const textElements = findAllByType(rootValue!, 'Text');
       const textWithOnTextLayout = textElements.find((node: any) => node.props.onTextLayout);
 
       expect(textWithOnTextLayout).toBeDefined();
 
       // Simulate text layout event with line measurements
       if (textWithOnTextLayout) {
-        act(() => {
+        await act(() => {
           textWithOnTextLayout.props.onTextLayout({
             nativeEvent: {
               lines: [{ width: 150, height: 20, text: 'test@example.com', x: 0, y: 0 }],
@@ -866,7 +920,7 @@ describe('SettingsScreen', () => {
       }
     });
 
-    it('handles empty lines array in onTextLayout', () => {
+    it('handles empty lines array in onTextLayout', async () => {
       Object.defineProperty(Platform, 'OS', {
         value: 'ios',
         writable: true,
@@ -886,14 +940,14 @@ describe('SettingsScreen', () => {
         }),
       );
 
-      const { UNSAFE_root } = render(<SettingsScreen />);
+      const { root: rootValue } = await render(<SettingsScreen />);
 
-      const textElements = UNSAFE_root.findAllByType('Text');
+      const textElements = findAllByType(rootValue!, 'Text');
       const textWithOnTextLayout = textElements.find((node: any) => node.props.onTextLayout);
 
       // Simulate text layout event with empty lines
       if (textWithOnTextLayout) {
-        act(() => {
+        await act(() => {
           textWithOnTextLayout.props.onTextLayout({
             nativeEvent: {
               lines: [],
@@ -906,7 +960,7 @@ describe('SettingsScreen', () => {
       expect(textWithOnTextLayout).toBeDefined();
     });
 
-    it('calculates total width from multiple lines', () => {
+    it('calculates total width from multiple lines', async () => {
       Object.defineProperty(Platform, 'OS', {
         value: 'ios',
         writable: true,
@@ -926,14 +980,14 @@ describe('SettingsScreen', () => {
         }),
       );
 
-      const { UNSAFE_root } = render(<SettingsScreen />);
+      const { root: rootValue } = await render(<SettingsScreen />);
 
-      const textElements = UNSAFE_root.findAllByType('Text');
+      const textElements = findAllByType(rootValue!, 'Text');
       const textWithOnTextLayout = textElements.find((node: any) => node.props.onTextLayout);
 
       // Simulate text layout event with multiple lines (shouldn't happen, but test the reduce logic)
       if (textWithOnTextLayout) {
-        act(() => {
+        await act(() => {
           textWithOnTextLayout.props.onTextLayout({
             nativeEvent: {
               lines: [
@@ -948,7 +1002,7 @@ describe('SettingsScreen', () => {
       expect(textWithOnTextLayout).toBeDefined();
     });
 
-    it('triggers animation when text overflows container', () => {
+    it('triggers animation when text overflows container', async () => {
       jest.useFakeTimers();
 
       Object.defineProperty(Platform, 'OS', {
@@ -970,20 +1024,20 @@ describe('SettingsScreen', () => {
         }),
       );
 
-      const { UNSAFE_root } = render(<SettingsScreen />);
+      const { root: rootValue } = await render(<SettingsScreen />);
 
       // Find and trigger layout events to simulate overflow
-      const containers = UNSAFE_root.findAllByType('View');
+      const containers = findAllByType(rootValue!, 'View');
       const containerWithOnLayout = containers.find(
         (node: any) => node.props.onLayout && node.props.style?.overflow === 'hidden',
       );
 
-      const textElements = UNSAFE_root.findAllByType('Text');
+      const textElements = findAllByType(rootValue!, 'Text');
       const textWithOnTextLayout = textElements.find((node: any) => node.props.onTextLayout);
 
       // Set container width to 150px
       if (containerWithOnLayout) {
-        act(() => {
+        await act(() => {
           containerWithOnLayout.props.onLayout({
             nativeEvent: {
               layout: { width: 150, height: 20, x: 0, y: 0 },
@@ -994,7 +1048,7 @@ describe('SettingsScreen', () => {
 
       // Set text width to 300px (overflows by 150px, exceeds 1px threshold)
       if (textWithOnTextLayout) {
-        act(() => {
+        await act(() => {
           textWithOnTextLayout.props.onTextLayout({
             nativeEvent: {
               lines: [
@@ -1012,7 +1066,7 @@ describe('SettingsScreen', () => {
       }
 
       // Advance timers to trigger animation
-      act(() => {
+      await act(() => {
         jest.advanceTimersByTime(1500); // MARQUEE_PAUSE_MS
       });
 
@@ -1020,7 +1074,7 @@ describe('SettingsScreen', () => {
       jest.useRealTimers();
     });
 
-    it('cleans up animation timeout on unmount', () => {
+    it('cleans up animation timeout on unmount', async () => {
       jest.useFakeTimers();
 
       Object.defineProperty(Platform, 'OS', {
@@ -1042,18 +1096,48 @@ describe('SettingsScreen', () => {
         }),
       );
 
-      const { unmount } = render(<SettingsScreen />);
+      const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
+      const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
+      const { unmount, root: rootValue } = await render(<SettingsScreen />);
+
+      const containers = findAllByType(rootValue!, 'View');
+      const containerWithOnLayout = containers.find(
+        (node: any) => node.props.onLayout && node.props.style?.overflow === 'hidden',
+      );
+      const textWithOnTextLayout = findAllByType(rootValue!, 'Text').find(
+        (node: any) => node.props.onTextLayout,
+      );
+
+      if (containerWithOnLayout && textWithOnTextLayout) {
+        await act(() => {
+          containerWithOnLayout.props.onLayout({
+            nativeEvent: { layout: { width: 150, height: 20, x: 0, y: 0 } },
+          });
+        });
+        await act(() => {
+          textWithOnTextLayout.props.onTextLayout({
+            nativeEvent: {
+              lines: [{ width: 300, height: 20, text: 'long email', x: 0, y: 0 }],
+            },
+          });
+        });
+      }
+
+      const marqueeTimeoutIndex = setTimeoutSpy.mock.calls.findIndex(([, delay]) => delay === 1500);
+      expect(marqueeTimeoutIndex).toBeGreaterThanOrEqual(0);
+      const marqueeTimeoutId = setTimeoutSpy.mock.results[marqueeTimeoutIndex]?.value;
 
       // Unmount to trigger cleanup
-      unmount();
+      await unmount();
 
-      // Verify no timers are left running
-      expect(jest.getTimerCount()).toBe(0);
+      expect(clearTimeoutSpy).toHaveBeenCalledWith(marqueeTimeoutId);
 
+      setTimeoutSpy.mockRestore();
+      clearTimeoutSpy.mockRestore();
       jest.useRealTimers();
     });
 
-    it('does not animate when text does not overflow', () => {
+    it('does not animate when text does not overflow', async () => {
       Object.defineProperty(Platform, 'OS', {
         value: 'ios',
         writable: true,
@@ -1073,19 +1157,19 @@ describe('SettingsScreen', () => {
         }),
       );
 
-      const { UNSAFE_root } = render(<SettingsScreen />);
+      const { root: rootValue } = await render(<SettingsScreen />);
 
-      const containers = UNSAFE_root.findAllByType('View');
+      const containers = findAllByType(rootValue!, 'View');
       const containerWithOnLayout = containers.find(
         (node: any) => node.props.onLayout && node.props.style?.overflow === 'hidden',
       );
 
-      const textElements = UNSAFE_root.findAllByType('Text');
+      const textElements = findAllByType(rootValue!, 'Text');
       const textWithOnTextLayout = textElements.find((node: any) => node.props.onTextLayout);
 
       // Set container width to 200px
       if (containerWithOnLayout) {
-        act(() => {
+        await act(() => {
           containerWithOnLayout.props.onLayout({
             nativeEvent: {
               layout: { width: 200, height: 20, x: 0, y: 0 },
@@ -1096,7 +1180,7 @@ describe('SettingsScreen', () => {
 
       // Set text width to 100px (does not overflow)
       if (textWithOnTextLayout) {
-        act(() => {
+        await act(() => {
           textWithOnTextLayout.props.onTextLayout({
             nativeEvent: {
               lines: [{ width: 100, height: 20, text: 'short@ex.co', x: 0, y: 0 }],
@@ -1105,10 +1189,10 @@ describe('SettingsScreen', () => {
         });
       }
 
-      expect(UNSAFE_root).toBeDefined();
+      expect(rootValue!).toBeDefined();
     });
 
-    it('does not animate when overflow is within 1px threshold', () => {
+    it('does not animate when overflow is within 1px threshold', async () => {
       Object.defineProperty(Platform, 'OS', {
         value: 'ios',
         writable: true,
@@ -1128,19 +1212,19 @@ describe('SettingsScreen', () => {
         }),
       );
 
-      const { UNSAFE_root } = render(<SettingsScreen />);
+      const { root: rootValue } = await render(<SettingsScreen />);
 
-      const containers = UNSAFE_root.findAllByType('View');
+      const containers = findAllByType(rootValue!, 'View');
       const containerWithOnLayout = containers.find(
         (node: any) => node.props.onLayout && node.props.style?.overflow === 'hidden',
       );
 
-      const textElements = UNSAFE_root.findAllByType('Text');
+      const textElements = findAllByType(rootValue!, 'Text');
       const textWithOnTextLayout = textElements.find((node: any) => node.props.onTextLayout);
 
       // Set container width to 200px
       if (containerWithOnLayout) {
-        act(() => {
+        await act(() => {
           containerWithOnLayout.props.onLayout({
             nativeEvent: {
               layout: { width: 200, height: 20, x: 0, y: 0 },
@@ -1151,7 +1235,7 @@ describe('SettingsScreen', () => {
 
       // Set text width to 200.5px (overflows by 0.5px, below 1px threshold)
       if (textWithOnTextLayout) {
-        act(() => {
+        await act(() => {
           textWithOnTextLayout.props.onTextLayout({
             nativeEvent: {
               lines: [{ width: 200.5, height: 20, text: 'test@example.com', x: 0, y: 0 }],
@@ -1160,12 +1244,12 @@ describe('SettingsScreen', () => {
         });
       }
 
-      expect(UNSAFE_root).toBeDefined();
+      expect(rootValue!).toBeDefined();
     });
   });
 
   describe('Notification Status Combinations', () => {
-    it('displays "Setup Needed" when permission is DENIED on native', () => {
+    it('displays "Setup Needed" when permission is DENIED on native', async () => {
       Object.defineProperty(Platform, 'OS', {
         value: 'ios',
         writable: true,
@@ -1178,11 +1262,11 @@ describe('SettingsScreen', () => {
         }),
       );
 
-      const { getByText } = render(<SettingsScreen />);
+      const { getByText } = await render(<SettingsScreen />);
       expect(getByText('Setup Needed')).toBeDefined();
     });
 
-    it('displays "Setup Needed" when permission is UNAVAILABLE on native', () => {
+    it('displays "Setup Needed" when permission is UNAVAILABLE on native', async () => {
       Object.defineProperty(Platform, 'OS', {
         value: 'ios',
         writable: true,
@@ -1195,13 +1279,13 @@ describe('SettingsScreen', () => {
         }),
       );
 
-      const { getByText } = render(<SettingsScreen />);
+      const { getByText } = await render(<SettingsScreen />);
       expect(getByText('Setup Needed')).toBeDefined();
     });
   });
 
   describe('Icon Color Computation', () => {
-    it('computes correct icon styles in light mode', () => {
+    it('computes correct icon styles in light mode', async () => {
       mockedUseThemeContext.mockReturnValue({
         theme: 'light',
         setTheme: jest.fn(),
@@ -1209,9 +1293,9 @@ describe('SettingsScreen', () => {
         palette: themePalettes.light,
       });
 
-      const { UNSAFE_root } = render(<SettingsScreen />);
+      const { root: rootValue } = await render(<SettingsScreen />);
       // Just verify it renders without crashing in light mode
-      expect(UNSAFE_root).toBeDefined();
+      expect(rootValue!).toBeDefined();
     });
   });
 });

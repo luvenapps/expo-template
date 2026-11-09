@@ -10,32 +10,34 @@ jest.mock('@react-native-firebase/messaging', () => {
   const getToken = jest.fn().mockResolvedValue('mock-token');
   const deleteToken = jest.fn().mockResolvedValue(undefined);
   const registerDeviceForRemoteMessages = jest.fn().mockResolvedValue(undefined);
+  const getMessaging = jest.fn(() => ({}));
   let onMessageCallback: ((msg: any) => void) | null = null;
   let onTokenRefreshCallback: ((token: string) => void) | null = null;
-  const onMessage = jest.fn((cb: (msg: any) => void) => {
+  const onMessage = jest.fn((_instance: unknown, cb: (msg: any) => void) => {
     onMessageCallback = cb;
     return jest.fn();
   });
-  const onTokenRefresh = jest.fn((cb: (token: string) => void) => {
+  const onTokenRefresh = jest.fn((_instance: unknown, cb: (token: string) => void) => {
     onTokenRefreshCallback = cb;
     return jest.fn();
   });
-  const setBackgroundMessageHandler = jest.fn((cb: (msg: any) => void) => {
+  const setBackgroundMessageHandler = jest.fn((_instance: unknown, cb: (msg: any) => void) => {
     onMessageCallback = cb;
   });
 
   return {
     __esModule: true,
-    default: jest.fn(() => ({
-      requestPermission,
-      getToken,
-      deleteToken,
-      registerDeviceForRemoteMessages,
-      onMessage,
-      onTokenRefresh,
-      setBackgroundMessageHandler,
-    })),
+    getMessaging,
+    AuthorizationStatus,
+    requestPermission,
+    getToken,
+    deleteToken,
+    registerDeviceForRemoteMessages,
+    onMessage,
+    onTokenRefresh,
+    setBackgroundMessageHandler,
     __mock: {
+      getMessaging,
       requestPermission,
       getToken,
       deleteToken,
@@ -55,26 +57,31 @@ jest.mock('@react-native-firebase/messaging', () => {
         onMessage.mockReset();
         onTokenRefresh.mockReset();
         setBackgroundMessageHandler.mockReset();
+        getMessaging.mockReset();
+        getMessaging.mockReturnValue({});
         requestPermission.mockResolvedValue(AuthorizationStatus.AUTHORIZED);
         getToken.mockResolvedValue('mock-token');
         deleteToken.mockResolvedValue(undefined);
         registerDeviceForRemoteMessages.mockResolvedValue(undefined);
-        onMessage.mockImplementation((cb: (msg: any) => void) => {
+        onMessage.mockImplementation((_instance: unknown, cb: (msg: any) => void) => {
           onMessageCallback = cb;
           return jest.fn();
         });
-        onTokenRefresh.mockImplementation((cb: (token: string) => void) => {
+        onTokenRefresh.mockImplementation((_instance: unknown, cb: (token: string) => void) => {
           onTokenRefreshCallback = cb;
           return jest.fn();
         });
-        setBackgroundMessageHandler.mockImplementation((cb: (msg: any) => void) => {
-          onMessageCallback = cb;
-        });
+        setBackgroundMessageHandler.mockImplementation(
+          (_instance: unknown, cb: (msg: any) => void) => {
+            onMessageCallback = cb;
+          },
+        );
       },
     },
-    AuthorizationStatus,
   };
 });
+
+jest.mock('expo-device', () => ({ isDevice: true }));
 
 jest.mock('expo-notifications', () => ({
   scheduleNotificationAsync: jest.fn(),
@@ -131,6 +138,7 @@ describe('firebasePush Native', () => {
   beforeEach(() => {
     process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = 'true';
     Object.defineProperty(Platform, 'OS', { value: 'android', configurable: true });
+    jest.requireMock('expo-device').isDevice = true;
 
     // Reset module cache first to clear lastLoggedNativeToken and other module-level state
     jest.resetModules();
@@ -160,7 +168,7 @@ describe('firebasePush Native', () => {
     const messaging = jest.requireMock('@react-native-firebase/messaging');
     const result = await registerForPushNotifications();
     expect(result).toEqual({ status: 'registered', token: 'mock-token' });
-    expect(messaging.__mock.registerDeviceForRemoteMessages).toHaveBeenCalled();
+    expect(messaging.__mock.registerDeviceForRemoteMessages).not.toHaveBeenCalled();
   });
 
   it('returns denied when permission not granted', async () => {
@@ -207,7 +215,7 @@ describe('firebasePush Native', () => {
     const unsubscribe = initializeFCMListeners();
     expect(messaging.__mock.onMessage).toHaveBeenCalledTimes(1);
 
-    const cb = messaging.__mock.onMessage.mock.calls[0]?.[0];
+    const cb = messaging.__mock.onMessage.mock.calls[0]?.[1];
     expect(typeof cb).toBe('function');
     const Notifications = jest.requireMock('expo-notifications');
     await cb?.({
@@ -229,7 +237,7 @@ describe('firebasePush Native', () => {
     const unsubscribe = initializeFCMListeners();
     expect(messaging.__mock.onTokenRefresh).toHaveBeenCalledTimes(1);
 
-    const cb = messaging.__mock.onTokenRefresh.mock.calls[0]?.[0];
+    const cb = messaging.__mock.onTokenRefresh.mock.calls[0]?.[1];
     expect(typeof cb).toBe('function');
 
     // Simulate token refresh (e.g., after app reinstall)
@@ -310,17 +318,6 @@ describe('firebasePush Native', () => {
       expect(result).toEqual({ status: 'registered', token: 'mock-token' });
     });
 
-    it('handles register device failure', async () => {
-      const { registerForPushNotifications } = require('@/notifications/firebasePush');
-      const messaging = jest.requireMock('@react-native-firebase/messaging');
-      messaging.__mock.registerDeviceForRemoteMessages.mockRejectedValue(
-        new Error('Registration failed'),
-      );
-
-      const result = await registerForPushNotifications();
-      expect(result.status).toBe('error');
-    });
-
     it('returns error when getToken returns empty token', async () => {
       const { registerForPushNotifications } = require('@/notifications/firebasePush');
       const messaging = jest.requireMock('@react-native-firebase/messaging');
@@ -353,7 +350,7 @@ describe('firebasePush Native', () => {
     it('handles background handler setup failure gracefully', () => {
       const { setupBackgroundMessageHandler } = require('@/notifications/firebasePush');
       const messagingMock = jest.requireMock('@react-native-firebase/messaging');
-      messagingMock.default = jest.fn(() => {
+      messagingMock.getMessaging = jest.fn(() => {
         throw new Error('Background handler setup failed');
       });
 
@@ -371,7 +368,7 @@ describe('firebasePush Native', () => {
 
       initializeFCMListeners();
 
-      const cb = messaging.__mock.onMessage.mock.calls[0]?.[0];
+      const cb = messaging.__mock.onMessage.mock.calls[0]?.[1];
 
       // Should not throw even if notification display fails
       await expect(
@@ -401,6 +398,24 @@ describe('firebasePush Native', () => {
       const result = await registerForPushNotifications();
       expect(result).toEqual({ status: 'registered', token: 'mock-token' });
       expect(Notifications.requestPermissionsAsync).not.toHaveBeenCalled();
+      expect(
+        jest.requireMock('@react-native-firebase/messaging').__mock.registerDeviceForRemoteMessages,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('returns unavailable on iOS simulator after checking notification permission', async () => {
+      jest.requireMock('expo-device').isDevice = false;
+      const { registerForPushNotifications } = require('@/notifications/firebasePush');
+      const messaging = jest.requireMock('@react-native-firebase/messaging');
+      const Notifications = jest.requireMock('expo-notifications');
+
+      const result = await registerForPushNotifications();
+
+      expect(result).toEqual({ status: 'unavailable' });
+      expect(Notifications.getPermissionsAsync).toHaveBeenCalled();
+      expect(messaging.__mock.requestPermission).not.toHaveBeenCalled();
+      expect(messaging.__mock.getToken).not.toHaveBeenCalled();
+      expect(messaging.__mock.registerDeviceForRemoteMessages).not.toHaveBeenCalled();
     });
 
     it('requests permission on iOS when not already granted', async () => {

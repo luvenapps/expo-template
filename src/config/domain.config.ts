@@ -35,7 +35,7 @@ export const DOMAIN = {
   entities: {
     /**
      * Primary domain entity (the main thing your app manages)
-     * Examples: task, project, workout, note, etc.
+     * Examples: habit, task, project, workout, note, etc.
      */
     primary: {
       name: '__APP_NAME__SINGULAR__', // Singular form
@@ -47,7 +47,7 @@ export const DOMAIN = {
 
     /**
      * Entry/activity records for the primary entity
-     * Examples: example_entries, task_completions, workout_sessions, etc.
+     * Examples: habit_entries, task_completions, workout_sessions, etc.
      */
     entries: {
       name: 'entry', // Singular form
@@ -87,8 +87,7 @@ export const DOMAIN = {
 /**
  * Type-safe table name union
  */
-export type TableName =
-  (typeof DOMAIN.entities)[keyof typeof DOMAIN.entities]['tableName'];
+export type TableName = (typeof DOMAIN.entities)[keyof typeof DOMAIN.entities]['tableName'];
 
 /**
  * Type-safe remote table name union

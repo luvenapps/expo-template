@@ -138,10 +138,21 @@ jest.mock('expo-secure-store', () => ({
   }),
 }));
 
-// Mock react-native-reanimated
+jest.mock('react-native-worklets', () => jest.requireActual('react-native-worklets/src/mock'));
+
 jest.mock('react-native-reanimated', () => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const Reanimated = require('react-native-reanimated/mock');
-  Reanimated.default.call = () => {};
-  return Reanimated;
+  const { View } = jest.requireActual('react-native');
+
+  return {
+    __esModule: true,
+    default: {
+      View,
+      createAnimatedComponent: (component: unknown) => component,
+    },
+    Easing: { linear: (value: number) => value },
+    cancelAnimation: jest.fn(),
+    useAnimatedStyle: (styleUpdater: () => unknown) => styleUpdater(),
+    useSharedValue: (value: unknown) => ({ value }),
+    withTiming: jest.fn((value: unknown) => value),
+  };
 });

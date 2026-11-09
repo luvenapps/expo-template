@@ -1,9 +1,16 @@
 import { ScreenContainer, SettingsSection } from '@/ui';
 import { useThemeContext, type ThemeName } from '@/ui/theme/ThemeProvider';
-import { Monitor, Moon, Sun } from '@tamagui/lucide-icons';
+import { Monitor, Moon, Sun } from '@/ui/icons';
 import type { ComponentType } from 'react';
+import { Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Button, Text, YStack } from 'tamagui';
+
+const THEME_OPTION_WEB_TEXT_STYLE = {
+  fontFamily: 'Arial',
+  fontSize: 16,
+  fontWeight: '300',
+} as const;
 
 export default function AppearanceSettingsScreen() {
   const { t } = useTranslation();
@@ -14,9 +21,9 @@ export default function AppearanceSettingsScreen() {
     label: string;
     Icon: ComponentType<{ size?: number; color?: string }>;
   }[] = [
-    { value: 'system', label: 'System', Icon: Monitor },
-    { value: 'light', label: 'Light', Icon: Sun },
-    { value: 'dark', label: 'Dark', Icon: Moon },
+    { value: 'system', label: t('settings.themeSystem'), Icon: Monitor },
+    { value: 'light', label: t('settings.themeLight'), Icon: Sun },
+    { value: 'dark', label: t('settings.themeDark'), Icon: Moon },
   ];
 
   const handleThemeSelection = (value: ThemeName) => {
@@ -24,41 +31,36 @@ export default function AppearanceSettingsScreen() {
   };
 
   return (
-    <ScreenContainer gap="$5">
+    <ScreenContainer gap="4">
       <SettingsSection title={t('settings.themeTitle')}>
-        <YStack gap="$2" width="100%">
+        <YStack gap="2" width="100%">
           {THEME_OPTIONS.map(({ value, label, Icon }) => {
             const isActive = themePreference === value;
             return (
               <Button
                 key={value}
-                flex={1}
-                size="$5"
+                size="legacy5"
                 height={48}
-                borderRadius="$3"
+                gap={Platform.OS === 'web' ? '10.555px' : '2'}
+                borderRadius="3"
                 borderStyle="solid"
-                borderColor="$borderColor"
-                backgroundColor={isActive ? '$accentColor' : '$background'}
-                color="$color"
-                pressStyle={{
-                  backgroundColor: isActive ? '$accentColor' : '$backgroundPress',
-                }}
-                hoverStyle={{
-                  backgroundColor: isActive ? '$accentColor' : '$backgroundHover',
-                }}
-                disabled={isActive}
-                aria-label={
-                  value === 'system'
-                    ? t('settings.themeSystem')
-                    : value === 'light'
-                      ? t('settings.themeLight')
-                      : t('settings.themeDark')
-                }
-                onPress={() => handleThemeSelection(value)}
+                borderColor="border-color"
+                backgroundColor={`${isActive ? 'accent-color' : 'background'} hover:${isActive ? 'accent-color' : 'background-hover'} press:${isActive ? 'accent-color' : 'background-press'}`}
+                color="color"
                 fontWeight="300"
+                testID={`theme-option-${value}`}
+                opacity={1}
+                disabled={isActive}
+                aria-label={label}
+                onPress={() => handleThemeSelection(value)}
               >
-                <Icon size={20} color={isActive ? 'white' : '$color'} />
-                <Text fontSize="$4" color={isActive ? 'white' : '$color'}>
+                <Icon size={20} color={isActive ? 'white' : 'color'} />
+                <Text
+                  testID={`theme-option-label-${value}`}
+                  fontSize="4"
+                  color={`${isActive ? 'white' : 'color'}`}
+                  style={Platform.OS === 'web' ? THEME_OPTION_WEB_TEXT_STYLE : undefined}
+                >
                   {label}
                 </Text>
               </Button>

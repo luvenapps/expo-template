@@ -19,7 +19,7 @@ const records = [
     tableName: 'test',
     rowId: '1',
     operation: 'insert',
-    payloadJson: '{}',
+    payload: '{}',
     version: 1,
     attempts: 0,
     createdAt: 'now',

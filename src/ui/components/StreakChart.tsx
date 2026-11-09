@@ -25,12 +25,12 @@ export function StreakChart({
   formatPercentLabel = (percent) => `${Math.round(percent * 100)}% complete`,
 }: StreakChartProps) {
   return (
-    <YStack gap="$3" testID={testID}>
+    <YStack gap="$2" testID={testID}>
       {data.map(({ label, value, max = 1, icon }, index) => {
         const percent = Math.min(1, Math.max(0, value / max));
         const itemTestID = getItemTestID?.(label, index);
         return (
-          <YStack key={label} gap="$1" testID={itemTestID}>
+          <YStack key={label} gap="$2" testID={itemTestID}>
             <XStack alignItems="center" gap="$2">
               {icon}
               <LabelText testID={itemTestID ? `${itemTestID}-label` : undefined}>
@@ -40,13 +40,13 @@ export function StreakChart({
             <XStack
               height={12}
               borderRadius={999}
-              backgroundColor="$backgroundPress"
+              backgroundColor="background-press"
               overflow="hidden"
             >
-              <XStack flexBasis={`${percent * 100}%`} backgroundColor="$accentColor" />
+              <XStack flexBasis={`${percent * 100}%`} backgroundColor="accent-color" />
             </XStack>
             <CaptionText
-              color="$colorMuted"
+              color="colorMuted"
               testID={itemTestID ? `${itemTestID}-percent` : undefined}
             >
               {formatPercentLabel(percent)}

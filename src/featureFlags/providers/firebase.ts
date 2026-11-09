@@ -47,9 +47,34 @@ function getNativeRemoteConfig(): RemoteConfigModule | null {
       logger.warn('Native Remote Config not available in Expo Go, using defaults');
       return null;
     }
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const remoteConfig = require('@react-native-firebase/remote-config').default;
-    return remoteConfig();
+    const remoteConfigModule =
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require('@react-native-firebase/remote-config') as typeof import('@react-native-firebase/remote-config');
+    const remoteConfig = remoteConfigModule.getRemoteConfig();
+    remoteConfig.settings.minimumFetchIntervalMillis = MIN_FETCH_INTERVAL_MS;
+
+    return {
+      setConfigSettings: async (settings) => {
+        remoteConfig.settings.minimumFetchIntervalMillis = settings.minimumFetchIntervalMillis;
+      },
+      setDefaults: async (defaults) => {
+        remoteConfig.defaultConfig = Object.fromEntries(
+          Object.entries(defaults).map(([key, value]) => [
+            key,
+            typeof value === 'object' ? JSON.stringify(value) : value,
+          ]),
+        );
+      },
+      fetchAndActivate: () => remoteConfigModule.fetchAndActivate(remoteConfig),
+      activate: () => remoteConfigModule.activate(remoteConfig),
+      getValue: (key) => remoteConfigModule.getValue(remoteConfig, key),
+      onConfigUpdated: (listener) =>
+        remoteConfigModule.onConfigUpdate(remoteConfig, {
+          next: (configUpdate) => listener({ updatedKeys: [...configUpdate.getUpdatedKeys()] }),
+          error: (error) => logger.warn('Remote Config update listener failed', error),
+          complete: () => undefined,
+        }),
+    };
   } catch (error) {
     logger.warn('Native Remote Config not available, using defaults', error);
     return null;

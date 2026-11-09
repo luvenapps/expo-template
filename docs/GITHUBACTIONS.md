@@ -154,7 +154,7 @@ It runs:
 - Codecov uploads
 - Expo dependency verification via `.github/scripts/verify_expo_deps.sh`
 
-`Doctor` is intentionally retained only in `ci-quality.yml`.
+`Doctor` is intentionally retained only in `ci-quality.yml`. For same-repository PRs, a failure creates or updates one comment with a link to the CI run. A later passing run updates that comment to show the issue was resolved.
 
 GPG installation is skipped on self-hosted quality runs.
 
@@ -344,48 +344,9 @@ All helper scripts live under `.github/scripts/` and are made executable via `ch
 
 ---
 
-## 💻 Self-hosted runner baseline
+## 💻 Self-hosted runner
 
-Self-hosted jobs target:
-
-```yaml
-runs-on: [self-hosted, macos, arm64]
-```
-
-Keep toolchains aligned with project requirements:
-
-- Node version from `.mise.toml`
-- Java (pinned in `.mise.toml`)
-- Xcode + iOS simulators
-- Android SDK + emulator tooling
-
-Runner install location (macOS-safe):
-
-```
-~/.github/actions-runner
-```
-
-Runner workspace location:
-
-```
-~/.github/actions-runner-workspace
-```
-
-Runner helper scripts:
-
-| Script                               | Purpose                                                                       |
-| ------------------------------------ | ----------------------------------------------------------------------------- |
-| `.github/runner/register-runner.sh`  | Download/configure runner (prompts for token + scope), does not start service |
-| `.github/runner/runner.service.sh`   | Manage launchd service: `start`, `stop`, `restart`, `status`, `logs`          |
-| `.github/runner/runner.local.sh`     | Run runner manually in foreground (non-service)                               |
-| `.github/runner/uninstall-runner.sh` | Unregister runner (remove token) and optionally remove local files            |
-| `.github/runner/cleanup.sh`          | Clean runner workspace only (`~/.github/actions-runner-workspace`)            |
-
-Notes:
-
-- `runner.service.sh logs` now follows live output (`tail -F`) for the active runner label only.
-- `runner.service.sh start` installs the service if missing, then starts it.
-- `cleanup.sh` no longer supports full cleanup; use `uninstall-runner.sh` for unregister/removal.
+Self-hosted workflows use the runner installed on your development machine. Runner registration and service management are machine-level setup and are intentionally kept out of this repository.
 
 ---
 

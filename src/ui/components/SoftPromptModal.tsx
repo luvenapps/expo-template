@@ -62,26 +62,26 @@ export function SoftPromptModal({
           key="soft-prompt-content"
           bordered
           elevate
-          padding="$4"
+          padding="4"
           alignSelf="center"
           width="100%"
           maxWidth={480}
           height={dialogHeight}
         >
           <YStack gap="$4" flex={isWeb ? undefined : 1} justifyContent="space-between">
-            <YStack gap="$3">
+            <YStack gap="$2">
               <Dialog.Title asChild>
                 <Paragraph
-                  fontSize="$5"
+                  fontSize="5"
                   fontWeight="700"
-                  lineHeight={60}
+                  lineHeight="60px"
                   textTransform="capitalize"
                 >
                   {title}
                 </Paragraph>
               </Dialog.Title>
               <Dialog.Description asChild>
-                <Paragraph fontSize="$4">{message}</Paragraph>
+                <Paragraph fontSize="4">{message}</Paragraph>
               </Dialog.Description>
             </YStack>
             <XStack
@@ -106,7 +106,7 @@ export function SoftPromptModal({
                 />
               </Svg>
             </XStack>
-            <YStack gap="$3" justifyContent="center">
+            <YStack gap="$2" justifyContent="center">
               <PrimaryButton
                 width="auto"
                 onPress={handleAllow}
@@ -122,9 +122,9 @@ export function SoftPromptModal({
                 aria-label="soft-prompt-not-now"
                 variant="outlined"
                 backgroundColor="transparent"
-                color="$color"
-                borderColor="$borderColor"
-                marginBottom="$6"
+                color="color"
+                borderColor="border-color"
+                marginBottom="6"
               >
                 {resolvedNotNowLabel}
               </PrimaryButton>

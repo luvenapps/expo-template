@@ -228,9 +228,9 @@ describe('AuthCallbackScreen - Native', () => {
     );
   });
 
-  it('renders signing in message', () => {
+  it('renders signing in message', async () => {
     mockUseLocalSearchParams.mockReturnValue({ code: 'auth-code-123' });
-    const { queryByText } = render(<AuthCallbackScreen />);
+    const { queryByText } = await render(<AuthCallbackScreen />);
     expect(queryByText('auth.signingIn')).toBeNull();
   });
 
@@ -239,7 +239,7 @@ describe('AuthCallbackScreen - Native', () => {
     mockedCreateURL.mockReturnValue(`${authCallbackUrl}?code=auth-code-123`);
     mockedExchangeCodeForSession.mockResolvedValue({ data: { session: {} }, error: null } as any);
 
-    render(<AuthCallbackScreen />);
+    await render(<AuthCallbackScreen />);
 
     await waitFor(() => {
       expect(mockedCreateURL).toHaveBeenCalledWith('auth-callback', {
@@ -256,7 +256,7 @@ describe('AuthCallbackScreen - Native', () => {
     mockedCreateURL.mockReturnValue(`${authCallbackUrl}?code=auth-code-123`);
     mockedExchangeCodeForSession.mockResolvedValue({ data: { session: {} }, error: null } as any);
 
-    render(<AuthCallbackScreen />);
+    await render(<AuthCallbackScreen />);
 
     await waitFor(() => {
       expect(mockBack).toHaveBeenCalled();
@@ -279,7 +279,7 @@ describe('AuthCallbackScreen - Native', () => {
     mockedCreateURL.mockReturnValue(`${authCallbackUrl}?code=auth-code-456`);
     mockedExchangeCodeForSession.mockResolvedValue({ data: { session: {} }, error: null } as any);
 
-    render(<AuthCallbackScreen />);
+    await render(<AuthCallbackScreen />);
 
     await waitFor(() => {
       expect(mockReplace).toHaveBeenCalledWith('/(tabs)');
@@ -301,7 +301,7 @@ describe('AuthCallbackScreen - Native', () => {
     }));
     mockedFriendlyError.mockReturnValue(handleError);
 
-    const { getByTestId } = render(<AuthCallbackScreen />);
+    const { getByTestId } = await render(<AuthCallbackScreen />);
 
     await waitFor(
       () => {
@@ -339,7 +339,7 @@ describe('AuthCallbackScreen - Native', () => {
     }));
     mockedFriendlyError.mockReturnValue(handleError);
 
-    const { getByTestId } = render(<AuthCallbackScreen />);
+    const { getByTestId } = await render(<AuthCallbackScreen />);
 
     await waitFor(() => {
       expect(handleError).toHaveBeenCalledWith(authError, {
@@ -366,7 +366,7 @@ describe('AuthCallbackScreen - Native', () => {
     }));
     mockedFriendlyError.mockReturnValue(handleError);
 
-    const { getByTestId } = render(<AuthCallbackScreen />);
+    const { getByTestId } = await render(<AuthCallbackScreen />);
 
     await waitFor(
       () => {
@@ -390,15 +390,12 @@ describe('AuthCallbackScreen - Native', () => {
     }));
     mockedFriendlyError.mockReturnValue(handleError);
 
-    const { getByTestId } = render(<AuthCallbackScreen />);
+    const { getByTestId } = await render(<AuthCallbackScreen />);
 
-    await waitFor(
-      () => {
-        const retryButton = getByTestId('auth-callback-sign-in');
-        fireEvent.press(retryButton);
-      },
-      { timeout: 3000 },
-    );
+    const retryButton = await waitFor(() => getByTestId('auth-callback-sign-in'), {
+      timeout: 3000,
+    });
+    await fireEvent.press(retryButton);
 
     expect(mockReplace).toHaveBeenCalledWith('/(auth)/login');
   });
@@ -408,9 +405,9 @@ describe('AuthCallbackScreen - Native', () => {
     mockedCreateURL.mockReturnValue(`${authCallbackUrl}?code=auth-code-123`);
     mockedExchangeCodeForSession.mockResolvedValue({ data: { session: {} }, error: null } as any);
 
-    const { rerender } = render(<AuthCallbackScreen />);
-    rerender(<AuthCallbackScreen />);
-    rerender(<AuthCallbackScreen />);
+    const { rerender } = await render(<AuthCallbackScreen />);
+    await rerender(<AuthCallbackScreen />);
+    await rerender(<AuthCallbackScreen />);
 
     await waitFor(() => {
       expect(mockedExchangeCodeForSession).toHaveBeenCalledTimes(1);
@@ -422,7 +419,7 @@ describe('AuthCallbackScreen - Native', () => {
     mockedCreateURL.mockReturnValue(`${authCallbackUrl}?code=auth-code-123`);
     mockedExchangeCodeForSession.mockResolvedValue({ data: { session: {} }, error: null } as any);
 
-    render(<AuthCallbackScreen />);
+    await render(<AuthCallbackScreen />);
 
     await waitFor(() => {
       expect(mockedCreateURL).toHaveBeenCalledWith('auth-callback', {
@@ -438,7 +435,7 @@ describe('AuthCallbackScreen - Native', () => {
       error: null,
     } as any);
 
-    render(<AuthCallbackScreen />);
+    await render(<AuthCallbackScreen />);
 
     await waitFor(() => {
       expect(mockBack).toHaveBeenCalled();
@@ -459,7 +456,7 @@ describe('AuthCallbackScreen - Native', () => {
     mockedCreateURL.mockReturnValue(`${authCallbackUrl}?code=auth-code-456`);
     mockedExchangeCodeForSession.mockResolvedValue({ data: { session: {} }, error: null } as any);
 
-    render(<AuthCallbackScreen />);
+    await render(<AuthCallbackScreen />);
 
     await waitFor(() => {
       expect(mockedExchangeCodeForSession).toHaveBeenCalledWith(
@@ -491,7 +488,7 @@ describe('AuthCallbackScreen - Native', () => {
     mockedCreateURL.mockReturnValue(`${authCallbackUrl}?code=embedded-code`);
     mockedExchangeCodeForSession.mockResolvedValue({ data: { session: {} }, error: null } as any);
 
-    render(<AuthCallbackScreen />);
+    await render(<AuthCallbackScreen />);
 
     await waitFor(() => {
       expect(mockedExchangeCodeForSession).toHaveBeenCalledWith(
@@ -516,7 +513,7 @@ describe('AuthCallbackScreen - Native', () => {
     });
     mockedSetSession.mockResolvedValue({ data: { session: {} }, error: null } as any);
 
-    render(<AuthCallbackScreen />);
+    await render(<AuthCallbackScreen />);
 
     await waitFor(() => {
       expect(mockedSetSession).toHaveBeenCalledWith({
@@ -553,7 +550,7 @@ describe('AuthCallbackScreen - Native', () => {
     }));
     mockedFriendlyError.mockReturnValue(handleError);
 
-    const { getByTestId } = render(<AuthCallbackScreen />);
+    const { getByTestId } = await render(<AuthCallbackScreen />);
 
     await waitFor(() => {
       expect(handleError).toHaveBeenCalledWith(authError, {
@@ -574,7 +571,7 @@ describe('AuthCallbackScreen - Native', () => {
     mockedGetInitialURL.mockResolvedValue(authCallbackUrl);
     mockedGetSession.mockResolvedValue({ data: { session: null }, error: null } as any);
 
-    render(<AuthCallbackScreen />);
+    await render(<AuthCallbackScreen />);
 
     await waitFor(() => {
       expect(mockBack).toHaveBeenCalled();
@@ -605,7 +602,7 @@ describe('AuthCallbackScreen - Native', () => {
     }));
     mockedFriendlyError.mockReturnValue(handleError);
 
-    const { getByTestId } = render(<AuthCallbackScreen />);
+    const { getByTestId } = await render(<AuthCallbackScreen />);
 
     await waitFor(() => {
       expect(handleError).toHaveBeenCalledWith(
@@ -638,7 +635,7 @@ describe('AuthCallbackScreen - Native', () => {
       .mockResolvedValueOnce({ data: { session: null }, error: null } as any)
       .mockResolvedValueOnce({ data: { session: { user: { id: 'user-1' } } }, error: null } as any);
 
-    render(<AuthCallbackScreen />);
+    await render(<AuthCallbackScreen />);
 
     await act(async () => {
       jest.runOnlyPendingTimers();
@@ -665,7 +662,7 @@ describe('AuthCallbackScreen - Native', () => {
         return 0 as any;
       });
 
-    render(<AuthCallbackScreen />);
+    await render(<AuthCallbackScreen />);
 
     await waitFor(() => {
       expect(mockBack).toHaveBeenCalled();
@@ -692,7 +689,7 @@ describe('AuthCallbackScreen - Native', () => {
     }));
     mockedFriendlyError.mockReturnValue(handleError);
 
-    const { getByTestId } = render(<AuthCallbackScreen />);
+    const { getByTestId } = await render(<AuthCallbackScreen />);
 
     await waitFor(() => {
       expect(handleError).toHaveBeenCalledWith(authError, {
@@ -785,7 +782,7 @@ describe('AuthCallbackScreen - Web', () => {
     mockWindowLocation.hash = '#access_token=token123&refresh_token=refresh456';
     mockedSetSession.mockResolvedValue({ data: { session: {} }, error: null } as any);
 
-    render(<AuthCallbackScreen />);
+    await render(<AuthCallbackScreen />);
 
     await waitFor(() => {
       expect(mockedSetSession).toHaveBeenCalledWith({
@@ -799,7 +796,7 @@ describe('AuthCallbackScreen - Web', () => {
     mockWindowLocation.hash = '#access_token=token123&refresh_token=refresh456';
     mockedSetSession.mockResolvedValue({ data: { session: {} }, error: null } as any);
 
-    render(<AuthCallbackScreen />);
+    await render(<AuthCallbackScreen />);
 
     await waitFor(() => {
       expect(mockWindowHistory.replaceState).toHaveBeenCalledWith(null, '', '/auth-callback');
@@ -810,7 +807,7 @@ describe('AuthCallbackScreen - Web', () => {
     mockWindowLocation.hash = '#access_token=token123&refresh_token=refresh456';
     mockedSetSession.mockResolvedValue({ data: { session: {} }, error: null } as any);
 
-    render(<AuthCallbackScreen />);
+    await render(<AuthCallbackScreen />);
 
     await waitFor(() => {
       expect(mockWindowLocation.replace).toHaveBeenCalledWith('/');
@@ -834,7 +831,7 @@ describe('AuthCallbackScreen - Web', () => {
       error: null,
     } as any);
 
-    render(<AuthCallbackScreen />);
+    await render(<AuthCallbackScreen />);
 
     await waitFor(() => {
       expect(mockWindowLocation.replace).toHaveBeenCalledWith('/');
@@ -863,7 +860,7 @@ describe('AuthCallbackScreen - Web', () => {
     }));
     mockedFriendlyError.mockReturnValue(handleError);
 
-    const { getByTestId } = render(<AuthCallbackScreen />);
+    const { getByTestId } = await render(<AuthCallbackScreen />);
 
     await waitFor(() => {
       expect(handleError).toHaveBeenCalledWith(
@@ -892,7 +889,7 @@ describe('AuthCallbackScreen - Web', () => {
     }));
     mockedFriendlyError.mockReturnValue(handleError);
 
-    render(<AuthCallbackScreen />);
+    await render(<AuthCallbackScreen />);
 
     await waitFor(() => {
       expect(handleError).toHaveBeenCalledWith(
@@ -910,7 +907,7 @@ describe('AuthCallbackScreen - Web', () => {
     mockWindowLocation.hash = '';
     mockedGetSession.mockResolvedValue({ data: { session: null }, error: null } as any);
 
-    render(<AuthCallbackScreen />);
+    await render(<AuthCallbackScreen />);
 
     await waitFor(() => {
       expect(mockedGetSession).toHaveBeenCalled();
@@ -931,7 +928,7 @@ describe('AuthCallbackScreen - Web', () => {
     }));
     mockedFriendlyError.mockReturnValue(handleError);
 
-    render(<AuthCallbackScreen />);
+    await render(<AuthCallbackScreen />);
 
     await waitFor(() => {
       expect(handleError).toHaveBeenCalled();
@@ -954,7 +951,7 @@ describe('AuthCallbackScreen - Web', () => {
     }));
     mockedFriendlyError.mockReturnValue(handleError);
 
-    const { getByTestId } = render(<AuthCallbackScreen />);
+    const { getByTestId } = await render(<AuthCallbackScreen />);
 
     await waitFor(() => {
       expect(handleError).toHaveBeenCalledWith(authError, {
@@ -972,9 +969,9 @@ describe('AuthCallbackScreen - Web', () => {
     mockWindowLocation.hash = '#access_token=token123&refresh_token=refresh456';
     mockedSetSession.mockResolvedValue({ data: { session: {} }, error: null } as any);
 
-    const { rerender } = render(<AuthCallbackScreen />);
-    rerender(<AuthCallbackScreen />);
-    rerender(<AuthCallbackScreen />);
+    const { rerender } = await render(<AuthCallbackScreen />);
+    await rerender(<AuthCallbackScreen />);
+    await rerender(<AuthCallbackScreen />);
 
     await waitFor(() => {
       expect(mockedSetSession).toHaveBeenCalledTimes(1);
@@ -1015,7 +1012,7 @@ describe('AuthCallbackScreen - Error Message Display', () => {
     }));
     mockedFriendlyError.mockReturnValue(handleError);
 
-    render(<AuthCallbackScreen />);
+    await render(<AuthCallbackScreen />);
 
     await act(async () => {
       await Promise.resolve();
@@ -1037,7 +1034,7 @@ describe('AuthCallbackScreen - Error Message Display', () => {
     }));
     mockedFriendlyError.mockReturnValue(handleError);
 
-    render(<AuthCallbackScreen />);
+    await render(<AuthCallbackScreen />);
 
     await act(async () => {
       await Promise.resolve();
@@ -1059,7 +1056,7 @@ describe('AuthCallbackScreen - Error Message Display', () => {
     }));
     mockedFriendlyError.mockReturnValue(handleError);
 
-    render(<AuthCallbackScreen />);
+    await render(<AuthCallbackScreen />);
 
     await act(async () => {
       await Promise.resolve();
@@ -1080,7 +1077,7 @@ describe('AuthCallbackScreen - Error Message Display', () => {
     }));
     mockedFriendlyError.mockReturnValue(handleError);
 
-    render(<AuthCallbackScreen />);
+    await render(<AuthCallbackScreen />);
 
     await act(async () => {
       await Promise.resolve();

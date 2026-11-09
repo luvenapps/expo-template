@@ -3,6 +3,7 @@ jest.mock('tamagui', () => {
   const mockReact = jest.requireActual('react');
 
   return {
+    useTheme: () => ({ colorMuted: { get: () => '#777777' } }),
     YStack: ({ children, ...props }: any) => mockReact.createElement('View', props, children),
     XStack: ({ children, ...props }: any) => mockReact.createElement('View', props, children),
     View: ({ children, ...props }: any) => mockReact.createElement('View', props, children),
@@ -92,8 +93,8 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => (
   </SafeAreaProvider>
 );
 
-const renderWithProviders = (component: React.ReactElement) => {
-  return render(component, { wrapper: Wrapper });
+const renderWithProviders = async (component: React.ReactElement) => {
+  return await render(component, { wrapper: Wrapper });
 };
 
 // Helper to create mock updateUser response
@@ -127,7 +128,7 @@ describe('ProfileScreen', () => {
     });
 
     it('redirects to login when unauthenticated', async () => {
-      renderWithProviders(<ProfileScreen />);
+      await renderWithProviders(<ProfileScreen />);
 
       await waitFor(() => {
         expect(mockRouter.replace).toHaveBeenCalledWith('/(auth)/login');
@@ -162,8 +163,8 @@ describe('ProfileScreen', () => {
       });
     });
 
-    it('should render profile form when authenticated', () => {
-      renderWithProviders(<ProfileScreen />);
+    it('should render profile form when authenticated', async () => {
+      await renderWithProviders(<ProfileScreen />);
 
       expect(screen.getByText('settings.profileTitle')).toBeTruthy();
       expect(screen.getByText('settings.profileDescription')).toBeTruthy();
@@ -172,15 +173,15 @@ describe('ProfileScreen', () => {
       expect(screen.getByTestId('profile-phone-input')).toBeTruthy();
     });
 
-    it('should populate form fields with existing profile data', () => {
-      renderWithProviders(<ProfileScreen />);
+    it('should populate form fields with existing profile data', async () => {
+      await renderWithProviders(<ProfileScreen />);
 
       expect(screen.getByTestId('profile-name-input').props.value).toBe('Test User');
       expect(screen.getByTestId('profile-email-input').props.value).toBe('test@example.com');
       expect(screen.getByTestId('profile-phone-input').props.value).toBe('+1 202 555 1234');
     });
 
-    it('should format US phone number without country code on initialization', () => {
+    it('should format US phone number without country code on initialization', async () => {
       (useSessionStore as unknown as jest.Mock).mockImplementation((selector) => {
         const state = {
           session: {
@@ -199,14 +200,14 @@ describe('ProfileScreen', () => {
         return selector(state);
       });
 
-      renderWithProviders(<ProfileScreen />);
+      await renderWithProviders(<ProfileScreen />);
 
       // Should format as US number
       const phoneInput = screen.getByTestId('profile-phone-input');
       expect(phoneInput.props.value).toBe('(202) 555-1234');
     });
 
-    it('should handle empty phone number on initialization', () => {
+    it('should handle empty phone number on initialization', async () => {
       (useSessionStore as unknown as jest.Mock).mockImplementation((selector) => {
         const state = {
           session: {
@@ -225,13 +226,13 @@ describe('ProfileScreen', () => {
         return selector(state);
       });
 
-      renderWithProviders(<ProfileScreen />);
+      await renderWithProviders(<ProfileScreen />);
 
       const phoneInput = screen.getByTestId('profile-phone-input');
       expect(phoneInput.props.value).toBe('');
     });
 
-    it('should disable email field when not using email provider', () => {
+    it('should disable email field when not using email provider', async () => {
       (useSessionStore as unknown as jest.Mock).mockImplementation((selector) => {
         const state = {
           session: {
@@ -247,29 +248,29 @@ describe('ProfileScreen', () => {
         return selector(state);
       });
 
-      renderWithProviders(<ProfileScreen />);
+      await renderWithProviders(<ProfileScreen />);
 
-      expect(screen.getByTestId('profile-email-input').props.editable).toBe(false);
+      expect(screen.getByTestId('profile-email-input').props.disabled).toBe(true);
       expect(screen.getByText('settings.profileEmailManaged')).toBeTruthy();
     });
 
-    it('should enable email field when using email provider', () => {
-      renderWithProviders(<ProfileScreen />);
+    it('should enable email field when using email provider', async () => {
+      await renderWithProviders(<ProfileScreen />);
 
-      expect(screen.getByTestId('profile-email-input').props.editable).toBe(true);
+      expect(screen.getByTestId('profile-email-input').props.disabled).toBe(false);
       expect(screen.getByText('settings.profileEmailHelper')).toBeTruthy();
     });
 
-    it('should update form fields when user types', () => {
-      renderWithProviders(<ProfileScreen />);
+    it('should update form fields when user types', async () => {
+      await renderWithProviders(<ProfileScreen />);
 
       const nameInput = screen.getByTestId('profile-name-input');
       const emailInput = screen.getByTestId('profile-email-input');
       const phoneInput = screen.getByTestId('profile-phone-input');
 
-      fireEvent.changeText(nameInput, 'New Name');
-      fireEvent.changeText(emailInput, 'new@example.com');
-      fireEvent.changeText(phoneInput, '+19175551234'); // Valid NYC number
+      await fireEvent.changeText(nameInput, 'New Name');
+      await fireEvent.changeText(emailInput, 'new@example.com');
+      await fireEvent.changeText(phoneInput, '+19175551234'); // Valid NYC number
 
       expect(nameInput.props.value).toBe('New Name');
       expect(emailInput.props.value).toBe('new@example.com');
@@ -277,13 +278,13 @@ describe('ProfileScreen', () => {
     });
 
     it('should show error when email is invalid', async () => {
-      renderWithProviders(<ProfileScreen />);
+      await renderWithProviders(<ProfileScreen />);
 
       const emailInput = screen.getByTestId('profile-email-input');
       const saveButton = screen.getByText('settings.profileSave');
 
-      fireEvent.changeText(emailInput, 'invalid-email');
-      fireEvent.press(saveButton);
+      await fireEvent.changeText(emailInput, 'invalid-email');
+      await fireEvent.press(saveButton);
 
       await waitFor(() => {
         expect(screen.getByText('settings.profileEmailInvalid')).toBeTruthy();
@@ -291,13 +292,13 @@ describe('ProfileScreen', () => {
     });
 
     it('should show error when phone number is invalid', async () => {
-      renderWithProviders(<ProfileScreen />);
+      await renderWithProviders(<ProfileScreen />);
 
       const phoneInput = screen.getByTestId('profile-phone-input');
       const saveButton = screen.getByText('settings.profileSave');
 
-      fireEvent.changeText(phoneInput, '123'); // Too short
-      fireEvent.press(saveButton);
+      await fireEvent.changeText(phoneInput, '123'); // Too short
+      await fireEvent.press(saveButton);
 
       await waitFor(() => {
         expect(screen.getByText('settings.profilePhoneInvalid')).toBeTruthy();
@@ -305,10 +306,10 @@ describe('ProfileScreen', () => {
     });
 
     it('should show message when no changes are made', async () => {
-      renderWithProviders(<ProfileScreen />);
+      await renderWithProviders(<ProfileScreen />);
 
       const saveButton = screen.getByText('settings.profileSave');
-      fireEvent.press(saveButton);
+      await fireEvent.press(saveButton);
 
       await waitFor(() => {
         expect(screen.getByText('settings.profileNoChanges')).toBeTruthy();
@@ -346,13 +347,13 @@ describe('ProfileScreen', () => {
       (supabase.auth.updateUser as jest.Mock) = mockUpdateUser;
       (supabase.auth.getSession as jest.Mock) = mockGetSession;
 
-      renderWithProviders(<ProfileScreen />);
+      await renderWithProviders(<ProfileScreen />);
 
       const nameInput = screen.getByTestId('profile-name-input');
       const saveButton = screen.getByText('settings.profileSave');
 
-      fireEvent.changeText(nameInput, 'Updated Name');
-      fireEvent.press(saveButton);
+      await fireEvent.changeText(nameInput, 'Updated Name');
+      await fireEvent.press(saveButton);
 
       await waitFor(() => {
         expect(mockUpdateUser).toHaveBeenCalledWith({
@@ -370,13 +371,13 @@ describe('ProfileScreen', () => {
 
       (supabase.auth.updateUser as jest.Mock) = mockUpdateUser;
 
-      renderWithProviders(<ProfileScreen />);
+      await renderWithProviders(<ProfileScreen />);
 
       const nameInput = screen.getByTestId('profile-name-input');
       const saveButton = screen.getByText('settings.profileSave');
 
-      fireEvent.changeText(nameInput, 'New Name');
-      fireEvent.press(saveButton);
+      await fireEvent.changeText(nameInput, 'New Name');
+      await fireEvent.press(saveButton);
 
       await waitFor(() => {
         expect(mockHandleError).toHaveBeenCalled();
@@ -402,13 +403,13 @@ describe('ProfileScreen', () => {
       (supabase.auth.updateUser as jest.Mock) = mockUpdateUser;
       (supabase.auth.getSession as jest.Mock) = mockGetSession;
 
-      renderWithProviders(<ProfileScreen />);
+      await renderWithProviders(<ProfileScreen />);
 
       const nameInput = screen.getByTestId('profile-name-input');
       const saveButton = screen.getByText('settings.profileSave');
 
-      fireEvent.changeText(nameInput, 'New Name');
-      fireEvent.press(saveButton);
+      await fireEvent.changeText(nameInput, 'New Name');
+      await fireEvent.press(saveButton);
 
       // Wait for the update to complete
       await waitFor(() => {
@@ -418,11 +419,11 @@ describe('ProfileScreen', () => {
       });
     });
 
-    it('should navigate back when cancel button is pressed', () => {
-      renderWithProviders(<ProfileScreen />);
+    it('should navigate back when cancel button is pressed', async () => {
+      await renderWithProviders(<ProfileScreen />);
 
       const cancelButton = screen.getByText('settings.profileCancel');
-      fireEvent.press(cancelButton);
+      await fireEvent.press(cancelButton);
 
       expect(mockRouter.back).toHaveBeenCalled();
     });
@@ -437,13 +438,13 @@ describe('ProfileScreen', () => {
       (supabase.auth.updateUser as jest.Mock) = mockUpdateUser;
       (supabase.auth.getSession as jest.Mock) = mockGetSession;
 
-      renderWithProviders(<ProfileScreen />);
+      await renderWithProviders(<ProfileScreen />);
 
       const emailInput = screen.getByTestId('profile-email-input');
       const saveButton = screen.getByText('settings.profileSave');
 
-      fireEvent.changeText(emailInput, 'newemail@example.com');
-      fireEvent.press(saveButton);
+      await fireEvent.changeText(emailInput, 'newemail@example.com');
+      await fireEvent.press(saveButton);
 
       await waitFor(() => {
         expect(mockUpdateUser).toHaveBeenCalledWith({
@@ -465,13 +466,13 @@ describe('ProfileScreen', () => {
       (supabase.auth.updateUser as jest.Mock) = mockUpdateUser;
       (supabase.auth.getSession as jest.Mock) = mockGetSession;
 
-      renderWithProviders(<ProfileScreen />);
+      await renderWithProviders(<ProfileScreen />);
 
       const phoneInput = screen.getByTestId('profile-phone-input');
       const saveButton = screen.getByText('settings.profileSave');
 
-      fireEvent.changeText(phoneInput, '+19175551234');
-      fireEvent.press(saveButton);
+      await fireEvent.changeText(phoneInput, '+19175551234');
+      await fireEvent.press(saveButton);
 
       await waitFor(() => {
         expect(mockUpdateUser).toHaveBeenCalledWith({
@@ -490,13 +491,13 @@ describe('ProfileScreen', () => {
         friendly: { descriptionKey: 'errors.network.description' },
       }));
 
-      renderWithProviders(<ProfileScreen />);
+      await renderWithProviders(<ProfileScreen />);
 
       const nameInput = screen.getByTestId('profile-name-input');
       const saveButton = screen.getByText('settings.profileSave');
 
-      fireEvent.changeText(nameInput, 'New Name');
-      fireEvent.press(saveButton);
+      await fireEvent.changeText(nameInput, 'New Name');
+      await fireEvent.press(saveButton);
 
       await waitFor(() => {
         expect(mockUpdateUser).toHaveBeenCalled();
@@ -514,13 +515,13 @@ describe('ProfileScreen', () => {
         friendly: {},
       }));
 
-      renderWithProviders(<ProfileScreen />);
+      await renderWithProviders(<ProfileScreen />);
 
       const nameInput = screen.getByTestId('profile-name-input');
       const saveButton = screen.getByText('settings.profileSave');
 
-      fireEvent.changeText(nameInput, 'New Name');
-      fireEvent.press(saveButton);
+      await fireEvent.changeText(nameInput, 'New Name');
+      await fireEvent.press(saveButton);
 
       await waitFor(() => {
         expect(mockUpdateUser).toHaveBeenCalled();
@@ -538,13 +539,13 @@ describe('ProfileScreen', () => {
         return selector(state);
       });
 
-      renderWithProviders(<ProfileScreen />);
+      await renderWithProviders(<ProfileScreen />);
 
       const nameInput = screen.getByTestId('profile-name-input');
       const saveButton = screen.getByText('settings.profileSave');
 
-      fireEvent.changeText(nameInput, 'New Name');
-      fireEvent.press(saveButton);
+      await fireEvent.changeText(nameInput, 'New Name');
+      await fireEvent.press(saveButton);
 
       await waitFor(() => {
         expect(screen.getByText('settings.profileSignInRequired')).toBeTruthy();
@@ -552,13 +553,13 @@ describe('ProfileScreen', () => {
     });
 
     it('should validate email on blur', async () => {
-      renderWithProviders(<ProfileScreen />);
+      await renderWithProviders(<ProfileScreen />);
 
       const emailInput = screen.getByTestId('profile-email-input');
 
       // Type invalid email and blur
-      fireEvent.changeText(emailInput, 'invalid-email');
-      fireEvent(emailInput, 'blur');
+      await fireEvent.changeText(emailInput, 'invalid-email');
+      await fireEvent(emailInput, 'blur');
 
       await waitFor(() => {
         expect(screen.getByText('settings.profileEmailInvalid')).toBeTruthy();
@@ -566,55 +567,55 @@ describe('ProfileScreen', () => {
     });
 
     it('should show error when email is empty on blur', async () => {
-      renderWithProviders(<ProfileScreen />);
+      await renderWithProviders(<ProfileScreen />);
 
       const emailInput = screen.getByTestId('profile-email-input');
 
       // Clear email and blur
-      fireEvent.changeText(emailInput, '');
-      fireEvent(emailInput, 'blur');
+      await fireEvent.changeText(emailInput, '');
+      await fireEvent(emailInput, 'blur');
 
       await waitFor(() => {
         expect(screen.getByText('settings.profileEmailInvalid')).toBeTruthy();
       });
     });
 
-    it('should not validate email on change before blur', () => {
-      renderWithProviders(<ProfileScreen />);
+    it('should not validate email on change before blur', async () => {
+      await renderWithProviders(<ProfileScreen />);
 
       const emailInput = screen.getByTestId('profile-email-input');
 
       // Type invalid email without blur
-      fireEvent.changeText(emailInput, 'invalid-email');
+      await fireEvent.changeText(emailInput, 'invalid-email');
 
       // Should not show error yet
       expect(screen.queryByText('settings.profileEmailInvalid')).toBeNull();
     });
 
     it('should validate email on change after blur', async () => {
-      renderWithProviders(<ProfileScreen />);
+      await renderWithProviders(<ProfileScreen />);
 
       const emailInput = screen.getByTestId('profile-email-input');
 
       // First blur to set emailTouched
-      fireEvent(emailInput, 'blur');
+      await fireEvent(emailInput, 'blur');
 
       // Then type invalid email
-      fireEvent.changeText(emailInput, 'invalid-email');
+      await fireEvent.changeText(emailInput, 'invalid-email');
 
       await waitFor(() => {
         expect(screen.getByText('settings.profileEmailInvalid')).toBeTruthy();
       });
 
       // Now type valid email - should clear error
-      fireEvent.changeText(emailInput, 'valid@example.com');
+      await fireEvent.changeText(emailInput, 'valid@example.com');
 
       await waitFor(() => {
         expect(screen.queryByText('settings.profileEmailInvalid')).toBeNull();
       });
     });
 
-    it('should not validate or show errors for non-email provider', () => {
+    it('should not validate or show errors for non-email provider', async () => {
       (useSessionStore as unknown as jest.Mock).mockImplementation((selector) => {
         const state = {
           session: {
@@ -630,16 +631,16 @@ describe('ProfileScreen', () => {
         return selector(state);
       });
 
-      renderWithProviders(<ProfileScreen />);
+      await renderWithProviders(<ProfileScreen />);
 
       // Get the email input
       const emailInput = screen.getByTestId('profile-email-input');
 
       // Verify field is not editable for non-email provider
-      expect(emailInput.props.editable).toBe(false);
+      expect(emailInput.props.disabled).toBe(true);
 
       // Force call onBlur handler directly if it exists, wrapped in act
-      act(() => {
+      await act(() => {
         if (emailInput.props.onBlur) {
           emailInput.props.onBlur();
         }
@@ -649,25 +650,25 @@ describe('ProfileScreen', () => {
       expect(screen.queryByText('settings.profileEmailInvalid')).toBeNull();
     });
 
-    it('should clear phone number when all characters are removed', () => {
-      renderWithProviders(<ProfileScreen />);
+    it('should clear phone number when all characters are removed', async () => {
+      await renderWithProviders(<ProfileScreen />);
 
       const phoneInput = screen.getByTestId('profile-phone-input');
 
       // Clear the phone field by typing only non-digit characters
-      fireEvent.changeText(phoneInput, '---');
+      await fireEvent.changeText(phoneInput, '---');
 
       expect(phoneInput.props.value).toBe('');
     });
 
-    it('should handle empty phone number input', () => {
-      renderWithProviders(<ProfileScreen />);
+    it('should handle empty phone number input', async () => {
+      await renderWithProviders(<ProfileScreen />);
 
       const phoneInput = screen.getByTestId('profile-phone-input');
 
       // Type and then clear
-      fireEvent.changeText(phoneInput, '+19175551234');
-      fireEvent.changeText(phoneInput, '');
+      await fireEvent.changeText(phoneInput, '+19175551234');
+      await fireEvent.changeText(phoneInput, '');
 
       expect(phoneInput.props.value).toBe('');
     });
@@ -685,14 +686,14 @@ describe('ProfileScreen', () => {
       (supabase.auth.updateUser as jest.Mock) = mockUpdateUser;
       (supabase.auth.getSession as jest.Mock) = mockGetSession;
 
-      renderWithProviders(<ProfileScreen />);
+      await renderWithProviders(<ProfileScreen />);
 
       const phoneInput = screen.getByTestId('profile-phone-input');
       const saveButton = screen.getByText('settings.profileSave');
 
       // Clear phone number
-      fireEvent.changeText(phoneInput, '');
-      fireEvent.press(saveButton);
+      await fireEvent.changeText(phoneInput, '');
+      await fireEvent.press(saveButton);
 
       await waitFor(() => {
         expect(mockUpdateUser).toHaveBeenCalledWith({
@@ -714,14 +715,14 @@ describe('ProfileScreen', () => {
       (supabase.auth.updateUser as jest.Mock) = mockUpdateUser;
       (supabase.auth.getSession as jest.Mock) = mockGetSession;
 
-      renderWithProviders(<ProfileScreen />);
+      await renderWithProviders(<ProfileScreen />);
 
       const phoneInput = screen.getByTestId('profile-phone-input');
       const saveButton = screen.getByText('settings.profileSave');
 
       // Type US phone without + (gets formatted by AsYouType)
-      fireEvent.changeText(phoneInput, '2125551234');
-      fireEvent.press(saveButton);
+      await fireEvent.changeText(phoneInput, '2125551234');
+      await fireEvent.press(saveButton);
 
       await waitFor(() => {
         // Should normalize to E.164 format
@@ -731,7 +732,7 @@ describe('ProfileScreen', () => {
       });
     });
 
-    it('should hydrate from user.phone field when available', () => {
+    it('should hydrate from user.phone field when available', async () => {
       (useSessionStore as unknown as jest.Mock).mockImplementation((selector) => {
         const state = {
           session: {
@@ -751,7 +752,7 @@ describe('ProfileScreen', () => {
         return selector(state);
       });
 
-      renderWithProviders(<ProfileScreen />);
+      await renderWithProviders(<ProfileScreen />);
 
       const phoneInput = screen.getByTestId('profile-phone-input');
       // Should use user.phone, not user_metadata.phone_number
@@ -766,7 +767,7 @@ describe('ProfileScreen', () => {
 
       (supabase.auth.getUser as jest.Mock) = mockGetUser;
 
-      renderWithProviders(<ProfileScreen />);
+      await renderWithProviders(<ProfileScreen />);
 
       await waitFor(() => {
         expect(mockGetUser).toHaveBeenCalled();
@@ -781,7 +782,7 @@ describe('ProfileScreen', () => {
 
       (supabase.auth.getUser as jest.Mock) = mockGetUser;
 
-      renderWithProviders(<ProfileScreen />);
+      await renderWithProviders(<ProfileScreen />);
 
       await waitFor(() => {
         expect(mockGetUser).toHaveBeenCalled();
@@ -811,7 +812,7 @@ describe('ProfileScreen', () => {
 
       (supabase.auth.getUser as jest.Mock) = mockGetUser;
 
-      renderWithProviders(<ProfileScreen />);
+      await renderWithProviders(<ProfileScreen />);
 
       await waitFor(() => {
         expect(mockGetUser).toHaveBeenCalled();
@@ -862,14 +863,14 @@ describe('ProfileScreen', () => {
       (supabase.auth.updateUser as jest.Mock) = mockUpdateUser;
       (supabase.auth.getSession as jest.Mock) = mockGetSession;
 
-      renderWithProviders(<ProfileScreen />);
+      await renderWithProviders(<ProfileScreen />);
 
       const nameInput = screen.getByTestId('profile-name-input');
       const saveButton = screen.getByText('settings.profileSave');
 
       // Change only the name (phone stays malformed)
-      fireEvent.changeText(nameInput, 'Updated Name');
-      fireEvent.press(saveButton);
+      await fireEvent.changeText(nameInput, 'Updated Name');
+      await fireEvent.press(saveButton);
 
       await waitFor(() => {
         // Should save name change without crashing on malformed phone

@@ -37,12 +37,12 @@ describe('cursor storage with MMKV', () => {
   test('delegates to MMKV on native platforms', () => {
     const getString = jest.fn().mockReturnValue('stored');
     const set = jest.fn();
-    const del = jest.fn();
+    const remove = jest.fn();
     const clearAll = jest.fn();
 
     jest.doMock('react-native', () => ({ Platform: { OS: 'ios' } }), { virtual: true });
     jest.doMock('react-native-mmkv', () => ({
-      createMMKV: jest.fn(() => ({ getString, set, delete: del, clearAll })),
+      createMMKV: jest.fn(() => ({ getString, set, remove, clearAll })),
     }));
 
     const { setCursor, getCursor, clearCursor, resetCursors } = loadModule();
@@ -51,7 +51,7 @@ describe('cursor storage with MMKV', () => {
     expect(set).toHaveBeenCalledWith('test', 'value');
     expect(getCursor('test')).toBe('stored');
     clearCursor('test');
-    expect(del).toHaveBeenCalledWith('test');
+    expect(remove).toHaveBeenCalledWith('test');
     resetCursors();
     expect(clearAll).toHaveBeenCalled();
   });
@@ -59,12 +59,12 @@ describe('cursor storage with MMKV', () => {
   test('handles MMKV getString returning null', () => {
     const getString = jest.fn().mockReturnValue(null);
     const set = jest.fn();
-    const del = jest.fn();
+    const remove = jest.fn();
     const clearAll = jest.fn();
 
     jest.doMock('react-native', () => ({ Platform: { OS: 'ios' } }), { virtual: true });
     jest.doMock('react-native-mmkv', () => ({
-      createMMKV: jest.fn(() => ({ getString, set, delete: del, clearAll })),
+      createMMKV: jest.fn(() => ({ getString, set, remove, clearAll })),
     }));
 
     const { getCursor } = loadModule();
@@ -79,7 +79,7 @@ describe('cursor storage with MMKV', () => {
       createMMKV: jest.fn(() => ({
         getString: jest.fn().mockReturnValue('should-not-be-used'),
         set: jest.fn(),
-        delete: jest.fn(),
+        remove: jest.fn(),
         clearAll: jest.fn(),
       })),
     }));

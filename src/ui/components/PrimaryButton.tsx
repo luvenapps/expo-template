@@ -6,7 +6,12 @@ export type PrimaryButtonProps = ComponentProps<typeof Button> & {
   textProps?: TextProps;
 };
 
-export function PrimaryButton({ size = '$4', textProps, children, ...rest }: PrimaryButtonProps) {
+export function PrimaryButton({
+  size = 'legacy4',
+  textProps,
+  children,
+  ...rest
+}: PrimaryButtonProps) {
   let mergedTextProps: TextProps = { textTransform: 'capitalize' };
   if (textProps) {
     mergedTextProps = { ...mergedTextProps, ...textProps };
@@ -16,23 +21,16 @@ export function PrimaryButton({ size = '$4', textProps, children, ...rest }: Pri
     <Button
       size={size}
       width="100%"
-      backgroundColor="$accentColor"
+      backgroundColor="accent-color hover:accentColorHover press:accentColorHover disabled:colorMuted"
       color="white"
       fontWeight="400"
       minHeight={48}
-      hoverStyle={{ backgroundColor: '$accentColorHover' }}
-      pressStyle={{ backgroundColor: '$accentColorHover' }}
-      focusStyle={{
-        outlineWidth: 2,
-        outlineColor: '$outlineColor',
-        outlineStyle: 'solid',
-      }}
-      disabledStyle={{
-        backgroundColor: '$colorMuted',
-        opacity: 0.7,
-      }}
-      textProps={mergedTextProps}
+      outlineWidth="focus:2px"
+      outlineColor="focus:outline-color"
+      outlineStyle="focus:solid"
+      opacity="disabled:0.7"
       {...rest}
+      textProps={mergedTextProps}
     >
       {children}
     </Button>

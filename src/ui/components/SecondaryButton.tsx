@@ -7,7 +7,7 @@ export type SecondaryButtonProps = ComponentProps<typeof Button> & {
 };
 
 export function SecondaryButton({
-  size = '$4',
+  size = 'legacy4',
   textProps,
   children,
   ...rest
@@ -21,26 +21,19 @@ export function SecondaryButton({
     <Button
       width="100%"
       size={size}
-      borderRadius="$3"
-      backgroundColor="$secondaryBackground"
-      color="$secondaryText"
+      borderRadius="3"
+      backgroundColor="secondaryBackground hover:backgroundStrong press:background-press disabled:background"
+      color="secondaryText"
       borderWidth={1}
-      borderColor="$borderColor"
+      borderColor="border-color"
       fontWeight="400"
       minHeight={48}
-      hoverStyle={{ backgroundColor: '$backgroundStrong' }}
-      pressStyle={{ backgroundColor: '$backgroundPress' }}
-      focusStyle={{
-        outlineWidth: 2,
-        outlineColor: '$outlineColor',
-        outlineStyle: 'solid',
-      }}
-      disabledStyle={{
-        backgroundColor: '$background',
-        opacity: 0.6,
-      }}
-      textProps={mergedTextProps}
+      outlineWidth="focus:2px"
+      outlineColor="focus:outline-color"
+      outlineStyle="focus:solid"
+      opacity="disabled:0.6"
       {...rest}
+      textProps={mergedTextProps}
     >
       {children}
     </Button>

@@ -101,24 +101,24 @@ describe('NotificationSettingsScreen', () => {
     process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = 'false';
   });
 
-  it('shows blocked message and opens settings when blocked on native', () => {
+  it('shows blocked message and opens settings when blocked on native', async () => {
     const openSettingsSpy = jest.spyOn(Linking, 'openSettings').mockResolvedValue();
     mockNotificationState.permissionStatus = NOTIFICATION_PERMISSION_STATE.BLOCKED;
 
-    const { getByTestId } = render(<NotificationSettingsScreen />);
+    const { getByTestId } = await render(<NotificationSettingsScreen />);
 
-    fireEvent.press(getByTestId('open-notification-settings-button'));
+    await fireEvent.press(getByTestId('open-notification-settings-button'));
 
     expect(openSettingsSpy).toHaveBeenCalled();
     openSettingsSpy.mockRestore();
   });
 
-  it('disables push notifications when toggle is turned off', () => {
+  it('disables push notifications when toggle is turned off', async () => {
     mockNotificationState.permissionStatus = NOTIFICATION_PERMISSION_STATE.GRANTED;
 
-    const { getByTestId } = render(<NotificationSettingsScreen />);
+    const { getByTestId } = await render(<NotificationSettingsScreen />);
 
-    fireEvent(getByTestId('settings-push-toggle'), 'onCheckedChange', false);
+    await fireEvent(getByTestId('settings-push-toggle'), 'onCheckedChange', false);
 
     expect(mockDisablePushNotifications).toHaveBeenCalled();
   });
@@ -127,7 +127,7 @@ describe('NotificationSettingsScreen', () => {
     process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = 'true';
     mockNotificationState.notificationStatus = NOTIFICATION_STATUS.GRANTED;
 
-    const { getByTestId } = render(<NotificationSettingsScreen />);
+    const { getByTestId } = await render(<NotificationSettingsScreen />);
 
     await waitFor(() => {
       expect(getByTestId('settings-push-status').props.children).toBe(
@@ -136,35 +136,51 @@ describe('NotificationSettingsScreen', () => {
     });
   });
 
-  it('shows disabled text when firebase is on and status is soft declined', () => {
+  it('shows disabled text when firebase is on and status is soft declined', async () => {
     process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = 'true';
     mockNotificationState.notificationStatus = NOTIFICATION_STATUS.SOFT_DECLINED;
 
-    const { getByTestId } = render(<NotificationSettingsScreen />);
+    const { getByTestId } = await render(<NotificationSettingsScreen />);
 
     expect(getByTestId('settings-push-status').props.children).toBe(
       'settings.pushStatusDisabledSimple',
     );
   });
 
-  it('shows disabled text when firebase is on and status is unknown', () => {
+  it('shows disabled text when firebase is on and status is unknown', async () => {
     process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = 'true';
+    mockNotificationState.permissionStatus = NOTIFICATION_PERMISSION_STATE.GRANTED;
     mockNotificationState.notificationStatus = NOTIFICATION_STATUS.UNKNOWN;
 
-    const { getByTestId } = render(<NotificationSettingsScreen />);
+    const { getByTestId } = await render(<NotificationSettingsScreen />);
 
     expect(getByTestId('settings-push-status').props.children).toBe(
       'settings.pushStatusDisabledSimple',
     );
+    expect(getByTestId('settings-push-toggle').props.checked).toBe(false);
+  });
+
+  it('keeps the Firebase toggle off when push was manually disabled', async () => {
+    process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = 'true';
+    mockNotificationState.permissionStatus = NOTIFICATION_PERMISSION_STATE.GRANTED;
+    mockNotificationState.notificationStatus = NOTIFICATION_STATUS.GRANTED;
+    mockNotificationState.pushManuallyDisabled = true;
+
+    const { getByTestId } = await render(<NotificationSettingsScreen />);
+
+    expect(getByTestId('settings-push-status').props.children).toBe(
+      'settings.pushStatusDisabledSimple',
+    );
+    expect(getByTestId('settings-push-toggle').props.checked).toBe(false);
   });
 
   it('calls tryPromptForPush when toggle is turned on and result is denied', async () => {
     mockNotificationState.permissionStatus = NOTIFICATION_PERMISSION_STATE.GRANTED;
     mockTryPromptForPush.mockResolvedValue({ status: NOTIFICATION_STATUS.DENIED });
 
-    const { getByTestId } = render(<NotificationSettingsScreen />);
+    const { getByTestId } = await render(<NotificationSettingsScreen />);
 
-    fireEvent(getByTestId('settings-push-toggle'), 'onCheckedChange', true);
+    await fireEvent(getByTestId('settings-push-toggle'), 'onCheckedChange', true);
 
     await waitFor(() => {
       expect(mockTryPromptForPush).toHaveBeenCalledWith({
@@ -174,29 +190,29 @@ describe('NotificationSettingsScreen', () => {
     });
   });
 
-  it('shows push error text when present', () => {
+  it('shows push error text when present', async () => {
     mockNotificationState.pushError = 'Push error';
 
-    const { getByTestId } = render(<NotificationSettingsScreen />);
+    const { getByTestId } = await render(<NotificationSettingsScreen />);
 
     expect(getByTestId('settings-push-status').props.children).toBe('Push error');
   });
 
-  it('shows enabled text when firebase is off and permission granted', () => {
+  it('shows enabled text when firebase is off and permission granted', async () => {
     mockNotificationState.permissionStatus = NOTIFICATION_PERMISSION_STATE.GRANTED;
 
-    const { getByTestId } = render(<NotificationSettingsScreen />);
+    const { getByTestId } = await render(<NotificationSettingsScreen />);
 
     expect(getByTestId('settings-push-status').props.children).toBe(
       'settings.pushStatusEnabledSimple',
     );
   });
 
-  it('shows disabled text when firebase is on and status is denied', () => {
+  it('shows disabled text when firebase is on and status is denied', async () => {
     process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = 'true';
     mockNotificationState.notificationStatus = NOTIFICATION_STATUS.DENIED;
 
-    const { getByTestId } = render(<NotificationSettingsScreen />);
+    const { getByTestId } = await render(<NotificationSettingsScreen />);
 
     expect(getByTestId('settings-push-status').props.children).toBe(
       'settings.pushStatusDisabledSimple',
@@ -207,9 +223,9 @@ describe('NotificationSettingsScreen', () => {
     mockNotificationState.permissionStatus = NOTIFICATION_PERMISSION_STATE.GRANTED;
     mockTryPromptForPush.mockResolvedValue({ status: 'triggered' });
 
-    const { getByTestId } = render(<NotificationSettingsScreen />);
+    const { getByTestId } = await render(<NotificationSettingsScreen />);
 
-    fireEvent(getByTestId('settings-push-toggle'), 'onCheckedChange', true);
+    await fireEvent(getByTestId('settings-push-toggle'), 'onCheckedChange', true);
 
     await waitFor(() => {
       expect(mockTryPromptForPush).toHaveBeenCalledWith({
@@ -219,22 +235,22 @@ describe('NotificationSettingsScreen', () => {
     });
   });
 
-  it('shows disabled text when permission granted but push manually disabled', () => {
+  it('shows disabled text when permission granted but push manually disabled', async () => {
     mockNotificationState.permissionStatus = NOTIFICATION_PERMISSION_STATE.GRANTED;
     mockNotificationState.pushManuallyDisabled = true;
 
-    const { getByTestId } = render(<NotificationSettingsScreen />);
+    const { getByTestId } = await render(<NotificationSettingsScreen />);
 
     expect(getByTestId('settings-push-status').props.children).toBe(
       'settings.pushStatusDisabledSimple',
     );
   });
 
-  it('shows mobile-web disabled message and hides toggle on mobile web', () => {
+  it('shows mobile-web disabled message and hides toggle on mobile web', async () => {
     setPlatform('web');
     mockNotificationState.isSupported = false;
 
-    const { getByTestId, queryByTestId } = render(<NotificationSettingsScreen />);
+    const { getByTestId, queryByTestId } = await render(<NotificationSettingsScreen />);
 
     expect(getByTestId('settings-notification-mobile-web').props.children).toBe(
       'settings.pushStatusMobileWebDisabled',
@@ -242,11 +258,11 @@ describe('NotificationSettingsScreen', () => {
     expect(queryByTestId('settings-push-toggle')).toBeNull();
   });
 
-  it('does not show open settings button on web when blocked', () => {
+  it('does not show open settings button on web when blocked', async () => {
     setPlatform('web');
     mockNotificationState.permissionStatus = NOTIFICATION_PERMISSION_STATE.BLOCKED;
 
-    const { queryByTestId } = render(<NotificationSettingsScreen />);
+    const { queryByTestId } = await render(<NotificationSettingsScreen />);
 
     expect(queryByTestId('open-notification-settings-button')).toBeNull();
   });

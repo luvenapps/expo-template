@@ -1,3 +1,5 @@
+import { findByProps, findByType } from '../../../helpers/testInstance';
+
 // Mock react-native-gesture-handler
 jest.mock('react-native-gesture-handler', () => {
   const mockReact = jest.requireActual('react');
@@ -395,14 +397,14 @@ describe('AppProviders', () => {
   });
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { UNSAFE_root } = render(
+    it('should render without crashing', async () => {
+      const { root: rootValue } = await render(
         <AppProviders>
           <Text>Test Content</Text>
         </AppProviders>,
       );
 
-      expect(UNSAFE_root).toBeDefined();
+      expect(rootValue!).toBeDefined();
     });
 
     it('shows the force upgrade modal when min_app_version is higher than the app version', async () => {
@@ -412,7 +414,7 @@ describe('AppProviders', () => {
         source: 'remote',
       });
 
-      render(
+      await render(
         <AppProviders>
           <Text>Test Content</Text>
         </AppProviders>,
@@ -441,7 +443,7 @@ describe('AppProviders', () => {
         };
       });
 
-      render(
+      await render(
         <AppProviders>
           <Text>Test Content</Text>
         </AppProviders>,
@@ -478,7 +480,7 @@ describe('AppProviders', () => {
         };
       });
 
-      render(
+      await render(
         <AppProviders>
           <Text>Test Content</Text>
         </AppProviders>,
@@ -509,7 +511,7 @@ describe('AppProviders', () => {
         };
       });
 
-      render(
+      await render(
         <AppProviders>
           <Text>Test Content</Text>
         </AppProviders>,
@@ -533,7 +535,7 @@ describe('AppProviders', () => {
         source: 'remote',
       });
 
-      render(
+      await render(
         <AppProviders>
           <Text>Test Content</Text>
         </AppProviders>,
@@ -547,8 +549,8 @@ describe('AppProviders', () => {
       semver.coerce = originalCoerce;
     });
 
-    it('should render children correctly', () => {
-      const { getByText } = render(
+    it('should render children correctly', async () => {
+      const { getByText } = await render(
         <AppProviders>
           <Text>Child Component</Text>
         </AppProviders>,
@@ -557,8 +559,8 @@ describe('AppProviders', () => {
       expect(getByText('Child Component')).toBeDefined();
     });
 
-    it('should render multiple children', () => {
-      const { getByText } = render(
+    it('should render multiple children', async () => {
+      const { getByText } = await render(
         <AppProviders>
           <Text>First Child</Text>
           <Text>Second Child</Text>
@@ -573,79 +575,79 @@ describe('AppProviders', () => {
   });
 
   describe('Provider Hierarchy', () => {
-    it('should render GestureHandlerRootView as outermost wrapper', () => {
-      const { UNSAFE_root } = render(
+    it('should render GestureHandlerRootView as outermost wrapper', async () => {
+      const { root: rootValue } = await render(
         <AppProviders>
           <Text>Content</Text>
         </AppProviders>,
       );
 
-      const gestureHandler = UNSAFE_root.findByType('GestureHandlerRootView' as any);
+      const gestureHandler = findByType(rootValue!, 'GestureHandlerRootView');
       expect(gestureHandler).toBeDefined();
     });
 
-    it('should apply flex: 1 and backgroundColor style to GestureHandlerRootView', () => {
-      const { UNSAFE_root } = render(
+    it('should apply flex: 1 and backgroundColor style to GestureHandlerRootView', async () => {
+      const { root: rootValue } = await render(
         <AppProviders>
           <Text>Content</Text>
         </AppProviders>,
       );
 
-      const gestureHandler = UNSAFE_root.findByType('GestureHandlerRootView' as any);
+      const gestureHandler = findByType(rootValue!, 'GestureHandlerRootView');
       expect(gestureHandler.props.style).toEqual({
         flex: 1,
         backgroundColor: actualThemePalettes.light.background,
       });
     });
 
-    it('should render SafeAreaProvider inside GestureHandlerRootView', () => {
-      const { UNSAFE_root } = render(
+    it('should render SafeAreaProvider inside GestureHandlerRootView', async () => {
+      const { root: rootValue } = await render(
         <AppProviders>
           <Text>Content</Text>
         </AppProviders>,
       );
 
-      const gestureHandler = UNSAFE_root.findByType('GestureHandlerRootView' as any);
-      const safeAreaProvider = gestureHandler.findByType('SafeAreaProvider' as any);
+      const gestureHandler = findByType(rootValue!, 'GestureHandlerRootView');
+      const safeAreaProvider = findByType(gestureHandler, 'SafeAreaProvider');
       expect(safeAreaProvider).toBeDefined();
     });
 
-    it('should render QueryClientProvider inside SafeAreaProvider', () => {
-      const { UNSAFE_root } = render(
+    it('should render QueryClientProvider inside SafeAreaProvider', async () => {
+      const { root: rootValue } = await render(
         <AppProviders>
           <Text>Content</Text>
         </AppProviders>,
       );
 
       // QueryClientProvider is rendered inside SafeAreaProvider
-      const safeAreaProvider = UNSAFE_root.findByType('SafeAreaProvider' as any);
+      const safeAreaProvider = findByType(rootValue!, 'SafeAreaProvider');
       // Just verify SafeAreaProvider has children (QueryClientProvider or PersistQueryClientProvider)
       expect(safeAreaProvider.children.length).toBeGreaterThan(0);
     });
 
-    it('should render StatusBar inside TamaguiProvider', () => {
-      const { UNSAFE_root } = render(
+    it('should render StatusBar inside TamaguiProvider', async () => {
+      const { root: rootValue } = await render(
         <AppProviders>
           <Text>Content</Text>
         </AppProviders>,
       );
 
-      const statusBar = UNSAFE_root.findByType('StatusBar' as any);
+      const statusBar = findByType(rootValue!, 'StatusBar');
       expect(statusBar).toBeDefined();
     });
 
-    it('should pass style="dark" to StatusBar when theme is light', () => {
-      const { UNSAFE_root } = render(
+    it('should pass style="dark" to StatusBar when theme is light', async () => {
+      const { root: rootValue } = await render(
         <AppProviders>
           <Text>Content</Text>
         </AppProviders>,
       );
 
-      const statusBar = UNSAFE_root.findByType('StatusBar' as any);
+      const statusBar = findByType(rootValue!, 'StatusBar');
       expect(statusBar.props.style).toBe('dark');
     });
 
-    it('should pass style="light" to StatusBar when theme is dark', () => {
+    it('should pass style="light" to StatusBar when theme is dark', async () => {
       const { useThemeContext } = require('@/ui/theme/ThemeProvider');
       const { themePalettes } = require('@/ui/theme/palette');
       useThemeContext.mockReturnValue({
@@ -653,20 +655,20 @@ describe('AppProviders', () => {
         palette: themePalettes.dark,
       });
 
-      const { UNSAFE_root } = render(
+      const { root: rootValue } = await render(
         <AppProviders>
           <Text>Content</Text>
         </AppProviders>,
       );
 
-      const statusBar = UNSAFE_root.findByType('StatusBar' as any);
+      const statusBar = findByType(rootValue!, 'StatusBar');
       expect(statusBar.props.style).toBe('light');
     });
   });
 
   describe('Complete Provider Stack', () => {
-    it('should have correct provider nesting order', () => {
-      const { UNSAFE_root } = render(
+    it('should have correct provider nesting order', async () => {
+      const { root: rootValue } = await render(
         <AppProviders>
           <View testID="child-content">
             <Text>Test</Text>
@@ -675,23 +677,23 @@ describe('AppProviders', () => {
       );
 
       // Verify the nesting: GestureHandler > SafeArea > QueryClient > YStack > Children + StatusBar
-      const gestureHandler = UNSAFE_root.findByType('GestureHandlerRootView' as any);
-      const safeAreaProvider = gestureHandler.findByType('SafeAreaProvider' as any);
+      const gestureHandler = findByType(rootValue!, 'GestureHandlerRootView');
+      const safeAreaProvider = findByType(gestureHandler, 'SafeAreaProvider');
 
       // Find the YStack (which should be inside QueryClientProvider)
-      const ystack = safeAreaProvider.findByProps({ testID: 'app-root-container' });
+      const ystack = findByProps(safeAreaProvider, { testID: 'app-root-container' });
       expect(ystack).toBeDefined();
 
       // Children should be inside YStack
-      const childContent = ystack.findByProps({ testID: 'child-content' });
+      const childContent = findByProps(ystack, { testID: 'child-content' });
       expect(childContent).toBeDefined();
 
       // StatusBar should be a sibling of YStack (both inside QueryClientProvider)
-      const statusBar = safeAreaProvider.findByType('StatusBar' as any);
+      const statusBar = findByType(safeAreaProvider, 'StatusBar');
       expect(statusBar).toBeDefined();
     });
 
-    it('should render all providers when given complex children', () => {
+    it('should render all providers when given complex children', async () => {
       const ComplexChild = () => (
         <View>
           <Text>Header</Text>
@@ -702,16 +704,16 @@ describe('AppProviders', () => {
         </View>
       );
 
-      const { getByText, UNSAFE_root } = render(
+      const { getByText, root: rootValue } = await render(
         <AppProviders>
           <ComplexChild />
         </AppProviders>,
       );
 
       // Verify all providers are present
-      expect(UNSAFE_root.findByType('GestureHandlerRootView' as any)).toBeDefined();
-      expect(UNSAFE_root.findByType('SafeAreaProvider' as any)).toBeDefined();
-      expect(UNSAFE_root.findByType('StatusBar' as any)).toBeDefined();
+      expect(findByType(rootValue!, 'GestureHandlerRootView')).toBeDefined();
+      expect(findByType(rootValue!, 'SafeAreaProvider')).toBeDefined();
+      expect(findByType(rootValue!, 'StatusBar')).toBeDefined();
 
       // Verify children are rendered
       expect(getByText('Header')).toBeDefined();
@@ -725,7 +727,7 @@ describe('AppProviders', () => {
       const { initSessionListener } = require('@/auth/session');
       mockGetPendingRemoteReset.mockReturnValue(true);
 
-      const { UNSAFE_root } = render(
+      const { root: rootValue } = await render(
         <AppProviders>
           <Text>Test</Text>
         </AppProviders>,
@@ -750,14 +752,14 @@ describe('AppProviders', () => {
       const resetLogger = getLoggerMocks().loggers.get('Reset');
       expect(resetLogger?.info).toHaveBeenCalledWith('Pending remote reset detected');
 
-      const namePrompt = UNSAFE_root.findByType('NamePromptModal' as any);
+      const namePrompt = findByType(rootValue!, 'NamePromptModal');
       expect(namePrompt.props.open).toBe(false);
       expect(namePrompt.props.value).toBe('Test User');
     });
 
-    it('should call initSessionListener on mount', () => {
+    it('should call initSessionListener on mount', async () => {
       const { initSessionListener } = require('@/auth/session');
-      render(
+      await render(
         <AppProviders>
           <Text>Test</Text>
         </AppProviders>,
@@ -765,9 +767,9 @@ describe('AppProviders', () => {
       expect(initSessionListener).toHaveBeenCalled();
     });
 
-    it('should initialize sync with disabled state', () => {
+    it('should initialize sync with disabled state', async () => {
       const { useSync, pushOutbox, pullUpdates } = require('@/sync');
-      render(
+      await render(
         <AppProviders>
           <Text>Test</Text>
         </AppProviders>,
@@ -787,7 +789,7 @@ describe('AppProviders', () => {
         configureNotificationHandler,
       } = require('@/notifications');
 
-      render(
+      await render(
         <AppProviders>
           <Text>Test</Text>
         </AppProviders>,
@@ -802,7 +804,7 @@ describe('AppProviders', () => {
     it('skips in-app messaging initialization when firebase is disabled', async () => {
       const { initializeInAppMessaging } = require('@/notifications');
 
-      render(
+      await render(
         <AppProviders>
           <Text>Test</Text>
         </AppProviders>,
@@ -824,7 +826,7 @@ describe('AppProviders', () => {
       configureNotificationHandler.mockRejectedValueOnce(new Error('handler failed'));
       initializeInAppMessaging.mockRejectedValueOnce(new Error('iam failed'));
 
-      render(
+      await render(
         <AppProviders>
           <Text>Test</Text>
         </AppProviders>,
@@ -839,10 +841,10 @@ describe('AppProviders', () => {
       process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = '';
     });
 
-    it('should enable sync when user is authenticated on native platforms', () => {
+    it('should enable sync when user is authenticated on native platforms', async () => {
       mockSessionState.status = 'authenticated';
       const { useSync } = require('@/sync');
-      render(
+      await render(
         <AppProviders>
           <Text>Test</Text>
         </AppProviders>,
@@ -855,9 +857,9 @@ describe('AppProviders', () => {
       );
     });
 
-    it('resets badge count on mount for iOS', () => {
+    it('resets badge count on mount for iOS', async () => {
       const { resetBadgeCount } = require('@/notifications');
-      render(
+      await render(
         <AppProviders>
           <Text>Test</Text>
         </AppProviders>,
@@ -868,14 +870,14 @@ describe('AppProviders', () => {
     it('opens name prompt when no local name is stored', async () => {
       mockGetLocalName.mockReturnValue(null);
 
-      const { UNSAFE_root } = render(
+      const { root: rootValue } = await render(
         <AppProviders>
           <Text>Test</Text>
         </AppProviders>,
       );
 
       await waitFor(() => {
-        const namePrompt = UNSAFE_root.findByType('NamePromptModal' as any);
+        const namePrompt = findByType(rootValue!, 'NamePromptModal');
         expect(namePrompt.props.open).toBe(true);
       });
     });
@@ -883,21 +885,21 @@ describe('AppProviders', () => {
     it('skips name prompt when local name is stored', async () => {
       mockGetLocalName.mockReturnValue('Local Name');
 
-      const { UNSAFE_root } = render(
+      const { root: rootValue } = await render(
         <AppProviders>
           <Text>Test</Text>
         </AppProviders>,
       );
 
       await waitFor(() => {
-        const namePrompt = UNSAFE_root.findByType('NamePromptModal' as any);
+        const namePrompt = findByType(rootValue!, 'NamePromptModal');
         expect(namePrompt.props.open).toBe(false);
         expect(namePrompt.props.value).toBe('Local Name');
       });
     });
 
     it('sets feature flag context for anonymous users', async () => {
-      render(
+      await render(
         <AppProviders>
           <Text>Test</Text>
         </AppProviders>,
@@ -920,7 +922,7 @@ describe('AppProviders', () => {
         },
       };
 
-      render(
+      await render(
         <AppProviders>
           <Text>Test</Text>
         </AppProviders>,
@@ -948,7 +950,7 @@ describe('AppProviders', () => {
       };
       mockFeatureFlagClient.setContext.mockRejectedValueOnce(new Error('context failed'));
 
-      render(
+      await render(
         <AppProviders>
           <Text>Test</Text>
         </AppProviders>,
@@ -962,18 +964,18 @@ describe('AppProviders', () => {
     it('saves name from prompt and closes modal', async () => {
       mockGetLocalName.mockReturnValue(null);
 
-      const { UNSAFE_root } = render(
+      const { root: rootValue } = await render(
         <AppProviders>
           <Text>Test</Text>
         </AppProviders>,
       );
 
-      const namePrompt = UNSAFE_root.findByType('NamePromptModal' as any);
+      const namePrompt = findByType(rootValue!, 'NamePromptModal');
       namePrompt.props.onSave('Jane Doe');
 
       await waitFor(() => {
         expect(mockSetLocalName).toHaveBeenCalledWith('Jane Doe');
-        const updatedPrompt = UNSAFE_root.findByType('NamePromptModal' as any);
+        const updatedPrompt = findByType(rootValue!, 'NamePromptModal');
         expect(updatedPrompt.props.open).toBe(false);
         expect(updatedPrompt.props.value).toBe('Jane Doe');
       });
@@ -991,7 +993,7 @@ describe('AppProviders', () => {
       const unsubscribe = jest.fn();
       initializeFCMListeners.mockReturnValueOnce(unsubscribe);
 
-      const { unmount } = render(
+      const { unmount } = await render(
         <AppProviders>
           <Text>Test</Text>
         </AppProviders>,
@@ -1004,7 +1006,7 @@ describe('AppProviders', () => {
         expect(setMessageTriggers).toHaveBeenCalledWith({ app_ready: 'app_ready' });
       });
 
-      unmount();
+      await unmount();
       expect(unsubscribe).toHaveBeenCalled();
       process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = '';
     });
@@ -1015,7 +1017,7 @@ describe('AppProviders', () => {
       const error = new Error('boom');
       setMessageTriggers.mockRejectedValueOnce(error);
 
-      render(
+      await render(
         <AppProviders>
           <Text>Test</Text>
         </AppProviders>,
@@ -1029,13 +1031,13 @@ describe('AppProviders', () => {
       process.env.EXPO_PUBLIC_TURN_ON_FIREBASE = '';
     });
 
-    it('skips badge reset on non-iOS platforms', () => {
+    it('skips badge reset on non-iOS platforms', async () => {
       const { resetBadgeCount } = require('@/notifications');
       const { Platform } = require('react-native');
       const originalOS = Platform.OS;
       Object.defineProperty(Platform, 'OS', { value: 'android', configurable: true });
 
-      render(
+      await render(
         <AppProviders>
           <Text>Test</Text>
         </AppProviders>,
@@ -1045,7 +1047,7 @@ describe('AppProviders', () => {
       Object.defineProperty(Platform, 'OS', { value: originalOS, configurable: true });
     });
 
-    it('resets badge count when app becomes active on iOS', () => {
+    it('resets badge count when app becomes active on iOS', async () => {
       const { AppState } = require('react-native');
       const { Platform } = require('react-native');
       const { resetBadgeCount } = require('@/notifications');
@@ -1058,7 +1060,7 @@ describe('AppProviders', () => {
       Object.defineProperty(Platform, 'OS', { value: 'ios', configurable: true });
       AppState.addEventListener = mockAddEventListener;
 
-      render(
+      await render(
         <AppProviders>
           <Text>Test</Text>
         </AppProviders>,
@@ -1081,7 +1083,7 @@ describe('AppProviders', () => {
       mockSessionState.status = 'authenticated';
       cleanupSoftDeletedRecords.mockResolvedValueOnce(5);
 
-      render(
+      await render(
         <AppProviders>
           <Text>Test</Text>
         </AppProviders>,
@@ -1100,7 +1102,7 @@ describe('AppProviders', () => {
       cleanupSoftDeletedRecords.mockResolvedValueOnce(0);
       archiveOldEntries.mockResolvedValueOnce(3);
 
-      render(
+      await render(
         <AppProviders>
           <Text>Test</Text>
         </AppProviders>,
@@ -1120,7 +1122,7 @@ describe('AppProviders', () => {
       cleanupSoftDeletedRecords.mockResolvedValueOnce(2);
       archiveOldEntries.mockResolvedValueOnce(1);
 
-      render(
+      await render(
         <AppProviders>
           <Text>Test</Text>
         </AppProviders>,
@@ -1143,7 +1145,7 @@ describe('AppProviders', () => {
       cleanupSoftDeletedRecords.mockResolvedValueOnce(1);
       optimizeDatabase.mockRejectedValueOnce(error);
 
-      render(
+      await render(
         <AppProviders>
           <Text>Test</Text>
         </AppProviders>,
@@ -1161,7 +1163,7 @@ describe('AppProviders', () => {
       mockSessionState.status = 'authenticated';
       cleanupSoftDeletedRecords.mockRejectedValueOnce(error);
 
-      render(
+      await render(
         <AppProviders>
           <Text>Test</Text>
         </AppProviders>,
@@ -1181,7 +1183,7 @@ describe('AppProviders', () => {
       cleanupSoftDeletedRecords.mockResolvedValueOnce(0);
       archiveOldEntries.mockRejectedValueOnce(error);
 
-      render(
+      await render(
         <AppProviders>
           <Text>Test</Text>
         </AppProviders>,
@@ -1197,7 +1199,7 @@ describe('AppProviders', () => {
       const error = new Error('refresh failed');
       mockRefreshReminderSeriesWindows.mockRejectedValueOnce(error);
 
-      render(
+      await render(
         <AppProviders>
           <Text>Test</Text>
         </AppProviders>,
@@ -1221,7 +1223,7 @@ describe('AppProviders', () => {
       const originalAdd = AppState.addEventListener;
       AppState.addEventListener = mockAddEventListener;
 
-      render(
+      await render(
         <AppProviders>
           <Text>Test</Text>
         </AppProviders>,
@@ -1232,8 +1234,7 @@ describe('AppProviders', () => {
       });
 
       const handler = mockAddEventListener.mock.calls[0]?.[1] as
-        | ((state: string) => void)
-        | undefined;
+        ((state: string) => void) | undefined;
       handler?.('active');
       await waitFor(() => {
         expect(mockRefreshReminderSeriesWindows).toHaveBeenCalledTimes(2);
@@ -1253,7 +1254,7 @@ describe('AppProviders', () => {
         .mockReturnValueOnce({ status: 'idle', queueSize: 0 })
         .mockReturnValueOnce({ status: 'paused', queueSize: 0 });
 
-      const { rerender } = render(
+      const { rerender } = await render(
         <AppProviders>
           <Text>Test</Text>
         </AppProviders>,
@@ -1263,7 +1264,7 @@ describe('AppProviders', () => {
         expect(cleanupSoftDeletedRecords).toHaveBeenCalledTimes(1);
       });
 
-      rerender(
+      await rerender(
         <AppProviders>
           <Text>Test</Text>
         </AppProviders>,
@@ -1273,7 +1274,7 @@ describe('AppProviders', () => {
       nowSpy.mockRestore();
     });
 
-    it('skips cleanup when sync is busy', () => {
+    it('skips cleanup when sync is busy', async () => {
       const { useSync } = require('@/sync');
       const { cleanupSoftDeletedRecords } = require('@/db/sqlite/cleanup');
       cleanupSoftDeletedRecords.mockClear();
@@ -1285,7 +1286,7 @@ describe('AppProviders', () => {
         triggerSync: jest.fn(),
       });
 
-      render(
+      await render(
         <AppProviders>
           <Text>Test</Text>
         </AppProviders>,
@@ -1317,7 +1318,7 @@ describe('AppProviders', () => {
         },
       });
 
-      render(
+      await render(
         <AppProviders>
           <Text>Test</Text>
         </AppProviders>,
@@ -1339,7 +1340,7 @@ describe('AppProviders', () => {
       const error = new Error('fail');
       getLastNotificationResponseAsync.mockRejectedValueOnce(error);
 
-      render(
+      await render(
         <AppProviders>
           <Text>Test</Text>
         </AppProviders>,
@@ -1370,7 +1371,7 @@ describe('AppProviders', () => {
         },
       });
 
-      render(
+      await render(
         <AppProviders>
           <Text>Test</Text>
         </AppProviders>,
@@ -1386,7 +1387,7 @@ describe('AppProviders', () => {
       const push = jest.fn();
       useRouter.mockReturnValue({ push, replace: jest.fn(), back: jest.fn() });
 
-      render(
+      await render(
         <AppProviders>
           <Text>Test</Text>
         </AppProviders>,
@@ -1425,7 +1426,7 @@ describe('AppProviders', () => {
         },
       });
 
-      render(
+      await render(
         <AppProviders>
           <Text>Test</Text>
         </AppProviders>,
@@ -1456,7 +1457,7 @@ describe('AppProviders', () => {
         },
       });
 
-      render(
+      await render(
         <AppProviders>
           <Text>Test</Text>
         </AppProviders>,
@@ -1475,28 +1476,28 @@ describe('AppProviders', () => {
   });
 
   describe('Edge Cases', () => {
-    it('should render with no children', () => {
-      const { UNSAFE_root } = render(<AppProviders />);
+    it('should render with no children', async () => {
+      const { root: rootValue } = await render(<AppProviders />);
 
-      expect(UNSAFE_root.findByType('GestureHandlerRootView' as any)).toBeDefined();
-      expect(UNSAFE_root.findByType('SafeAreaProvider' as any)).toBeDefined();
-      expect(UNSAFE_root.findByType('StatusBar' as any)).toBeDefined();
+      expect(findByType(rootValue!, 'GestureHandlerRootView')).toBeDefined();
+      expect(findByType(rootValue!, 'SafeAreaProvider')).toBeDefined();
+      expect(findByType(rootValue!, 'StatusBar')).toBeDefined();
     });
 
-    it('should render with null children', () => {
-      const { UNSAFE_root } = render(<AppProviders>{null}</AppProviders>);
+    it('should render with null children', async () => {
+      const { root: rootValue } = await render(<AppProviders>{null}</AppProviders>);
 
-      expect(UNSAFE_root).toBeDefined();
+      expect(rootValue!).toBeDefined();
     });
 
-    it('should render with undefined children', () => {
-      const { UNSAFE_root } = render(<AppProviders>{undefined}</AppProviders>);
+    it('should render with undefined children', async () => {
+      const { root: rootValue } = await render(<AppProviders>{undefined}</AppProviders>);
 
-      expect(UNSAFE_root).toBeDefined();
+      expect(rootValue!).toBeDefined();
     });
 
-    it('should render with fragment children', () => {
-      const { getByText } = render(
+    it('should render with fragment children', async () => {
+      const { getByText } = await render(
         <AppProviders>
           <>
             <Text>Fragment Child 1</Text>
@@ -1511,8 +1512,8 @@ describe('AppProviders', () => {
   });
 
   describe('Integration', () => {
-    it('should work with nested Views and Text', () => {
-      const { getByText, getByTestId } = render(
+    it('should work with nested Views and Text', async () => {
+      const { getByText, getByTestId } = await render(
         <AppProviders>
           <View testID="outer-view">
             <View testID="inner-view">
@@ -1527,7 +1528,7 @@ describe('AppProviders', () => {
       expect(getByText('Nested Text')).toBeDefined();
     });
 
-    it('should maintain provider context for deeply nested components', () => {
+    it('should maintain provider context for deeply nested components', async () => {
       const DeeplyNestedComponent = () => (
         <View>
           <View>
@@ -1538,7 +1539,7 @@ describe('AppProviders', () => {
         </View>
       );
 
-      const { getByText } = render(
+      const { getByText } = await render(
         <AppProviders>
           <DeeplyNestedComponent />
         </AppProviders>,
@@ -1549,9 +1550,9 @@ describe('AppProviders', () => {
   });
 
   describe('Session state', () => {
-    it('should handle loading session state', () => {
+    it('should handle loading session state', async () => {
       mockSessionState.status = 'loading';
-      const { getByText } = render(
+      const { getByText } = await render(
         <AppProviders>
           <Text>Loading state</Text>
         </AppProviders>,
@@ -1560,9 +1561,9 @@ describe('AppProviders', () => {
       expect(getByText('Loading state')).toBeDefined();
     });
 
-    it('should handle error session state', () => {
+    it('should handle error session state', async () => {
       mockSessionState.status = 'error';
-      const { getByText } = render(
+      const { getByText } = await render(
         <AppProviders>
           <Text>Error state</Text>
         </AppProviders>,
@@ -1573,12 +1574,12 @@ describe('AppProviders', () => {
   });
 
   describe('Platform-specific behavior', () => {
-    it('should render on web platform', () => {
+    it('should render on web platform', async () => {
       // Note: Testing web platform with actual module reload is complex
       // due to Tamagui and other dependencies. The web branch is covered
       // by integration tests. This test verifies the component is resilient
       // to different platform configurations.
-      const { getByText } = render(
+      const { getByText } = await render(
         <AppProviders>
           <Text>Platform test</Text>
         </AppProviders>,
@@ -1660,7 +1661,7 @@ describe('AppProviders', () => {
       const WebProvider = require('@/ui/providers/AppProviders')
         .AppProviders as typeof AppProviders;
 
-      const { unmount } = render(
+      const { unmount } = await render(
         <WebProvider>
           <React.Fragment>
             <Text>Web</Text>
@@ -1677,8 +1678,7 @@ describe('AppProviders', () => {
         ([event]) => event === 'visibilitychange',
       )?.[1] as (() => void) | undefined;
       const focusHandler = winAddSpy.mock.calls.find(([event]) => event === 'focus')?.[1] as
-        | (() => void)
-        | undefined;
+        (() => void) | undefined;
       visibilityHandler?.();
       focusHandler?.();
 
@@ -1697,7 +1697,7 @@ describe('AppProviders', () => {
 
       expect(window.location.assign).toHaveBeenCalledWith('/settings');
 
-      unmount();
+      await unmount();
       docAddSpy.mockRestore();
       winAddSpy.mockRestore();
       Object.defineProperty(WebPlatform, 'OS', { value: originalOS, configurable: true });

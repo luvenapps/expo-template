@@ -1,4 +1,5 @@
 import { fireEvent, render } from '@testing-library/react-native';
+import { Platform } from 'react-native';
 
 const mockSetTheme = jest.fn();
 
@@ -37,7 +38,7 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-jest.mock('@tamagui/lucide-icons', () => {
+jest.mock('@/ui/icons', () => {
   const React = require('react');
   const { View } = require('react-native');
 
@@ -62,8 +63,9 @@ jest.mock('tamagui', () => {
         onPress: disabled ? undefined : onPress,
         testID,
         accessibilityLabel: props['aria-label'],
+        gap: props.gap,
       },
-      React.createElement(Text, null, children),
+      children,
     );
   Button.displayName = 'Button';
 
@@ -80,16 +82,56 @@ jest.mock('tamagui', () => {
 
 import AppearanceSettingsScreen from '../../../../app/(tabs)/settings/appearance';
 
+const themeOptions = [
+  ['system', 'settings.themeSystem'],
+  ['light', 'settings.themeLight'],
+  ['dark', 'settings.themeDark'],
+] as const;
+
 describe('AppearanceSettingsScreen', () => {
   beforeEach(() => {
     mockSetTheme.mockReset();
   });
 
-  it('renders theme options and updates theme selection', () => {
-    const { getByLabelText } = render(<AppearanceSettingsScreen />);
+  it.each(themeOptions)(
+    'renders the %s theme label from its translation key',
+    async (theme, labelKey) => {
+      const { getByTestId } = await render(<AppearanceSettingsScreen />);
 
-    fireEvent.press(getByLabelText('settings.themeLight'));
+      expect(getByTestId(`theme-option-label-${theme}`).props.children).toBe(labelKey);
+    },
+  );
 
+  it('matches Production theme option typography on web', async () => {
+    const originalPlatform = Platform.OS;
+    Object.defineProperty(Platform, 'OS', {
+      value: 'web',
+      writable: true,
+      configurable: true,
+    });
+
+    try {
+      const { getByTestId } = await render(<AppearanceSettingsScreen />);
+
+      expect(getByTestId('theme-option-label-system').props.style).toMatchObject({
+        fontFamily: 'Arial',
+        fontSize: 16,
+        fontWeight: '300',
+      });
+      expect(getByTestId('theme-option-system').props.gap).toBe('10.555px');
+    } finally {
+      Object.defineProperty(Platform, 'OS', {
+        value: originalPlatform,
+        writable: true,
+        configurable: true,
+      });
+    }
+  });
+
+  it('updates theme selection', async () => {
+    const { getByTestId } = await render(<AppearanceSettingsScreen />);
+
+    await fireEvent.press(getByTestId('theme-option-light'));
     expect(mockSetTheme).toHaveBeenCalledWith('light');
   });
 });

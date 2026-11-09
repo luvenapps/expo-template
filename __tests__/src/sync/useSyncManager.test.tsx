@@ -81,13 +81,13 @@ describe('useSyncManager', () => {
   });
 
   test('runs on mount when enabled', async () => {
-    render(<TestComponent enabled />);
+    await render(<TestComponent enabled />);
     await Promise.resolve();
     expect(engine.runSync).toHaveBeenCalledTimes(1);
   });
 
   test('runs on interval', async () => {
-    render(<TestComponent enabled />);
+    await render(<TestComponent enabled />);
     await Promise.resolve();
     jest.advanceTimersByTime(1000);
     await Promise.resolve();
@@ -95,7 +95,7 @@ describe('useSyncManager', () => {
   });
 
   test('runs when app state becomes active', async () => {
-    render(<TestComponent enabled />);
+    await render(<TestComponent enabled />);
     await Promise.resolve();
     listeners.forEach((listener) => listener('active'));
     await Promise.resolve();
@@ -103,14 +103,14 @@ describe('useSyncManager', () => {
   });
 
   test('triggerSync manually invokes engine', async () => {
-    render(<TestComponent enabled />);
+    await render(<TestComponent enabled />);
     await Promise.resolve();
     await triggerRef?.();
     expect(engine.runSync).toHaveBeenCalledTimes(2);
   });
 
   test('manual trigger still runs when disabled', async () => {
-    render(<TestComponent enabled={false} />);
+    await render(<TestComponent enabled={false} />);
     await Promise.resolve();
     await triggerRef?.();
     expect(engine.runSync).toHaveBeenCalledTimes(1);
@@ -121,13 +121,13 @@ describe('useSyncManager', () => {
       useSyncManager({ engine: engine as any, intervalMs: 1000, enabled: true, autoStart: false });
       return null;
     };
-    render(<TestComponentNoAutoStart />);
+    await render(<TestComponentNoAutoStart />);
     await Promise.resolve();
     expect(engine.runSync).not.toHaveBeenCalled();
   });
 
   test('does not run on non-active app state changes', async () => {
-    render(<TestComponent enabled />);
+    await render(<TestComponent enabled />);
     await Promise.resolve();
     engine.runSync.mockClear();
 
@@ -144,24 +144,24 @@ describe('useSyncManager', () => {
 
   test('handles engine errors gracefully during auto-sync', async () => {
     engine.runSync.mockRejectedValueOnce(new Error('Sync failed'));
-    render(<TestComponent enabled />);
+    await render(<TestComponent enabled />);
     await Promise.resolve();
     // Should not throw during automatic sync
     expect(engine.runSync).toHaveBeenCalledTimes(1);
   });
 
   test('manual trigger runs even when disabled', async () => {
-    render(<TestComponent enabled={false} />);
+    await render(<TestComponent enabled={false} />);
     await Promise.resolve();
     engine.runSync.mockClear();
     await triggerRef?.();
     expect(engine.runSync).toHaveBeenCalledTimes(1);
   });
 
-  test('cleans up interval and listener on unmount', () => {
-    const { unmount } = render(<TestComponent enabled />);
+  test('cleans up interval and listener on unmount', async () => {
+    const { unmount } = await render(<TestComponent enabled />);
     expect(listeners.length).toBe(1);
-    unmount();
+    await unmount();
     expect(listeners.length).toBe(0);
   });
 
@@ -182,7 +182,7 @@ describe('useSyncManager', () => {
     });
     (AppState as any).addEventListener = legacyAddEventListener;
 
-    render(<TestComponent enabled />);
+    await render(<TestComponent enabled />);
     await Promise.resolve();
 
     expect(legacyAddEventListener).toHaveBeenCalledWith('change', expect.any(Function));

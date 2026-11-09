@@ -45,7 +45,7 @@ function createMmkvAdapter(): StorageAdapter | undefined {
         instance.set(key, value);
       },
       delete: (key) => {
-        instance.delete(key);
+        instance.remove(key);
       },
       clearAll: () => {
         instance.clearAll();

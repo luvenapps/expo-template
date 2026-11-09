@@ -1,109 +1,112 @@
-// Generate Firebase credentials from environment variables during config evaluation
-// This ensures the credentials exist BEFORE other plugins try to use them
-
 const { Buffer } = require('buffer');
 const fs = require('fs');
 const path = require('path');
 
-function isActualBuild() {
-  // Check if we're in a build context
-  // In CI: EXPO_TOKEN is set as a secret throughout the entire EAS build
-  // Locally: Developers typically don't have EXPO_TOKEN set, so plugin won't run during expo doctor
-  // Also check for explicit build commands for local development builds
+const PLATFORM_CREDENTIALS = {
+  ios: {
+    file: path.join('credentials', 'GoogleService-Info.plist'),
+    environmentVariable: 'GOOGLE_SERVICE_INFO_PLIST_B64',
+  },
+  android: {
+    file: path.join('credentials', 'google-services.json'),
+    environmentVariable: 'GOOGLE_SERVICES_JSON_B64',
+  },
+};
+
+function isActualBuild(args = process.argv, environment = process.env) {
   const buildCommands = ['prebuild', 'run:ios', 'run:android'];
+  const platform = detectPlatform(args, environment);
+  const nativePlatforms = ['ios', 'android'];
+
   return (
-    Boolean(process.env.EXPO_TOKEN) || // CI builds (EAS always sets this)
-    process.argv.some((arg) => buildCommands.some((cmd) => arg.includes(cmd))) ||
-    process.env.EAS_BUILD_PLATFORM
+    args.some((arg) => buildCommands.some((command) => arg.includes(command))) ||
+    nativePlatforms.includes(environment.EAS_BUILD_PLATFORM?.toLowerCase()) ||
+    (Boolean(environment.EXPO_TOKEN) && nativePlatforms.includes(platform))
   );
 }
 
-function detectPlatform() {
-  // Try to detect platform from environment or CLI args
-  // EAS sets EAS_BUILD_PLATFORM, also check process.argv for --platform
-  const easPlatform = process.env.EAS_BUILD_PLATFORM;
+function detectPlatform(args = process.argv, environment = process.env) {
+  const easPlatform = environment.EAS_BUILD_PLATFORM?.toLowerCase();
   if (easPlatform) {
-    return easPlatform.toLowerCase();
+    return easPlatform;
   }
 
-  // Check command line arguments for --platform ios/android
-  const platformArgIndex = process.argv.indexOf('--platform');
-  if (platformArgIndex !== -1 && process.argv[platformArgIndex + 1]) {
-    return process.argv[platformArgIndex + 1].toLowerCase();
+  if (args.includes('run:ios')) {
+    return 'ios';
   }
 
-  // Unable to detect - return null to generate both
-  return null;
+  if (args.includes('run:android')) {
+    return 'android';
+  }
+
+  const platformArgIndex = args.indexOf('--platform');
+  if (platformArgIndex === -1) {
+    return null;
+  }
+
+  const platform = args[platformArgIndex + 1]?.toLowerCase();
+
+  return platform || null;
 }
 
-function generateCredentials(projectRoot) {
-  const platform = detectPlatform();
-  const credentialsDir = path.join(projectRoot, 'credentials');
-
-  // Create credentials directory if it doesn't exist
-  if (!fs.existsSync(credentialsDir)) {
-    fs.mkdirSync(credentialsDir, { recursive: true });
-  }
-
-  // Generate iOS plist (if platform is iOS or unknown)
-  if (!platform || platform === 'ios') {
-    const plistPath = path.join(credentialsDir, 'GoogleService-Info.plist');
-    const plistBase64 = process.env.GOOGLE_SERVICE_INFO_PLIST_B64;
-
-    if (fs.existsSync(plistPath)) {
-      // File already exists, skip generation to avoid duplicate logs
-      console.log('ℹ️  Using existing GoogleService-Info.plist from credentials/');
-    } else if (plistBase64) {
-      const plistContent = Buffer.from(plistBase64, 'base64').toString('utf-8');
-      fs.writeFileSync(plistPath, plistContent, 'utf-8');
-      console.log('✅ Generated GoogleService-Info.plist from environment variable');
-    } else if (platform === 'ios') {
-      // Only warn if we're definitely building for iOS
-      console.warn('⚠️  GOOGLE_SERVICE_INFO_PLIST_B64 not set and no local credentials file found');
-      console.warn('   Add credentials/GoogleService-Info.plist for iOS builds');
+function writeCredentialIfMissing(credentialPath, base64Content, fileSystem = fs) {
+  try {
+    fileSystem.writeFileSync(credentialPath, Buffer.from(base64Content, 'base64'), { flag: 'wx' });
+    return true;
+  } catch (error) {
+    if (error.code === 'EEXIST') {
+      return false;
     }
-  }
 
-  // Generate Android JSON (if platform is Android or unknown)
-  if (!platform || platform === 'android') {
-    const jsonPath = path.join(credentialsDir, 'google-services.json');
-    const jsonBase64 = process.env.GOOGLE_SERVICES_JSON_B64;
-
-    if (fs.existsSync(jsonPath)) {
-      // File already exists, skip generation to avoid duplicate logs
-      console.log('ℹ️  Using existing google-services.json from credentials/');
-    } else if (jsonBase64) {
-      const jsonContent = Buffer.from(jsonBase64, 'base64').toString('utf-8');
-      fs.writeFileSync(jsonPath, jsonContent, 'utf-8');
-      console.log('✅ Generated google-services.json from environment variable');
-    } else if (platform === 'android') {
-      // Only warn if we're definitely building for Android
-      console.warn('⚠️  GOOGLE_SERVICES_JSON_B64 not set and no local credentials file found');
-      console.warn('   Add credentials/google-services.json for Android builds');
-    }
+    throw error;
   }
 }
 
-module.exports = function withFirebaseCredentials(config) {
-  // Skip if credentials have already been generated in this process
-  // This prevents duplicate generation when config is evaluated multiple times
-  if (global.__FIREBASE_CREDENTIALS_GENERATED__) {
-    return config;
+function generateCredentials(projectRoot, platform = detectPlatform(), environment = process.env) {
+  if (platform === 'web') {
+    return;
   }
 
-  // Only generate during actual builds (not expo doctor, expo config, etc.)
+  const platforms = platform ? [platform] : Object.keys(PLATFORM_CREDENTIALS);
+  const credentialsDirectory = path.join(projectRoot, 'credentials');
+
+  for (const targetPlatform of platforms) {
+    const credential = PLATFORM_CREDENTIALS[targetPlatform];
+
+    if (!credential) {
+      throw new Error(`Unsupported Firebase credential platform: ${targetPlatform}`);
+    }
+
+    const credentialPath = path.join(projectRoot, credential.file);
+
+    if (fs.existsSync(credentialPath)) {
+      continue;
+    }
+
+    const base64Content = environment[credential.environmentVariable];
+
+    if (!base64Content) {
+      throw new Error(
+        `Firebase credentials are missing for ${targetPlatform}. Add ${credential.file} to the primary checkout or configure ${credential.environmentVariable}.`,
+      );
+    }
+
+    fs.mkdirSync(credentialsDirectory, { recursive: true });
+    writeCredentialIfMissing(credentialPath, base64Content);
+  }
+}
+
+function withFirebaseCredentials(config) {
   if (!isActualBuild()) {
     return config;
   }
 
-  // Generate credentials immediately when this plugin is evaluated
-  // This happens BEFORE other plugins (like @react-native-firebase/app) try to copy them
-  // Use process.cwd() directly as config._internal.projectRoot can be incorrect in self-hosted runners
-  const projectRoot = process.cwd();
-  generateCredentials(projectRoot);
-
-  // Mark as generated to prevent duplicate execution
-  global.__FIREBASE_CREDENTIALS_GENERATED__ = true;
-
+  generateCredentials(process.cwd(), detectPlatform());
   return config;
-};
+}
+
+module.exports = withFirebaseCredentials;
+module.exports.detectPlatform = detectPlatform;
+module.exports.generateCredentials = generateCredentials;
+module.exports.isActualBuild = isActualBuild;
+module.exports.writeCredentialIfMissing = writeCredentialIfMissing;

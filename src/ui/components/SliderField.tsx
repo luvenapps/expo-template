@@ -40,28 +40,36 @@ export function SliderField({
         max={max}
         step={step}
         onValueChange={onValueChange}
-        size="$7"
+        size="lg"
         alignSelf="stretch"
         {...sliderProps}
       >
-        <Slider.Track backgroundColor="$secondaryBackground" height={24} borderRadius="$6">
-          <Slider.TrackActive backgroundColor="$accentColor" />
+        <Slider.Track backgroundColor="secondaryBackground" height={24} borderRadius="6">
+          <Slider.TrackActive backgroundColor="accent-color" />
         </Slider.Track>
         <Slider.Thumb
           index={0}
           circular
-          size="$5"
-          backgroundColor="$background"
-          borderColor="$accentColor"
+          size={false}
+          width={24}
+          height={24}
+          minWidth={24}
+          minHeight={24}
+          backgroundColor="background"
+          borderColor="accent-color"
           borderWidth={3}
         />
         {value.length > 1 ? (
           <Slider.Thumb
             index={1}
             circular
-            size="$5"
-            backgroundColor="$background"
-            borderColor="$accentColor"
+            size={false}
+            width={24}
+            height={24}
+            minWidth={24}
+            minHeight={24}
+            backgroundColor="background"
+            borderColor="accent-color"
             borderWidth={3}
           />
         ) : null}

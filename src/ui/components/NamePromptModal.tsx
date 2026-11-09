@@ -62,7 +62,7 @@ export function NamePromptModal({
           key="name-prompt-content"
           bordered
           elevate
-          padding="$4"
+          padding="4"
           alignSelf="center"
           width="100%"
           maxWidth={480}
@@ -72,21 +72,21 @@ export function NamePromptModal({
             <YStack gap="$4">
               <Dialog.Title asChild>
                 <Paragraph
-                  fontSize="$5"
+                  fontSize="5"
                   fontWeight="700"
-                  lineHeight={60}
+                  lineHeight="60px"
                   textTransform="capitalize"
                 >
                   {title}
                 </Paragraph>
               </Dialog.Title>
               <Dialog.Description asChild>
-                <Paragraph fontSize="$4">{message}</Paragraph>
+                <Paragraph fontSize="4">{message}</Paragraph>
               </Dialog.Description>
               <FormField
                 label={label}
                 placeholder={placeholder}
-                placeholderTextColor="$colorMuted"
+                placeholderTextColor="colorMuted"
                 autoCapitalize="words"
                 value={value}
                 required

@@ -82,7 +82,7 @@ self.addEventListener('message', (event) => {
         // Only display data-only messages manually
         try {
           swLog('[FCM SW] Data-only message - displaying manually');
-          const notificationTitle = payload.data?.title || 'Better Habits';
+          const notificationTitle = payload.data?.title || 'App';
           const notificationBody = payload.data?.body || '';
 
           const notificationOptions = {

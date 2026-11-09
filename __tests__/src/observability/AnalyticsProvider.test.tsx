@@ -82,7 +82,7 @@ describe('AnalyticsProvider', () => {
   };
 
   it('logs analytics envelopes in dev mode', async () => {
-    render(
+    await render(
       <AnalyticsProvider>
         <FireEvents />
       </AnalyticsProvider>,
@@ -94,7 +94,7 @@ describe('AnalyticsProvider', () => {
     });
   });
 
-  it('provides analytics context without throwing', () => {
+  it('provides analytics context without throwing', async () => {
     const TestComponent = () => {
       const analytics = useAnalytics();
       expect(analytics.trackEvent).toBeDefined();
@@ -103,20 +103,18 @@ describe('AnalyticsProvider', () => {
       return null;
     };
 
-    expect(() => {
-      render(
-        <AnalyticsProvider>
-          <TestComponent />
-        </AnalyticsProvider>,
-      );
-    }).not.toThrow();
+    await render(
+      <AnalyticsProvider>
+        <TestComponent />
+      </AnalyticsProvider>,
+    );
   });
 
-  it('persists a distinct id via localStorage on web', () => {
+  it('persists a distinct id via localStorage on web', async () => {
     Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
     (mockLocalStorage.getItem as jest.Mock).mockReturnValue(null);
 
-    render(
+    await render(
       <AnalyticsProvider>
         <FireEvents />
       </AnalyticsProvider>,
@@ -128,11 +126,11 @@ describe('AnalyticsProvider', () => {
     );
   });
 
-  it('falls back to MMKV persistence on native', () => {
+  it('falls back to MMKV persistence on native', async () => {
     Object.defineProperty(Platform, 'OS', { value: 'ios', configurable: true });
     mockMMKVInstance.getString.mockReturnValue(null);
 
-    render(
+    await render(
       <AnalyticsProvider>
         <FireEvents />
       </AnalyticsProvider>,
@@ -141,7 +139,7 @@ describe('AnalyticsProvider', () => {
     expect(mockMMKVInstance.set).toHaveBeenCalledWith(expect.any(String), expect.any(String));
   });
 
-  it('does not crash when localStorage is unavailable', () => {
+  it('does not crash when localStorage is unavailable', async () => {
     Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
     Object.defineProperty(globalThis, 'localStorage', {
       value: undefined,
@@ -149,13 +147,11 @@ describe('AnalyticsProvider', () => {
       writable: true,
     });
 
-    expect(() => {
-      render(
-        <AnalyticsProvider>
-          <FireEvents />
-        </AnalyticsProvider>,
-      );
-    }).not.toThrow();
+    await render(
+      <AnalyticsProvider>
+        <FireEvents />
+      </AnalyticsProvider>,
+    );
   });
 
   it('dispatches events to backend when backend is available', async () => {
@@ -179,7 +175,7 @@ describe('AnalyticsProvider', () => {
       return null;
     };
 
-    render(
+    await render(
       <AnalyticsProvider>
         <TestComponent />
       </AnalyticsProvider>,
@@ -208,12 +204,10 @@ describe('AnalyticsProvider', () => {
       return null;
     };
 
-    expect(() => {
-      render(
-        <AnalyticsProvider>
-          <TestComponent />
-        </AnalyticsProvider>,
-      );
-    }).not.toThrow();
+    await render(
+      <AnalyticsProvider>
+        <TestComponent />
+      </AnalyticsProvider>,
+    );
   });
 });

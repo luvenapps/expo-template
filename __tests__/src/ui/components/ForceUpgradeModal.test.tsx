@@ -97,7 +97,7 @@ describe('ForceUpgradeModal', () => {
   it('opens the store link when the update button is pressed', async () => {
     Object.defineProperty(Platform, 'OS', { value: 'ios' });
 
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <ForceUpgradeModal
         open
         title="Update required"
@@ -106,7 +106,7 @@ describe('ForceUpgradeModal', () => {
       />,
     );
 
-    fireEvent.press(getByTestId('force-upgrade-action'));
+    await fireEvent.press(getByTestId('force-upgrade-action'));
 
     await waitFor(() => {
       expect(canOpenUrlSpy).toHaveBeenCalled();
@@ -117,7 +117,7 @@ describe('ForceUpgradeModal', () => {
   it('opens the Android store link when platform is Android', async () => {
     Object.defineProperty(Platform, 'OS', { value: 'android' });
 
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <ForceUpgradeModal
         open
         title="Update required"
@@ -126,7 +126,7 @@ describe('ForceUpgradeModal', () => {
       />,
     );
 
-    fireEvent.press(getByTestId('force-upgrade-action'));
+    await fireEvent.press(getByTestId('force-upgrade-action'));
 
     await waitFor(() => {
       expect(canOpenUrlSpy).toHaveBeenCalled();
@@ -138,7 +138,7 @@ describe('ForceUpgradeModal', () => {
     Object.defineProperty(Platform, 'OS', { value: 'ios' });
     canOpenUrlSpy.mockResolvedValue(false);
 
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <ForceUpgradeModal
         open
         title="Update required"
@@ -147,15 +147,15 @@ describe('ForceUpgradeModal', () => {
       />,
     );
 
-    fireEvent.press(getByTestId('force-upgrade-action'));
+    await fireEvent.press(getByTestId('force-upgrade-action'));
 
     await waitFor(() => {
       expect(getByTestId('force-upgrade-error')).toBeTruthy();
     });
   });
 
-  it('renders the modal when open is true', () => {
-    const { getByTestId, queryByTestId } = render(
+  it('renders the modal when open is true', async () => {
+    const { getByTestId, queryByTestId } = await render(
       <ForceUpgradeModal
         open
         title="Update required"
@@ -173,7 +173,7 @@ describe('ForceUpgradeModal', () => {
 
     // First, trigger an error
     canOpenUrlSpy.mockResolvedValue(false);
-    const { getByTestId, queryByTestId } = render(
+    const { getByTestId, queryByTestId } = await render(
       <ForceUpgradeModal
         open
         title="Update required"
@@ -182,7 +182,7 @@ describe('ForceUpgradeModal', () => {
       />,
     );
 
-    fireEvent.press(getByTestId('force-upgrade-action'));
+    await fireEvent.press(getByTestId('force-upgrade-action'));
 
     await waitFor(() => {
       expect(getByTestId('force-upgrade-error')).toBeTruthy();
@@ -190,7 +190,7 @@ describe('ForceUpgradeModal', () => {
 
     // Now, make it succeed and error should be cleared
     canOpenUrlSpy.mockResolvedValue(true);
-    fireEvent.press(getByTestId('force-upgrade-action'));
+    await fireEvent.press(getByTestId('force-upgrade-action'));
 
     await waitFor(() => {
       expect(openUrlSpy).toHaveBeenCalled();
@@ -212,7 +212,7 @@ describe('ForceUpgradeModal', () => {
 
     Object.defineProperty(Platform, 'OS', { value: 'ios' });
 
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <ForceUpgradeModal
         open
         title="Update required"
@@ -221,7 +221,7 @@ describe('ForceUpgradeModal', () => {
       />,
     );
 
-    fireEvent.press(getByTestId('force-upgrade-action'));
+    await fireEvent.press(getByTestId('force-upgrade-action'));
 
     await waitFor(() => {
       expect(canOpenUrlSpy).toHaveBeenCalledWith('itms-apps://apps.apple.com/');
@@ -249,7 +249,7 @@ describe('ForceUpgradeModal', () => {
     // First URL (itms-apps) fails, second (https) succeeds
     canOpenUrlSpy.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
 
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <ForceUpgradeModal
         open
         title="Update required"
@@ -258,7 +258,7 @@ describe('ForceUpgradeModal', () => {
       />,
     );
 
-    fireEvent.press(getByTestId('force-upgrade-action'));
+    await fireEvent.press(getByTestId('force-upgrade-action'));
 
     await waitFor(() => {
       expect(canOpenUrlSpy).toHaveBeenCalledWith('itms-apps://apps.apple.com/');
@@ -271,7 +271,7 @@ describe('ForceUpgradeModal', () => {
   });
 
   it('prevents modal from closing when allowCloseRef is false', async () => {
-    render(
+    await render(
       <ForceUpgradeModal
         open
         title="Update required"
@@ -295,7 +295,7 @@ describe('ForceUpgradeModal', () => {
   });
 
   it('resets allowCloseRef when modal opens', async () => {
-    render(
+    await render(
       <ForceUpgradeModal
         open
         title="Update required"
@@ -337,7 +337,7 @@ describe('ForceUpgradeModal', () => {
       .mockRejectedValueOnce(new Error('URL scheme not supported'))
       .mockResolvedValueOnce(true);
 
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <ForceUpgradeModal
         open
         title="Update required"
@@ -346,7 +346,7 @@ describe('ForceUpgradeModal', () => {
       />,
     );
 
-    fireEvent.press(getByTestId('force-upgrade-action'));
+    await fireEvent.press(getByTestId('force-upgrade-action'));
 
     await waitFor(() => {
       // Should try both URLs
@@ -365,7 +365,7 @@ describe('ForceUpgradeModal', () => {
     // All URLs throw errors
     canOpenUrlSpy.mockRejectedValue(new Error('Network error'));
 
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <ForceUpgradeModal
         open
         title="Update required"
@@ -374,7 +374,7 @@ describe('ForceUpgradeModal', () => {
       />,
     );
 
-    fireEvent.press(getByTestId('force-upgrade-action'));
+    await fireEvent.press(getByTestId('force-upgrade-action'));
 
     await waitFor(() => {
       expect(getByTestId('force-upgrade-error')).toBeTruthy();
@@ -396,7 +396,7 @@ describe('ForceUpgradeModal', () => {
 
     Object.defineProperty(Platform, 'OS', { value: 'ios' });
 
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <ForceUpgradeModal
         open
         title="Update required"
@@ -405,7 +405,7 @@ describe('ForceUpgradeModal', () => {
       />,
     );
 
-    fireEvent.press(getByTestId('force-upgrade-action'));
+    await fireEvent.press(getByTestId('force-upgrade-action'));
 
     await waitFor(() => {
       // Should skip empty strings and use fallback URLs
@@ -417,10 +417,10 @@ describe('ForceUpgradeModal', () => {
     Constants.default.expoConfig = originalExpoConfig;
   });
 
-  it('handles missing theme.color gracefully', () => {
+  it('handles missing theme.color gracefully', async () => {
     mockUseTheme.mockReturnValueOnce({} as any);
 
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <ForceUpgradeModal
         open
         title="Update required"
@@ -433,12 +433,12 @@ describe('ForceUpgradeModal', () => {
     expect(getByTestId('force-upgrade-action')).toBeTruthy();
   });
 
-  it('uses smaller icon size for narrow screens', () => {
+  it('uses smaller icon size for narrow screens', async () => {
     const RN = require('react-native');
     const originalUseWindowDimensions = RN.useWindowDimensions;
     RN.useWindowDimensions = jest.fn(() => ({ width: 375, height: 667 }));
 
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <ForceUpgradeModal
         open
         title="Update required"
@@ -452,12 +452,12 @@ describe('ForceUpgradeModal', () => {
     RN.useWindowDimensions = originalUseWindowDimensions;
   });
 
-  it('uses larger icon size for wide screens', () => {
+  it('uses larger icon size for wide screens', async () => {
     const RN = require('react-native');
     const originalUseWindowDimensions = RN.useWindowDimensions;
     RN.useWindowDimensions = jest.fn(() => ({ width: 400, height: 800 }));
 
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <ForceUpgradeModal
         open
         title="Update required"
@@ -471,10 +471,10 @@ describe('ForceUpgradeModal', () => {
     RN.useWindowDimensions = originalUseWindowDimensions;
   });
 
-  it('renders correctly on web to cover web dialog sizing branch', () => {
+  it('renders correctly on web to cover web dialog sizing branch', async () => {
     Object.defineProperty(Platform, 'OS', { value: 'web' });
 
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <ForceUpgradeModal
         open
         title="Update required"
@@ -497,7 +497,7 @@ describe('ForceUpgradeModal', () => {
     Object.defineProperty(Platform, 'OS', { value: 'ios' });
     canOpenUrlSpy.mockResolvedValue(false);
 
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <ForceUpgradeModal
         open
         title="Update required"
@@ -506,7 +506,7 @@ describe('ForceUpgradeModal', () => {
       />,
     );
 
-    fireEvent.press(getByTestId('force-upgrade-action'));
+    await fireEvent.press(getByTestId('force-upgrade-action'));
 
     await waitFor(() => {
       expect(getByTestId('force-upgrade-error')).toBeTruthy();
@@ -525,7 +525,7 @@ describe('ForceUpgradeModal', () => {
     Object.defineProperty(Platform, 'OS', { value: 'ios' });
     canOpenUrlSpy.mockResolvedValue(false);
 
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <ForceUpgradeModal
         open
         title="Update required"
@@ -534,7 +534,7 @@ describe('ForceUpgradeModal', () => {
       />,
     );
 
-    fireEvent.press(getByTestId('force-upgrade-action'));
+    await fireEvent.press(getByTestId('force-upgrade-action'));
 
     await waitFor(() => {
       expect(getByTestId('force-upgrade-error')).toBeTruthy();
@@ -553,7 +553,7 @@ describe('ForceUpgradeModal', () => {
     Object.defineProperty(Platform, 'OS', { value: 'ios' });
     canOpenUrlSpy.mockResolvedValue(false);
 
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <ForceUpgradeModal
         open
         title="Update required"
@@ -562,7 +562,7 @@ describe('ForceUpgradeModal', () => {
       />,
     );
 
-    fireEvent.press(getByTestId('force-upgrade-action'));
+    await fireEvent.press(getByTestId('force-upgrade-action'));
 
     await waitFor(() => {
       const errorElement = getByTestId('force-upgrade-error');
@@ -581,7 +581,7 @@ describe('ForceUpgradeModal', () => {
     Object.defineProperty(Platform, 'OS', { value: 'ios' });
     canOpenUrlSpy.mockResolvedValue(false);
 
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <ForceUpgradeModal
         open
         title="Update required"
@@ -590,7 +590,7 @@ describe('ForceUpgradeModal', () => {
       />,
     );
 
-    fireEvent.press(getByTestId('force-upgrade-action'));
+    await fireEvent.press(getByTestId('force-upgrade-action'));
 
     await waitFor(() => {
       expect(getByTestId('force-upgrade-error')).toBeTruthy();
@@ -607,7 +607,7 @@ describe('ForceUpgradeModal', () => {
     Object.defineProperty(Platform, 'OS', { value: 'ios' });
     canOpenUrlSpy.mockResolvedValue(false);
 
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <ForceUpgradeModal
         open
         title="Update required"
@@ -616,19 +616,19 @@ describe('ForceUpgradeModal', () => {
       />,
     );
 
-    fireEvent.press(getByTestId('force-upgrade-action'));
+    await fireEvent.press(getByTestId('force-upgrade-action'));
 
     await waitFor(() => {
       expect(getByTestId('force-upgrade-error').props.children).toBe('errors.unknown.title');
     });
   });
 
-  it('handles missing Constants.expoConfig', () => {
+  it('handles missing Constants.expoConfig', async () => {
     const Constants = require('expo-constants');
     const originalExpoConfig = Constants.default.expoConfig;
     Constants.default.expoConfig = undefined;
 
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <ForceUpgradeModal
         open
         title="Update required"
@@ -642,12 +642,12 @@ describe('ForceUpgradeModal', () => {
     Constants.default.expoConfig = originalExpoConfig;
   });
 
-  it('handles missing Constants.expoConfig.extra', () => {
+  it('handles missing Constants.expoConfig.extra', async () => {
     const Constants = require('expo-constants');
     const originalExpoConfig = Constants.default.expoConfig;
     Constants.default.expoConfig = { ...originalExpoConfig, extra: undefined };
 
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <ForceUpgradeModal
         open
         title="Update required"
@@ -661,7 +661,7 @@ describe('ForceUpgradeModal', () => {
     Constants.default.expoConfig = originalExpoConfig;
   });
 
-  it('handles non-string storeIds.android', () => {
+  it('handles non-string storeIds.android', async () => {
     const Constants = require('expo-constants');
     const originalExpoConfig = Constants.default.expoConfig;
     Constants.default.expoConfig = {
@@ -676,7 +676,7 @@ describe('ForceUpgradeModal', () => {
 
     Object.defineProperty(Platform, 'OS', { value: 'android' });
 
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <ForceUpgradeModal
         open
         title="Update required"
@@ -690,7 +690,7 @@ describe('ForceUpgradeModal', () => {
     Constants.default.expoConfig = originalExpoConfig;
   });
 
-  it('handles non-string storeIds.ios', () => {
+  it('handles non-string storeIds.ios', async () => {
     const Constants = require('expo-constants');
     const originalExpoConfig = Constants.default.expoConfig;
     Constants.default.expoConfig = {
@@ -705,7 +705,7 @@ describe('ForceUpgradeModal', () => {
 
     Object.defineProperty(Platform, 'OS', { value: 'ios' });
 
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <ForceUpgradeModal
         open
         title="Update required"

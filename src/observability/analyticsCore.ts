@@ -42,9 +42,7 @@ export type AnalyticsPerformanceEnvelope = AnalyticsEnvelopeBase & {
 };
 
 export type AnalyticsEnvelope =
-  | AnalyticsEventEnvelope
-  | AnalyticsErrorEnvelope
-  | AnalyticsPerformanceEnvelope;
+  AnalyticsEventEnvelope | AnalyticsErrorEnvelope | AnalyticsPerformanceEnvelope;
 
 export type AnalyticsBackend = {
   trackEvent: (envelope: AnalyticsEventEnvelope) => void | Promise<void>;

@@ -69,21 +69,26 @@ export default function ForgotPasswordScreen() {
         }}
       >
         <Card
-          bordered
-          elevate
-          padding="$6"
+          borderWidth={1}
+          borderColor="border-color"
+          borderRadius={12}
+          shadowColor="shadowColor"
+          shadowOffset={{ width: 0, height: 2 }}
+          shadowOpacity={0.15}
+          shadowRadius={4}
+          padding="6"
           width="100%"
           maxWidth={440}
-          backgroundColor="$backgroundStrong"
+          backgroundColor="backgroundStrong"
         >
-          <YStack gap="$5" width="100%">
+          <YStack gap="5" width="100%">
             <YStack gap="$2" alignItems="center">
               <TitleText textAlign="center">{t('auth.resetTitle')}</TitleText>
               <SubtitleText textAlign="center">{t('auth.resetSubtitle')}</SubtitleText>
             </YStack>
 
             {statusMessage ? (
-              <CaptionText color="$accentColor" textAlign="center">
+              <CaptionText color="accent-color" textAlign="center">
                 {statusMessage}
               </CaptionText>
             ) : null}
@@ -95,7 +100,7 @@ export default function ForgotPasswordScreen() {
                 inputTestID="email-input"
                 label={t('auth.emailLabel')}
                 placeholder={t('auth.emailPlaceholder')}
-                placeholderTextColor="$colorMuted"
+                placeholderTextColor="colorMuted"
                 keyboardType="email-address"
                 autoCapitalize="none"
                 value={email}
@@ -115,15 +120,15 @@ export default function ForgotPasswordScreen() {
               </Form.Trigger>
             </Form>
 
-            <Separator marginTop={Platform.OS === 'web' ? '$0' : '$4'}></Separator>
+            <Separator marginTop={`${Platform.OS === 'web' ? '0' : '4'}`}></Separator>
 
             <YStack
               width="100%"
               alignItems="center"
               gap="$2"
-              marginBottom={Platform.OS === 'web' ? -10 : '$4'}
+              marginBottom={Platform.OS === 'web' ? -10 : '4'}
             >
-              <CaptionText color="$colorMuted">{t('auth.reset.remembered')}</CaptionText>
+              <CaptionText color="colorMuted">{t('auth.reset.remembered')}</CaptionText>
               <PrimaryButton
                 testID="back-to-sign-in-button"
                 width="100%"

@@ -110,7 +110,7 @@ export function PromptUpgradeModal({
           key="prompt-upgrade-content"
           bordered
           elevate
-          padding="$4"
+          padding="4"
           alignSelf="center"
           width="100%"
           maxWidth={480}
@@ -118,22 +118,22 @@ export function PromptUpgradeModal({
           gap="$4"
         >
           <YStack gap="$4" flex={1} justifyContent="space-between">
-            <YStack gap="$3">
+            <YStack gap="$2">
               <Dialog.Title asChild>
                 <Paragraph
-                  fontSize="$5"
+                  fontSize="5"
                   fontWeight="700"
-                  lineHeight={60}
+                  lineHeight="60px"
                   textTransform="capitalize"
                 >
                   {title}
                 </Paragraph>
               </Dialog.Title>
               <Dialog.Description asChild>
-                <Paragraph fontSize="$4">{message}</Paragraph>
+                <Paragraph fontSize="4">{message}</Paragraph>
               </Dialog.Description>
               {errorMessage ? (
-                <Paragraph fontSize="$3" color="$red10" testID="prompt-upgrade-error">
+                <Paragraph fontSize="3" color="red10" testID="prompt-upgrade-error">
                   {errorMessage}
                 </Paragraph>
               ) : null}
@@ -208,8 +208,8 @@ export function PromptUpgradeModal({
                 aria-label="prompt-upgrade-not-now"
                 variant="outlined"
                 backgroundColor="transparent"
-                color="$color"
-                borderColor="$borderColor"
+                color="color"
+                borderColor="border-color"
               >
                 {notNowLabel}
               </PrimaryButton>

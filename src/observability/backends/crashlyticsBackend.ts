@@ -14,33 +14,33 @@ export function getCrashlyticsBackend(): ErrorReporterBackend | null {
   }
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const crashlyticsModule = require('@react-native-firebase/crashlytics');
-    if (!crashlyticsModule?.default) {
+    const crashlyticsModule =
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require('@react-native-firebase/crashlytics') as typeof import('@react-native-firebase/crashlytics');
+    if (typeof crashlyticsModule.getCrashlytics !== 'function') {
       logger.warn(
         'Native Crashlytics module not available. Rebuild the app after running: npx expo prebuild --clean',
       );
       return null;
     }
-
-    const crashlytics = crashlyticsModule.default();
+    const crashlytics = crashlyticsModule.getCrashlytics();
 
     return {
       recordError: (error, context) => {
         try {
           if (context) {
             Object.entries(context).forEach(([key, value]) => {
-              crashlytics.setAttribute(key, String(value));
+              void crashlyticsModule.setAttribute(crashlytics, key, String(value));
             });
           }
-          crashlytics.recordError(error);
+          crashlyticsModule.recordError(crashlytics, error);
         } catch (err) {
           logger.error('Failed to record Crashlytics error:', err);
         }
       },
       setUserIdentifier: (userId) => {
         try {
-          crashlytics.setUserId(userId);
+          void crashlyticsModule.setUserId(crashlytics, userId);
         } catch (err) {
           logger.error('Failed to set Crashlytics user:', err);
         }
@@ -48,7 +48,7 @@ export function getCrashlyticsBackend(): ErrorReporterBackend | null {
       logBreadcrumb: (message, data) => {
         try {
           const suffix = data ? ` ${JSON.stringify(data)}` : '';
-          crashlytics.log(`${message}${suffix}`);
+          crashlyticsModule.log(crashlytics, `${message}${suffix}`);
         } catch (err) {
           logger.error('Failed to log Crashlytics breadcrumb:', err);
         }

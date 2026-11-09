@@ -1,11 +1,19 @@
 import type { ComponentProps } from 'react';
 import { Text } from 'tamagui';
+import { Platform } from 'react-native';
 
 type TextProps = ComponentProps<typeof Text>;
 
 function createTextVariant(defaults: TextProps) {
-  return function TextVariant({ color = defaults.color ?? '$color', ...props }: TextProps) {
-    return <Text {...defaults} color={color} {...props} />;
+  return function TextVariant({ color = defaults.color ?? 'color', ...props }: TextProps) {
+    return (
+      <Text
+        fontFamily={Platform.OS === 'web' ? 'serif' : undefined}
+        {...defaults}
+        color={color}
+        {...props}
+      />
+    );
   };
 }
 
@@ -17,7 +25,7 @@ export const TitleText = createTextVariant({
 
 export const SubtitleText = createTextVariant({
   fontSize: 18,
-  color: '$colorMuted',
+  color: 'colorMuted',
 });
 
 export const BodyText = createTextVariant({
@@ -26,7 +34,7 @@ export const BodyText = createTextVariant({
 
 export const CaptionText = createTextVariant({
   fontSize: 15,
-  color: '$colorMuted',
+  color: 'colorMuted',
 });
 
 export const LabelText = createTextVariant({
