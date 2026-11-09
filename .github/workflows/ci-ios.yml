@@ -1,0 +1,278 @@
+name: iOS CI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.mdx'
+      - 'docs/**'
+      - '.editorconfig'
+      - '.gitattributes'
+      - '.gitignore'
+      - '.nvmrc'
+      - '.node-version'
+      - '.prettierignore'
+      - '.prettierrc'
+      - '.prettierrc.*'
+      - '.eslintrc'
+      - '.eslintrc.*'
+      - 'CODEOWNERS'
+      - 'LICENSE*'
+  pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.mdx'
+      - 'docs/**'
+      - '.editorconfig'
+      - '.gitattributes'
+      - '.gitignore'
+      - '.nvmrc'
+      - '.node-version'
+      - '.prettierignore'
+      - '.prettierrc'
+      - '.prettierrc.*'
+      - '.eslintrc'
+      - '.eslintrc.*'
+      - 'CODEOWNERS'
+      - 'LICENSE*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  IOS_DEVICE: 'iPhone 17'
+  MAESTRO_VERSION: '2.0.6'
+  FASTLANE_VERSION: '2.228.0'
+  EAS_PROJECT_ID: ${{ vars.EAS_PROJECT_ID }}
+  EAS_PROJECT_SLUG: ${{ vars.EAS_PROJECT_SLUG }}
+  RETRIES: ${{ vars.RETRIES }}
+  RETRY_DELAY: ${{ vars.RETRY_DELAY }}
+  MAESTRO_DRIVER_STARTUP_TIMEOUT: 60000
+  # Fake Firebase credentials for CI builds (withFirebaseCredentials.js reads these)
+  GOOGLE_SERVICE_INFO_PLIST_B64: 'PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPCFET0NUWVBFIHBsaXN0IFBVQkxJQyAiLS8vQXBwbGUvL0RURCBQTElTVCAxLjAvL0VOIiAiaHR0cDovL3d3dy5hcHBsZS5jb20vRFREcy9Qcm9wZXJ0eUxpc3QtMS4wLmR0ZCI+CjxwbGlzdCB2ZXJzaW9uPSIxLjAiPgo8ZGljdD4KICAgIDxrZXk+Q0xJRU5UX0lEPC9rZXk+CiAgICA8c3RyaW5nPjAwMDAwMDAwMDAwMC14eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eC5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbTwvc3RyaW5nPgogICAgPGtleT5SRVZFUlNFRF9DTElFTlRfSUQ8L2tleT4KICAgIDxzdHJpbmc+Y29tLmdvb2dsZXVzZXJjb250ZW50LmFwcHMuMDAwMDAwMDAwMDAwLXh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4PC9zdHJpbmc+CiAgICA8a2V5PkFQSV9LRVk8L2tleT4KICAgIDxzdHJpbmc+QUl6YVN5RmFrZUFQSUtleUZvckNJVGVzdGluZzEyMzQ1Njc4OTwvc3RyaW5nPgogICAgPGtleT5HQ01fU0VOREVSX0lEPC9rZXk+CiAgICA8c3RyaW5nPjAwMDAwMDAwMDAwMDwvc3RyaW5nPgogICAgPGtleT5QTElTVF9WRVJTSU9OPC9rZXk+CiAgICA8c3RyaW5nPjE8L3N0cmluZz4KICAgIDxrZXk+QlVORExFX0lEPC9rZXk+CiAgICA8c3RyaW5nPmNvbS5sdXZlbmFwcHMuZXhwb3RlbXBsYXRldGVzdGluZzwvc3RyaW5nPgogICAgPGtleT5QUk9KRUNUX0lEPC9rZXk+CiAgICA8c3RyaW5nPmZha2UtY2ktcHJvamVjdDwvc3RyaW5nPgogICAgPGtleT5TVE9SQUdFX0JVQ0tFVDwva2V5PgogICAgPHN0cmluZz5mYWtlLWNpLXByb2plY3QuYXBwc3BvdC5jb208L3N0cmluZz4KICAgIDxrZXk+SVNfQURTX0VOQUJMRUQ8L2tleT4KICAgIDxmYWxzZS8+CiAgICA8a2V5PklTX0FOQUxZVElDU19FTkFCTEVEPC9rZXk+CiAgICA8ZmFsc2UvPgogICAgPGtleT5JU19BUFBJTlZJVEVfRU5BQkxFRDwva2V5PgogICAgPHRydWUvPgogICAgPGtleT5JU19HQ01fRU5BQkxFRDwva2V5PgogICAgPHRydWUvPgogICAgPGtleT5JU19TSUdOSU5fRU5BQkxFRDwva2V5PgogICAgPHRydWUvPgogICAgPGtleT5HT09HTEVfQVBQX0lEPC9rZXk+CiAgICA8c3RyaW5nPjE6MDAwMDAwMDAwMDAwOmlvczowMDAwMDAwMDAwMDAwMDAwMDAwMDAwPC9zdHJpbmc+CjwvZGljdD4KPC9wbGlzdD4K'
+  GOOGLE_SERVICES_JSON_B64: 'ewogICJwcm9qZWN0X2luZm8iOiB7CiAgICAicHJvamVjdF9udW1iZXIiOiAiMDAwMDAwMDAwMDAwIiwKICAgICJwcm9qZWN0X2lkIjogImZha2UtY2ktcHJvamVjdCIsCiAgICAic3RvcmFnZV9idWNrZXQiOiAiZmFrZS1jaS1wcm9qZWN0LmFwcHNwb3QuY29tIgogIH0sCiAgImNsaWVudCI6IFsKICAgIHsKICAgICAgImNsaWVudF9pbmZvIjogewogICAgICAgICJtb2JpbGVzZGtfYXBwX2lkIjogIjE6MDAwMDAwMDAwMDAwOmFuZHJvaWQ6MDAwMDAwMDAwMDAwMDAwMDAwMDAwMCIsCiAgICAgICAgImFuZHJvaWRfY2xpZW50X2luZm8iOiB7CiAgICAgICAgICAicGFja2FnZV9uYW1lIjogImNvbS5sdXZlbmFwcHMuZXhwb3RlbXBsYXRldGVzdGluZyIKICAgICAgICB9CiAgICAgIH0sCiAgICAgICJvYXV0aF9jbGllbnQiOiBbXSwKICAgICAgImFwaV9rZXkiOiBbCiAgICAgICAgewogICAgICAgICAgImN1cnJlbnRfa2V5IjogIkFJemFTeUZha2VBUElLZXlGb3JDSVRlc3RpbmcxMjM0NTY3ODkiCiAgICAgICAgfQogICAgICBdLAogICAgICAic2VydmljZXMiOiB7CiAgICAgICAgImFwcGludml0ZV9zZXJ2aWNlIjogewogICAgICAgICAgIm90aGVyX3BsYXRmb3JtX29hdXRoX2NsaWVudCI6IFtdCiAgICAgICAgfQogICAgICB9CiAgICB9CiAgXSwKICAiY29uZmlndXJhdGlvbl92ZXJzaW9uIjogIjEiCn0='
+
+concurrency:
+  group: ios-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios-hosted:
+    name: Build • E2E (iOS) - Hosted MacOS
+    runs-on: macos-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: expo-template-testing
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Prepare isolated GnuPG home for mise
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        run: |
+          mkdir -p "${RUNNER_TEMP}/gnupg"
+          chmod 700 "${RUNNER_TEMP}/gnupg"
+
+      - name: Setup mise toolchain
+        uses: jdx/mise-action@v3
+        with:
+          version: '2026.2.13'
+          install: true
+          log_level: ${{ runner.debug == '1' && 'debug' || 'info' }}
+        env:
+          GNUPGHOME: ${{ runner.temp }}/gnupg
+          MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+
+      - name: Scaffold & verify (retry once)
+        working-directory: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          max=2
+          attempt=1
+          while [ "$attempt" -le "$max" ]; do
+            echo "==> Attempt $attempt/$max: scaffold + verify"
+            rm -rf expo-template-testing || true
+            npx create-expo-app expo-template-testing --template "$GITHUB_WORKSPACE" --yes
+            pushd expo-template-testing >/dev/null
+            npx expo --version || true
+            node -e "console.log('react-native', require('react-native/package.json').version)" || true
+            node -e "console.log('expo', require('expo/package.json').version)" || true
+            if npx expo install --check; then
+              echo "✅ Expo dependency alignment OK"
+              popd >/dev/null
+              break
+            fi
+            popd >/dev/null
+            if [ "$attempt" -lt "$max" ]; then
+              echo "⚠️ Verification failed. Retrying from scratch..." >&2
+              attempt=$((attempt+1))
+              continue
+            else
+              echo "❌ Verification failed after $max attempts." >&2
+              exit 1
+            fi
+          done
+
+      - name: Install EAS CLI
+        shell: bash
+        run: |
+          npm i -g eas-cli@latest
+          eas --version
+
+      - name: Make CI scripts executable
+        run: chmod +x .github/scripts/*.sh
+
+      - name: Setup Fastlane
+        shell: bash
+        run: .github/scripts/setup_fastlane.sh  "${{ env.FASTLANE_VERSION }}"
+
+      - name: Doctor
+        run: npm run doctor
+        continue-on-error: true
+
+      - name: Verify Expo/RN dependency alignment
+        shell: bash
+        run: |
+          set -e
+          npx expo --version || true
+          node -e "console.log('react-native', require('react-native/package.json').version)" || true
+          node -e "console.log('expo', require('expo/package.json').version)" || true
+          # Strict: fail if mismatched so lockfile must be updated in a PR
+          if ! npx expo install --check; then
+            echo "❌ Expo dependency mismatch. Run 'npx expo install --fix' locally and commit the updated package-lock.json."
+            exit 1
+          fi
+
+      - name: Setup Maestro
+        shell: bash
+        run: .github/scripts/setup_maestro.sh "${{ env.MAESTRO_VERSION }}"
+
+      - name: Inject EAS projectId, slug and owner into app.config.ts
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = './app.config.ts';
+          const EAS_PROJECT_ID = '${{ env.EAS_PROJECT_ID }}';
+
+          if (!fs.existsSync(path)) {
+            console.error(`app.config.ts not found at ${path}`);
+            process.exit(1);
+          }
+
+          let src = fs.readFileSync(path, 'utf8');
+          src = src.replace(/extra:\s*\{/, `extra: {\n      eas: { projectId: '${EAS_PROJECT_ID}' },`);
+          src = src.replace(/slug:\s*'[^']*'/, `slug: '${{ env.EAS_PROJECT_SLUG }}'`);
+          fs.writeFileSync(path, src);
+          console.log('Updated app.config.ts with extra.eas.projectId and slug.');
+          NODE
+
+      - name: Compute iOS build fingerprint
+        id: ios_fp
+        shell: bash
+        run: ./.github/scripts/compute_fingerprint.sh ios >> "$GITHUB_OUTPUT"
+
+      - name: Restore the tar.gz iOS app
+        id: ios_cache
+        uses: actions/cache/restore@v5
+        with:
+          path: expo-template-testing/*.tar.gz
+          key: ${{ steps.ios_fp.outputs.key }}
+
+      - name: Build e2erelease
+        if: steps.ios_cache.outputs.cache-hit != 'true'
+        shell: bash
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          set -euo pipefail
+          ATTEMPTS="${RETRIES:-2}"
+          DELAY="${RETRY_DELAY:-2}"
+          i=1
+          while [ "$i" -le "$ATTEMPTS" ]; do
+            echo "🏗️  iOS build attempt $i/$ATTEMPTS..."
+            if eas build --platform ios --profile e2eRelease --local --non-interactive; then
+              echo "✅ Build succeeded on attempt $i"
+              exit 0
+            fi
+            if [ "$i" -lt "$ATTEMPTS" ]; then
+              echo "❌ Build attempt $i failed — retrying in ${DELAY}s..."
+              sleep "$DELAY"
+            fi
+            i=$((i+1))
+          done
+          echo "❌ Build failed after $ATTEMPTS attempts"
+          exit 1
+
+      - name: Locate .app artifact
+        id: find_app
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARTIFACT_TAR=$(ls -1t ./*.tar.gz 2>/dev/null | head -n1 || true)
+          if [ -n "$ARTIFACT_TAR" ]; then
+            echo "📦 Extracting $ARTIFACT_TAR ..."
+            mkdir -p extracted_app
+            tar -xzf "$ARTIFACT_TAR" -C extracted_app
+          fi
+          # Strip leading ./ for cache path compatibility
+          TAR_BASENAME="${ARTIFACT_TAR#./}"
+          echo "tar=$TAR_BASENAME" >> $GITHUB_OUTPUT
+          APP=$(find extracted_app -type d -name "*.app" -maxdepth 6 | head -n1 || true)
+          echo "app=$APP" >> $GITHUB_OUTPUT
+          [ -n "$APP" ] || (echo "No .app found after extracting $ARTIFACT_TAR"; ls -alh extracted_app || true; exit 1)
+
+      - name: Save the tar.gz iOS app
+        if: steps.ios_cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: expo-template-testing/*.tar.gz
+          key: ${{ steps.ios_fp.outputs.key }}
+
+      - name: Boot simulator
+        shell: bash
+        run: .github/scripts/ios_boot_simulator.sh
+
+      - name: Install on simulator and warm up
+        shell: bash
+        timeout-minutes: 10
+        run: .github/scripts/ios_install_app.sh "${{ steps.find_app.outputs.app }}"
+
+      - name: Run E2E tests
+        shell: bash
+        run: .github/scripts/ios_run_e2e.sh
+
+      - name: Upload Xcode build artifacts
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: xcode-build-artifacts-ios-hosted
+          path: |
+            expo-template-testing/ios/build/**/*.xcresult
+            expo-template-testing/ios/build/**/*.log
+            ~/Library/Developer/Xcode/DerivedData/**/Logs/Build/*.log
+          if-no-files-found: ignore
+
+      - name: Upload E2E artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: e2e-artifacts-ios-hosted
+          path: |
+            expo-template-testing/e2e-artifacts/**/*
+            expo-template-testing/ios/build/**/*.log
+          include-hidden-files: true
+
+      - name: Clean workspace
+        if: always()
+        shell: bash
+        run: |
+          echo "🧹 Cleaning hosted workspace (removing iOS build artifacts and E2E outputs)..."
+          rm -rf ios/build e2e-artifacts || true

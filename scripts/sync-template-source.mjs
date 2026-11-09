@@ -34,7 +34,6 @@ const MANAGED_ROOTS = [
   'supabase',
   'scripts',
   'docs',
-  '.github',
   '_github',
   '.husky',
   '_husky',
@@ -289,7 +288,7 @@ function transformPackage(sourcePath, content) {
 
 function outputPaths(sourcePath) {
   const mappings = new Map([
-    ['.github', ['_github', '.github']],
+    ['.github', ['_github']],
     ['.husky', ['_husky', '.husky']],
     ['.maestro', ['_maestro', '.maestro']],
   ]);
@@ -333,7 +332,7 @@ function main() {
 
   const desired = new Map();
   for (const sourcePath of walkFiles(sourceRoot)) {
-    if (shouldExclude(sourcePath)) continue;
+    if (shouldExclude(sourcePath) || TEMPLATE_ONLY.has(sourcePath)) continue;
     const sourceFile = path.join(sourceRoot, sourcePath);
     let content = fs.readFileSync(sourceFile);
     const text = content.toString('utf8');

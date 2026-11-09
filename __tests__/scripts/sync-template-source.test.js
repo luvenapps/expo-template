@@ -63,6 +63,7 @@ describe('sync-template-source', () => {
       ].join('\n'),
     );
     writeFile(source, '.github/workflows/ci.yml', 'name: CI\n');
+    writeFile(source, '.github/workflows/template-sync.yml', 'source version\n');
     writeFile(source, '.github/runner/register-runner.sh', 'credential setup\n');
     writeFile(source, '.husky/pre-commit', 'npm run lint\n');
     writeFile(source, '.maestro/flows/smoke.yaml', 'appId: com.luvenapps.betterhabits\n');
@@ -128,6 +129,7 @@ describe('sync-template-source', () => {
     writeFile(target, 'AGENTS.md', 'Template instructions\n');
     writeFile(target, 'scripts/postinstall.js', 'template bootstrap\n');
     writeFile(target, '__tests__/scripts/sync-template-source.test.js', 'template sync test\n');
+    writeFile(target, '.github/workflows/ci-quality.yml', 'template quality workflow\n');
     writeFile(target, '.github/workflows/template-sync.yml', 'template workflow\n');
     writeFile(target, '_github/runner/register-runner.sh', 'old runner setup\n');
     writeFile(target, 'scripts/old-managed-script.js', 'stale\n');
@@ -187,9 +189,13 @@ describe('sync-template-source', () => {
     expect(fs.readFileSync(path.join(target, 'docs/app-build-size.md'), 'utf8')).toContain(
       'helps spot size increases as the app grows.',
     );
-    expect(fs.existsSync(path.join(target, '.github/workflows/ci.yml'))).toBe(true);
+    expect(fs.existsSync(path.join(target, '.github/workflows/ci.yml'))).toBe(false);
     expect(fs.existsSync(path.join(target, '_github/workflows/ci.yml'))).toBe(true);
     expect(fs.existsSync(path.join(target, '.github/workflows/template-sync.yml'))).toBe(true);
+    expect(
+      fs.readFileSync(path.join(target, '.github/workflows/ci-quality.yml'), 'utf8'),
+    ).toBe('template quality workflow\n');
+    expect(fs.existsSync(path.join(target, '_github/workflows/template-sync.yml'))).toBe(false);
     expect(fs.existsSync(path.join(target, '_github/runner/register-runner.sh'))).toBe(false);
     expect(fs.existsSync(path.join(target, 'scripts/old-managed-script.js'))).toBe(false);
     expect(fs.existsSync(path.join(target, 'README.md'))).toBe(true);
