@@ -236,9 +236,6 @@ function transformContent(sourcePath, outputPath, content) {
   if (/^\.(?:github|husky|maestro)\//.test(sourcePath)) {
     content = content.replaceAll('com.luvenapps.betterhabits', '__APP_ID__');
   }
-  if (sourcePath.endsWith('/ci-quality.yml')) {
-    content = content.replaceAll('slug: luvenapps/betterhabits', 'slug: ${{ github.repository }}');
-  }
   if (sourcePath.endsWith('/ci-expo-go.yml')) {
     content = content.replaceAll(
       'https://expo.dev/accounts/luvenapps/projects/betterhabits/updates',
