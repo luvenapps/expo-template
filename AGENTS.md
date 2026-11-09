@@ -23,6 +23,8 @@ behavior in a newly generated app, not in this worktree.
 
 ## What sync copies
 
+- `README.md` comes from the source app. The sync script adapts its app identity
+  and scaffold setup; postinstall fills its generated app placeholders.
 - The script copies eligible source files recursively; it is not a hand-maintained
   per-file allowlist. Its exclusions and transformations are in
   `scripts/sync-template-source.mjs`.

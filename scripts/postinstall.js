@@ -304,6 +304,8 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
   if (exists(readmePath)) {
     const before = fs.readFileSync(readmePath, 'utf8');
     const after = before
+      .replace(/\{\{APP_DOMAIN_NAME\}\}/g, idSegmentBase)
+      .replace(/\{\{APP_ENTITY_NAME\}\}/g, summary.singular)
       .replace(/\{\{APP_NAME\}\}/g, summary.appName)
       .replace(/\{\{APP_SLUG\}\}/g, summary.slug)
       .replace(/\{\{APP_ID\}\}/g, summary.appId)

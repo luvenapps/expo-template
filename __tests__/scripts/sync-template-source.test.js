@@ -212,7 +212,7 @@ describe('sync-template-source', () => {
     expect(fs.existsSync(path.join(target, '.mcp.json'))).toBe(false);
     expect(fs.existsSync(path.join(target, '.template-sync-manifest.json'))).toBe(false);
     expect(fs.existsSync(path.join(target, 'README.md'))).toBe(true);
-    expect(fs.readFileSync(path.join(target, 'README.md'), 'utf8')).toBe('Template README\n');
+    expect(fs.readFileSync(path.join(target, 'README.md'), 'utf8')).toBe('Source README\n');
     expect(fs.readFileSync(path.join(target, 'AGENTS.md'), 'utf8')).toBe('Template instructions\n');
     expect(fs.readFileSync(path.join(target, 'CLAUDE.md'), 'utf8')).toBe(
       'Template Claude instructions\n',

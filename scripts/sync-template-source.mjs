@@ -13,7 +13,6 @@ import { Buffer } from 'node:buffer';
 const TEMPLATE_ONLY = new Set([
   'AGENTS.md',
   'CLAUDE.md',
-  'README.md',
   'LICENSE',
   'scripts/postinstall.js',
   'scripts/sync-template-source.mjs',
@@ -48,6 +47,7 @@ const MANAGED_ROOTS = [
 ];
 
 const MANAGED_ROOT_FILES = new Set([
+  'README.md',
   '.env.example',
   '.gitignore',
   '_gitignore',
@@ -144,7 +144,7 @@ function walkFiles(root, relative = '') {
 function shouldExclude(sourcePath) {
   const basename = path.posix.basename(sourcePath);
   if (EXCLUDED_FILES.has(basename)) return true;
-  if (['claude.md', 'README.md', 'LICENSE'].includes(sourcePath)) {
+  if (['claude.md', 'LICENSE'].includes(sourcePath)) {
     return true;
   }
   if (sourcePath.startsWith('assets/')) return true;
@@ -210,7 +210,31 @@ function transformDocumentation(content) {
     );
 }
 
+function transformReadme(content) {
+  // Keep the source README, adapting only scaffold setup and app identity.
+  content = content
+    .replace(/```typescript\nexport const DOMAIN = \{[\s\S]*?\n```/, (block) =>
+      transformDomainConfig(block)
+        .replaceAll('__APP_NAME__SINGULAR__', '{{APP_ENTITY_NAME}}')
+        .replaceAll('__APP_NAME__', '{{APP_DOMAIN_NAME}}'),
+    )
+    .replaceAll('betterhabits.db', '{{APP_DOMAIN_NAME}}.db')
+    .replace(/\?token=[^\s)]+/g, '')
+    .replace(
+      /## 🧭 EAS Project\n[\s\S]*?(?=\n---)/,
+      '## 🧭 EAS Project\n\nCreate an Expo project for your new app, run `eas init --id <PROJECT_ID>`, and set `extra.eas.projectId` in `app.config.ts`. Configure Expo Updates with your own project URL before publishing updates.\n',
+    )
+    .replace(/^.*\[Roadmap\]\(docs\/roadmap\.md\).*\n/gm, '');
+
+  content = transformDocumentation(content);
+  return content.replace(
+    '\n---\n',
+    '\n## Create a new app\n\nRun `npx create-expo-app my-app --template /path/to/expo-template` from the parent directory for your new app. Postinstall fills app identity placeholders and restores hidden configuration files. Run the development commands below inside the generated app.\n\nSee [the refresh guide](docs/template-refresh.md) for syncing this template from the source app.\n\n---\n',
+  );
+}
+
 function transformContent(sourcePath, outputPath, content) {
+  if (sourcePath === 'README.md') return transformReadme(content);
   if (outputPath === 'app.config.ts') return transformAppConfig(content);
   if (outputPath === 'src/config/domain.config.ts') return transformDomainConfig(content);
   if (sourcePath === 'package.json' || sourcePath === 'package-lock.json') {
