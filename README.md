@@ -4,14 +4,20 @@ A modern, production-ready Expo React Native template with **TypeScript**, **Jes
 
 ## Create a new app
 
-1. Create a repository from this GitHub template and clone it locally.
-2. Run `npm ci`. The one-time postinstall bootstraps the app name, slug, bundle
-   IDs, hidden configuration files, and database migrations from the repository
-   name.
-3. Run `npm run setup:local` to install the pinned Node/Java toolchain and local
-   prerequisites. Then configure your Supabase project and Firebase credentials
-   as described below.
-4. Start local Supabase with `npm run supabase:dev` in one terminal and the app
+1. From a clean parent directory, create the app from your local template
+   checkout:
+
+   ```sh
+   npx create-expo-app my-app --template /path/to/expo-template
+   ```
+
+   The command installs dependencies and runs postinstall to set the app name,
+   slug, bundle IDs, hidden configuration files, and database migrations.
+
+2. Change into the generated app and run `npm run setup:local` to install the
+   pinned Node/Java toolchain and local prerequisites. Then configure your
+   Supabase project and Firebase credentials as described below.
+3. Start local Supabase with `npm run supabase:dev` in one terminal and the app
    with `npm start` in another. Run `npm run ios`, `npm run android`, or
    `npm run web` for the platform you want to verify.
 
@@ -98,7 +104,7 @@ See [docs/mise.md](docs/mise.md) for more details and caveats.
 
 For Java pinning, this repo uses a vendor-pinned Java entry in `.mise.toml` for reproducibility.
 
-### 🧭 Expo CLI
+### 🧭 4. Expo CLI
 
 Expo CLI is installed with the project dependencies. Verify it with:
 
