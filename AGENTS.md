@@ -1,425 +1,54 @@
-# Agents Companion
-
-This doc is for automation or coding agents that need the pragmatic details behind
-the human-facing README. It focuses on deterministic commands, required tooling,
-and codebase conventions so agents can run reliably without human context.
-
-## Response Expectations
-
-- **Commit messages**: When the user asks for a commit message, always output two separate fenced code blocks—one for the title and one for the body—so the user can copy each with a single click.
-- **Automatic commit summaries**: After you finish any coding task, proactively provide the commit message (title + body) in separate fenced code blocks without waiting for the user to ask.
-- **Manual test notes**: After each implementation, include how to manually test the change (or state that nothing is testable yet).
-- **Stay scoped**: Only modify files directly related to the user’s request. If a change seems adjacent but wasn’t explicitly approved, ask before touching it.
-- **Error handling**: For any user-visible error, run it through `useFriendlyErrorHandler` so we get translated copy + analytics. Pass a toast controller only when you actually need a toast; otherwise call it without a toast and render the returned friendly message inline.
-- **Toast usage**: Use the existing Tamagui toast only for low-priority, non-blocking messages (quick confirmations, minor warnings). Don’t double-surface the same message with inline errors; keep critical/long messages inline or in banners/modals instead.
-
-## Environment Baseline
-
-- **Expo managed workflow** – Native `ios/` and `android/` folders are auto-generated during builds.
-  Don't manually edit native code unless adding custom native modules.
-- Expo SDK 58 with React Native 0.88.1.
-- Node 26.13.0, Temurin Java 21.0.13+9.0.LTS, and Ruby 4.0.9 are pinned in `.mise.toml`.
-- Use `mise` as the default local toolchain manager in this repo.
-  Quickstart:
-  1. Run `npm run setup:local` (installs missing Homebrew dependencies: `mise`, `fastlane`, `watchman`)
-  2. Script runs `mise trust && mise install`
-  3. Verify (`mise ls`, `node -v`, `npm -v`, `java -version`)
-  4. Install deps (`npm ci`) when needed
-- The project assumes the stock **npm** CLI. Keep `package-lock.json` in sync and
-  avoid `yarn`/`pnpm` installs.
-- `mise` in this repo only pins runtimes (Node + Java). Keep system prerequisites explicit:
-  fastlane, watchman, Maestro CLI, and a container runtime for Supabase local.
-- Supabase CLI is bundled as a dev dependency; use `npm run supabase:push` or `npx supabase …` commands—no global install required.
-- Supabase local development requires a container runtime (Rancher Desktop recommended; Docker Desktop/Colima also work). Ensure it’s running before starting Supabase.
-- `npm run supabase:dev` boots the local Supabase stack, applies migrations, serves edge functions, and cleans up on exit—run it in a dedicated terminal before `npm start`.
-- Install dependencies with:
-  - `npm ci` for clean, repeatable installs (preferred for CI/agents).
-  - `npm install` if you need to mutate dependencies locally.
-- `npm run troubleshoot` executes `scripts/troubleshoot.mjs`, which validates the
-  local toolchain (Node, npm, Expo CLI, Java, Android SDK/adb, Xcode, Watchman, Maestro).
-  CocoaPods is managed automatically by Expo during prebuild.
-- If Expo packages drift, run `npx expo install` to realign native peer deps.
-
-## Runtime Credentials
-
-- Supabase credentials are **required at runtime**.
-- `.env.local` powers local Docker development. Run `npx supabase start` then `npx supabase status --env` and paste the printed `SUPABASE_URL`/`anon key`.
-- `.env.prod` stores hosted Supabase values (staging/production). Copy them from the Supabase dashboard (`Project Settings → API`).
-- `src/auth/client.ts` throws on startup when those values are missing. Jest
-  tests mock the client via `__tests__/setup.ts`, so no extra setup is needed for
-  unit tests.
-- Supabase auth is optional in the app shell; users can access the UI without a
-  session, but sync workflows expect valid credentials.
-
-## Core Commands
-
-| Purpose            | Command                           | Notes                                                                    |
-| ------------------ | --------------------------------- | ------------------------------------------------------------------------ |
-| Expo dev server    | `npm start`                       | Runs Metro/Expo; `prestart` triggers `npm run troubleshoot`.             |
-| iOS build (local)  | `npm run ios`                     | Requires Xcode + simulator.                                              |
-| Android build      | `npm run android`                 | Requires Android SDK + emulator.                                         |
-| Web preview        | `npm run web`                     | Expo web.                                                                |
-| Type check         | `npm run type-check`              | `tsc --noEmit`.                                                          |
-| Unit tests         | `npm test`                        | Uses `jest-expo`; coverage threshold is 80% overall.                     |
-| Lint               | `npm run lint`                    | ESLint config lives in `eslint.config.js`.                               |
-| Format             | `npm run format` / `format:check` | Prettier 3.6 w/ repo-level ignore file.                                  |
-| Setup local tools  | `npm run setup:local`             | Installs missing `mise`/`fastlane`/`watchman`, then runs `mise install`. |
-| Expo doctor        | `npm run doctor`                  | Deep peer dependency check.                                              |
-| Supabase local     | `npm run supabase:dev`            | Starts Docker stack, runs migrations, serves functions.                  |
-| Supabase deploy    | `npm run supabase:deploy`         | CI-friendly migrations + edge function publish (uses `.env.prod`).       |
-| SQLite migrations  | `npm run db:generate` / `db:push` | Uses `drizzle-kit` (SQLite).                                             |
-| E2E (Maestro) iOS  | `npm run e2e:ios`                 | Flows in `.maestro/flows`.                                               |
-| E2E (Maestro) Andr | `npm run e2e:android`             | Saves artifacts under `e2e-artifacts/`.                                  |
-
-## Authentication & Session Management
-
-- **Auth is optional** – Users can access the app without logging in (local-first approach).
-- Session state managed via Zustand store (`src/auth/session.ts`).
-- Supabase client configured in `src/auth/client.ts`.
-- `onAuthStateChange` listener initialized in `src/ui/providers/AppProviders.tsx` via `initSessionListener()`.
-- **Session persistence**: Currently uses memory-only storage. For production, implement
-  `expo-secure-store` adapter for Supabase Auth to persist sessions across app restarts.
-- **Auth flow**: Settings → Sign In button → `router.push('/(auth)/login')` → Login screen →
-  successful login calls `router.replace('/(tabs)')`.
-- **Sign out**: Calls Supabase `signOut()` and relies on the auth listener to clear the
-  Zustand store; no explicit `getSession()` verification exists today.
-- Session status: `'unknown'` (initial) → `'authenticated'` | `'unauthenticated'`.
-
-## Navigation & Routing (Expo Router)
-
-- **Route structure** (file-based — browse `app/` to discover all screens):
-  - `app/index.tsx` – Root redirect (always goes to `/(tabs)`)
-  - `app/_layout.tsx` – Root Stack navigator, registers route groups
-  - `app/(auth)/` – Auth flows (login, signup, password reset, OAuth callback). Accessed from Settings.
-  - `app/(tabs)/` – Main tab navigation (Home, Settings)
-    - `index.tsx` – Home screen (Today view)
-    - `settings/` – Nested Stack with sub-pages (profile, account, appearance, notifications, etc.)
-
-- **Header configuration hierarchy**:
-  1. Root layout (`app/_layout.tsx`): Sets defaults for route groups
-  2. Route group layout (e.g., `app/(auth)/_layout.tsx`): Can set group-level `screenOptions`
-  3. Individual screens: Override with `<Stack.Screen options={{ ... }} />`
-
-- **Header configuration patterns**:
-  - **Pattern 1 - Root layout configuration** (used for auth screens):
-    - Root layout defines header options for the entire route group: `<Stack.Screen name="(auth)" options={{ title: 'Sign in' }} />`
-    - Route group layout can set `headerShown: false` in `screenOptions`
-    - Individual screens inherit the root layout configuration
-
-  - **Pattern 2 - Individual screen overrides** (used for tab screens):
-    - Parent layout sets `headerShown: false` for route group
-    - Individual screens use `<Stack.Screen options={{ headerShown: true, title: '...' }} />` inside the component
-    - Required when using nested navigators (e.g., Tabs) with Stack screens
-
-  - **Header customization**: Use `headerBackTitleVisible`, `headerBackTitle`, and other React Navigation options in screen options
-
-- **Typed routes**: Enabled via `experiments.typedRoutes` in `app.json`. Types auto-generated
-  in `.expo/types/router.d.ts`.
-
-## State Management (Zustand)
-
-- **Zustand stores** are used for cross-component reactive state:
-  - `src/auth/session.ts` → Authentication state and auth actions
-  - `src/sync/` → Sync status, queue size, cursors
-
-- **Pattern**:
-  - Stores expose actions (e.g., `signInWithEmail`, `signOut`) and state slices
-  - Components subscribe to specific slices: `useSessionStore((state) => state.status)`
-  - Avoid direct state mutation; use actions
-
-- **Integration with Supabase**:
-  - `onAuthStateChange` listener calls `useSessionStore.getState().setSession(session)`
-  - Keeps Zustand state in sync with Supabase auth state
-
-- **Best practices**:
-  - Let event listeners handle state updates (e.g., auth state changes)
-  - Avoid race conditions by checking current state after async operations
-  - Keep stores focused (single responsibility)
-
-## Project Layout
-
-- `app/` – Expo Router file-based routes. Typed routes enabled (`experiments.typedRoutes`).
-  - `(auth)/` – Auth flows (login, signup, password reset, OAuth callback)
-  - `(tabs)/` – Main tab navigation (Home, Settings with nested sub-pages)
-
-- `src/` – Core application code, organized by domain:
-  - `auth/` – Supabase client, Zustand session store, auth services, token storage
-  - `config/` – Domain config (`DOMAIN`) used across UI/data
-  - `data/` – Drizzle repositories for local SQLite CRUD
-  - `db/` – Database schemas and migrations (`sqlite/` for local, `postgres/` for Supabase)
-  - `errors/` – User-facing error handling (`useFriendlyErrorHandler`)
-  - `featureFlags/` – Feature flag system with provider pattern (Firebase + fallback)
-  - `i18n/` – Internationalization (locales in `locales/`)
-  - `notifications/` – Push notifications, in-app messaging, scheduling, preferences
-  - `observability/` – Logging and observability utilities
-  - `queries/` – React Query hooks for Supabase reads/mutations
-  - `supabase/` – Supabase-related utilities
-  - `sync/` – Offline-first sync engine (outbox pattern, MMKV cursors, background tasks)
-  - `ui/components/` – Reusable Tamagui-based components (see UI Components section)
-  - `ui/providers/` – App-level context providers (SafeArea, Tamagui, QueryClient, session listener)
-
-- `__tests__/` – Mirrors `src/` and `app/` tree. Setup and mocks in `setup.ts`.
-- `docs/` – Contributor-facing documentation (architecture, migrations, feature flags, CI/CD, etc.)
-- `supabase/` – Backend: SQL migrations and Deno edge functions
-- `scripts/` – Build/utility scripts (troubleshoot, migrations, deploy, version bump)
-- `.maestro/flows/` – E2E test flows for iOS and Android
-
-Path aliases (`@/...`) are defined in `tsconfig.json`, `babel.config.js`, and
-Jest config; prefer them over relative imports.
-
-## Common Workflows
-
-### Adding a New Screen
-
-1. Create file in appropriate route group: `app/(tabs)/new-screen.tsx`
-2. Register in parent layout if needed (Expo Router auto-discovers files)
-3. Add Stack.Screen configuration if custom header needed
-4. Import in tests: `__tests__/app/(tabs)/new-screen.test.tsx`
-5. Use typed routes: `router.push('/(tabs)/new-screen')` with autocomplete
-
-### Modifying Authentication Flow
-
-1. **Session state**: Update `src/auth/session.ts` (Zustand store)
-2. **Auth service**: Add/modify Supabase calls in `src/auth/service.ts`
-3. **UI**: Update login screen `app/(auth)/login.tsx`
-4. **Listener init**: Verify `initSessionListener()` called in `src/ui/providers/AppProviders.tsx`
-5. **Test persistence**: Sign in → close app → reopen (should remain logged in with SecureStore)
-6. **Test sign out**: Sign out → verify UI updates immediately (status changes to `'unauthenticated'`)
-
-### Adding Background Sync Logic
-
-1. Update sync hooks in `src/sync/` (e.g., `useSyncManager.ts`, `useSyncTask.ts`)
-2. Modify push/pull functions in `src/sync/` (e.g., `outbox.ts`, `engine.ts`)
-3. Register background task if needed (see existing `expo-background-task` integration)
-4. Mock in tests: Update `__tests__/setup.ts` mocks
-5. **Test on native platforms only** – sync disabled on web (no SQLite)
-
-### Debugging Navigation Issues
-
-1. Check route exists in appropriate `_layout.tsx` file
-2. Verify header configuration hierarchy: root → layout → screen
-3. Test on **all platforms** (iOS, Android, Web) – behavior differs
-4. Use `router.push()` for navigation, `router.back()` to return
-5. Check console for navigation errors (e.g., route not found)
-6. Verify typed routes in `.expo/types/router.d.ts` if using autocomplete
-
-### Database Schema Changes
-
-1. Update schema in `src/db/sqlite/schema.ts` (Drizzle)
-2. Generate migration: `npm run db:generate`
-3. Apply migration: `npm run db:push` (dev) or migrations in production
-4. Update TypeScript types to match schema
-5. Update repositories in `src/data/` to use new schema
-6. Test queries in unit tests
-
-### Supabase Backend
-
-- **Dev workflow**:
-  1. `npm install`
-  2. `npm run supabase:dev` (keeps Supabase running; exits cleanly on Ctrl+C)
-  3. In another terminal `npm start` (Expo) and iterate
-  4. `npm test` for Jest coverage
-  5. Stop Expo, then stop Supabase terminal to tear everything down.
-- SQL migrations live in `supabase/migrations`. Apply them with the Supabase CLI:
-  ```bash
-  npm run supabase:push
-  ```
-  (or call `npx supabase db push` directly)
-- Edge functions reside in `supabase/functions`. Deploy individually:
-  ```bash
-  npx supabase functions deploy sync-push
-  npx supabase functions deploy sync-pull
-  npx supabase functions deploy export
-  ```
-- Functions assume `SUPABASE_URL` and `SUPABASE_ANON_KEY` env vars and run with RLS enabled. They import `DOMAIN` to stay in sync with local naming—update both if renaming tables.
-- Local TypeScript tooling excludes `supabase/` (Deno runtime). Use `npx supabase functions serve <name>` while iterating; the CLI hot-reloads Deno code.
-- Local development: run `npm run supabase:dev` (requires `.env.local`). The script starts Docker services, applies migrations, serves functions, and calls `supabase stop` on exit.
-- Hosted environments: configure `.env.prod`/CI secrets with your Supabase Cloud credentials and run `npm run supabase:deploy` (or manual `npx supabase … --env-file .env.prod`) during deployment.
-
-### Adding Native Modules (Expo)
-
-1. Install package: `npx expo install <package-name>` (aligns peer dependencies)
-2. Check if package requires native code changes in documentation
-3. If native code changes needed: rebuild with `npm run ios` or `npm run android`
-4. For config plugins: add to `app.json` `plugins` array
-5. Regenerate native folders if needed: `npx expo prebuild --clean`
-6. Update mocks in `__tests__/setup.ts` for the new native module
-7. **Don't manually edit `ios/` or `android/` folders** – use Expo config plugins instead
-
-## Testing
-
-- **Unit tests**: `npm test` (Jest + jest-expo)
-  - Coverage threshold: 80% overall → `coverage/` output, `junit.xml` for CI
-  - Run sequentially if resource-constrained: `npm test -- --runInBand`
-  - Config: `jest.config.js`, setup in `__tests__/setup.ts`
-
-- **Mocks** (`__tests__/setup.ts`):
-  - Supabase client (auth methods + session listener stubs)
-  - Expo Constants (injects Supabase credentials during tests)
-  - Expo SQLite sync APIs
-  - Expo background task + task manager shims
-
-- **E2E tests**: Maestro flows in `.maestro/flows/`
-  - iOS: `npm run e2e:ios`
-  - Android: `npm run e2e:android`
-  - Requires local dev builds: `npm run ios` or `npm run android` (builds dev client)
-  - Artifacts saved to `e2e-artifacts/`
-
-- **When adding new modules**:
-  - Extend `__tests__/setup.ts` mocks if module touches Expo native APIs
-  - Avoid breaking Node test environment
-
-- **UI component testing best practices**:
-  - **Use `testID` props** for reliable component queries
-  - Avoid brittle assertions on translated text or dynamic content
-  - Add `testID="descriptive-name"` to components for test queries
-  - Use `getByTestId('descriptive-name')` instead of `getByText()` in tests
-  - Example: `<Button testID="submit-button">{t('common.submit')}</Button>`
-  - This prevents tests from breaking when copy changes or translations are updated
-  - For i18n testing: mock translations to return keys, assert on keys instead of text values
-
-## Debugging & Troubleshooting
-
-### Metro Bundler Issues
-
-- Clear cache: `npm start -- --clear`
-- Kill existing processes: `pkill -f "expo start"` or `pkill -f "metro"`
-- Remove stale cache: `rm -rf node_modules/.cache`
-- Clear Watchman: `watchman watch-del-all`
-
-### Module Resolution Errors
-
-1. Delete `node_modules` and reinstall: `rm -rf node_modules && npm install`
-2. Clear Metro cache: `npm start -- --reset-cache`
-3. Clear npm cache: `npm cache clean --force`
-4. Verify `package-lock.json` is in sync
-5. Check for version conflicts: `npm ls <package-name>`
-
-### Navigation Not Working
-
-1. Verify route exists in `app/_layout.tsx` Stack.Screen list
-2. Check header configuration hierarchy (root → layout → screen)
-3. Test on all platforms (iOS/Android/Web) – behavior differs
-4. Ensure `headerShown: true` on child screen if parent has `headerShown: false`
-5. Check for navigation errors in Metro logs
-
-### Session/Auth Issues
-
-1. Verify `.env.local` has valid Supabase credentials
-2. Check `onAuthStateChange` listener initialized in `AppProviders.tsx`
-3. Confirm session state updates in Zustand store: `useSessionStore((state) => state.status)`
-4. After sign-out, confirm `useSessionStore.getState().status === 'unauthenticated'`
-5. For persistence issues: Implement an `expo-secure-store` (or similar) adapter for Supabase Auth
-
-### Build Failures (Expo)
-
-1. Clear Expo/Metro cache: `npm start -- --clear`
-2. Regenerate native folders: `npx expo prebuild --clean`
-3. Rebuild locally:
-   - iOS: `npm run ios` (runs `expo run:ios`)
-   - Android: `npm run android` (runs `expo run:android`)
-4. Verify Java for Android builds: `java -version`
-5. Check Expo configuration: `npm run doctor`
-6. Delete and regenerate native folders: `rm -rf ios android && npx expo prebuild`
-7. For persistent issues, try: `rm -rf node_modules package-lock.json && npm install`
-
-**Notes**:
-
-- `ios/` and `android/` folders are auto-generated by Expo when running native builds
-- These folders should be in `.gitignore` (managed by Expo, not manually edited)
-- `eas build` is for cloud builds and requires Expo authentication; use `npm run ios`/`android` for local dev
-- Don't manually edit native files unless using a custom dev client with native modules
-
-## Background Tasks & Storage
-
-- **Cursors**: Use `react-native-mmkv` on native platforms with in-memory fallback
-  on web (`src/sync/cursors.ts`). MMKV IDs are sourced from `DOMAIN.app`.
-- **Background sync**: Integrates `expo-background-task` and `expo-task-manager`.
-  When adding tasks, register them through existing sync utilities to keep
-  mocks working in tests.
-- **Storage hierarchy**:
-  - Native (iOS/Android): MMKV (fast, synchronous)
-  - Web: Memory storage (fallback, no persistence)
-  - Supabase auth sessions: Memory-only (needs SecureStore for persistence)
-
-- **Design primitives** — common components live under `src/ui/components` (e.g., `PrimaryButton` for call-to-action styling).
-
-## UI Components & Tamagui
-
-- **Prefer Tamagui primitives** – Use built-in Tamagui components (`Button`, `Input`, `Card`, `YStack`, `XStack`, `View`, `Text`, etc.) instead of building custom components from scratch.
-- **Component hierarchy**:
-  1. Use Tamagui primitives directly when possible
-  2. Compose Tamagui primitives into reusable components for common patterns (e.g., `FormField`, `ScreenContainer`)
-  3. Only build custom components when Tamagui doesn't provide the needed functionality
-- **Styling**: Use Tamagui's theme tokens (`$background`, `$color`, `$borderColor`, etc.) for consistency across light/dark modes
-- **Custom components**: Located in `src/ui/components/` – browse the directory to see the full list. Key patterns:
-  - `ScreenContainer` – Wrap every screen (safe area + keyboard avoidance)
-  - `FormField` – Consistent form inputs (label, helper text, error states)
-  - `Text.tsx` – Semantic text components (`TitleText`, `SubtitleText`, `BodyText`, `LabelText`, `CaptionText`)
-  - `UserOnly` – Auth gate that redirects unauthenticated users to login
-  - Action buttons (`PrimaryButton`, `SecondaryButton`), inline errors (`InlineError`), toast system (`Toast.tsx`/`toastStore.ts`), and various modal dialogs are also available
-  - `Card` – Use Tamagui's built-in `Card` directly; no custom wrapper needed
-- **Theme configuration**: `tamagui.config.ts` defines tokens and theme values
-- **When to create new components**:
-  - Repeated patterns that combine multiple Tamagui primitives
-  - Components that need consistent behavior across the app (e.g., form fields with validation)
-  - Semantic wrappers that improve code readability (e.g., `TitleText` instead of `Text fontSize="$8"`)
-
-## Pre-commit & PR Checklist
-
-Before committing or opening a PR, follow this sequence:
-
-1. **Format**: Always run `npm run format`.
-2. **Lint & test** (only when `.js`, `.ts`, `.tsx`, or `.jsx` files changed):
-   1. Run `npm run lint`.
-   2. For each modified or new source file, run Jest with scoped coverage:
-      ```bash
-      npx jest --coverage --collectCoverageFrom='<file>' <test-file>
-      ```
-      Require **% Stmts, % Branch, % Funcs, and % Lines each >= 80%**.
-   3. After per-file coverage passes, run `npm test` (full suite).
-3. **Clean working tree**: Do not commit or open a PR until all checks pass and `git diff --exit-code` is clean. If any step fails, fix only the reported issues and re-run the failing step.
-
-**PR descriptions**:
-
-- Use a minimal description with a brief summary of changes.
-- Do **not** include a "what was tested" section or agent task/session links.
-
-## Tooling & Hooks
-
-- **Husky hooks** enforce quality gates:
-  - `pre-commit`: `npx lint-staged` (runs lint + format checks on staged files)
-  - `commit-msg`: `npx commitlint --edit` with conventional config
-
-- **Commit messages**: Follow conventional format (`feat:`, `fix:`, `chore:`, etc.)
-  - Use `npm run commit` for interactive Commitizen (`cz-git`) prompt
-
-- **Code quality**:
-  - ESLint config: `eslint.config.js`
-  - Prettier: `.prettierrc` + `.prettierignore`
-  - Pre-commit runs format + lint on staged files only
-
-## Maintaining AGENTS.md
-
-**Update this document when**:
-
-- Adding/removing major dependencies (state libraries, navigation, etc.)
-- Changing folder structure or adding new top-level directories
-- Updating Node version, npm, or Expo SDK version
-- Adding new npm scripts or changing build commands
-- Introducing new architectural patterns (new Zustand store, navigation pattern, etc.)
-- Changing environment variables or runtime requirements (e.g., new API keys)
-- Adding new testing tools or CI workflows
-- Changing authentication or session management approach
-- Updating background task or storage strategies
-
-**Do NOT duplicate**:
-
-- Feature-level details (covered in `docs/updates.md` and commit history)
-- API documentation (should live in code comments or separate API docs)
-- Verbose implementation details (keep this doc high-level and actionable)
-
-**Keep this doc focused on**: "What agents need to bootstrap, debug, and work effectively."
-
-This guide should give agents enough detail to bootstrap, validate, and extend
-the project without trawling contributor docs or commit history.
+# Expo Template Repository
+
+## Purpose
+
+This repository is a scaffold source, not an app checkout. Keep its root
+`AGENTS.md`, `CLAUDE.md`, bootstrap, and sync tooling template-owned. Validate app
+behavior in a newly generated app, not in this worktree.
+
+## Refresh from an app
+
+- Use **Actions → Prepare template source sync → Run workflow** in `expo-template`.
+  Select a source repository and branch. Defaults are `luvenapps/betterhabits`
+  and `main`; the workflow always proposes changes against `expo-template` `main`.
+- The workflow needs `SOURCE_REPO_TOKEN` with source Contents read access and
+  `TEMPLATE_AUTOMATION_TOKEN` with Contents and Pull requests write access to
+  `expo-template`.
+- It creates or updates `automation/template-source-sync`; it does not update
+  `main` directly. Review and merge the PR manually.
+- For a local preview, run
+  `node scripts/sync-template-source.mjs --source-dir <source-checkout> --target-dir <template-checkout> --dry-run`.
+  Remove `--dry-run` only when you intend to apply the snapshot. Both directories
+  must already exist.
+
+## What sync copies
+
+- The script copies eligible source files recursively; it is not a hand-maintained
+  per-file allowlist. Its exclusions and transformations are in
+  `scripts/sync-template-source.mjs`.
+- Managed source paths are updated as a snapshot, so source deletions can remove
+  files from managed template paths. Review deletions and product-specific code
+  in every sync PR.
+- The template keeps its own root `AGENTS.md` and `CLAUDE.md`. Source root guidance
+  is copied to `_AGENTS.md` and `_CLAUDE.md`; postinstall replaces those with the
+  generated app's root instructions and fills app identity tokens. Keep
+  `CLAUDE.md` as only `@AGENTS.md`.
+- `.github`, `.husky`, and `.maestro` map to `_github`, `_husky`, and `_maestro`.
+  Selected dotfiles also get underscore copies so postinstall can materialize
+  them after scaffolding.
+- Source workflows are copied with their settings unless the sync script has an
+  explicit transformation. Generalize source-owned values in the source app
+  first; do not add one-off workflow rewrites here.
+- `credentials/` is copied only when present in the source checkout and stays
+  gitignored. A hosted checkout will not contain local ignored credentials. Never
+  commit credentials, `.env` files, or private signing material.
+
+## Review and validation
+
+- Choose a source branch that contains the intended reusable app foundation and
+  no unfinished product work.
+- Review package and lockfile changes, app identity, deletions, workflow changes,
+  credentials, and underscore-file materialization before merging.
+- Do not install app dependencies or run formatting, lint, or tests in this
+  template worktree. Validate through the generated-app CI and a fresh generated
+  app when requested.
