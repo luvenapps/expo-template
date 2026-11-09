@@ -29,11 +29,11 @@ checks for the generated update.
    `AGENTS.md` and `CLAUDE.md` to `_AGENTS.md` and `_CLAUDE.md`, and maps
    `.github`, `.husky`, `.maestro`, and selected root dotfiles to underscore
    paths. Postinstall materializes the source guidance in the generated app.
-   Sync also copies `credentials/` when it exists in the source checkout, and
-   excludes runner registration scripts and Betterhabits planning documents.
-   Credential files remain gitignored, so they are copied locally but aren't
-   included in the generated PR. A GitHub-hosted sync only sees files present
-   in its source checkout.
+   Sync excludes `credentials/`, runner registration scripts, and Betterhabits
+   planning documents. The template keeps its own `.env.example` with fake
+   Firebase base64 config. Postinstall adapts the fake config to the generated
+   app's bundle ID/package name; the native plugin creates missing credential
+   files from those environment variables during builds.
 4. Wait for the PR's normal CI. Before merging, create a fresh app from the
    updated template and verify bootstrap, local setup, and the platform you
    intend to build.
@@ -48,9 +48,8 @@ When a new app has reusable improvements, run the same workflow with that
 repository and branch as the source. Review the proposed changes against the
 template's reusable foundation; keep product features, app-specific branding,
 and generated environment state in the app unless they are intentionally being
-generalized. Credentials may be copied locally for testing, but remain ignored
-and out of the resulting PR. The new app remains independent, and the resulting
-PR still targets `expo-template` `main`.
+generalized. Credentials are excluded from sync. The new app remains independent,
+and the resulting PR still targets `expo-template` `main`.
 
 ## Validate a generated app
 
@@ -66,7 +65,11 @@ npx expo install --check
 
 For local runtime checks, run `npm run setup:local`, then keep
 `npm run supabase:dev` running in one terminal while starting the app with
-`npm start` in another. Add the app's Supabase and Firebase credentials before
-testing authenticated sync, Firebase messaging, or native builds. Native
-builds also require the matching local Xcode/Android SDK setup and Apple signing
-configuration when shipping to Apple platforms.
+`npm start` in another. Configure Supabase before testing authenticated sync.
+
+For local scaffold testing, copy `.env.example` to `.env.local` if missing
+(`setup.sh` already does this). The fake Firebase values support native builds
+with Firebase disabled at runtime. Use real Firebase configuration when testing
+Firebase services. Existing local environment and credential files take precedence.
+Native builds also require the matching local Xcode/Android SDK setup and Apple
+signing configuration when shipping to Apple platforms.

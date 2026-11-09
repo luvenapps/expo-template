@@ -11,6 +11,7 @@ import path from 'node:path';
 import { Buffer } from 'node:buffer';
 
 const TEMPLATE_ONLY = new Set([
+  '.env.example',
   'AGENTS.md',
   'CLAUDE.md',
   'LICENSE',
@@ -27,7 +28,6 @@ const TEMPLATE_ONLY = new Set([
 
 const SYNCED_ROOT_GUIDANCE_FILES = new Set(['AGENTS.md', 'CLAUDE.md']);
 
-// credentials/ is copied when present, but is not managed for stale-file removal.
 const MANAGED_ROOTS = [
   'app',
   'src',
@@ -79,6 +79,7 @@ const MANAGED_ROOT_FILES = new Set([
 ]);
 
 const EXCLUDED_DIRS = new Set([
+  'credentials',
   '.git',
   '.expo',
   '.vscode',

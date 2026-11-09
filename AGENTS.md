@@ -41,9 +41,11 @@ behavior in a newly generated app, not in this worktree.
 - Source workflows are copied with their settings unless the sync script has an
   explicit transformation. Generalize source-owned values in the source app
   first; do not add one-off workflow rewrites here.
-- `credentials/` is copied only when present in the source checkout and stays
-  gitignored. A hosted checkout will not contain local ignored credentials. Never
-  commit credentials, `.env` files, or private signing material.
+- `credentials/` is excluded from sync. The template-owned `.env.example` holds
+  fake Firebase base64 config for scaffold testing; postinstall adjusts its app
+  IDs. The native plugin decodes it into missing credential files during builds.
+  `setup.sh` copies `.env.example` to `.env.local` when missing. Never commit real
+  credentials, local environment files, or private signing material.
 
 ## Review and validation
 

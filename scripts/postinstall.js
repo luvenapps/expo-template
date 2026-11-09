@@ -10,6 +10,7 @@
  *  - Replace placeholders in Maestro flows (.maestro/flows/*.yml|yaml)
  *  - Replace app identity tokens in README.md and generated docs (if present)
  *  - Materialize _AGENTS.md and _CLAUDE.md as generated app root instructions
+ *  - Set generated app IDs in the fake Firebase base64 config in .env.example
  *  - Replace tockens in Domain Config if present
  * *  - Restore .gitignore from "gitignore" (if present)
  *  - Rename _prettierrc.json → .prettierrc.json if present
@@ -70,65 +71,23 @@ const copyDir = (src, dst) => {
   }
 };
 
-// Copy local-only files from the selected template checkout without replacing
-// files that the generated app already has.
-const copyMissingFiles = (src, dst) => {
-  if (!exists(src) || !fs.lstatSync(src).isDirectory()) return false;
-  fs.mkdirSync(dst, { recursive: true });
-  let copied = false;
-  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
-    const sourcePath = path.join(src, entry.name);
-    const destinationPath = path.join(dst, entry.name);
-    if (entry.isDirectory()) {
-      copied = copyMissingFiles(sourcePath, destinationPath) || copied;
-    } else if (entry.isFile() && !exists(destinationPath)) {
-      fs.copyFileSync(sourcePath, destinationPath);
-      copied = true;
-    }
-  }
-  return copied;
-};
-
-const updateFirebaseCredentialIds = (appId) => {
-  const androidConfigPath = path.join(CWD, 'credentials', 'google-services.json');
-  if (exists(androidConfigPath)) {
-    try {
-      const config = readJson(androidConfigPath);
-      let changed = false;
-      for (const client of config.client ?? []) {
-        const androidClient = client.client_info?.android_client_info;
-        if (androidClient?.package_name && androidClient.package_name !== appId) {
-          androidClient.package_name = appId;
-          changed = true;
-        }
-      }
-      if (changed) {
-        writeJson(androidConfigPath, config);
-        console.log(`✅ Android Firebase package name updated: ${appId}`);
-      }
-    } catch (e) {
-      console.log(`⚠️  Android Firebase config was not updated (${e.message})`);
-    }
-  }
-
-  const iosConfigPath = path.join(CWD, 'credentials', 'GoogleService-Info.plist');
-  if (exists(iosConfigPath)) {
-    try {
-      const before = fs.readFileSync(iosConfigPath, 'utf8');
-      const bundleIdEntry = /(<key>\s*BUNDLE_ID\s*<\/key>\s*<string>)([^<]*)(<\/string>)/;
-      const match = before.match(bundleIdEntry);
-      if (!match) {
-        console.log('⚠️  iOS Firebase config has no XML BUNDLE_ID entry; skipped');
-        return;
-      }
-      const after = before.replace(bundleIdEntry, `$1${appId}$3`);
-      if (after !== before) {
-        fs.writeFileSync(iosConfigPath, after, 'utf8');
-        console.log(`✅ iOS Firebase bundle ID updated: ${appId}`);
-      }
-    } catch (e) {
-      console.log(`⚠️  iOS Firebase config was not updated (${e.message})`);
-    }
+// Adapt only the bundled fake config in the example environment file.
+// Real credentials and existing local environment files are left untouched.
+const updateFirebaseExampleIds = (appId) => {
+  const examplePath = path.join(CWD, '.env.example');
+  if (!exists(examplePath)) return;
+  const before = fs.readFileSync(examplePath, 'utf8');
+  const after = before.replace(
+    /^(GOOGLE_SERVICE_INFO_PLIST_B64|GOOGLE_SERVICES_JSON_B64)=([A-Za-z0-9+/=]+)$/gm,
+    (line, key, encoded) => {
+      const decoded = Buffer.from(encoded, 'base64').toString('utf8');
+      const updated = decoded.replaceAll('com.luvenapps.expotemplatetesting', appId);
+      return `${key}=${Buffer.from(updated).toString('base64')}`;
+    },
+  );
+  if (after !== before) {
+    fs.writeFileSync(examplePath, after, 'utf8');
+    console.log(`✅ Example Firebase config IDs updated: ${appId}`);
   }
 };
 
@@ -191,24 +150,6 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
     return;
   }
 
-  const templateSourceDir = process.env.EXPO_TEMPLATE_SOURCE_DIR;
-  const isGeneratedFromLocalTemplate =
-    templateSourceDir && path.resolve(templateSourceDir) !== path.resolve(CWD);
-  if (templateSourceDir) {
-    try {
-      const sourceCredentials = path.resolve(templateSourceDir, 'credentials');
-      const targetCredentials = path.join(CWD, 'credentials');
-      if (
-        sourceCredentials !== path.resolve(targetCredentials) &&
-        copyMissingFiles(sourceCredentials, targetCredentials)
-      ) {
-        console.log('✅ Local template credentials copied (existing files preserved)');
-      }
-    } catch (e) {
-      console.log(`⚠️  Local template credentials were not copied (${e.message})`);
-    }
-  }
-
   const pkg = readJson(pkgPath);
   const folderName = path.basename(CWD);
   if (!pkg.name || pkg.name === 'template-starter') {
@@ -247,7 +188,7 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
 
   materializeRootGuidance(summary);
 
-  if (isGeneratedFromLocalTemplate) updateFirebaseCredentialIds(appId);
+  updateFirebaseExampleIds(appId);
 
   if (exists(appConfigPath)) {
     try {
