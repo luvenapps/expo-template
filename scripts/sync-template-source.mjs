@@ -52,6 +52,8 @@ const MANAGED_ROOT_FILES = new Set([
   '_prettierignore',
   '.prettierrc.json',
   '_prettierrc.json',
+  '.mcp.json',
+  'app.config.ts',
   'babel.config.js',
   'commitlint.config.js',
   'drizzle.config.postgres.ts',
@@ -61,6 +63,8 @@ const MANAGED_ROOT_FILES = new Set([
   'index.js',
   'jest.config.js',
   'metro.config.js',
+  'package-lock.json',
+  'package.json',
   'renovate.json',
   'tamagui.build.ts',
   'tamagui.config.ts',
@@ -93,8 +97,6 @@ const EXCLUDED_PREFIXES = [
   'src/db/sqlite/migrations/',
   'supabase/migrations/',
 ];
-
-const MANIFEST_PATH = '.template-sync-manifest.json';
 
 function parseArgs(argv) {
   const args = {};
@@ -289,8 +291,8 @@ function transformPackage(sourcePath, content) {
 function outputPaths(sourcePath) {
   const mappings = new Map([
     ['.github', ['_github']],
-    ['.husky', ['_husky', '.husky']],
-    ['.maestro', ['_maestro', '.maestro']],
+    ['.husky', ['_husky']],
+    ['.maestro', ['_maestro']],
   ]);
   for (const [sourceRoot, targetRoots] of mappings) {
     if (sourcePath === sourceRoot || sourcePath.startsWith(`${sourceRoot}/`)) {
@@ -359,11 +361,10 @@ function main() {
     }
   }
 
-  const manifestFile = path.join(targetRoot, MANIFEST_PATH);
-  const oldPaths = fs.existsSync(manifestFile)
-    ? (JSON.parse(fs.readFileSync(manifestFile, 'utf8')).paths ?? [])
-    : walkFiles(targetRoot).filter(isManagedPath);
-  const nextPaths = [...desired.keys()].sort();
+  // The selected roots are source-owned as a whole. Recursively compare the
+  // target with the desired snapshot so newly added files flow without a
+  // hand-maintained per-file manifest; TEMPLATE_ONLY protects template files.
+  const oldPaths = walkFiles(targetRoot).filter(isManagedPath);
   const stale = oldPaths.filter(
     (relativePath) =>
       !desired.has(relativePath) && !TEMPLATE_ONLY.has(relativePath) && isManagedPath(relativePath),
@@ -386,10 +387,6 @@ function main() {
     fs.writeFileSync(targetFile, file.content, { mode: file.mode || 0o644 });
     fs.chmodSync(targetFile, file.mode || 0o644);
   }
-  fs.writeFileSync(
-    manifestFile,
-    `${JSON.stringify({ source: 'manual workflow input', paths: nextPaths }, null, 2)}\n`,
-  );
 }
 
 try {

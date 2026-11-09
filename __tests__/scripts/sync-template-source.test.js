@@ -133,6 +133,7 @@ describe('sync-template-source', () => {
     writeFile(target, '.github/workflows/template-sync.yml', 'template workflow\n');
     writeFile(target, '_github/runner/register-runner.sh', 'old runner setup\n');
     writeFile(target, 'scripts/old-managed-script.js', 'stale\n');
+    writeFile(target, '.mcp.json', 'stale template MCP config\n');
   });
 
   afterEach(() => {
@@ -192,12 +193,18 @@ describe('sync-template-source', () => {
     expect(fs.existsSync(path.join(target, '.github/workflows/ci.yml'))).toBe(false);
     expect(fs.existsSync(path.join(target, '_github/workflows/ci.yml'))).toBe(true);
     expect(fs.existsSync(path.join(target, '.github/workflows/template-sync.yml'))).toBe(true);
-    expect(
-      fs.readFileSync(path.join(target, '.github/workflows/ci-quality.yml'), 'utf8'),
-    ).toBe('template quality workflow\n');
+    expect(fs.existsSync(path.join(target, '_husky/pre-commit'))).toBe(true);
+    expect(fs.existsSync(path.join(target, '.husky/pre-commit'))).toBe(false);
+    expect(fs.existsSync(path.join(target, '_maestro/flows/smoke.yaml'))).toBe(true);
+    expect(fs.existsSync(path.join(target, '.maestro/flows/smoke.yaml'))).toBe(false);
+    expect(fs.readFileSync(path.join(target, '.github/workflows/ci-quality.yml'), 'utf8')).toBe(
+      'template quality workflow\n',
+    );
     expect(fs.existsSync(path.join(target, '_github/workflows/template-sync.yml'))).toBe(false);
     expect(fs.existsSync(path.join(target, '_github/runner/register-runner.sh'))).toBe(false);
     expect(fs.existsSync(path.join(target, 'scripts/old-managed-script.js'))).toBe(false);
+    expect(fs.existsSync(path.join(target, '.mcp.json'))).toBe(false);
+    expect(fs.existsSync(path.join(target, '.template-sync-manifest.json'))).toBe(false);
     expect(fs.existsSync(path.join(target, 'README.md'))).toBe(true);
     expect(fs.readFileSync(path.join(target, 'README.md'), 'utf8')).toBe('Template README\n');
     expect(fs.readFileSync(path.join(target, 'AGENTS.md'), 'utf8')).toBe('Template instructions\n');
