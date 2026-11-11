@@ -21,8 +21,18 @@ behavior in a newly generated app, not in this worktree.
   repository and branch; `.template-sync-manifest.json` tracks those source SHAs.
 - For a local preview, run
   `node scripts/sync-template-source.mjs --source-dir <source-checkout> --target-dir <template-checkout> --dry-run`.
-  Remove `--dry-run` only when you intend to apply the snapshot. Both directories
-  must already exist.
+  It fetches source `main` (or `--source-branch`) from origin into a temporary
+  detached worktree, compares tracked files with freshly fetched template `main`, and
+  previews updates/removals and the PR description. Without `--dry-run`, it asks
+  for confirmation, then creates a timestamped branch, commits, pushes, and
+  opens a PR. CI calls the same script with `--yes`. Both directories must exist;
+  an applying run requires a clean target and authenticated `gh`. The temporary
+  source worktree is removed after success, cancellation, or failure; the source
+  checkout’s branch and local edits are preserved.
+- If the recorded source SHA is unchanged, or no managed files differ, the
+  script reports nothing to update and creates no branch or PR. The manifest
+  advances only in a sync PR containing file changes. No historical SHA is
+  assumed when a source has no recorded baseline.
 
 ## What sync copies
 

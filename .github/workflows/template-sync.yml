@@ -30,6 +30,8 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: main
+          token: ${{ secrets.TEMPLATE_AUTOMATION_TOKEN }}
+          fetch-depth: 0
 
       - name: Require source read token
         env:
@@ -53,79 +55,23 @@ jobs:
           token: ${{ secrets.SOURCE_REPO_TOKEN }}
           path: source-repository
           fetch-depth: 0
-          persist-credentials: false
+          persist-credentials: true
 
       - name: Sync source files into template form
         id: sync
         env:
           SOURCE_REPOSITORY: ${{ inputs.source_repository }}
           SOURCE_BRANCH: ${{ inputs.source_branch }}
+          GH_TOKEN: ${{ secrets.TEMPLATE_AUTOMATION_TOKEN }}
         run: |
           set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           node scripts/sync-template-source.mjs \
             --source-dir source-repository \
-            --target-dir .
+            --target-dir . \
+            --source-repository "$SOURCE_REPOSITORY" \
+            --source-branch "$SOURCE_BRANCH" \
+            --yes
 
-          source_sha="$(git -C source-repository rev-parse HEAD)"
-          previous_sha="$(jq -r \
-            --arg repo "$SOURCE_REPOSITORY" \
-            --arg branch "$SOURCE_BRANCH" \
-            '.sources[$repo][$branch] // empty' \
-            .template-sync-manifest.json)"
-
-          if [ -n "$previous_sha" ]; then
-            if ! git -C source-repository merge-base --is-ancestor "$previous_sha" "$source_sha"; then
-              echo "::error::Last synced source commit $previous_sha is not an ancestor of $SOURCE_REPOSITORY@$SOURCE_BRANCH. Update .template-sync-manifest.json after reviewing the source history rewrite."
-              exit 1
-            fi
-
-            source_commits="$(git -C source-repository log \
-              --reverse \
-              --format='- `%h` %s' \
-              "$previous_sha..$source_sha")"
-            if [ -z "$source_commits" ]; then
-              source_commits="- No new source commits since the previous sync."
-            fi
-          else
-            source_commits="- No previous sync baseline is recorded for this repository and branch. This run establishes the baseline at \`$source_sha\`."
-          fi
-
-          delimiter="source_commits_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
-          {
-            echo "source_sha=$source_sha"
-            echo "source_commits<<$delimiter"
-            printf '%s\n' "$source_commits"
-            echo "$delimiter"
-          } >> "$GITHUB_OUTPUT"
-
-          jq \
-            --arg repo "$SOURCE_REPOSITORY" \
-            --arg branch "$SOURCE_BRANCH" \
-            --arg sha "$source_sha" \
-            '.sources[$repo] = (.sources[$repo] // {}) | .sources[$repo][$branch] = $sha' \
-            .template-sync-manifest.json > .template-sync-manifest.json.tmp
-          mv .template-sync-manifest.json.tmp .template-sync-manifest.json
-
-      - name: Name sync branch
-        id: branch
-        run: echo "name=automation/template-source-sync-$(date -u +'%Y%m%d-%H%M%SZ')" >> "$GITHUB_OUTPUT"
-
-      - name: Create sync PR
-        uses: peter-evans/create-pull-request@v7
-        with:
-          token: ${{ secrets.TEMPLATE_AUTOMATION_TOKEN }}
-          base: main
-          branch: ${{ steps.branch.outputs.name }}
-          delete-branch: false
-          commit-message: 'chore: sync reusable app foundation'
-          title: 'chore: sync reusable app foundation'
-          body: |
-            Refresh the reusable app foundation from `${{ inputs.source_repository }}@${{ steps.sync.outputs.source_sha }}`.
-
-            Source commits since the last sync of this source branch:
-            ${{ steps.sync.outputs.source_commits }}
-
-            Review the diff for product-specific code, credentials, template bootstrap behavior, and hidden-file materialization. Run the generated-app checks in CI before merging.
-
-            Source branch: `${{ inputs.source_branch }}`

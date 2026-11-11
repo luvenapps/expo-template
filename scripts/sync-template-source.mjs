@@ -8,6 +8,9 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
+import os from 'node:os';
+import { createInterface } from 'node:readline/promises';
 import { Buffer } from 'node:buffer';
 
 const TEMPLATE_ONLY = new Set([
@@ -116,10 +119,23 @@ function parseArgs(argv) {
     const key = argv[i];
     if (key === '--dry-run') {
       args.dryRun = true;
-    } else if (key === '--source-dir' || key === '--target-dir') {
+    } else if (key === '--yes') {
+      args.yes = true;
+    } else if (
+      key === '--source-dir' ||
+      key === '--target-dir' ||
+      key === '--source-repository' ||
+      key === '--source-branch'
+    ) {
       const value = argv[i + 1];
       if (!value || value.startsWith('--')) throw new Error(`Missing value for ${key}`);
-      args[key === '--source-dir' ? 'sourceDir' : 'targetDir'] = value;
+      const argName = {
+        '--source-dir': 'sourceDir',
+        '--target-dir': 'targetDir',
+        '--source-repository': 'sourceRepository',
+        '--source-branch': 'sourceBranch',
+      }[key];
+      args[argName] = value;
       i += 1;
     } else {
       throw new Error(`Unknown argument: ${key}`);
@@ -127,10 +143,101 @@ function parseArgs(argv) {
   }
   if (!args.sourceDir || !args.targetDir) {
     throw new Error(
-      'Usage: node scripts/sync-template-source.mjs --source-dir <path> --target-dir <path> [--dry-run]',
+      'Usage: node scripts/sync-template-source.mjs --source-dir <path> --target-dir <path> [--dry-run] [--source-repository <owner/name>] [--source-branch <branch>] [--yes]',
     );
   }
   return args;
+}
+
+function runGit(repositoryPath, gitArgs) {
+  return execFileSync('git', ['-C', repositoryPath, ...gitArgs], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+    maxBuffer: 64 * 1024 * 1024,
+  }).trim();
+}
+
+function inferSourceRepository(sourceRoot, override) {
+  if (override) return override;
+  let remote;
+  try {
+    remote = runGit(sourceRoot, ['config', '--get', 'remote.origin.url']);
+  } catch {
+    throw new Error('Could not infer the source repository. Pass --source-repository <owner/name>.');
+  }
+  const match = remote.match(/github\.com[:/]([^/]+\/[^/]+?)(?:\.git)?\/?$/);
+  if (!match) {
+    throw new Error(`Could not infer owner/name from source origin ${remote}. Pass --source-repository.`);
+  }
+  return match[1];
+}
+
+function renderPullRequestDescription(sourceRoot, manifest, args) {
+  const sourceRepository = inferSourceRepository(sourceRoot, args.sourceRepository);
+  let sourceBranch = args.sourceBranch;
+  if (!sourceBranch) {
+    sourceBranch = runGit(sourceRoot, ['branch', '--show-current']);
+    if (!sourceBranch) {
+      throw new Error('The source checkout is detached. Pass --source-branch <branch>.');
+    }
+  }
+
+  const sourceSha = runGit(sourceRoot, ['rev-parse', 'HEAD']);
+  const previousSha = manifest.sources?.[sourceRepository]?.[sourceBranch];
+  let sourceCommits;
+
+  if (previousSha) {
+    try {
+      runGit(sourceRoot, ['merge-base', '--is-ancestor', previousSha, sourceSha]);
+    } catch {
+      throw new Error(
+        `Last synced source commit ${previousSha} is not an ancestor of ${sourceRepository}@${sourceBranch}. Review the source history rewrite and update .template-sync-manifest.json.`,
+      );
+    }
+
+    const commitLines = runGit(sourceRoot, [
+      'log',
+      '--format=%h%x09%s',
+      `${previousSha}..${sourceSha}`,
+    ]);
+    sourceCommits = commitLines
+      ? commitLines
+          .split('\n')
+          .map((line) => {
+            const separator = line.indexOf('\t');
+            return `- \`${line.slice(0, separator)}\` ${line.slice(separator + 1)}`;
+          })
+          .join('\n')
+      : '- No new source commits since the previous sync.';
+  } else {
+    sourceCommits = `- No previous sync baseline is recorded for this repository and branch. This run establishes the baseline at \`${sourceSha}\`.`;
+  }
+
+  const description = [
+    `Refresh the reusable app foundation from \`${sourceRepository}@${sourceSha}\`.`,
+    '',
+    'Source commits since the last sync of this source branch:',
+    sourceCommits,
+    '',
+    'Review the diff for product-specific code, credentials, template bootstrap behavior, and hidden-file materialization. Run the generated-app checks in CI before merging.',
+    '',
+    `Source branch: \`${sourceBranch}\``,
+  ].join('\n');
+
+  return { sourceSha, previousSha, sourceRepository, sourceBranch, sourceCommits, description };
+}
+
+async function confirmApply() {
+  if (!process.stdin.isTTY) {
+    throw new Error('Confirmation requires a terminal. Use --yes for an automated run.');
+  }
+  const prompt = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    const answer = await prompt.question('Apply this sync to the target directory? [y/N] ');
+    return /^y(?:es)?$/i.test(answer.trim());
+  } finally {
+    prompt.close();
+  }
 }
 
 function walkFiles(root, relative = '') {
@@ -364,16 +471,89 @@ function removePath(targetPath) {
   }
 }
 
-function main() {
+async function main() {
   const args = parseArgs(process.argv.slice(2));
-  const sourceRoot = path.resolve(args.sourceDir);
+  const sourceCheckout = path.resolve(args.sourceDir);
   const targetRoot = path.resolve(args.targetDir);
-  if (!fs.statSync(sourceRoot).isDirectory() || !fs.statSync(targetRoot).isDirectory()) {
+  if (!fs.statSync(sourceCheckout).isDirectory() || !fs.statSync(targetRoot).isDirectory()) {
     throw new Error('Both source and target must be existing directories.');
   }
+  args.sourceRepository = inferSourceRepository(sourceCheckout, args.sourceRepository);
+  args.sourceBranch ??= 'main';
 
+  // Fetch explicitly: the local checkout's HEAD and working files are never the source.
+  console.log(`Fetching ${args.sourceRepository}@${args.sourceBranch} from origin...`);
+  runGit(sourceCheckout, ['fetch', 'origin', args.sourceBranch]);
+  const sourceSha = runGit(sourceCheckout, ['rev-parse', 'FETCH_HEAD^{commit}']);
+  console.log(`Fetched source commit: ${sourceSha}`);
+  const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'template-sync-source-'));
+  const sourceRoot = path.join(temporaryDirectory, 'checkout');
+  let attached = false;
+  const cleanup = () => {
+    if (attached) {
+      console.log(`Removing temporary source worktree: ${sourceRoot}`);
+      runGit(sourceCheckout, ['worktree', 'remove', '--force', sourceRoot]);
+      attached = false;
+      console.log('Temporary source worktree removed.');
+    }
+    console.log(`Deleting temporary source directory: ${temporaryDirectory}`);
+    fs.rmSync(temporaryDirectory, { recursive: true, force: true });
+    console.log('Source cleanup complete.');
+  };
+  const interrupt = () => {
+    console.log('Sync interrupted. Cleaning up the temporary source worktree...');
+    try { cleanup(); } catch (error) { console.error(`Source worktree cleanup failed: ${error.message}`); }
+    process.exit(130);
+  };
+  process.once('SIGINT', interrupt);
+  process.once('SIGTERM', interrupt);
+  try {
+    console.log(`Creating detached source worktree at ${sourceSha}: ${sourceRoot}`);
+    runGit(sourceCheckout, ['worktree', 'add', '--detach', sourceRoot, sourceSha]);
+    attached = true;
+    console.log('Temporary source worktree ready.');
+    await syncSnapshot(args, sourceRoot, targetRoot, sourceCheckout);
+  } finally {
+    process.removeListener('SIGINT', interrupt);
+    process.removeListener('SIGTERM', interrupt);
+    cleanup();
+  }
+}
+
+async function syncSnapshot(args, sourceRoot, targetRoot, sourceCheckout) {
+  console.log(`Checking target checkout: ${targetRoot}`);
+  if (runGit(targetRoot, ['rev-parse', '--show-toplevel']) !== targetRoot) {
+    throw new Error('The target must be the root of the expo-template Git checkout.');
+  }
+  const sourceRelative = path.relative(targetRoot, sourceCheckout).split(path.sep).join('/');
+  const targetPaths = ['.'];
+  if (sourceRelative && !sourceRelative.startsWith('../') && !path.isAbsolute(sourceRelative)) {
+    targetPaths.push(`:(exclude)${sourceRelative}`);
+  }
+  if (runGit(sourceRoot, ['status', '--porcelain', '--untracked-files=no'])) {
+    throw new Error('Commit tracked source changes before syncing so the source SHA describes the files.');
+  }
+
+  // Preview and apply both use the same freshly fetched destination main.
+  console.log('Fetching latest template origin/main...');
+  runGit(targetRoot, ['fetch', 'origin', 'main']);
+  const baseSha = runGit(targetRoot, ['rev-parse', 'FETCH_HEAD']);
+  console.log(`Fetched template main: ${baseSha}`);
+  console.log('Reading committed template files and the source sync baseline...');
+  const trackedTarget = runGit(targetRoot, ['ls-tree', '-r', '--name-only', baseSha])
+    .split('\n').filter(Boolean);
+  const manifest = trackedTarget.includes('.template-sync-manifest.json')
+    ? JSON.parse(runGit(targetRoot, ['show', `${baseSha}:.template-sync-manifest.json`]))
+    : { sources: {} };
+  const summary = renderPullRequestDescription(sourceRoot, manifest, args);
+  if (summary.previousSha === summary.sourceSha) {
+    console.log(`Nothing to update. ${summary.sourceRepository}@${summary.sourceBranch} is already synced at ${summary.sourceSha}.`);
+    return;
+  }
+
+  console.log('Selecting tracked source files and applying template transformations...');
   const desired = new Map();
-  for (const sourcePath of walkFiles(sourceRoot)) {
+  for (const sourcePath of runGit(sourceRoot, ['ls-files', '-z']).split('\0').filter(Boolean)) {
     if (
       !isManagedSourcePath(sourcePath) ||
       shouldExclude(sourcePath) ||
@@ -382,6 +562,7 @@ function main() {
       continue;
     }
     const sourceFile = path.join(sourceRoot, sourcePath);
+    if (!fs.existsSync(sourceFile) || fs.lstatSync(sourceFile).isSymbolicLink()) continue;
     let content = fs.readFileSync(sourceFile);
     const text = content.toString('utf8');
     const isText = !text.includes('\u0000');
@@ -407,37 +588,119 @@ function main() {
     }
   }
 
-  // The selected roots are source-owned as a whole. Recursively compare the
-  // target with the desired snapshot so newly added files flow without a
-  // hand-maintained per-file manifest; TEMPLATE_ONLY protects template files.
-  const oldPaths = walkFiles(targetRoot).filter(isManagedPath);
-  const stale = oldPaths.filter(
-    (relativePath) =>
-      !desired.has(relativePath) && !TEMPLATE_ONLY.has(relativePath) && isManagedPath(relativePath),
+  console.log(`Comparing ${desired.size} selected files with template main...`);
+  // Compare committed destination files only; ignored local artifacts are not managed.
+  const stale = trackedTarget.filter(
+    (relativePath) => isManagedPath(relativePath) && !desired.has(relativePath) && !TEMPLATE_ONLY.has(relativePath),
   );
-
-  console.log(`Source files selected: ${desired.size}`);
-  console.log(`Stale managed files to remove: ${stale.length}`);
-  for (const relativePath of stale) console.log(`  remove ${relativePath}`);
+  const updates = [];
   for (const [relativePath, file] of desired) {
-    const targetFile = path.join(targetRoot, relativePath);
-    const current = fs.existsSync(targetFile) ? fs.readFileSync(targetFile) : null;
-    if (!current || !current.equals(file.content)) console.log(`  update ${relativePath}`);
+    let current = null;
+    let mode = null;
+    if (trackedTarget.includes(relativePath)) {
+      current = execFileSync('git', ['-C', targetRoot, 'show', `${baseSha}:${relativePath}`], {
+        maxBuffer: 64 * 1024 * 1024,
+      });
+      mode = runGit(targetRoot, ['ls-tree', baseSha, '--', relativePath]).split(' ')[0];
+    }
+    const desiredMode = file.mode & 0o111 ? '100755' : '100644';
+    if (!current || !current.equals(file.content) || mode !== desiredMode) updates.push(relativePath);
   }
-  if (args.dryRun) return;
+  if (!updates.length && !stale.length) {
+    console.log('Nothing to update. New source commits do not change the managed template files.');
+    return;
+  }
 
-  for (const relativePath of stale) removePath(path.join(targetRoot, relativePath));
-  for (const [relativePath, file] of desired) {
+  console.log(`Source: ${summary.sourceRepository}@${summary.sourceBranch} (${summary.sourceSha})`);
+  console.log(`Target: origin/main (${baseSha})`);
+  console.log(`Files to update: ${updates.length}`);
+  for (const relativePath of updates) console.log(`  update ${relativePath}`);
+  console.log(`Files to remove: ${stale.length}`);
+  for (const relativePath of stale) console.log(`  remove ${relativePath}`);
+  const title = 'chore: sync reusable app foundation';
+  console.log(`\nPR title: ${title}\n\nPR description preview:\n`);
+  console.log(summary.description);
+  if (args.dryRun) {
+    console.log('\nDry run complete. No target files were changed; no branch or PR was created.');
+    return;
+  }
+  console.log('Checking that the target is clean before applying...');
+  if (!args.dryRun && runGit(targetRoot, ['status', '--porcelain', '--', ...targetPaths])) {
+    throw new Error('The target has uncommitted changes. Commit them before creating a sync branch.');
+  }
+  if (args.yes) console.log('Confirmation supplied with --yes.');
+  if (!args.yes && !(await confirmApply())) {
+    console.log('Sync cancelled. No files were changed.');
+    return;
+  }
+
+  console.log('Rechecking source and target after preview...');
+  if (runGit(sourceRoot, ['rev-parse', 'HEAD']) !== summary.sourceSha ||
+      runGit(sourceRoot, ['status', '--porcelain', '--untracked-files=no'])) {
+    throw new Error('The source changed during review. Run the sync again.');
+  }
+
+  if (runGit(targetRoot, ['status', '--porcelain', '--', ...targetPaths])) {
+    throw new Error('The target changed during review. Commit the changes and run the sync again.');
+  }
+
+  // Verify publishing prerequisites before changing the target checkout.
+  console.log('Checking GitHub CLI authentication...');
+  execFileSync('gh', ['auth', 'status'], { cwd: targetRoot, stdio: ['ignore', 'pipe', 'pipe'] });
+  const timestamp = new Date().toISOString().replace(/[-:]/g, '').replace('T', '-').replace(/\.\d{3}Z$/, 'Z');
+  const branch = `automation/template-source-sync-${timestamp}`;
+  console.log(`Creating and switching to branch ${branch} from ${baseSha}...`);
+  runGit(targetRoot, ['switch', '-c', branch, baseSha]);
+  for (const relativePath of stale) {
+    console.log(`Removing target file: ${relativePath}`);
+    removePath(path.join(targetRoot, relativePath));
+  }
+  for (const relativePath of updates) {
+    console.log(`Writing target file: ${relativePath}`);
+    const file = desired.get(relativePath);
     const targetFile = path.join(targetRoot, relativePath);
     fs.mkdirSync(path.dirname(targetFile), { recursive: true });
     fs.writeFileSync(targetFile, file.content, { mode: file.mode || 0o644 });
     fs.chmodSync(targetFile, file.mode || 0o644);
   }
+  console.log(`Recording synced source SHA ${summary.sourceSha} in .template-sync-manifest.json...`);
+  manifest.sources ??= {};
+  manifest.sources[summary.sourceRepository] ??= {};
+  manifest.sources[summary.sourceRepository][summary.sourceBranch] = summary.sourceSha;
+  fs.writeFileSync(path.join(targetRoot, '.template-sync-manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+  console.log('Staging the planned changes and source sync manifest...');
+  runGit(targetRoot, ['add', '-A', '--', ...updates, ...stale, '.template-sync-manifest.json']);
+  console.log(`Committing: ${title}`);
+  runGit(targetRoot, ['commit', '-m', title]);
+  console.log(`Created commit: ${runGit(targetRoot, ['rev-parse', 'HEAD'])}`);
+  // Include a target update that arrived while the user reviewed the preview.
+  console.log('Fetching template main again before publishing...');
+  runGit(targetRoot, ['fetch', 'origin', 'main']);
+  const latestMain = runGit(targetRoot, ['rev-parse', 'FETCH_HEAD']);
+  console.log(`Merging latest template main (${latestMain}) into ${branch}...`);
+  runGit(targetRoot, ['merge', '--no-edit', latestMain]);
+  runGit(targetRoot, ['merge-base', '--is-ancestor', latestMain, 'HEAD']);
+  console.log('Verified latest template main is included.');
+  console.log(`Pushing branch: ${branch}`);
+  runGit(targetRoot, ['push', '-u', 'origin', branch]);
+  console.log('Branch pushed.');
+  const bodyDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'template-sync-pr-'));
+  try {
+    const bodyFile = path.join(bodyDirectory, 'body.md');
+    console.log(`Writing temporary PR description: ${bodyFile}`);
+    fs.writeFileSync(bodyFile, summary.description);
+    console.log(`Opening PR from ${branch} to main...`);
+    const url = execFileSync('gh', ['pr', 'create', '--base', 'main', '--head', branch,
+      '--title', title, '--body-file', bodyFile], { cwd: targetRoot, encoding: 'utf8' }).trim();
+    console.log(`\nCreated ${url}`);
+  } finally {
+    console.log(`Deleting temporary PR description directory: ${bodyDirectory}`);
+    fs.rmSync(bodyDirectory, { recursive: true, force: true });
+    console.log('Temporary PR description removed.');
+  }
 }
 
-try {
-  main();
-} catch (error) {
+main().catch((error) => {
   console.error(`Template source sync failed: ${error.message}`);
   process.exitCode = 1;
-}
+});
