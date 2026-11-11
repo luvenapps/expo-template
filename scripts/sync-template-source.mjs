@@ -617,7 +617,9 @@ async function syncSnapshot(args, sourceRoot, targetRoot, sourceCheckout) {
   for (const relativePath of updates) console.log(`  update ${relativePath}`);
   console.log(`Files to remove: ${stale.length}`);
   for (const relativePath of stale) console.log(`  remove ${relativePath}`);
-  const title = 'chore: sync reusable app foundation';
+  const commitMessage = 'chore: sync reusable app foundation';
+  const sourceRepositoryName = summary.sourceRepository.split('/').pop();
+  const title = `chore: refresh expo-template from ${sourceRepositoryName}`;
   console.log(`\nPR title: ${title}\n\nPR description preview:\n`);
   console.log(summary.description);
   if (args.dryRun) {
@@ -670,8 +672,8 @@ async function syncSnapshot(args, sourceRoot, targetRoot, sourceCheckout) {
   fs.writeFileSync(path.join(targetRoot, '.template-sync-manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
   console.log('Staging the planned changes and source sync manifest...');
   runGit(targetRoot, ['add', '-A', '--', ...updates, ...stale, '.template-sync-manifest.json']);
-  console.log(`Committing: ${title}`);
-  runGit(targetRoot, ['commit', '-m', title]);
+  console.log(`Committing: ${commitMessage}`);
+  runGit(targetRoot, ['commit', '-m', commitMessage]);
   console.log(`Created commit: ${runGit(targetRoot, ['rev-parse', 'HEAD'])}`);
   // Include a target update that arrived while the user reviewed the preview.
   console.log('Fetching template main again before publishing...');
