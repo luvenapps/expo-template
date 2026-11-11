@@ -26,14 +26,7 @@ jobs:
     name: Prepare reviewed sync PR
     runs-on: ubuntu-latest
     steps:
-      - name: Check out expo-template main
-        uses: actions/checkout@v6
-        with:
-          ref: main
-          token: ${{ secrets.TEMPLATE_AUTOMATION_TOKEN }}
-          fetch-depth: 0
-
-      - name: Require source read token
+      - name: Require sync tokens
         env:
           SOURCE_REPO_TOKEN: ${{ secrets.SOURCE_REPO_TOKEN }}
           TEMPLATE_AUTOMATION_TOKEN: ${{ secrets.TEMPLATE_AUTOMATION_TOKEN }}
@@ -46,6 +39,13 @@ jobs:
             echo "::error::Add TEMPLATE_AUTOMATION_TOKEN with contents and pull request write access to expo-template."
             exit 1
           fi
+
+      - name: Check out expo-template main
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          token: ${{ secrets.TEMPLATE_AUTOMATION_TOKEN }}
+          fetch-depth: 0
 
       - name: Check out source snapshot
         uses: actions/checkout@v6
