@@ -17,6 +17,8 @@ behavior in a newly generated app, not in this worktree.
 - Each run creates a PR from a new branch named
   `automation/template-source-sync-YYYYMMDD-HHMMSSZ` using UTC time; it does not
   update `main` directly. Review and merge each PR manually.
+- The PR body lists source commit subjects since the last merged sync for that
+  repository and branch; `.template-sync-manifest.json` tracks those source SHAs.
 - For a local preview, run
   `node scripts/sync-template-source.mjs --source-dir <source-checkout> --target-dir <template-checkout> --dry-run`.
   Remove `--dry-run` only when you intend to apply the snapshot. Both directories

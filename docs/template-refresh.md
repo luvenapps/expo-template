@@ -44,6 +44,11 @@ Each run creates a separate PR from a new branch named
 PRs and their branches remain unchanged. The workflow never changes `main`
 directly.
 
+The PR description lists source commit subjects since the last merged sync for
+that repository and branch. `.template-sync-manifest.json` records the latest
+source commit per repository and branch; new source branches establish their
+baseline on their first sync.
+
 ## Promote a later app
 
 When a new app has reusable improvements, run the same workflow with that
