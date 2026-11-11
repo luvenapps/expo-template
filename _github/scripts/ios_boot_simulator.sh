@@ -88,6 +88,29 @@ wait_for_shutdown() {
   return 1
 }
 
+open_simulator_ui() {
+  local developer_dir xcode_app device_hub_app simulator_app
+  developer_dir="$(xcode-select -p)"
+  xcode_app="${developer_dir%/Contents/Developer}"
+  device_hub_app="$xcode_app/Contents/Applications/DeviceHub.app"
+  simulator_app="$developer_dir/Applications/Simulator.app"
+
+  if [ -d "$device_hub_app" ]; then
+    echo "📱 Opening Device Hub... ($(date +%H:%M:%S))"
+    open -a "$device_hub_app"
+    echo "✓ Device Hub launch command completed ($(date +%H:%M:%S))"
+  elif [ -d "$simulator_app" ]; then
+    echo "📱 Opening Simulator... ($(date +%H:%M:%S))"
+    open -a "$simulator_app"
+    echo "✓ Simulator.app launch command completed ($(date +%H:%M:%S))"
+  else
+    echo "❌ No simulator UI app found for active Xcode at $developer_dir"
+    echo "   Expected DeviceHub.app under $xcode_app/Contents/Applications or Simulator.app under $developer_dir/Applications."
+    echo "   Select a full Xcode installation with xcode-select."
+    return 1
+  fi
+}
+
 # Try to resolve UDID for requested device (if any)
 UDID=""
 if [ -n "$DEVICE" ]; then
@@ -111,6 +134,8 @@ fi
 
 if [ -z "$UDID" ]; then
   echo "❌ No available iPhone simulators found"
+  echo "   Install an iOS simulator runtime in Xcode > Settings > Components."
+  echo "   Then create an iPhone simulator via Xcode > Open Developer Tool > Device Hub."
   echo "Available devices:"
   xcrun simctl list devices available
   exit 1
@@ -140,13 +165,10 @@ fi
 killall Simulator 2>/dev/null || echo "   (no Simulator processes to kill)"
 sleep 1
 
-# Open Simulator app fresh
-echo "📱 Opening Simulator... ($(date +%H:%M:%S))"
-open -a Simulator
-echo "✓ Simulator.app launch command completed ($(date +%H:%M:%S))"
+# Open the device UI bundled with the active Xcode version.
+open_simulator_ui
 
-# Give Simulator.app time to launch
-echo "⏳ Waiting 5s for Simulator.app to initialize..."
+echo "⏳ Waiting 5s for the simulator UI to initialize..."
 sleep 5
 echo "✓ Ready to boot ($(date +%H:%M:%S))"
 
@@ -274,8 +296,8 @@ for attempt in $(seq 1 "$ATTEMPTS"); do
     echo "⏱️  Waiting ${DELAY}s before retry..."
     sleep "$DELAY"
     
-    # Reopen simulator for next attempt
-    open -a Simulator
+    # Reopen the simulator UI for the next attempt
+    open_simulator_ui
     sleep 3
   fi
 done
