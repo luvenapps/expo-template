@@ -89,6 +89,7 @@ const EXCLUDED_DIRS = new Set([
   'coverage',
   'dist',
   'build',
+  '.builds',
   'e2e-artifacts',
   'certs',
 ]);
@@ -102,7 +103,10 @@ const EXCLUDED_PREFIXES = [
   'docs/habit-tracker-plan.md',
   'docs/roadmap.md',
   'docs/updates.md',
+  'src/db/postgres/rls-policies.sql',
   'src/db/sqlite/migrations/',
+  'supabase/.branches/',
+  'supabase/.temp/',
   'supabase/migrations/',
 ];
 
@@ -344,6 +348,11 @@ function isManagedPath(relativePath) {
   return MANAGED_ROOTS.some((root) => relativePath === root || relativePath.startsWith(`${root}/`));
 }
 
+function isManagedSourcePath(sourcePath) {
+  if (SYNCED_ROOT_GUIDANCE_FILES.has(sourcePath)) return true;
+  return outputPaths(sourcePath).some(isManagedPath);
+}
+
 function removePath(targetPath) {
   if (!fs.existsSync(targetPath)) return;
   const stat = fs.lstatSync(targetPath);
@@ -366,6 +375,7 @@ function main() {
   const desired = new Map();
   for (const sourcePath of walkFiles(sourceRoot)) {
     if (
+      !isManagedSourcePath(sourcePath) ||
       shouldExclude(sourcePath) ||
       (TEMPLATE_ONLY.has(sourcePath) && !SYNCED_ROOT_GUIDANCE_FILES.has(sourcePath))
     ) {
