@@ -24,12 +24,7 @@ module.exports = {
       },
     ],
   ],
-  testPathIgnorePatterns: [
-    '<rootDir>/.github/runner/_',
-    '<rootDir>/__tests__/setup.ts',
-    '<rootDir>/__tests__/helpers/',
-  ],
-  modulePathIgnorePatterns: ['<rootDir>/.github/runner/_'],
+  testPathIgnorePatterns: ['<rootDir>/__tests__/setup.ts', '<rootDir>/__tests__/helpers/'],
   collectCoverageFrom: ['{src,app}/**/*.{ts,tsx}', '!**/*.d.ts'],
   coveragePathIgnorePatterns: [
     '/node_modules/',
