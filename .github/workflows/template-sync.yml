@@ -40,12 +40,18 @@ jobs:
             exit 1
           fi
 
+      - name: Check out sync tooling
+        uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.TEMPLATE_AUTOMATION_TOKEN }}
+
       - name: Check out expo-template main
         uses: actions/checkout@v6
         with:
           ref: main
           token: ${{ secrets.TEMPLATE_AUTOMATION_TOKEN }}
           fetch-depth: 0
+          path: target-repository
 
       - name: Check out source snapshot
         uses: actions/checkout@v6
@@ -70,7 +76,7 @@ jobs:
 
           node scripts/sync-template-source.mjs \
             --source-dir source-repository \
-            --target-dir . \
+            --target-dir target-repository \
             --source-repository "$SOURCE_REPOSITORY" \
             --source-branch "$SOURCE_BRANCH" \
             --yes
