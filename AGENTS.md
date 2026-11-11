@@ -14,12 +14,25 @@ behavior in a newly generated app, not in this worktree.
 - The workflow needs `SOURCE_REPO_TOKEN` with source Contents read access and
   `TEMPLATE_AUTOMATION_TOKEN` with Contents and Pull requests write access to
   `expo-template`.
-- It creates or updates `automation/template-source-sync`; it does not update
-  `main` directly. Review and merge the PR manually.
+- Each run creates a PR from a new branch named
+  `automation/template-source-sync-YYYYMMDD-HHMMSSZ` using UTC time; it does not
+  update `main` directly. Review and merge each PR manually.
+- The PR body lists source commit subjects since the last merged sync for that
+  repository and branch; `.template-sync-manifest.json` tracks those source SHAs.
 - For a local preview, run
   `node scripts/sync-template-source.mjs --source-dir <source-checkout> --target-dir <template-checkout> --dry-run`.
-  Remove `--dry-run` only when you intend to apply the snapshot. Both directories
-  must already exist.
+  It fetches source `main` (or `--source-branch`) from origin into a temporary
+  detached worktree, compares tracked files with freshly fetched template `main`, and
+  previews updates/removals and the PR description. Without `--dry-run`, it asks
+  for confirmation, then creates a timestamped branch, commits, pushes, and
+  opens a PR. CI calls the same script with `--yes`. Both directories must exist;
+  an applying run requires a clean target and authenticated `gh`. The temporary
+  source worktree is removed after success, cancellation, or failure; the source
+  checkout’s branch and local edits are preserved.
+- If the recorded source SHA is unchanged, or no managed files differ, the
+  script reports nothing to update and creates no branch or PR. The manifest
+  advances only in a sync PR containing file changes. No historical SHA is
+  assumed when a source has no recorded baseline.
 
 ## What sync copies
 
@@ -49,6 +62,8 @@ behavior in a newly generated app, not in this worktree.
 
 ## Review and validation
 
+- Use Commitizen-style titles for every pull request: `<type>: <short description>`
+  (for example, `feat: timestamp template sync branches`).
 - Choose a source branch that contains the intended reusable app foundation and
   no unfinished product work.
 - Review package and lockfile changes, app identity, deletions, workflow changes,

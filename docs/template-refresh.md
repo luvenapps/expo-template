@@ -39,8 +39,36 @@ checks for the generated update.
    intend to build.
 5. Merge the PR only after the diff and checks are acceptable.
 
-Repeated runs update the same `automation/template-source-sync` PR so the diff
-stays reviewable. They never change `main` directly.
+For a local preview, run:
+
+```sh
+node scripts/sync-template-source.mjs --source-dir <source-checkout> --target-dir <template-checkout> --dry-run
+```
+
+The script fetches source `main` from origin, creates a temporary detached
+worktree at that exact SHA, and compares its tracked files with freshly fetched
+`expo-template` `main`. Use `--source-branch <branch-or-tag>` to select a different
+source ref. Local source branches and edits are preserved; ignored local files
+are excluded. Fetch failures stop the sync. The temporary source worktree is
+removed after completion, cancellation, or failure. It shows the planned
+updates/removals, PR title, and PR description. If the recorded source commit is
+unchanged, or no managed files differ, it prints “Nothing to update” and exits.
+
+Run the same command without `--dry-run` to review the preview and confirm.
+Confirmation defaults to no. After approval, the script creates a UTC timestamped
+`automation/template-source-sync-YYYYMMDD-HHMMSSZ` branch from template `main`,
+commits the changes, pushes it, and opens the PR using `gh`. The target checkout
+must be clean and `gh` must be authenticated. Source changes must be pushed to
+the selected remote branch before they can be synced.
+
+Actions invokes this same script with `--yes` to skip the terminal prompt.
+Unchanged sources never create a branch or PR. Existing PRs remain for review.
+
+The PR description lists source commit hashes and subjects since the last merged
+sync for that repository and branch. `.template-sync-manifest.json` records the
+source SHA in the proposed PR, so it becomes the baseline when merged. If no
+baseline exists, the preview explicitly reports an initial sync; it does not
+invent a previous SHA or claim there are no new commits.
 
 ## Promote a later app
 

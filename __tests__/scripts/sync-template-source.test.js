@@ -15,6 +15,14 @@ describe('sync-template-source', () => {
   let root;
   let source;
   let target;
+  let syncEnv;
+  let remote;
+
+  function git(directory, ...args) {
+    const result = spawnSync('git', ['-C', directory, ...args], { encoding: 'utf8' });
+    if (result.status !== 0) throw new Error(result.stderr);
+    return result.stdout.trim();
+  }
 
   beforeEach(() => {
     root = fs.mkdtempSync(path.join(os.tmpdir(), 'template-source-sync-'));
@@ -138,6 +146,31 @@ describe('sync-template-source', () => {
     writeFile(target, '_github/runner/register-runner.sh', 'old runner setup\n');
     writeFile(target, 'scripts/old-managed-script.js', 'stale\n');
     writeFile(target, '.mcp.json', 'stale template MCP config\n');
+
+    for (const checkout of [source, target]) {
+      git(checkout, 'init', '-q', '-b', 'main');
+      git(checkout, 'config', 'user.name', 'Sync fixture');
+      git(checkout, 'config', 'user.email', 'sync@example.com');
+      git(checkout, 'config', 'commit.gpgsign', 'false');
+      git(checkout, 'config', 'core.hooksPath', '/dev/null');
+      git(checkout, 'add', '-A');
+      git(checkout, 'commit', '-qm', 'Initial fixture');
+    }
+    const sourceRemote = path.join(root, 'source-remote.git');
+    fs.mkdirSync(sourceRemote);
+    git(sourceRemote, 'init', '--bare', '-q', '-b', 'main');
+    git(source, 'remote', 'add', 'origin', sourceRemote);
+    git(source, 'push', '-q', 'origin', 'main');
+    remote = path.join(root, 'remote.git');
+    fs.mkdirSync(remote);
+    git(remote, 'init', '--bare', '-q', '-b', 'main');
+    git(target, 'remote', 'add', 'origin', remote);
+    git(target, 'push', '-q', 'origin', 'main');
+    const bin = path.join(root, 'bin');
+    writeFile(bin, 'gh', '#!/bin/sh\nif [ "$1" = "pr" ]; then echo "https://github.com/example/template/pull/1"; fi\n');
+    fs.chmodSync(path.join(bin, 'gh'), 0o755);
+    syncEnv = { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}` };
+
   });
 
   afterEach(() => {
@@ -147,8 +180,8 @@ describe('sync-template-source', () => {
   test('copies reusable files, adapts app identity, and preserves template-owned setup', () => {
     const result = spawnSync(
       process.execPath,
-      [scriptPath, '--source-dir', source, '--target-dir', target],
-      { encoding: 'utf8' },
+      [scriptPath, '--source-dir', source, '--target-dir', target, '--source-repository', 'luvenapps/betterhabits', '--yes'],
+      { encoding: 'utf8', env: syncEnv },
     );
 
     expect(result.status).toBe(0);
@@ -210,7 +243,8 @@ describe('sync-template-source', () => {
     expect(fs.existsSync(path.join(target, '_github/runner/register-runner.sh'))).toBe(false);
     expect(fs.existsSync(path.join(target, 'scripts/old-managed-script.js'))).toBe(false);
     expect(fs.existsSync(path.join(target, '.mcp.json'))).toBe(false);
-    expect(fs.existsSync(path.join(target, '.template-sync-manifest.json'))).toBe(false);
+    expect(JSON.parse(fs.readFileSync(path.join(target, '.template-sync-manifest.json'), 'utf8'))
+      .sources['luvenapps/betterhabits'].main).toBe(git(source, 'rev-parse', 'HEAD'));
     expect(fs.existsSync(path.join(target, 'README.md'))).toBe(true);
     expect(fs.readFileSync(path.join(target, 'README.md'), 'utf8')).toBe('Source README\n');
     expect(fs.readFileSync(path.join(target, 'AGENTS.md'), 'utf8')).toBe('Template instructions\n');
@@ -225,5 +259,37 @@ describe('sync-template-source', () => {
     ).toBe('template sync test\n');
     expect(fs.existsSync(path.join(target, '.env.local'))).toBe(false);
     expect(fs.existsSync(path.join(target, 'docs/roadmap.md'))).toBe(false);
+
+    // Once the sync lands on main, the same source revision must create nothing.
+    git(remote, 'update-ref', 'refs/heads/main', git(target, 'rev-parse', 'HEAD'));
+    const before = git(target, 'for-each-ref', '--format=%(refname)', 'refs/heads');
+    const repeated = spawnSync(process.execPath,
+      [scriptPath, '--source-dir', source, '--target-dir', target, '--source-repository', 'luvenapps/betterhabits', '--yes'],
+      { encoding: 'utf8', env: syncEnv });
+    expect(repeated.status).toBe(0);
+    expect(repeated.stdout).toContain('Nothing to update.');
+    expect(repeated.stdout).not.toContain('update README.md');
+    expect(git(target, 'for-each-ref', '--format=%(refname)', 'refs/heads')).toBe(before);
+
   });
+
+  test('previews fetched main even when the local source checkout has newer unpushed commits', () => {
+    const remoteSha = git(source, 'rev-parse', 'HEAD');
+    writeFile(source, 'README.md', 'Unpushed source content\n');
+    git(source, 'add', 'README.md');
+    git(source, 'commit', '-qm', 'Unpushed source edit');
+    const localSha = git(source, 'rev-parse', 'HEAD');
+    const before = git(source, 'worktree', 'list', '--porcelain');
+    const result = spawnSync(process.execPath,
+      [scriptPath, '--source-dir', source, '--target-dir', target,
+        '--source-repository', 'luvenapps/betterhabits', '--dry-run'],
+      { encoding: 'utf8', env: syncEnv });
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain(`(${remoteSha})`);
+    expect(result.stdout).not.toContain(localSha);
+    expect(git(source, 'rev-parse', 'HEAD')).toBe(localSha);
+    expect(git(source, 'worktree', 'list', '--porcelain')).toBe(before);
+    expect(fs.readFileSync(path.join(target, 'README.md'), 'utf8')).toBe('Template README\n');
+  });
+
 });
