@@ -1,0 +1,6 @@
+# Template CI policy. Selected by MISE_ENV=ci; base runtimes stay in .mise.toml.
+[env]
+MAESTRO_VERSION = "2.0.6"
+FASTLANE_VERSION = "2.228.0"
+CREATE_EXPO_APP_VERSION = "latest"
+EAS_CLI_VERSION = "latest"
