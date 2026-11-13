@@ -10,9 +10,18 @@ if (process.env.METRO_CACHE_PATH) {
   config.cacheStores = [new FileStore({ root: path.resolve(process.env.METRO_CACHE_PATH) })];
 }
 
+// The compiler asks Metro to resolve imports before Expo's TypeScript alias layer.
+const expoResolveRequest = config.resolver.resolveRequest;
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  const target = moduleName.startsWith('@/')
+    ? path.resolve(__dirname, 'src', moduleName.slice(2))
+    : moduleName;
+  return expoResolveRequest
+    ? expoResolveRequest(context, target, platform)
+    : context.resolveRequest(context, target, platform);
+};
+
 // Enable WebAssembly support for expo-sqlite on web
 config.resolver.assetExts.push('wasm');
 
-module.exports = withTamagui(config, {
-  config: './tamagui.config.ts',
-});
+module.exports = withTamagui(config);

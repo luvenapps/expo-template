@@ -7,6 +7,18 @@ type MockCrashlytics = {
   log: jest.Mock;
 };
 
+const createCrashlyticsModule = (instance: MockCrashlytics) => ({
+  getCrashlytics: jest.fn(() => instance),
+  setAttribute: jest.fn((_service: unknown, name: string, value: string) =>
+    instance.setAttribute(name, value),
+  ),
+  recordError: jest.fn((_service: unknown, error: Error) => instance.recordError(error)),
+  setUserId: jest.fn((_service: unknown, userId: string) =>
+    Promise.resolve(instance.setUserId(userId)),
+  ),
+  log: jest.fn((_service: unknown, message: string) => instance.log(message)),
+});
+
 const loadBackend = ({
   firebaseEnabled,
   platform,
@@ -119,7 +131,7 @@ describe('crashlyticsBackend', () => {
       setUserId: jest.fn(),
       log: jest.fn(),
     };
-    const crashlyticsModule = { default: jest.fn(() => crashlyticsInstance) };
+    const crashlyticsModule = createCrashlyticsModule(crashlyticsInstance);
     const { backend } = loadBackend({
       firebaseEnabled: true,
       platform: 'ios',
@@ -143,7 +155,7 @@ describe('crashlyticsBackend', () => {
       setUserId: jest.fn(),
       log: jest.fn(),
     };
-    const crashlyticsModule = { default: jest.fn(() => crashlyticsInstance) };
+    const crashlyticsModule = createCrashlyticsModule(crashlyticsInstance);
     const { backend, mockLogger } = loadBackend({
       firebaseEnabled: true,
       platform: 'ios',
@@ -166,7 +178,7 @@ describe('crashlyticsBackend', () => {
       }),
       log: jest.fn(),
     };
-    const crashlyticsModule = { default: jest.fn(() => crashlyticsInstance) };
+    const crashlyticsModule = createCrashlyticsModule(crashlyticsInstance);
     const { backend, mockLogger } = loadBackend({
       firebaseEnabled: true,
       platform: 'ios',
@@ -189,7 +201,7 @@ describe('crashlyticsBackend', () => {
         throw new Error('boom');
       }),
     };
-    const crashlyticsModule = { default: jest.fn(() => crashlyticsInstance) };
+    const crashlyticsModule = createCrashlyticsModule(crashlyticsInstance);
     const { backend, mockLogger } = loadBackend({
       firebaseEnabled: true,
       platform: 'ios',

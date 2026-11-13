@@ -1,6 +1,7 @@
 import { describe, expect, it, jest, beforeEach, afterEach } from '@jest/globals';
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import { AndroidImportance } from 'expo-notifications';
 import dayjs from 'dayjs';
 import {
   registerNotificationCategories,
@@ -174,7 +175,7 @@ describe('scheduler', () => {
       ]);
       expect(Notifications.setNotificationChannelAsync).toHaveBeenCalledWith('REMINDERS', {
         name: 'Reminders',
-        importance: Notifications.AndroidImportance.DEFAULT,
+        importance: AndroidImportance.DEFAULT,
       });
     });
   });

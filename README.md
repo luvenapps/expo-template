@@ -1,18 +1,26 @@
-# 🧭 **APP_NAME**
+# 🧭 {{APP_NAME}}
+
+[![CI Coordinator - Self-hosted](https://github.com/luvenapps/{{APP_SLUG}}/actions/workflows/ci-selfhosted-coordinator.yml/badge.svg)](https://github.com/luvenapps/{{APP_SLUG}}/actions/workflows/ci-selfhosted-coordinator.yml)
+[![codecov](https://codecov.io/github/luvenapps/{{APP_SLUG}}/graph/badge.svg)](https://codecov.io/github/luvenapps/{{APP_SLUG}})
+
+![React Native](https://img.shields.io/badge/React%20Native-0.81.x-blue?logo=react)
+![Expo](https://img.shields.io/badge/Expo-54.x-000020?logo=expo)
+![Node](https://img.shields.io/badge/node-24.x-green?logo=node.js)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue?logo=typescript)
+![Prettier](https://img.shields.io/badge/code_style-Prettier-ff69b4.svg?logo=prettier)
+![ESLint](https://img.shields.io/badge/linted_with-ESLint-4B32C3?logo=eslint)
+![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF?logo=githubactions)
+![E2E Tests](https://img.shields.io/badge/E2E-Maestro-green?logo=android)
+![Status](https://img.shields.io/badge/status-active-success)
+![License](https://img.shields.io/badge/license-Proprietary-lightgrey)
 
 A modern, production-ready Expo React Native template with **TypeScript**, **Jest**, **ESLint**, **Prettier**, **Maestro (E2E)**, and a clean folder structure.
 
----
+## Create a new app
 
-## 🧩 Features
+Run `npx create-expo-app my-app --template /path/to/expo-template` from the parent directory for your new app. Postinstall fills app identity placeholders and restores hidden configuration files. Run the development commands below inside the generated app.
 
-✅ **Expo Router** — file-based navigation  
-✅ **Jest + Testing Library** — unit testing  
-✅ **ESLint + Prettier** — linting and formatting  
-✅ **Maestro** — cross-platform E2E testing  
-✅ **TypeScript** — strongly typed everywhere  
-✅ **Auto-bootstrap postinstall script** — sets `appId` and cleans itself up  
-✅ **Ready for GitHub templates** — no manual setup after creation
+See [the refresh guide](docs/template-refresh.md) for syncing this template from the source app.
 
 ---
 
@@ -20,7 +28,7 @@ A modern, production-ready Expo React Native template with **TypeScript**, **Jes
 
 Before running this project, ensure the following tools are installed on macOS.
 
-### 📱 Platform SDKs
+### 📱 1. Platform SDKs
 
 #### 🧭 Xcode (for iOS)
 
@@ -49,7 +57,7 @@ Verify installation:
 adb devices
 ```
 
-### 🧩 Homebrew (Package Manager)
+### 🧩 2. Homebrew (Package Manager)
 
 If you don’t already have [Homebrew](https://brew.sh/):
 
@@ -145,6 +153,14 @@ If you see a message about Java missing, run `mise install` and ensure your shel
 | Start local Supabase          | `npm run supabase:dev`    |
 | Deploy to production Supabase | `npm run supabase:deploy` |
 
+### Native development from Git worktrees
+
+Run `npm start` in one terminal, then run `npm run ios` or `npm run android` in another. The native commands use Expo's `--no-bundler` option, build and install the app, and connect it to the Metro server you started. Expo handles native project generation and dependency installation. They are the first-run commands when the app is not installed, and the rebuild commands after changing native dependencies or app configuration. A new Git worktree alone does not require a rebuild if a compatible development app is already installed.
+
+For JavaScript-only changes, run `npm start` and press `i` or `a` to open the installed iOS or Android app. Each Metro server serves the worktree where it was started. When running multiple worktrees, use a different port for each server and open the app against the intended server. Xcode is optional for native debugging.
+
+Before `npm start`, `npm run ios`, or `npm run android`, the setup helper copies a missing `.env.local` from the primary Git checkout. On `npm start`, it also copies any available missing iOS and Android Firebase files so Expo can resolve its config while you use an already-installed development app. Before a native platform command, it copies that platform's missing Firebase file. Existing worktree files are kept. If a file is unavailable, configure the documented environment variables; do not commit local config or generated native folders.
+
 ---
 
 ## 🔧 Domain Configuration
@@ -153,35 +169,33 @@ This project uses a centralized domain configuration system to make it template-
 
 ### `src/config/domain.config.ts`
 
-All app-specific and entity-specific naming is defined in a single configuration file.
-
-Example:
+All app-specific and entity-specific naming is defined in a single configuration file:
 
 ```typescript
 export const DOMAIN = {
   app: {
-    name: 'examples',
-    displayName: 'Examples',
-    database: 'examples.db',
-    syncTask: 'examples-sync-task',
-    storageKey: 'examples',
-    cursorStorageId: 'examples-sync-cursors',
+    name: '{{APP_DOMAIN_NAME}}',
+    displayName: '{{APP_DOMAIN_NAME}}',
+    database: '{{APP_DOMAIN_NAME}}.db',
+    syncTask: '{{APP_DOMAIN_NAME}}-sync-task',
+    storageKey: '{{APP_DOMAIN_NAME}}',
+    cursorStorageId: '{{APP_DOMAIN_NAME}}-sync-cursors',
   },
   entities: {
     primary: {
-      name: 'example',
-      plural: 'examples',
-      tableName: 'examples',
-      remoteTableName: 'examples',
-      displayName: 'Example',
+      name: '{{APP_ENTITY_NAME}}',
+      plural: '{{APP_DOMAIN_NAME}}',
+      tableName: '{{APP_DOMAIN_NAME}}',
+      remoteTableName: '{{APP_DOMAIN_NAME}}',
+      displayName: '{{APP_ENTITY_NAME}}',
     },
     entries: {
       name: 'entry',
       plural: 'entries',
-      tableName: 'example_entries',
-      remoteTableName: 'example_entries',
+      tableName: '{{APP_ENTITY_NAME}}_entries',
+      remoteTableName: '{{APP_ENTITY_NAME}}_entries',
       displayName: 'Entry',
-      foreignKey: 'exampleId',
+      foreignKey: '{{APP_ENTITY_NAME}}Id',
     },
     // ... reminders, devices
   },
@@ -283,100 +297,11 @@ See [docs/database-migrations.md](docs/database-migrations.md) for detailed migr
 - Use `supabase functions serve <name>` for local iteration—the CLI hot-reloads the Deno runtime.
 - The helper scripts `npm run supabase:dev` and `npm run supabase:deploy` wrap these commands for local and hosted workflows respectively.
 
-## 🗄️ Supabase Backend
-
-The sync contract now has a Supabase implementation that mirrors the SQLite schema and powers multi-device sync.
-
-### Local vs Hosted Supabase (choose an environment first)
-
-- **Local development**: Run `npm run supabase:dev`. The script:
-  - boots the Supabase Docker stack (`supabase start`)
-  - shows connection details (`supabase status --env`)
-  - applies migrations using `.env.local`
-  - serves edge functions with auto-reload (`supabase functions serve`)
-    Keep the terminal open; press Ctrl+C to stop everything (it calls `supabase stop` for you).
-- **Hosted Supabase**: Populate `.env.prod` (or CI secrets) with your hosted credentials and run `npm run supabase:deploy` locally or in CI. The script pushes migrations and deploys all edge functions with the provided credentials.
-- Keep credentials per environment; never mix local Docker keys with production.
-
-### Schema Migrations (Drizzle ORM)
-
-This project uses **Drizzle ORM** to generate Postgres migrations from TypeScript schemas. The schema is defined in `src/db/postgres/schema.ts` and uses the DOMAIN configuration to stay generic.
-
-**Generate migrations:**
-
-```bash
-npm run db:generate:postgres
-```
-
-This command:
-
-1. Generates Drizzle migration SQL in `supabase/migrations/`
-2. Auto-generates RLS policies from DOMAIN config
-3. Appends RLS policies to the migration file
-4. Handles Drizzle limitations (partial indexes, WHERE clauses)
-
-**Apply migrations:**
-
-```bash
-# Local development
-npm run supabase:dev  # Auto-applies migrations via .env.local
-
-# Production deployment
-npm run supabase:deploy  # Applies to hosted Supabase via .env.prod
-
-# Or apply directly
-npm run supabase:push  # Uses current Supabase CLI config
-```
-
-**Important**: When changing DOMAIN config (renaming tables/entities):
-
-1. Update `src/config/domain.config.ts`
-2. Update both `src/db/sqlite/schema.ts` and `src/db/postgres/schema.ts`
-3. Run `npm run db:generate` for SQLite
-4. Run `npm run db:generate:postgres` for Postgres
-5. The edge functions will automatically use the new names (they import DOMAIN)
-
-See [docs/database-migrations.md](docs/database-migrations.md) for detailed migration workflows.
-
-### Edge Functions
-
-- **Edge Functions** (`sync-push`, `sync-pull`, `export`) reside in `supabase/functions`.
-- The Supabase CLI ships with the repo (dev dependency). Use `npm exec supabase -- --version` to confirm it's available without a global install.
-- Deploy them individually:
-  ```bash
-  npx supabase functions deploy sync-push
-  npx supabase functions deploy sync-pull
-  npx supabase functions deploy export
-  ```
-- The functions import shared DOMAIN types from `supabase/functions/_shared/domain.ts`, so table names stay aligned with the template.
-- Use `supabase functions serve <name>` for local iteration—the CLI hot-reloads the Deno runtime.
-- The helper scripts `npm run supabase:dev` and `npm run supabase:deploy` wrap these commands for local and hosted workflows respectively.
-
 ---
 
-## 🧭 EAS Project Setup
+## 🧭 EAS Project
 
-Before using local or CI builds, create an EAS project for your app on Expo:
-
-1. Go to [https://expo.dev/](https://expo.dev/) and sign in or create an account.
-2. Create a new project and note its **Project ID**.
-3. Run the command `eas init --id <Project_ID>`
-
-It should update you `app.json` with
-
-```json
-{
-  "expo": {
-    "extra": {
-      "eas": {
-        "projectId": "YOUR_PROJECT_ID"
-      }
-    }
-  }
-}
-```
-
-This ID links your local or CI builds to your Expo project so that features like builds, submissions, and updates work correctly.
+Create an Expo project for your new app, run `eas init --id <PROJECT_ID>`, and set `extra.eas.projectId` in `app.config.ts`. Configure Expo Updates with your own project URL before publishing updates.
 
 ---
 
@@ -533,11 +458,11 @@ Before shipping preview/production builds, follow [`docs/build-size.md`](docs/bu
 
 ### Social authentication setup
 
-We implement Supabase’s [Expo React Native social auth quickstart](https://supabase.com/docs/guides/auth/quickstarts/with-expo-react-native-social-auth), which uses Expo Linking + AuthSession to drive Supabase’s hosted OAuth flows. Use that guide as your source of truth; the notes below capture **APP_NAME**-specific details.
+We implement Supabase’s [Expo React Native social auth quickstart](https://supabase.com/docs/guides/auth/quickstarts/with-expo-react-native-social-auth), which uses Expo Linking + AuthSession to drive Supabase’s hosted OAuth flows. Use that guide as your source of truth; the notes below capture {{APP_NAME}}-specific details.
 
 1. **Register callback URLs**
-   - In Supabase Studio’s _Authentication → URL Configuration_, add both `__APP_NAME__://auth-callback` and your deployed web URL (e.g., `https://yourdomain.com/auth-callback`).
-   - The native scheme `__APP_NAME__` is already declared in `app.json`; don’t change it unless you update every OAuth redirect.
+   - In Supabase Studio’s _Authentication → URL Configuration_, add both `{{APP_SLUG}}://auth-callback` and your deployed web URL (e.g., `https://yourdomain.com/auth-callback`).
+   - The native scheme `{{APP_SLUG}}` is already declared in `app.json`; don’t change it unless you update every OAuth redirect.
 2. **Enable providers (Studio)**
    - Go to _Authentication → Providers_ and toggle Apple + Google on.
    - Paste the client IDs/secrets from Apple Developer/Google Cloud. Supabase stores them securely and the Expo app reuses the same anon key.
@@ -546,13 +471,13 @@ We implement Supabase’s [Expo React Native social auth quickstart](https://sup
    - If you run Supabase locally (`npm run supabase:dev`), restart it so the provider config takes effect.
    - Restart Metro (`npm start`) and rebuild native dev clients after flipping providers on/off.
 4. **Test the flows**
-   - Native: tapping “Continue with …” opens the system browser overlay (Chrome Custom Tabs or ASWebAuthenticationSession). Once the Supabase redirect hits `__APP_NAME__://auth-callback`, the session listener updates Zustand.
+   - Native: tapping “Continue with …” opens the system browser overlay (Chrome Custom Tabs or ASWebAuthenticationSession). Once the Supabase redirect hits `{{APP_SLUG}}://auth-callback`, the session listener updates Zustand.
    - Web: the login page redirects in the same tab; after sign-in, Supabase sends the browser back to `https://<project>.supabase.co/auth/v1/callback` which returns to your app.
 
 **Provider-specific tips**:
 
 - **Apple** – You need an Apple Developer Program membership. Create a Services ID + Sign in with Apple key, set the callback to `https://<project>.supabase.co/auth/v1/callback`, and paste the credentials into Supabase.
-- **Google** – Create OAuth client IDs for iOS, Android, and Web. Use the bundle id/package `__APP_ID__` for native clients, and the Supabase callback URL for web.
+- **Google** – Create OAuth client IDs for iOS, Android, and Web. Use the bundle id/package `{{APP_ID}}` for native clients, and the Supabase callback URL for web.
 - **CLI-only setups** – If you prefer not to open the hosted Studio, you can configure providers through SQL per the quickstart doc (insert rows in `auth.external_providers`). Either way, the Expo client doesn’t need additional env vars beyond `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY`.
 
 After following the quickstart, the “Continue with Apple/Google” buttons in `app/(auth)/login.tsx` should launch the appropriate flows on iOS, Android, and web without additional code changes.
@@ -760,14 +685,14 @@ During development, you may need to clear your local databases to start with a c
 
 #### Clearing Local SQLite Database (Mobile App Data)
 
-**Option 1: Delete the SQLite file**
+**Option 1: Delete the SQLite file** (Nuclear option)
 
 ```bash
 # iOS Simulator
-rm ~/Library/Developer/CoreSimulator/Devices/*/data/Containers/Data/Application/*/Library/LocalDatabase/__APP_NAME__.db
+rm ~/Library/Developer/CoreSimulator/Devices/*/data/Containers/Data/Application/*/Library/LocalDatabase/{{APP_DOMAIN_NAME}}.db
 
 # Android Emulator
-adb shell run-as __APP_ID__ rm /data/data/__APP_ID__/databases/__APP_NAME__.db
+adb shell run-as {{APP_ID}} rm /data/data/{{APP_ID}}/databases/{{APP_DOMAIN_NAME}}.db
 
 # Or just uninstall/reinstall the app
 ```
@@ -837,297 +762,13 @@ Before resetting databases:
 - **[Database Migrations](docs/database-migrations.md)** - Schema changes and migration workflows
 - **[Schema Architecture](docs/schema-architecture.md)** - Why two schemas and how they stay in sync
 - **[Web Caching Strategy](docs/web-caching-strategy.md)** - Planned React Query implementation
-- **[Roadmap](docs/roadmap.md)** - Current status and upcoming milestones
 
 ---
-
-## 🛠️ Development Workflow
-
-### Initial Setup (First Time)
-
-Follow these steps in order when setting up the project for the first time:
-
-1. **Install prerequisites**
-   - Node 24.x
-   - Expo toolchain
-   - Container runtime (Rancher Desktop or Docker Desktop)
-   - Java 17 (for Android/Maestro)
-   - Xcode (macOS only, for iOS)
-
-2. **Install dependencies**:
-
-   ```bash
-   npm install
-   ```
-
-3. **Create `.env.local` file**:
-
-   ```bash
-   cp .env.example .env.local
-   ```
-
-4. **Generate database migrations** (IMPORTANT - Do this before starting!):
-
-   ```bash
-   npm run db:migrate
-   ```
-
-   This creates migration files for both SQLite (mobile) and Postgres (Supabase).
-
-5. **Start local Supabase** (Terminal 1):
-
-   ```bash
-   npm run supabase:dev
-   ```
-
-   - Starts Docker containers
-   - Applies Postgres migrations
-   - Serves Edge Functions
-   - Prints connection credentials
-   - **Keep this terminal running**
-
-6. **Start Expo development server** (Terminal 2):
-
-   ```bash
-   npm start
-   ```
-
-   - Automatically runs system checks (including migration validation)
-   - Starts Metro bundler
-   - Press `i` for iOS, `a` for Android, `w` for web
-
-7. **Run the app** and verify:
-   - ✅ App launches without errors
-   - ✅ You can create an account
-   - ✅ Data syncs between local (SQLite) and Supabase (Postgres)
-
-### Daily Development
-
-1. **Start Supabase** (Terminal 1):
-
-   ```bash
-   npm run supabase:dev
-   ```
-
-2. **Start Expo** (Terminal 2):
-
-   ```bash
-   npm start
-   ```
-
-3. **Code and iterate**:
-   - Save code → Metro hot reloads the UI automatically
-   - Edit Edge Functions → Supabase CLI auto-reloads them
-   - Run tests: `npm test -- --coverage`
-
-4. **Shut down**:
-   - Stop Expo: `Ctrl+C` (Terminal 2)
-   - Stop Supabase: `Ctrl+C` (Terminal 1)
-
-**Platform-Specific Storage:**
-
-| Platform        | Application Data                         | Session/Settings      | Offline Support                 |
-| --------------- | ---------------------------------------- | --------------------- | ------------------------------- |
-| **iOS/Android** | SQLite database                          | MMKV (native storage) | ✅ Full offline support         |
-| **Web**         | Direct Supabase queries (no caching yet) | localStorage          | ❌ Requires internet connection |
-
-**Current Limitations & Future Improvements:**
-
-- Web currently makes direct Supabase queries without caching
-- React Query is configured but not yet implemented for data fetching
-- **Future**: Implement React Query for in-memory caching and better UX
-- **Future**: Add React Query persisters + IndexedDB for offline web support
-
-### Making Schema Changes
-
-This project uses **Drizzle ORM** for both SQLite (local) and Postgres (Supabase) schemas. All schemas are driven by the DOMAIN configuration.
-
-**Step-by-step workflow:**
-
-1. **Edit BOTH schema files** (keep them in sync):
-   - `src/db/sqlite/schema.ts` (local mobile database)
-   - `src/db/postgres/schema.ts` (remote Supabase database)
-
-2. **Generate migrations IMMEDIATELY**:
-
-   ```bash
-   npm run db:migrate
-   ```
-
-   - ✅ Generates SQLite migration files → `src/db/sqlite/migrations/`
-   - ✅ Generates Postgres migration files → `supabase/migrations/`
-   - ✅ Auto-generates RLS policies for Postgres
-   - ⚠️ **Don't skip this step!** The app checks for missing migrations on startup.
-
-3. **Review the generated files**:
-   - Check migration SQL for correctness
-   - Verify RLS policies match your security requirements
-   - Run automated validation: `npm test -- --coverage`
-
-4. **Test locally**:
-
-   ```bash
-   # Restart Supabase to apply Postgres migrations
-   npm run supabase:dev   # Applies new Postgres migrations
-
-   # Restart the app to apply SQLite migrations
-   npm start              # Press 'r' to reload app on device
-   ```
-
-5. **Commit everything together**:
-
-   ```bash
-   git add src/db/*/schema.ts src/db/sqlite/migrations/ supabase/migrations/
-   git commit -m "feat: update database schema"
-   ```
-
-6. **Deploy to production** (when ready):
-   ```bash
-   npm run supabase:deploy
-   ```
-
-**Important Notes:**
-
-- ⚠️ Always run `npm run db:migrate` immediately after editing schemas
-- ✅ The `npm start` command automatically checks if migrations are missing
-- 📝 Both schema files must stay in sync - edit them together
-- 🔒 RLS policies are auto-generated from DOMAIN config
-
-**Having trouble?** See [docs/database-migrations.md](docs/database-migrations.md) for detailed workflows and troubleshooting.
-
----
-
-## 📚 Documentation
-
-### Architecture & Design
-
-- **[Architecture Overview](docs/architecture.md)** - System design, data flow, platform differences
-- **[Database Migrations](docs/database-migrations.md)** - Schema changes and migration workflows
-- **[Schema Architecture](docs/schema-architecture.md)** - Why two schemas and how they stay in sync
-- **[Web Caching Strategy](docs/web-caching-strategy.md)** - Planned React Query implementation
-- **[Roadmap](docs/roadmap.md)** - Current status and upcoming milestones
-
----
-
-## 🛠️ Development Workflow
-
-### Initial Setup
-
-1. **Install prerequisites** (Node 24.x, Expo toolchain, container runtime such as Rancher Desktop, Java 17, etc.).
-2. **Install dependencies**:
-   ```bash
-   npm install
-   ```
-3. **Start the local Supabase stack** (new terminal):
-
-   ```bash
-   npm run supabase:dev
-   ```
-
-   - Boots Docker services, prints credentials, applies migrations via `.env.local`, and serves edge functions. Leave this terminal running; press `Ctrl+C` to stop and clean up.
-
-4. **Launch Expo** (separate terminal):
-
-   ```bash
-   npm start
-   ```
-
-   - Use the Expo CLI prompts to run on iOS (`i`), Android (`a`), or web (`w`).
-
-5. **Iterate**:
-   - Save code → Metro hot reloads the UI.
-   - Edge functions auto-reload via the Supabase CLI.
-   - If Supabase isn't needed, skip step 3—the app still works against local SQLite (native) or in-memory state (web).
-6. **Run tests**:
-   ```bash
-   npm test
-   ```
-7. **Shut down**:
-   - Stop Expo (`Ctrl+C`).
-   - Stop the Supabase terminal (`Ctrl+C`); the helper script calls `supabase stop` for you.
-
-### Making Schema Changes
-
-This project uses **Drizzle ORM** for both SQLite (local) and Postgres (Supabase) schemas. All schemas are driven by the DOMAIN configuration.
-
-**Quick workflow:**
-
-1. **Update schemas** (keep both in sync):
-   - `src/db/sqlite/schema.ts` (local)
-   - `src/db/postgres/schema.ts` (remote)
-
-2. **Generate migrations**:
-
-   ```bash
-   npm run db:migrate
-   ```
-
-   This generates migrations for both SQLite and Postgres, including RLS policies.
-
-3. **Review generated files**:
-   - SQLite: `src/db/sqlite/migrations/`
-   - Postgres: `supabase/migrations/`
-   - Automated validation runs in test suite (validates RLS policies, indexes, foreign keys, etc.)
-
-4. **Test & deploy**:
-   ```bash
-   npm start              # SQLite migrations auto-apply
-   npm run supabase:dev   # Test Postgres locally
-   npm run supabase:deploy # Deploy to production
-   ```
-
-**That's it!** For detailed workflows, troubleshooting, and advanced usage, see [docs/database-migrations.md](docs/database-migrations.md).
-
----
-
-### 🧩 Misc
-
-Connect code coverage to a tool lile CodeCov. Generate a token in CodeCov and add it to the repo's Github secrets
-
-Add to your selfhosted workflow and ci-quality.yml after the unit test run with coverage.
-
-```
-- name: Install GPG
-  run: |
-    sudo apt-get update
-    sudo apt-get install -y gnupg
-
-- name: Upload coverage to Codecov
-  uses: codecov/codecov-action@v5
-  with:
-    token: ${{ secrets.CODECOV_TOKEN }}
-    files: ./coverage/lcov.info
-    slug: luvenapps/__APP_NAME__
-    flag: quality                         # Optional
-    fail_ci_if_error: false
-```
-
-### 🧩 Misc
-
-Connect code coverage to a tool lile CodeCov. Generate a token in CodeCov and add it to the repo's Github secrets
-
-Add to your selfhosted workflow and ci-quality.yml after the unit test run with coverage.
-
-```
-- name: Install GPG
-  run: |
-    sudo apt-get update
-    sudo apt-get install -y gnupg
-
-- name: Upload coverage to Codecov
-  uses: codecov/codecov-action@v5
-  with:
-    token: ${{ secrets.CODECOV_TOKEN }}
-    files: ./coverage/lcov.info
-    slug: luvenapps/__APP_NAME__
-    flag: quality                         # Optional
-    fail_ci_if_error: false
-```
 
 ## 🧭 External References
 
 - [Expo Docs](https://docs.expo.dev)
-- [React Native CLI Setup](https://reactnative.dev/docs/environment-setup)
+- [React Native](https://reactnative.dev/docs/environment-setup)
 - [Maestro Docs](https://docs.maestro.dev)
 - [Testing Library](https://testing-library.com/docs/react-native-testing-library/intro/)
 - [ESLint Config Expo](https://docs.expo.dev/guides/using-eslint/)
@@ -1139,3 +780,4 @@ Add to your selfhosted workflow and ci-quality.yml after the unit test run with 
 ---
 
 > 💡 Maintained with ❤️ — built for a smooth local-to-production React Native workflow.
+

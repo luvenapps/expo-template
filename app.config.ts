@@ -17,20 +17,13 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     owner: 'luvenapps',
 
     version: '1.0.0',
-    scheme: '__APP_NAME__',
+    scheme: '__APP_SLUG__',
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'automatic',
-    newArchEnabled: true,
-    jsEngine: 'hermes',
-
-    splash: {
-      image: './assets/splash-icon.png',
-      resizeMode: 'contain',
-      backgroundColor: '#ffffff',
-    },
 
     ios: {
+      deploymentTarget: '16.4',
       supportsTablet: true,
       bundleIdentifier: isPreview ? `${baseBundleId}.preview` : baseBundleId,
       buildNumber: '1',
@@ -51,14 +44,13 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         foregroundImage: './assets/adaptive-icon.png',
         backgroundColor: '#ffffff',
       },
-      edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
       package: isPreview ? `${baseAndroidPackage}.preview` : baseAndroidPackage,
       intentFilters: [
         {
           action: 'VIEW',
           category: ['BROWSABLE', 'DEFAULT'],
-          data: [{ scheme: '__APP_NAME__' }],
+          data: [{ scheme: '__APP_SLUG__' }],
         },
       ],
       googleServicesFile: './credentials/google-services.json',
@@ -72,6 +64,14 @@ export default ({ config }: ConfigContext): ExpoConfig => {
 
     plugins: [
       'expo-router',
+      [
+        'expo-splash-screen',
+        {
+          image: './assets/splash-icon.png',
+          resizeMode: 'contain',
+          backgroundColor: '#ffffff',
+        },
+      ],
       'expo-system-ui',
       'expo-sqlite',
       'expo-background-task',
@@ -84,15 +84,18 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         {
           android: {
             jsEngine: 'hermes',
+            minSdkVersion: 24,
+            kotlinVersion: '2.4.0',
           },
           ios: {
             jsEngine: 'hermes',
+            useFrameworks: 'dynamic',
           },
         },
       ],
+      './plugins/withAndroidGradleMemory.js',
       './plugins/withFirebaseCredentials.js',
       './plugins/withFirebaseConfig.js',
-      './plugins/withFirebaseModularHeaders.js',
       'expo-secure-store',
     ],
 
@@ -115,7 +118,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       : { policy: 'appVersion' }, // Production-friendly
 
     updates: {
-      url: 'UPDATE THIS',
+      url: 'https://u.expo.dev/update-this',
     },
   };
 };

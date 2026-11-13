@@ -1,6 +1,6 @@
 import { useSessionStore } from '@/auth/session';
 import { useThemeContext } from '@/ui/theme/ThemeProvider';
-import { Home, Settings } from '@tamagui/lucide-icons';
+import { Home, Settings } from '@/ui/icons';
 import { Redirect, router, Tabs } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Platform } from 'react-native';
@@ -36,15 +36,23 @@ export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: palette.accent,
-        tabBarInactiveTintColor: palette.accentMuted,
+        headerStyle: { backgroundColor: String(palette.background) },
+        headerTintColor: String(palette.text),
+        headerTitleStyle: { color: String(palette.text) },
+        headerShadowVisible: false,
+        tabBarStyle: {
+          backgroundColor: String(palette.background),
+          borderTopColor: String(palette.background),
+        },
+        tabBarActiveTintColor: String(palette.accent),
+        tabBarInactiveTintColor: String(palette.accentMuted),
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: t('tabs.home'),
-          tabBarIcon: ({ color }) => <TabIcon color={color} Icon={Home} />,
+          tabBarIcon: ({ color }) => <TabIcon color={String(color)} Icon={Home} />,
         }}
       />
       <Tabs.Screen
@@ -53,7 +61,7 @@ export default function TabsLayout() {
         options={{
           title: t('common.settings'),
           href: settingsHref,
-          tabBarIcon: ({ color }) => <TabIcon color={color} Icon={Settings} />,
+          tabBarIcon: ({ color }) => <TabIcon color={String(color)} Icon={Settings} />,
           headerShown: false,
         }}
       />

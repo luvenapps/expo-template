@@ -1,4 +1,5 @@
 import { fireEvent, render } from '@testing-library/react-native';
+import { mockTranslate, mockTranslationLanguage } from '../../../helpers/i18nTranslationMock';
 
 const mockOpenBrowserAsync = jest.fn();
 const mockUseFeatureFlag = jest.fn();
@@ -19,7 +20,8 @@ jest.mock('@/errors/useFriendlyErrorHandler', () => ({
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => key,
+    t: mockTranslate,
+    i18n: { language: mockTranslationLanguage.current },
   }),
 }));
 
@@ -44,22 +46,37 @@ describe('PrivacyScreen', () => {
     mockOpenBrowserAsync.mockReset();
     mockUseFeatureFlag.mockReset();
     mockFriendlyError.mockReset();
+    mockTranslationLanguage.current = 'en';
   });
 
-  it('shows fallback privacy content when no url is provided', () => {
+  it('shows fallback privacy content when no url is provided', async () => {
     mockUseFeatureFlag.mockReturnValue({ value: '' });
-    const { queryByText } = render(<PrivacyScreen />);
+    const { getByText, queryByText } = await render(<PrivacyScreen />);
 
-    expect(queryByText('settings.openPrivacy')).toBeNull();
+    expect(queryByText('Open Privacy Policy')).toBeNull();
+    expect(getByText('Last updated: January 28, 2026')).toBeDefined();
+    expect(getByText('1. Information We Collect')).toBeDefined();
   });
 
-  it('opens the browser when a privacy url exists', () => {
+  it('shows translated privacy content in Spanish when Spanish is selected', async () => {
+    mockTranslationLanguage.current = 'es';
+    mockUseFeatureFlag.mockReturnValue({ value: '' });
+    const { getByText, queryByText } = await render(<PrivacyScreen />);
+
+    expect(getByText('Política de privacidad')).toBeDefined();
+    expect(getByText('Última actualización: 28 de enero de 2026')).toBeDefined();
+    expect(getByText('1. Información que recopilamos')).toBeDefined();
+    expect(getByText(/Su privacidad es importante para nosotros/)).toBeDefined();
+    expect(queryByText('1. Information We Collect')).toBeNull();
+  });
+
+  it('opens the browser when a privacy url exists', async () => {
     const url = 'https://example.com/privacy';
     mockUseFeatureFlag.mockReturnValue({ value: url });
-    const { getByText } = render(<PrivacyScreen />);
+    const { getByText } = await render(<PrivacyScreen />);
 
-    const button = getByText('settings.openPrivacy');
-    fireEvent.press(button);
+    const button = getByText('Open Privacy Policy');
+    await fireEvent.press(button);
 
     expect(mockOpenBrowserAsync).toHaveBeenCalledWith(url);
   });
@@ -69,9 +86,9 @@ describe('PrivacyScreen', () => {
     const error = new Error('open failed');
     mockUseFeatureFlag.mockReturnValue({ value: url });
     mockOpenBrowserAsync.mockRejectedValueOnce(error);
-    const { getByText } = render(<PrivacyScreen />);
+    const { getByText } = await render(<PrivacyScreen />);
 
-    await fireEvent.press(getByText('settings.openPrivacy'));
+    await fireEvent.press(getByText('Open Privacy Policy'));
 
     expect(mockFriendlyError).toHaveBeenCalledWith(error, { surface: 'settings.privacy' });
   });

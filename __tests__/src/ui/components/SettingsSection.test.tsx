@@ -49,17 +49,17 @@ import { Text } from 'react-native';
 import { TamaguiProvider, Theme } from 'tamagui';
 import { tamaguiConfig } from '../../../../tamagui.config';
 
-const renderWithProviders = (component: React.ReactElement) => {
-  return render(
-    <TamaguiProvider config={tamaguiConfig}>
+const renderWithProviders = async (component: React.ReactElement) => {
+  return await render(
+    <TamaguiProvider config={tamaguiConfig} defaultTheme="light">
       <Theme name="light">{component}</Theme>
     </TamaguiProvider>,
   );
 };
 
 describe('SettingsSection', () => {
-  it('should render with title and children', () => {
-    const { getByText } = renderWithProviders(
+  it('should render with title and children', async () => {
+    const { getByText } = await renderWithProviders(
       <SettingsSection title="Test Section">
         <Text>Child content</Text>
       </SettingsSection>,
@@ -69,8 +69,8 @@ describe('SettingsSection', () => {
     expect(getByText('Child content')).toBeDefined();
   });
 
-  it('should render without description', () => {
-    const { queryByText } = renderWithProviders(
+  it('should render without description', async () => {
+    const { queryByText } = await renderWithProviders(
       <SettingsSection title="Test Section">
         <Text>Child content</Text>
       </SettingsSection>,
@@ -79,8 +79,8 @@ describe('SettingsSection', () => {
     expect(queryByText('Test Section')).toBeDefined();
   });
 
-  it('should render with description', () => {
-    const { getByText } = renderWithProviders(
+  it('should render with description', async () => {
+    const { getByText } = await renderWithProviders(
       <SettingsSection title="Test Section" description="This is a description">
         <Text>Child content</Text>
       </SettingsSection>,
@@ -89,8 +89,8 @@ describe('SettingsSection', () => {
     expect(getByText('This is a description')).toBeDefined();
   });
 
-  it('should render with string footer', () => {
-    const { getByText } = renderWithProviders(
+  it('should render with string footer', async () => {
+    const { getByText } = await renderWithProviders(
       <SettingsSection title="Test Section" footer="This is a footer">
         <Text>Child content</Text>
       </SettingsSection>,
@@ -99,8 +99,8 @@ describe('SettingsSection', () => {
     expect(getByText('This is a footer')).toBeDefined();
   });
 
-  it('should render with ReactNode footer', () => {
-    const { getByText } = renderWithProviders(
+  it('should render with ReactNode footer', async () => {
+    const { getByText } = await renderWithProviders(
       <SettingsSection title="Test Section" footer={<Text>Custom footer</Text>}>
         <Text>Child content</Text>
       </SettingsSection>,
@@ -109,8 +109,8 @@ describe('SettingsSection', () => {
     expect(getByText('Custom footer')).toBeDefined();
   });
 
-  it('should render without footer', () => {
-    const { getByText } = renderWithProviders(
+  it('should render without footer', async () => {
+    const { getByText } = await renderWithProviders(
       <SettingsSection title="Test Section">
         <Text>Child content</Text>
       </SettingsSection>,
@@ -119,8 +119,8 @@ describe('SettingsSection', () => {
     expect(getByText('Test Section')).toBeDefined();
   });
 
-  it('should render with icon', () => {
-    const { getByText } = renderWithProviders(
+  it('should render with icon', async () => {
+    const { getByText } = await renderWithProviders(
       <SettingsSection title="Test Section" icon={<Text>Icon</Text>}>
         <Text>Child content</Text>
       </SettingsSection>,
@@ -130,8 +130,8 @@ describe('SettingsSection', () => {
     expect(getByText('Test Section')).toBeDefined();
   });
 
-  it('should apply centered alignment', () => {
-    const { getByText } = renderWithProviders(
+  it('should apply centered alignment', async () => {
+    const { getByText } = await renderWithProviders(
       <SettingsSection title="Test Section" align="center">
         <Text>Child content</Text>
       </SettingsSection>,
@@ -140,8 +140,8 @@ describe('SettingsSection', () => {
     expect(getByText('Test Section')).toBeDefined();
   });
 
-  it('should apply start alignment by default', () => {
-    const { getByText } = renderWithProviders(
+  it('should apply start alignment by default', async () => {
+    const { getByText } = await renderWithProviders(
       <SettingsSection title="Test Section">
         <Text>Child content</Text>
       </SettingsSection>,
@@ -150,8 +150,8 @@ describe('SettingsSection', () => {
     expect(getByText('Test Section')).toBeDefined();
   });
 
-  it('should render children inside fragments', () => {
-    const { getByText } = renderWithProviders(
+  it('should render children inside fragments', async () => {
+    const { getByText } = await renderWithProviders(
       <SettingsSection title="Test Section">
         <>
           <Text>First fragment child</Text>
@@ -164,8 +164,8 @@ describe('SettingsSection', () => {
     expect(getByText('Second fragment child')).toBeDefined();
   });
 
-  it('should render non-element children using fallback keys', () => {
-    const { getByText } = renderWithProviders(
+  it('should render non-element children using fallback keys', async () => {
+    const { getByText } = await renderWithProviders(
       <SettingsSection title="Test Section">
         {'Plain text child'}
         <Text>Element child</Text>
@@ -176,8 +176,8 @@ describe('SettingsSection', () => {
     expect(getByText('Element child')).toBeDefined();
   });
 
-  it('should render children with explicit react keys', () => {
-    const { getByText } = renderWithProviders(
+  it('should render children with explicit react keys', async () => {
+    const { getByText } = await renderWithProviders(
       <SettingsSection title="Keyed Section">
         <Text key="custom-key">Keyed child</Text>
       </SettingsSection>,

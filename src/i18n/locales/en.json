@@ -285,6 +285,138 @@
     "privacyTitle": "Privacy Policy",
     "openTerms": "Open Terms of Service",
     "openPrivacy": "Open Privacy Policy",
+    "termsContent": {
+      "lastUpdated": "Last updated: January 28, 2026",
+      "introduction": "Welcome to {{appName}} (\"the App\"), operated by {{companyName}} (\"we\", \"us\", or \"our\"). By accessing or using the App, you agree to be bound by these Terms of Service (\"Terms\"). If you do not agree to these Terms, please do not use the App.",
+      "sections": [
+        {
+          "id": "eligibility",
+          "heading": "1. Eligibility",
+          "body": "You must be at least 13 years old (or the minimum legal age required in your jurisdiction) to use the App. By using the App, you represent and warrant that you meet this requirement."
+        },
+        {
+          "id": "accountAccess",
+          "heading": "2. Account & Access",
+          "body": "You are responsible for maintaining the confidentiality of your account credentials. You agree to provide accurate and complete information when creating or using an account. We reserve the right to suspend or terminate access if these Terms are violated."
+        },
+        {
+          "id": "useOfApp",
+          "heading": "3. Use of the App",
+          "body": "You agree to use the App only for lawful purposes and in accordance with these Terms. You may not: reverse engineer, decompile, or attempt to extract source code; interfere with or disrupt the App or its services; use the App in a way that violates any applicable laws or regulations."
+        },
+        {
+          "id": "userDataContent",
+          "heading": "4. User Data & Content",
+          "body": "Any data or content you create in the App remains yours. By using the App, you grant Luven LLC permission to store and process your data solely to provide and improve the App's functionality. We do not claim ownership over your personal data or content. For details on how data is collected and handled, please refer to our Privacy Policy."
+        },
+        {
+          "id": "notificationsCommunications",
+          "heading": "5. Notifications & Communications",
+          "body": "If you enable notifications, you consent to receiving in-app or push notifications related to your use of the App. You can disable notifications at any time through your device or app settings."
+        },
+        {
+          "id": "availabilityChanges",
+          "heading": "6. Availability & Changes",
+          "body": "The App is provided on an \"as is\" and \"as available\" basis. We may modify, suspend, or discontinue any part of the App at any time without notice. We may update these Terms periodically. Continued use of the App after changes are posted constitutes acceptance of the updated Terms."
+        },
+        {
+          "id": "intellectualProperty",
+          "heading": "7. Intellectual Property",
+          "body": "All trademarks, logos, designs, and app content (excluding user-generated data) are the property of Luven LLC and are protected by applicable intellectual property laws. You may not use them without prior written permission."
+        },
+        {
+          "id": "disclaimerWarranties",
+          "heading": "8. Disclaimer of Warranties",
+          "body": "We make no warranties or guarantees that: the App will be uninterrupted or error-free; data will always be available or preserved; the App will meet your specific needs or expectations. Use of the App is at your own risk."
+        },
+        {
+          "id": "limitationLiability",
+          "heading": "9. Limitation of Liability",
+          "body": "To the maximum extent permitted by law, Luven LLC shall not be liable for any indirect, incidental, consequential, or special damages arising out of or related to your use of the App."
+        },
+        {
+          "id": "termination",
+          "heading": "10. Termination",
+          "body": "We may suspend or terminate your access to the App at any time if you violate these Terms or misuse the service."
+        },
+        {
+          "id": "governingLaw",
+          "heading": "11. Governing Law",
+          "body": "These Terms are governed by the laws of the United States, without regard to conflict-of-law principles."
+        },
+        {
+          "id": "contact",
+          "heading": "12. Contact",
+          "body": "If you have any questions about these Terms, please contact us:\nEmail: {{supportEmail}}\nCompany: {{companyName}}"
+        }
+      ]
+    },
+    "privacyContent": {
+      "lastUpdated": "Last updated: January 28, 2026",
+      "introduction": "{{appName}} (\"the App\") is operated by {{companyName}} (\"we\", \"us\", or \"our\"). Your privacy is important to us. This Privacy Policy explains how we collect, use, store, and protect your information when you use the App. By using the App, you agree to the practices described in this Privacy Policy.",
+      "sections": [
+        {
+          "id": "informationCollected",
+          "heading": "1. Information We Collect",
+          "body": "We collect only the information necessary to provide and improve the App."
+        },
+        {
+          "id": "informationProvided",
+          "heading": "a. Information You Provide",
+          "body": "Account information (such as email address, if you choose to sign in); habit data, reminders, and app preferences you create within the App; support communications you send to us (e.g., emails)."
+        },
+        {
+          "id": "automaticallyCollectedInformation",
+          "heading": "b. Automatically Collected Information",
+          "body": "Basic device information (platform, OS version); app usage information needed for functionality and debugging; crash and error logs (if enabled on your device). We do not collect precise location data."
+        },
+        {
+          "id": "informationUse",
+          "heading": "2. How We Use Your Information",
+          "body": "We use your information to provide core app functionality; sync and store your data (if applicable); improve app performance and reliability; respond to support requests; send optional notifications you enable. We do not use your data for advertising purposes."
+        },
+        {
+          "id": "dataStorageSecurity",
+          "heading": "3. Data Storage & Security",
+          "body": "Your data is stored securely using industry-standard practices. We take reasonable measures to protect your information from unauthorized access, loss, or misuse. No system is 100% secure, but we continuously work to safeguard your data."
+        },
+        {
+          "id": "dataSharing",
+          "heading": "4. Data Sharing",
+          "body": "We do not sell, rent, or trade your personal data. We may share limited data only with service providers that help operate the App (e.g., hosting, crash reporting), strictly for functionality; when required by law or to comply with legal obligations; to protect the rights, safety, or security of users or the App."
+        },
+        {
+          "id": "notifications",
+          "heading": "5. Notifications",
+          "body": "If you enable notifications, the App may send you reminders or updates. You can disable notifications at any time through your device or app settings."
+        },
+        {
+          "id": "dataRetentionDeletion",
+          "heading": "6. Data Retention & Deletion",
+          "body": "Your data is retained only as long as necessary to provide the App. You may delete your account or local data through the App's settings. When data is deleted, it is removed from active systems within a reasonable timeframe."
+        },
+        {
+          "id": "childrensPrivacy",
+          "heading": "7. Children's Privacy",
+          "body": "The App is not intended for children under the age of 13. We do not knowingly collect personal information from children. If you believe a child has provided us with personal data, please contact us and we will take appropriate action."
+        },
+        {
+          "id": "yourRights",
+          "heading": "8. Your Rights",
+          "body": "Depending on your jurisdiction, you may have the right to access your personal data, request correction or deletion of your data, or withdraw consent where applicable. To exercise these rights, contact us at the email below."
+        },
+        {
+          "id": "policyChanges",
+          "heading": "9. Changes to This Policy",
+          "body": "We may update this Privacy Policy from time to time. Any changes will be reflected by updating the \"Last updated\" date. Continued use of the App means you accept the revised policy."
+        },
+        {
+          "id": "contactUs",
+          "heading": "10. Contact Us",
+          "body": "If you have questions or concerns about this Policy, contact us at:\nEmail: {{supportEmail}}\nCompany: {{companyName}}"
+        }
+      ]
+    },
     "remotePushTitle": "Remote push",
     "remotePushDescription": "Cloud-delivered push for reminders, summaries, and updates.",
     "archiveBeforeToday": "Before today",

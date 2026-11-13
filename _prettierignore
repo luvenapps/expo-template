@@ -7,3 +7,5 @@ ios
 .tamagui
 .github/runner/_
 package-lock.json
+.claude
+.codex

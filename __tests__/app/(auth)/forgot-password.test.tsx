@@ -77,6 +77,7 @@ jest.mock('tamagui', () => {
     View: createForwarded(View),
     Card: createForwarded(View),
     Form,
+    useTheme: () => ({ colorMuted: { get: () => '#777777' } }),
     useThemeName: jest.fn(() => 'light'),
   };
 });
@@ -149,48 +150,48 @@ describe('ForgotPasswordScreen', () => {
     );
   });
 
-  it('renders forgot password screen with email field', () => {
-    const { getByTestId } = render(<ForgotPasswordScreen />);
+  it('renders forgot password screen with email field', async () => {
+    const { getByTestId } = await render(<ForgotPasswordScreen />);
 
     expect(getByTestId('email-input')).toBeDefined();
     expect(getByTestId('send-reset-link-button')).toBeDefined();
     expect(getByTestId('back-to-sign-in-button')).toBeDefined();
   });
 
-  it('disables submit button when email is empty', () => {
-    const { getByTestId } = render(<ForgotPasswordScreen />);
+  it('disables submit button when email is empty', async () => {
+    const { getByTestId } = await render(<ForgotPasswordScreen />);
 
     const submitButton = getByTestId('send-reset-link-button');
     expect(submitButton.props.accessibilityState?.disabled).toBe(true);
   });
 
-  it('disables submit button when email is invalid', () => {
-    const { getByTestId } = render(<ForgotPasswordScreen />);
+  it('disables submit button when email is invalid', async () => {
+    const { getByTestId } = await render(<ForgotPasswordScreen />);
 
     const emailInput = getByTestId('email-input');
     const submitButton = getByTestId('send-reset-link-button');
 
-    fireEvent.changeText(emailInput, 'invalid-email');
+    await fireEvent.changeText(emailInput, 'invalid-email');
 
     expect(submitButton.props.accessibilityState?.disabled).toBe(true);
   });
 
-  it('enables submit button when email is valid', () => {
-    const { getByTestId } = render(<ForgotPasswordScreen />);
+  it('enables submit button when email is valid', async () => {
+    const { getByTestId } = await render(<ForgotPasswordScreen />);
 
     const emailInput = getByTestId('email-input');
     const submitButton = getByTestId('send-reset-link-button');
 
-    fireEvent.changeText(emailInput, 'test@example.com');
+    await fireEvent.changeText(emailInput, 'test@example.com');
 
     expect(submitButton.props.accessibilityState?.disabled).toBe(false);
   });
 
   it('shows error toast when submitting with empty email', async () => {
-    const { getByTestId } = render(<ForgotPasswordScreen />);
+    const { getByTestId } = await render(<ForgotPasswordScreen />);
 
     const submitButton = getByTestId('send-reset-link-button');
-    fireEvent.press(submitButton);
+    await fireEvent.press(submitButton);
 
     await waitFor(() => {
       expect(mockedSendPasswordReset).not.toHaveBeenCalled();
@@ -198,10 +199,10 @@ describe('ForgotPasswordScreen', () => {
   });
 
   it('shows inline error when submitting with empty email input', async () => {
-    const { getByTestId, getByText } = render(<ForgotPasswordScreen />);
+    const { getByTestId, getByText } = await render(<ForgotPasswordScreen />);
 
     const emailInput = getByTestId('email-input');
-    fireEvent(emailInput, 'submitEditing');
+    await fireEvent(emailInput, 'submitEditing');
 
     await waitFor(() => {
       expect(getByText('auth.reset.missingEmailDescription')).toBeTruthy();
@@ -209,13 +210,13 @@ describe('ForgotPasswordScreen', () => {
   });
 
   it('shows error toast when submitting with invalid email format', async () => {
-    const { getByTestId } = render(<ForgotPasswordScreen />);
+    const { getByTestId } = await render(<ForgotPasswordScreen />);
 
     const emailInput = getByTestId('email-input');
     const submitButton = getByTestId('send-reset-link-button');
 
-    fireEvent.changeText(emailInput, 'not-an-email');
-    fireEvent.press(submitButton);
+    await fireEvent.changeText(emailInput, 'not-an-email');
+    await fireEvent.press(submitButton);
 
     await waitFor(() => {
       expect(mockedSendPasswordReset).not.toHaveBeenCalled();
@@ -225,13 +226,13 @@ describe('ForgotPasswordScreen', () => {
   it('calls sendPasswordReset and navigates on success', async () => {
     mockedSendPasswordReset.mockResolvedValue({ success: true });
 
-    const { getByTestId } = render(<ForgotPasswordScreen />);
+    const { getByTestId } = await render(<ForgotPasswordScreen />);
 
     const emailInput = getByTestId('email-input');
     const submitButton = getByTestId('send-reset-link-button');
 
-    fireEvent.changeText(emailInput, 'test@example.com');
-    fireEvent.press(submitButton);
+    await fireEvent.changeText(emailInput, 'test@example.com');
+    await fireEvent.press(submitButton);
 
     await waitFor(() => {
       expect(mockedSendPasswordReset).toHaveBeenCalledWith('test@example.com');
@@ -248,13 +249,13 @@ describe('ForgotPasswordScreen', () => {
       error: 'Reset failed',
     });
 
-    const { getByTestId } = render(<ForgotPasswordScreen />);
+    const { getByTestId } = await render(<ForgotPasswordScreen />);
 
     const emailInput = getByTestId('email-input');
     const submitButton = getByTestId('send-reset-link-button');
 
-    fireEvent.changeText(emailInput, 'test@example.com');
-    fireEvent.press(submitButton);
+    await fireEvent.changeText(emailInput, 'test@example.com');
+    await fireEvent.press(submitButton);
 
     await waitFor(() => {
       expect(mockedSendPasswordReset).toHaveBeenCalledWith('test@example.com');
@@ -276,10 +277,10 @@ describe('ForgotPasswordScreen', () => {
       friendlyError: { code: 'unknown', type: 'error', titleKey: 'errors.custom' },
     });
 
-    const { getByTestId } = render(<ForgotPasswordScreen />);
+    const { getByTestId } = await render(<ForgotPasswordScreen />);
 
-    fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
-    fireEvent.press(getByTestId('send-reset-link-button'));
+    await fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
+    await fireEvent.press(getByTestId('send-reset-link-button'));
 
     await waitFor(() => {
       expect(friendly).toHaveBeenCalled();
@@ -289,24 +290,24 @@ describe('ForgotPasswordScreen', () => {
   it('trims email before submitting', async () => {
     mockedSendPasswordReset.mockResolvedValue({ success: true });
 
-    const { getByTestId } = render(<ForgotPasswordScreen />);
+    const { getByTestId } = await render(<ForgotPasswordScreen />);
 
     const emailInput = getByTestId('email-input');
     const submitButton = getByTestId('send-reset-link-button');
 
-    fireEvent.changeText(emailInput, '  test@example.com  ');
-    fireEvent.press(submitButton);
+    await fireEvent.changeText(emailInput, '  test@example.com  ');
+    await fireEvent.press(submitButton);
 
     await waitFor(() => {
       expect(mockedSendPasswordReset).toHaveBeenCalledWith('test@example.com');
     });
   });
 
-  it('navigates back to login when back button is pressed', () => {
-    const { getByTestId } = render(<ForgotPasswordScreen />);
+  it('navigates back to login when back button is pressed', async () => {
+    const { getByTestId } = await render(<ForgotPasswordScreen />);
 
     const backButton = getByTestId('back-to-sign-in-button');
-    fireEvent.press(backButton);
+    await fireEvent.press(backButton);
 
     expect(mockReplace).toHaveBeenCalledWith('/(auth)/login');
   });
@@ -316,13 +317,13 @@ describe('ForgotPasswordScreen', () => {
       () => new Promise((resolve) => setTimeout(() => resolve({ success: true }), 100)),
     );
 
-    const { getByTestId } = render(<ForgotPasswordScreen />);
+    const { getByTestId } = await render(<ForgotPasswordScreen />);
 
     const emailInput = getByTestId('email-input');
     const submitButton = getByTestId('send-reset-link-button');
 
-    fireEvent.changeText(emailInput, 'test@example.com');
-    fireEvent.press(submitButton);
+    await fireEvent.changeText(emailInput, 'test@example.com');
+    await fireEvent.press(submitButton);
 
     // Button should be disabled while submitting
     await waitFor(() => {
@@ -343,9 +344,9 @@ describe('ForgotPasswordScreen', () => {
     mockedFriendlyError.mockReturnValue(friendly);
     mockedSendPasswordReset.mockResolvedValue({ success: false, error: 'Reset failed' });
 
-    const { getByTestId, getByText } = render(<ForgotPasswordScreen />);
-    fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
-    fireEvent.press(getByTestId('send-reset-link-button'));
+    const { getByTestId, getByText } = await render(<ForgotPasswordScreen />);
+    await fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
+    await fireEvent.press(getByTestId('send-reset-link-button'));
 
     await waitFor(() => {
       expect(getByText('friendly-text')).toBeTruthy();
@@ -364,9 +365,9 @@ describe('ForgotPasswordScreen', () => {
     mockedFriendlyError.mockReturnValue(friendly);
     mockedSendPasswordReset.mockResolvedValue({ success: false, error: 'Reset failed' });
 
-    const { getByTestId, getByText } = render(<ForgotPasswordScreen />);
-    fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
-    fireEvent.press(getByTestId('send-reset-link-button'));
+    const { getByTestId, getByText } = await render(<ForgotPasswordScreen />);
+    await fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
+    await fireEvent.press(getByTestId('send-reset-link-button'));
 
     await waitFor(() => {
       expect(getByText('auth.reset.errorUnknown')).toBeTruthy();
@@ -381,9 +382,9 @@ describe('ForgotPasswordScreen', () => {
     mockedFriendlyError.mockReturnValue(friendly);
     mockedSendPasswordReset.mockResolvedValue({ success: false, error: 'Reset failed' });
 
-    const { getByTestId, getByText } = render(<ForgotPasswordScreen />);
-    fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
-    fireEvent.press(getByTestId('send-reset-link-button'));
+    const { getByTestId, getByText } = await render(<ForgotPasswordScreen />);
+    await fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
+    await fireEvent.press(getByTestId('send-reset-link-button'));
 
     await waitFor(() => {
       expect(getByText('Friendly title')).toBeTruthy();
@@ -398,9 +399,9 @@ describe('ForgotPasswordScreen', () => {
     mockedFriendlyError.mockReturnValue(friendly);
     mockedSendPasswordReset.mockResolvedValue({ success: false, error: 'Server said no' });
 
-    const { getByTestId, getByText } = render(<ForgotPasswordScreen />);
-    fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
-    fireEvent.press(getByTestId('send-reset-link-button'));
+    const { getByTestId, getByText } = await render(<ForgotPasswordScreen />);
+    await fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
+    await fireEvent.press(getByTestId('send-reset-link-button'));
 
     await waitFor(() => {
       expect(getByText('Server said no')).toBeTruthy();
@@ -415,16 +416,16 @@ describe('ForgotPasswordScreen', () => {
     mockedFriendlyError.mockReturnValue(friendly);
     mockedSendPasswordReset.mockResolvedValue({ success: false });
 
-    const { getByTestId, getByText } = render(<ForgotPasswordScreen />);
-    fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
-    fireEvent.press(getByTestId('send-reset-link-button'));
+    const { getByTestId, getByText } = await render(<ForgotPasswordScreen />);
+    await fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
+    await fireEvent.press(getByTestId('send-reset-link-button'));
 
     await waitFor(() => {
       expect(getByText('auth.reset.errorUnknown')).toBeTruthy();
     });
   });
 
-  it('uses web separator margin on web', () => {
+  it('uses web separator margin on web', async () => {
     const originalDescriptor = Object.getOwnPropertyDescriptor(Platform, 'OS');
     Object.defineProperty(Platform, 'OS', {
       configurable: true,
@@ -432,9 +433,9 @@ describe('ForgotPasswordScreen', () => {
     });
 
     try {
-      const { toJSON } = render(<ForgotPasswordScreen />);
+      const { toJSON } = await render(<ForgotPasswordScreen />);
       const tree = toJSON();
-      const hasWebSeparatorMargin = JSON.stringify(tree).includes('"marginTop":"$0"');
+      const hasWebSeparatorMargin = JSON.stringify(tree).includes('"marginTop":"0"');
       expect(hasWebSeparatorMargin).toBe(true);
     } finally {
       if (originalDescriptor) {

@@ -32,7 +32,7 @@ jest.mock('@/ui/theme/ThemeProvider', () => {
 });
 
 // Mock Tamagui Lucide Icons
-jest.mock('@tamagui/lucide-icons', () => {
+jest.mock('@/ui/icons', () => {
   const mockReact = jest.requireActual('react');
   const FakeIcon = ({ testID }: { testID: string }) => mockReact.createElement('View', { testID });
   return {
@@ -140,9 +140,9 @@ jest.mock('expo-router', () => ({
 const mockedUseSessionStore = useSessionStore as unknown as jest.Mock;
 
 // Helper to render components with Tamagui providers
-const renderWithProviders = (component: React.ReactElement) => {
-  return render(
-    <TamaguiProvider config={tamaguiConfig}>
+const renderWithProviders = async (component: React.ReactElement) => {
+  return await render(
+    <TamaguiProvider config={tamaguiConfig} defaultTheme="light">
       <Theme name="light">{component}</Theme>
     </TamaguiProvider>,
   );
@@ -201,13 +201,13 @@ describe('LoginScreen', () => {
       }),
     );
 
-    const { getByTestId } = renderWithProviders(<LoginScreen />);
+    const { getByTestId } = await renderWithProviders(<LoginScreen />);
 
-    fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
-    fireEvent.changeText(getByTestId('password-input'), 'password');
+    await fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
+    await fireEvent.changeText(getByTestId('password-input'), 'password');
 
     await act(async () => {
-      fireEvent.press(getByTestId('sign-in-button'));
+      await fireEvent.press(getByTestId('sign-in-button'));
       await waitFor(() => {
         expect(signInMock).toHaveBeenCalledWith('user@example.com', 'password');
       });
@@ -233,12 +233,12 @@ describe('LoginScreen', () => {
 
     mockedUseSessionStore.mockImplementation((selector: any) => selector(mockStore));
 
-    const { getByTestId, rerender } = renderWithProviders(<LoginScreen />);
+    const { getByTestId, rerender } = await renderWithProviders(<LoginScreen />);
 
-    fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
-    fireEvent.changeText(getByTestId('password-input'), 'password');
+    await fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
+    await fireEvent.changeText(getByTestId('password-input'), 'password');
 
-    fireEvent.press(getByTestId('sign-in-button'));
+    await fireEvent.press(getByTestId('sign-in-button'));
 
     // Wait for signIn to complete
     await act(async () => {
@@ -248,7 +248,7 @@ describe('LoginScreen', () => {
     // Trigger re-render with updated status to simulate Zustand update
     await act(async () => {
       rerender(
-        <TamaguiProvider config={tamaguiConfig}>
+        <TamaguiProvider config={tamaguiConfig} defaultTheme="light">
           <Theme name="light">
             <LoginScreen />
           </Theme>
@@ -263,13 +263,13 @@ describe('LoginScreen', () => {
     expect(mockReplace).not.toHaveBeenCalled();
   });
 
-  test('forgot password link navigates to reset screen', () => {
-    const { getByTestId } = renderWithProviders(<LoginScreen />);
-    fireEvent.press(getByTestId('forgot-password-link'));
+  test('forgot password link navigates to reset screen', async () => {
+    const { getByTestId } = await renderWithProviders(<LoginScreen />);
+    await fireEvent.press(getByTestId('forgot-password-link'));
     expect(mockPush).toHaveBeenCalledWith('/(auth)/forgot-password');
   });
 
-  test('disables button when loading', () => {
+  test('disables button when loading', async () => {
     mockedUseSessionStore.mockImplementation((selector: any) =>
       selector({
         signInWithEmail: jest.fn(),
@@ -279,12 +279,12 @@ describe('LoginScreen', () => {
       }),
     );
 
-    const { getByTestId } = renderWithProviders(<LoginScreen />);
+    const { getByTestId } = await renderWithProviders(<LoginScreen />);
     const signInButton = getByTestId('sign-in-button');
     expect(signInButton).toBeTruthy();
   });
 
-  test('displays error message when error is present', () => {
+  test('displays error message when error is present', async () => {
     mockedUseSessionStore.mockImplementation((selector: any) =>
       selector({
         signInWithEmail: jest.fn(),
@@ -294,7 +294,7 @@ describe('LoginScreen', () => {
       }),
     );
 
-    const { getByTestId } = renderWithProviders(<LoginScreen />);
+    const { getByTestId } = await renderWithProviders(<LoginScreen />);
     expect(getByTestId('error-message')).toBeTruthy();
   });
 
@@ -312,13 +312,13 @@ describe('LoginScreen', () => {
       }),
     );
 
-    const { getByTestId } = renderWithProviders(<LoginScreen />);
+    const { getByTestId } = await renderWithProviders(<LoginScreen />);
 
-    fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
-    fireEvent.changeText(getByTestId('password-input'), 'wrongpassword');
+    await fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
+    await fireEvent.changeText(getByTestId('password-input'), 'wrongpassword');
 
     await act(async () => {
-      fireEvent.press(getByTestId('sign-in-button'));
+      await fireEvent.press(getByTestId('sign-in-button'));
       // Wait for async signIn to complete
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
@@ -343,12 +343,12 @@ describe('LoginScreen', () => {
       }),
     );
 
-    const { getByTestId } = renderWithProviders(<LoginScreen />);
-    fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
-    fireEvent.changeText(getByTestId('password-input'), 'password');
+    const { getByTestId } = await renderWithProviders(<LoginScreen />);
+    await fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
+    await fireEvent.changeText(getByTestId('password-input'), 'password');
 
     await act(async () => {
-      fireEvent.press(getByTestId('sign-in-button'));
+      await fireEvent.press(getByTestId('sign-in-button'));
       await waitFor(() => expect(signInMock).toHaveBeenCalled());
     });
 
@@ -371,12 +371,12 @@ describe('LoginScreen', () => {
       }),
     );
 
-    const { getByTestId } = renderWithProviders(<LoginScreen />);
-    fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
-    fireEvent.changeText(getByTestId('password-input'), 'password');
+    const { getByTestId } = await renderWithProviders(<LoginScreen />);
+    await fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
+    await fireEvent.changeText(getByTestId('password-input'), 'password');
 
     await act(async () => {
-      fireEvent.press(getByTestId('sign-in-button'));
+      await fireEvent.press(getByTestId('sign-in-button'));
       await waitFor(() => expect(signInMock).toHaveBeenCalled());
     });
 
@@ -399,12 +399,12 @@ describe('LoginScreen', () => {
       }),
     );
 
-    const { getByTestId } = renderWithProviders(<LoginScreen />);
-    fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
-    fireEvent.changeText(getByTestId('password-input'), 'password');
+    const { getByTestId } = await renderWithProviders(<LoginScreen />);
+    await fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
+    await fireEvent.changeText(getByTestId('password-input'), 'password');
 
     await act(async () => {
-      fireEvent.press(getByTestId('sign-in-button'));
+      await fireEvent.press(getByTestId('sign-in-button'));
       await waitFor(() => expect(signInMock).toHaveBeenCalled());
     });
 
@@ -427,12 +427,12 @@ describe('LoginScreen', () => {
       }),
     );
 
-    const { getByTestId } = renderWithProviders(<LoginScreen />);
-    fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
-    fireEvent.changeText(getByTestId('password-input'), 'password');
+    const { getByTestId } = await renderWithProviders(<LoginScreen />);
+    await fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
+    await fireEvent.changeText(getByTestId('password-input'), 'password');
 
     await act(async () => {
-      fireEvent.press(getByTestId('sign-in-button'));
+      await fireEvent.press(getByTestId('sign-in-button'));
       await waitFor(() => expect(signInMock).toHaveBeenCalled());
     });
 
@@ -455,20 +455,20 @@ describe('LoginScreen', () => {
       }),
     );
 
-    const { getByTestId } = renderWithProviders(<LoginScreen />);
-    fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
-    fireEvent.changeText(getByTestId('password-input'), 'password');
+    const { getByTestId } = await renderWithProviders(<LoginScreen />);
+    await fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
+    await fireEvent.changeText(getByTestId('password-input'), 'password');
 
     await act(async () => {
-      fireEvent.press(getByTestId('sign-in-button'));
+      await fireEvent.press(getByTestId('sign-in-button'));
       await waitFor(() => expect(signInMock).toHaveBeenCalled());
     });
 
     expect(setErrorMock).toHaveBeenCalledWith('plain-error');
   });
 
-  test('toggles password visibility when eye icon is pressed', () => {
-    const { getByTestId } = renderWithProviders(<LoginScreen />);
+  test('toggles password visibility when eye icon is pressed', async () => {
+    const { getByTestId } = await renderWithProviders(<LoginScreen />);
     const passwordInput = getByTestId('password-input');
 
     // Initially password should be hidden
@@ -476,26 +476,24 @@ describe('LoginScreen', () => {
 
     // Press show password button
     const toggleButton = getByTestId('toggle-password-visibility');
-    fireEvent.press(toggleButton);
+    await fireEvent.press(toggleButton);
 
     // Password should now be visible
     expect(passwordInput.props.secureTextEntry).toBe(false);
 
     // Press hide password button
-    fireEvent.press(toggleButton);
+    await fireEvent.press(toggleButton);
 
     // Password should be hidden again
     expect(passwordInput.props.secureTextEntry).toBe(true);
   });
 
-  test('focuses password field when email submit is pressed', () => {
-    const { getByTestId } = renderWithProviders(<LoginScreen />);
+  test('focuses password field when email submit is pressed', async () => {
+    const { getByTestId } = await renderWithProviders(<LoginScreen />);
     const emailInput = getByTestId('email-input');
 
     // Should not throw when onSubmitEditing is called
-    expect(() => {
-      fireEvent(emailInput, 'submitEditing');
-    }).not.toThrow();
+    await fireEvent(emailInput, 'submitEditing');
   });
 
   test('replaces to tabs when no history exists', async () => {
@@ -517,12 +515,12 @@ describe('LoginScreen', () => {
 
     mockedUseSessionStore.mockImplementation((selector: any) => selector(mockStore));
 
-    const { getByTestId, rerender } = renderWithProviders(<LoginScreen />);
+    const { getByTestId, rerender } = await renderWithProviders(<LoginScreen />);
 
-    fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
-    fireEvent.changeText(getByTestId('password-input'), 'password');
+    await fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
+    await fireEvent.changeText(getByTestId('password-input'), 'password');
 
-    fireEvent.press(getByTestId('sign-in-button'));
+    await fireEvent.press(getByTestId('sign-in-button'));
 
     // Wait for signIn to complete
     await act(async () => {
@@ -532,7 +530,7 @@ describe('LoginScreen', () => {
     // Trigger re-render with updated status to simulate Zustand update
     await act(async () => {
       rerender(
-        <TamaguiProvider config={tamaguiConfig}>
+        <TamaguiProvider config={tamaguiConfig} defaultTheme="light">
           <Theme name="light">
             <LoginScreen />
           </Theme>
@@ -547,31 +545,31 @@ describe('LoginScreen', () => {
     expect(mockBack).not.toHaveBeenCalled();
   });
 
-  test('navigates to signup when create account button is pressed', () => {
-    const { getByTestId } = renderWithProviders(<LoginScreen />);
-    fireEvent.press(getByTestId('create-account-button'));
+  test('navigates to signup when create account button is pressed', async () => {
+    const { getByTestId } = await renderWithProviders(<LoginScreen />);
+    await fireEvent.press(getByTestId('create-account-button'));
     expect(mockPush).toHaveBeenCalledWith('/(auth)/signup');
   });
 
-  test('uses web separator margin on web', () => {
+  test('uses web separator margin on web', async () => {
     const originalOS = Platform.OS;
     Object.defineProperty(Platform, 'OS', { value: 'web' });
 
-    const { getByTestId } = renderWithProviders(<LoginScreen />);
+    const { getByTestId } = await renderWithProviders(<LoginScreen />);
     expect(getByTestId('sign-in-button')).toBeTruthy();
 
     Object.defineProperty(Platform, 'OS', { value: originalOS });
   });
 
-  test('disables submit button when email is invalid', () => {
-    const { getByTestId } = renderWithProviders(<LoginScreen />);
+  test('disables submit button when email is invalid', async () => {
+    const { getByTestId } = await renderWithProviders(<LoginScreen />);
 
     const emailInput = getByTestId('email-input');
     const passwordInput = getByTestId('password-input');
     const submitButton = getByTestId('sign-in-button');
 
-    fireEvent.changeText(emailInput, 'invalid-email');
-    fireEvent.changeText(passwordInput, 'password123');
+    await fireEvent.changeText(emailInput, 'invalid-email');
+    await fireEvent.changeText(passwordInput, 'password123');
 
     expect(submitButton.props.accessibilityState?.disabled).toBe(true);
   });
@@ -588,10 +586,10 @@ describe('LoginScreen', () => {
       }),
     );
 
-    const { getByTestId } = renderWithProviders(<LoginScreen />);
+    const { getByTestId } = await renderWithProviders(<LoginScreen />);
 
-    fireEvent.changeText(getByTestId('email-input'), 'invalid-email');
-    fireEvent.changeText(getByTestId('password-input'), 'password123');
+    await fireEvent.changeText(getByTestId('email-input'), 'invalid-email');
+    await fireEvent.changeText(getByTestId('password-input'), 'password123');
 
     await act(async () => {
       getByTestId('sign-in-button').props.onPress?.();
@@ -612,7 +610,7 @@ describe('LoginScreen', () => {
       }),
     );
 
-    const { getByTestId } = renderWithProviders(<LoginScreen />);
+    const { getByTestId } = await renderWithProviders(<LoginScreen />);
     await act(async () => {
       getByTestId('sign-in-button').props.onPress?.();
     });
@@ -633,9 +631,9 @@ describe('LoginScreen', () => {
       }),
     );
 
-    const { getByTestId } = renderWithProviders(<LoginScreen />);
-    fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
-    fireEvent.changeText(getByTestId('password-input'), 'password');
+    const { getByTestId } = await renderWithProviders(<LoginScreen />);
+    await fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
+    await fireEvent.changeText(getByTestId('password-input'), 'password');
 
     await act(async () => {
       getByTestId('sign-in-button').props.onPress?.();
@@ -658,12 +656,12 @@ describe('LoginScreen', () => {
       }),
     );
 
-    const { getByTestId } = renderWithProviders(<LoginScreen />);
-    fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
-    fireEvent.changeText(getByTestId('password-input'), 'password');
+    const { getByTestId } = await renderWithProviders(<LoginScreen />);
+    await fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
+    await fireEvent.changeText(getByTestId('password-input'), 'password');
 
     await act(async () => {
-      fireEvent.press(getByTestId('sign-in-button'));
+      await fireEvent.press(getByTestId('sign-in-button'));
       await waitFor(() => expect(signInMock).toHaveBeenCalled());
     });
 
@@ -687,13 +685,13 @@ describe('LoginScreen', () => {
       }),
     );
 
-    const { getByTestId } = renderWithProviders(<LoginScreen />);
+    const { getByTestId } = await renderWithProviders(<LoginScreen />);
 
-    fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
-    fireEvent.changeText(getByTestId('password-input'), 'wrongpassword');
+    await fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
+    await fireEvent.changeText(getByTestId('password-input'), 'wrongpassword');
 
     await act(async () => {
-      fireEvent.press(getByTestId('sign-in-button'));
+      await fireEvent.press(getByTestId('sign-in-button'));
       await waitFor(() => {
         expect(signInMock).toHaveBeenCalled();
       });
@@ -722,12 +720,12 @@ describe('LoginScreen', () => {
       }),
     );
 
-    const { getByTestId } = renderWithProviders(<LoginScreen />);
-    fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
-    fireEvent.changeText(getByTestId('password-input'), 'password');
+    const { getByTestId } = await renderWithProviders(<LoginScreen />);
+    await fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
+    await fireEvent.changeText(getByTestId('password-input'), 'password');
 
     await act(async () => {
-      fireEvent.press(getByTestId('sign-in-button'));
+      await fireEvent.press(getByTestId('sign-in-button'));
       await waitFor(() => expect(signInMock).toHaveBeenCalled());
     });
 
@@ -753,12 +751,12 @@ describe('LoginScreen', () => {
       }),
     );
 
-    const { getByTestId } = renderWithProviders(<LoginScreen />);
-    fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
-    fireEvent.changeText(getByTestId('password-input'), 'password');
+    const { getByTestId } = await renderWithProviders(<LoginScreen />);
+    await fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
+    await fireEvent.changeText(getByTestId('password-input'), 'password');
 
     await act(async () => {
-      fireEvent.press(getByTestId('sign-in-button'));
+      await fireEvent.press(getByTestId('sign-in-button'));
       await waitFor(() => expect(signInMock).toHaveBeenCalled());
     });
 
@@ -784,12 +782,12 @@ describe('LoginScreen', () => {
       }),
     );
 
-    const { getByTestId } = renderWithProviders(<LoginScreen />);
-    fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
-    fireEvent.changeText(getByTestId('password-input'), 'password');
+    const { getByTestId } = await renderWithProviders(<LoginScreen />);
+    await fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
+    await fireEvent.changeText(getByTestId('password-input'), 'password');
 
     await act(async () => {
-      fireEvent.press(getByTestId('sign-in-button'));
+      await fireEvent.press(getByTestId('sign-in-button'));
       await waitFor(() => expect(signInMock).toHaveBeenCalled());
     });
 
@@ -815,12 +813,12 @@ describe('LoginScreen', () => {
       }),
     );
 
-    const { getByTestId } = renderWithProviders(<LoginScreen />);
-    fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
-    fireEvent.changeText(getByTestId('password-input'), 'password');
+    const { getByTestId } = await renderWithProviders(<LoginScreen />);
+    await fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
+    await fireEvent.changeText(getByTestId('password-input'), 'password');
 
     await act(async () => {
-      fireEvent.press(getByTestId('sign-in-button'));
+      await fireEvent.press(getByTestId('sign-in-button'));
       await waitFor(() => expect(signInMock).toHaveBeenCalled());
     });
 
@@ -846,12 +844,12 @@ describe('LoginScreen', () => {
       }),
     );
 
-    const { getByTestId } = renderWithProviders(<LoginScreen />);
-    fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
-    fireEvent.changeText(getByTestId('password-input'), 'password');
+    const { getByTestId } = await renderWithProviders(<LoginScreen />);
+    await fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
+    await fireEvent.changeText(getByTestId('password-input'), 'password');
 
     await act(async () => {
-      fireEvent.press(getByTestId('sign-in-button'));
+      await fireEvent.press(getByTestId('sign-in-button'));
       await waitFor(() => expect(signInMock).toHaveBeenCalled());
     });
 
@@ -870,11 +868,11 @@ describe('LoginScreen', () => {
       }),
     );
 
-    const { getByTestId } = renderWithProviders(<LoginScreen />);
-    fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
-    fireEvent.changeText(getByTestId('password-input'), 'password');
+    const { getByTestId } = await renderWithProviders(<LoginScreen />);
+    await fireEvent.changeText(getByTestId('email-input'), 'user@example.com');
+    await fireEvent.changeText(getByTestId('password-input'), 'password');
     // simulate screen focus
-    act(() => {
+    await act(() => {
       focusEffectCallback?.();
     });
 
@@ -892,13 +890,22 @@ describe('OAuth authentication', () => {
     mockCanGoBack.mockClear();
   });
 
-  test('hides Apple button on Android', () => {
+  test('hides Apple button on Android', async () => {
     const originalOS = Platform.OS;
     Object.defineProperty(Platform, 'OS', { value: 'android' });
-    const { queryByTestId, getByTestId } = renderWithProviders(<LoginScreen />);
+    const { queryByTestId, getByTestId } = await renderWithProviders(<LoginScreen />);
     expect(queryByTestId('oauth-apple-button')).toBeNull();
     expect(getByTestId('oauth-google-button')).toBeTruthy();
     Object.defineProperty(Platform, 'OS', { value: originalOS });
+  });
+
+  test('does not flex OAuth buttons in the vertical stack', async () => {
+    const { getByTestId } = await renderWithProviders(<LoginScreen />);
+
+    for (const provider of ['apple', 'google']) {
+      const button = getByTestId(`oauth-${provider}-button`);
+      expect(button.props.flex).toBeUndefined();
+    }
   });
 
   test('handles OAuth sign in', async () => {
@@ -914,9 +921,9 @@ describe('OAuth authentication', () => {
       }),
     );
 
-    const { getByTestId } = renderWithProviders(<LoginScreen />);
+    const { getByTestId } = await renderWithProviders(<LoginScreen />);
     await act(async () => {
-      fireEvent.press(getByTestId('oauth-google-button'));
+      await fireEvent.press(getByTestId('oauth-google-button'));
     });
     expect(oauthMock).toHaveBeenCalledWith('google');
   });
@@ -940,9 +947,9 @@ describe('OAuth authentication', () => {
 
     mockedUseSessionStore.mockImplementation((selector: any) => selector(mockStore));
 
-    const { getByTestId, rerender } = renderWithProviders(<LoginScreen />);
+    const { getByTestId, rerender } = await renderWithProviders(<LoginScreen />);
 
-    fireEvent.press(getByTestId('oauth-google-button'));
+    await fireEvent.press(getByTestId('oauth-google-button'));
 
     // Wait for OAuth to complete
     await act(async () => {
@@ -952,7 +959,7 @@ describe('OAuth authentication', () => {
     // Trigger re-render with updated status to simulate Zustand update
     await act(async () => {
       rerender(
-        <TamaguiProvider config={tamaguiConfig}>
+        <TamaguiProvider config={tamaguiConfig} defaultTheme="light">
           <Theme name="light">
             <LoginScreen />
           </Theme>
@@ -986,9 +993,9 @@ describe('OAuth authentication', () => {
 
     mockedUseSessionStore.mockImplementation((selector: any) => selector(mockStore));
 
-    const { getByTestId, rerender } = renderWithProviders(<LoginScreen />);
+    const { getByTestId, rerender } = await renderWithProviders(<LoginScreen />);
 
-    fireEvent.press(getByTestId('oauth-google-button'));
+    await fireEvent.press(getByTestId('oauth-google-button'));
 
     // Wait for OAuth to complete
     await act(async () => {
@@ -998,7 +1005,7 @@ describe('OAuth authentication', () => {
     // Trigger re-render with updated status to simulate Zustand update
     await act(async () => {
       rerender(
-        <TamaguiProvider config={tamaguiConfig}>
+        <TamaguiProvider config={tamaguiConfig} defaultTheme="light">
           <Theme name="light">
             <LoginScreen />
           </Theme>
@@ -1028,9 +1035,9 @@ describe('OAuth authentication', () => {
       }),
     );
 
-    const { getByTestId } = renderWithProviders(<LoginScreen />);
+    const { getByTestId } = await renderWithProviders(<LoginScreen />);
     await act(async () => {
-      fireEvent.press(getByTestId('oauth-google-button'));
+      await fireEvent.press(getByTestId('oauth-google-button'));
       // Wait for async OAuth to complete
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
@@ -1055,9 +1062,9 @@ describe('OAuth authentication', () => {
       }),
     );
 
-    const { getByTestId } = renderWithProviders(<LoginScreen />);
+    const { getByTestId } = await renderWithProviders(<LoginScreen />);
     await act(async () => {
-      fireEvent.press(getByTestId('oauth-google-button'));
+      await fireEvent.press(getByTestId('oauth-google-button'));
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
 
@@ -1077,16 +1084,16 @@ describe('OAuth authentication', () => {
       }),
     );
 
-    const { getByTestId } = renderWithProviders(<LoginScreen />);
+    const { getByTestId } = await renderWithProviders(<LoginScreen />);
     await act(async () => {
-      fireEvent.press(getByTestId('oauth-google-button'));
+      await fireEvent.press(getByTestId('oauth-google-button'));
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
 
     expect(setErrorMock).toHaveBeenCalledWith('auth.errorUnknown');
   });
 
-  test('renders OAuth buttons with fallback defaults', () => {
+  test('renders OAuth buttons with fallback defaults', async () => {
     const useMemoSpy = jest.spyOn(React, 'useMemo').mockImplementation((factory, deps) => {
       const result = factory();
       if (Array.isArray(result) && result.length && result[0]?.provider) {
@@ -1102,18 +1109,18 @@ describe('OAuth authentication', () => {
       return result;
     });
 
-    const { getByTestId } = renderWithProviders(<LoginScreen />);
+    const { getByTestId } = await renderWithProviders(<LoginScreen />);
     expect(getByTestId('oauth-google-button')).toBeTruthy();
 
     useMemoSpy.mockRestore();
   });
 
-  test('renders Apple OAuth styles in dark mode', () => {
+  test('renders Apple OAuth styles in dark mode', async () => {
     const originalOS = Platform.OS;
     Object.defineProperty(Platform, 'OS', { value: 'ios' });
     (useThemeName as jest.Mock).mockReturnValue('dark');
 
-    const { getByTestId } = renderWithProviders(<LoginScreen />);
+    const { getByTestId } = await renderWithProviders(<LoginScreen />);
     const appleButton = getByTestId('oauth-apple-button');
     expect(appleButton).toBeTruthy();
 
@@ -1134,9 +1141,9 @@ describe('OAuth authentication', () => {
       }),
     );
 
-    const { getByTestId } = renderWithProviders(<LoginScreen />);
+    const { getByTestId } = await renderWithProviders(<LoginScreen />);
     await act(async () => {
-      fireEvent.press(getByTestId('oauth-apple-button'));
+      await fireEvent.press(getByTestId('oauth-apple-button'));
     });
     expect(oauthMock).toHaveBeenCalledWith('apple');
   });

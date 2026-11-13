@@ -62,6 +62,7 @@ coverage
 junit.xml
 supabase/.temp/
 supabase/.branches/
+codecov*
 
 # Drizzle ORM snapshots (auto-generated state tracking)
 **/migrations/meta/

@@ -144,14 +144,14 @@ describe('ToastContainer', () => {
     jest.useRealTimers();
   });
 
-  it('renders nothing when messages array is empty', () => {
-    const { toJSON } = render(<ToastContainer messages={[]} dismiss={mockDismiss} />);
+  it('renders nothing when messages array is empty', async () => {
+    const { toJSON } = await render(<ToastContainer messages={[]} dismiss={mockDismiss} />);
 
     expect(toJSON()).toBeNull();
   });
 
-  it('renders toast with title', () => {
-    const { getByText } = render(
+  it('renders toast with title', async () => {
+    const { getByText } = await render(
       <ToastContainer
         messages={[{ id: 'test-1', title: 'Test Title', type: 'info', duration: 4000 }]}
         dismiss={mockDismiss}
@@ -161,8 +161,8 @@ describe('ToastContainer', () => {
     expect(getByText('Test Title')).toBeTruthy();
   });
 
-  it('renders toast with description', () => {
-    const { getByText } = render(
+  it('renders toast with description', async () => {
+    const { getByText } = await render(
       <ToastContainer
         messages={[
           {
@@ -180,8 +180,8 @@ describe('ToastContainer', () => {
     expect(getByText('Description text')).toBeTruthy();
   });
 
-  it('does not render description when not provided', () => {
-    const { queryByTestId } = render(
+  it('does not render description when not provided', async () => {
+    const { queryByTestId } = await render(
       <ToastContainer
         messages={[{ id: 'test-1', title: 'Title', type: 'info', duration: 4000 }]}
         dismiss={mockDismiss}
@@ -191,8 +191,8 @@ describe('ToastContainer', () => {
     expect(queryByTestId('toast-test-1-description')).toBeNull();
   });
 
-  it('renders action button when provided', () => {
-    const { getByText } = render(
+  it('renders action button when provided', async () => {
+    const { getByText } = await render(
       <ToastContainer
         messages={[
           {
@@ -211,8 +211,8 @@ describe('ToastContainer', () => {
     expect(getByText('Undo')).toBeTruthy();
   });
 
-  it('does not render action button when label missing', () => {
-    const { queryByText } = render(
+  it('does not render action button when label missing', async () => {
+    const { queryByText } = await render(
       <ToastContainer
         messages={[
           { id: 'test-1', title: 'Title', onAction: jest.fn(), type: 'info', duration: 4000 },
@@ -224,8 +224,8 @@ describe('ToastContainer', () => {
     expect(queryByText('Undo')).toBeNull();
   });
 
-  it('does not render action button when callback missing', () => {
-    const { queryByText } = render(
+  it('does not render action button when callback missing', async () => {
+    const { queryByText } = await render(
       <ToastContainer
         messages={[
           { id: 'test-1', title: 'Title', actionLabel: 'Undo', type: 'info', duration: 4000 },
@@ -237,21 +237,21 @@ describe('ToastContainer', () => {
     expect(queryByText('Undo')).toBeNull();
   });
 
-  it('calls dismiss when dismiss button is pressed', () => {
-    const { getByText } = render(
+  it('calls dismiss when dismiss button is pressed', async () => {
+    const { getByText } = await render(
       <ToastContainer
         messages={[{ id: 'test-1', title: 'Title', type: 'info', duration: 4000 }]}
         dismiss={mockDismiss}
       />,
     );
 
-    fireEvent.press(getByText('dismiss'));
+    await fireEvent.press(getByText('dismiss'));
     expect(mockDismiss).toHaveBeenCalledWith('test-1');
   });
 
-  it('calls onAction and dismisses when action button is pressed', () => {
+  it('calls onAction and dismisses when action button is pressed', async () => {
     const mockAction = jest.fn();
-    const { getByText } = render(
+    const { getByText } = await render(
       <ToastContainer
         messages={[
           {
@@ -267,13 +267,13 @@ describe('ToastContainer', () => {
       />,
     );
 
-    fireEvent.press(getByText('Undo'));
+    await fireEvent.press(getByText('Undo'));
     expect(mockAction).toHaveBeenCalled();
     expect(mockDismiss).toHaveBeenCalledWith('test-1');
   });
 
   it('auto-dismisses message after duration', async () => {
-    render(
+    await render(
       <ToastContainer
         messages={[{ id: 'test-1', title: 'Title', type: 'info', duration: 2000 }]}
         dismiss={mockDismiss}
@@ -283,23 +283,23 @@ describe('ToastContainer', () => {
     expect(mockDismiss).not.toHaveBeenCalled();
   });
 
-  it('does not auto-dismiss when duration is undefined', () => {
-    render(
+  it('does not auto-dismiss when duration is undefined', async () => {
+    await render(
       <ToastContainer
         messages={[{ id: 'test-1', title: 'Title', type: 'info' }]}
         dismiss={mockDismiss}
       />,
     );
 
-    act(() => {
+    await act(() => {
       jest.advanceTimersByTime(10000);
     });
 
     expect(mockDismiss).not.toHaveBeenCalled();
   });
 
-  it('renders multiple toasts', () => {
-    const { toJSON } = render(
+  it('renders multiple toasts', async () => {
+    const { toJSON } = await render(
       <ToastContainer
         messages={[
           { id: 'test-1', title: 'Message 1', type: 'info', duration: 4000 },
@@ -313,25 +313,25 @@ describe('ToastContainer', () => {
     expect(toJSON()).not.toBeNull();
   });
 
-  it('cleans up timers on unmount', () => {
-    const { unmount } = render(
+  it('cleans up timers on unmount', async () => {
+    const { unmount } = await render(
       <ToastContainer
         messages={[{ id: 'test-1', title: 'Title', type: 'info', duration: 2000 }]}
         dismiss={mockDismiss}
       />,
     );
 
-    unmount();
+    await unmount();
 
-    act(() => {
+    await act(() => {
       jest.advanceTimersByTime(2000);
     });
 
     expect(mockDismiss).not.toHaveBeenCalled();
   });
 
-  it('renders with container testID', () => {
-    const { getByTestId } = render(
+  it('renders with container testID', async () => {
+    const { getByTestId } = await render(
       <ToastContainer
         testID="toast-container"
         messages={[{ id: 'test-1', title: 'Title', type: 'info', duration: 4000 }]}

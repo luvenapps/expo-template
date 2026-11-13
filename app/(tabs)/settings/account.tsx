@@ -163,7 +163,7 @@ export default function AccountSettingsScreen() {
   return (
     <>
       <UserOnly>
-        <ScreenContainer gap="$5">
+        <ScreenContainer gap="5">
           <SettingsSection
             title={t('settings.accountTitle')}
             description={accountDescription}
@@ -217,12 +217,12 @@ export default function AccountSettingsScreen() {
                 <Dialog.Portal>
                   <Dialog.Overlay key="reset-data-overlay" />
                   <Dialog.Content key="reset-data-content" bordered elevate>
-                    <YStack gap="$3">
+                    <YStack gap="$2">
                       <Dialog.Title>{t('settings.resetConfirmTitle')}</Dialog.Title>
                       <Dialog.Description>
                         {t('settings.resetConfirmDescription')}
                       </Dialog.Description>
-                      <XStack gap="$3" paddingTop="$2">
+                      <XStack flexDirection="row" gap="$2" paddingTop="2">
                         <SecondaryButton
                           width="auto"
                           flex={1}
@@ -235,13 +235,12 @@ export default function AccountSettingsScreen() {
                           testID="settings-reset-confirm-button"
                           width="auto"
                           flex={1}
-                          backgroundColor="$dangerColor"
-                          pressStyle={{ backgroundColor: '$dangerColor' }}
+                          backgroundColor="dangerColor press:dangerColor"
                           disabled={isResettingAllData}
                           onPress={handleResetAppData}
                         >
                           {isResettingAllData ? (
-                            <Spinner size="small" color="$dangerColor" />
+                            <Spinner size="small" color="dangerColor" />
                           ) : (
                             t('settings.resetConfirmAction')
                           )}
@@ -266,7 +265,7 @@ export default function AccountSettingsScreen() {
           justifyContent="center"
           backgroundColor="rgba(0,0,0,0.2)"
         >
-          <Spinner size="large" color="$accentColor" />
+          <Spinner size="large" color="accent-color" />
         </YStack>
       ) : null}
       <ToastContainer messages={toast.messages} dismiss={toast.dismiss} />

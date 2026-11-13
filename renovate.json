@@ -4,6 +4,10 @@
   "enabledManagers": ["npm", "github-actions", "mise"],
   "timezone": "America/New_York",
   "schedule": ["after 3am and before 5am"],
+  "dependencyDashboard": true,
+  "major": {
+    "dependencyDashboardApproval": true
+  },
   "packageRules": [
     {
       "groupName": "expo",
@@ -54,8 +58,10 @@
       ]
     },
     {
-      "groupName": "dev-dependencies",
+      "groupName": "development-tooling",
+      "description": "Batch patch and minor development dependency updates together",
       "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["patch", "minor"],
       "matchPackageNames": [
         "!expo-dev-client",
         "!eslint-config-expo",
@@ -77,8 +83,23 @@
       "matchPackageNames": ["tamagui", "@tamagui/**"]
     },
     {
-      "groupName": "github-actions",
-      "matchManagers": ["github-actions"]
+      "groupName": "react-native-firebase",
+      "description": "Group all @react-native-firebase packages together to keep the SDK versions aligned",
+      "matchPackageNames": ["@react-native-firebase/**"]
+    },
+    {
+      "groupName": "runtime-dependencies",
+      "description": "Batch patch and minor app/runtime dependency updates together",
+      "matchManagers": ["npm"],
+      "matchDepTypes": ["dependencies", "optionalDependencies", "peerDependencies", "overrides"],
+      "matchUpdateTypes": ["patch", "minor"],
+      "matchPackageNames": ["!expo"]
+    },
+    {
+      "groupName": "development-tooling",
+      "description": "Batch patch and minor GitHub Actions and mise updates with development dependencies",
+      "matchManagers": ["github-actions", "mise"],
+      "matchUpdateTypes": ["patch", "minor"]
     }
   ],
   "prConcurrentLimit": 2

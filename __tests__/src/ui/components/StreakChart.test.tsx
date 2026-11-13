@@ -24,8 +24,8 @@ import { View, Text } from 'react-native';
 import { StreakChart } from '@/ui/components/StreakChart';
 
 describe('StreakChart', () => {
-  it('renders with basic data', () => {
-    const { getByTestId } = render(
+  it('renders with basic data', async () => {
+    const { getByTestId } = await render(
       <StreakChart
         getItemTestID={(_, index) => `streak-${index}`}
         data={[
@@ -41,8 +41,8 @@ describe('StreakChart', () => {
     expect(getByTestId('streak-1-percent')).toHaveTextContent('50% complete');
   });
 
-  it('renders singular "day" when value is 1', () => {
-    const { getByTestId } = render(
+  it('renders singular "day" when value is 1', async () => {
+    const { getByTestId } = await render(
       <StreakChart
         getItemTestID={(_, index) => `streak-${index}`}
         data={[{ label: 'Current Streak', value: 1, max: 10 }]}
@@ -52,8 +52,8 @@ describe('StreakChart', () => {
     expect(getByTestId('streak-0-label')).toHaveTextContent('Current Streak • 1 day');
   });
 
-  it('renders plural "days" when value is not 1', () => {
-    const { getByTestId } = render(
+  it('renders plural "days" when value is not 1', async () => {
+    const { getByTestId } = await render(
       <StreakChart
         getItemTestID={(_, index) => `streak-${index}`}
         data={[
@@ -67,8 +67,8 @@ describe('StreakChart', () => {
     expect(getByTestId('streak-1-label')).toHaveTextContent('Multiple days • 5 days');
   });
 
-  it('renders with icon when provided', () => {
-    const { getByTestId } = render(
+  it('renders with icon when provided', async () => {
+    const { getByTestId } = await render(
       <StreakChart
         getItemTestID={(_, index) => `streak-${index}`}
         data={[
@@ -90,16 +90,16 @@ describe('StreakChart', () => {
     expect(getByTestId('streak-0-label')).toHaveTextContent('With Icon • 3 days');
   });
 
-  it('renders without icon when not provided', () => {
-    const { queryByTestId } = render(
+  it('renders without icon when not provided', async () => {
+    const { queryByTestId } = await render(
       <StreakChart data={[{ label: 'Without Icon', value: 3, max: 10 }]} />,
     );
 
     expect(queryByTestId('streak-icon')).toBeNull();
   });
 
-  it('uses default max value of 1 when max is not provided', () => {
-    const { getByTestId } = render(
+  it('uses default max value of 1 when max is not provided', async () => {
+    const { getByTestId } = await render(
       <StreakChart
         getItemTestID={(_, index) => `streak-${index}`}
         data={[{ label: 'Default Max', value: 1 }]}
@@ -109,8 +109,8 @@ describe('StreakChart', () => {
     expect(getByTestId('streak-0-percent')).toHaveTextContent('100% complete');
   });
 
-  it('calculates percent correctly with custom max', () => {
-    const { getByTestId } = render(
+  it('calculates percent correctly with custom max', async () => {
+    const { getByTestId } = await render(
       <StreakChart
         getItemTestID={(_, index) => `streak-${index}`}
         data={[
@@ -126,8 +126,8 @@ describe('StreakChart', () => {
     expect(getByTestId('streak-2-percent')).toHaveTextContent('75% complete');
   });
 
-  it('caps percent at 100% when value exceeds max', () => {
-    const { getByTestId } = render(
+  it('caps percent at 100% when value exceeds max', async () => {
+    const { getByTestId } = await render(
       <StreakChart
         getItemTestID={(_, index) => `streak-${index}`}
         data={[{ label: 'Over Max', value: 15, max: 10 }]}
@@ -137,8 +137,8 @@ describe('StreakChart', () => {
     expect(getByTestId('streak-0-percent')).toHaveTextContent('100% complete');
   });
 
-  it('floors percent at 0% when value is negative', () => {
-    const { getByTestId } = render(
+  it('floors percent at 0% when value is negative', async () => {
+    const { getByTestId } = await render(
       <StreakChart
         getItemTestID={(_, index) => `streak-${index}`}
         data={[{ label: 'Negative', value: -5, max: 10 }]}
@@ -148,8 +148,8 @@ describe('StreakChart', () => {
     expect(getByTestId('streak-0-percent')).toHaveTextContent('0% complete');
   });
 
-  it('handles zero max gracefully', () => {
-    const { getByTestId } = render(
+  it('handles zero max gracefully', async () => {
+    const { getByTestId } = await render(
       <StreakChart
         getItemTestID={(_, index) => `streak-${index}`}
         data={[{ label: 'Zero Max', value: 5, max: 0 }]}
@@ -160,8 +160,8 @@ describe('StreakChart', () => {
     expect(getByTestId('streak-0-percent')).toHaveTextContent('100% complete');
   });
 
-  it('renders multiple streaks correctly', () => {
-    const { getByTestId } = render(
+  it('renders multiple streaks correctly', async () => {
+    const { getByTestId } = await render(
       <StreakChart
         getItemTestID={(_, index) => `streak-${index}`}
         data={[
@@ -180,8 +180,8 @@ describe('StreakChart', () => {
     expect(getByTestId('streak-2-percent')).toHaveTextContent('100% complete');
   });
 
-  it('renders with empty data array', () => {
-    const { toJSON } = render(<StreakChart data={[]} />);
+  it('renders with empty data array', async () => {
+    const { toJSON } = await render(<StreakChart data={[]} />);
     expect(toJSON()).toBeDefined();
   });
 });

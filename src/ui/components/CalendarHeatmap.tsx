@@ -4,11 +4,11 @@ import { CaptionText, LabelText } from './Text';
 
 const DEFAULT_DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const COLOR_TOKENS = [
-  '$backgroundStrong',
-  '$backgroundPress',
-  '$accentColor',
-  '$accentColorHover',
-  '$accentColorPress',
+  'backgroundStrong',
+  'background-press',
+  'accent-color',
+  'accentColorHover',
+  'accentColorPress',
 ];
 
 type CalendarHeatmapProps = {
@@ -33,10 +33,10 @@ export function CalendarHeatmap({
   legendTestID,
 }: CalendarHeatmapProps) {
   return (
-    <YStack gap="$3" testID={testID}>
+    <YStack gap="$2" testID={testID}>
       <XStack gap="$2">
         {Array.from({ length: weeks }).map((_, weekIndex) => (
-          <YStack key={`week-${weekIndex}`} gap="$1">
+          <YStack key={`week-${weekIndex}`} gap="$2">
             {dayLabels.map((_, dayIndex) => {
               const intensity = values?.[weekIndex]?.[dayIndex] ?? 0;
               const colorIndex = Math.min(COLOR_TOKENS.length - 1, Math.max(0, intensity));
@@ -55,15 +55,15 @@ export function CalendarHeatmap({
         ))}
       </XStack>
       <XStack justifyContent="space-between" alignItems="center">
-        <CaptionText color="$colorMuted" testID={dayLabelsTestID}>
+        <CaptionText color="colorMuted" testID={dayLabelsTestID}>
           {dayLabels.join(' ')}
         </CaptionText>
         {legend ?? (
-          <XStack gap="$1" alignItems="center" testID={legendTestID}>
+          <XStack gap="$2" alignItems="center" testID={legendTestID}>
             {COLOR_TOKENS.map((color) => (
               <YStack key={color} width={16} height={8} borderRadius={2} backgroundColor={color} />
             ))}
-            <LabelText fontSize="$2">Less • More</LabelText>
+            <LabelText fontSize="2">Less • More</LabelText>
           </XStack>
         )}
       </XStack>

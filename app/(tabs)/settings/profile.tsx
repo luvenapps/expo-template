@@ -282,7 +282,7 @@ export default function ProfileScreen() {
             <Paragraph fontSize="$5" fontWeight="700">
               {t('settings.profileTitle')}
             </Paragraph>
-            <Paragraph color="$colorMuted">{t('settings.profileDescription')}</Paragraph>
+            <Paragraph color="colorMuted">{t('settings.profileDescription')}</Paragraph>
           </YStack>
 
           <FormField
@@ -314,8 +314,11 @@ export default function ProfileScreen() {
             }
             editable={isEmailProvider}
             errorText={isEmailProvider ? (emailError ?? undefined) : undefined}
-            borderColor={isEmailProvider && emailError ? '$dangerColor' : undefined}
-            focusStyle={isEmailProvider && emailError ? { borderColor: '$dangerColor' } : undefined}
+            borderColor={
+              isEmailProvider && emailError
+                ? 'dangerColor hover:dangerColor press:dangerColor focus:dangerColor'
+                : undefined
+            }
             inputTestID="profile-email-input"
           />
           <FormField
@@ -330,14 +333,14 @@ export default function ProfileScreen() {
 
           <InlineError message={errorMessage} testID="profile-error" />
           {statusMessage ? (
-            <Paragraph color="$colorMuted" textAlign="center" testID="profile-status">
+            <Paragraph color="colorMuted" textAlign="center" testID="profile-status">
               {statusMessage}
             </Paragraph>
           ) : null}
 
-          <XStack gap="$3" paddingTop="$2">
+          <XStack flexDirection="row" gap="3" paddingTop="2">
             <SecondaryButton
-              size="$4"
+              size="legacy4"
               width="auto"
               flex={1}
               onPress={() => router.back()}
@@ -345,7 +348,13 @@ export default function ProfileScreen() {
             >
               {t('settings.profileCancel')}
             </SecondaryButton>
-            <PrimaryButton size="$4" width="auto" flex={1} onPress={handleSave} disabled={isSaving}>
+            <PrimaryButton
+              size="legacy4"
+              width="auto"
+              flex={1}
+              onPress={handleSave}
+              disabled={isSaving}
+            >
               {isSaving ? t('settings.profileSaving') : t('settings.profileSave')}
             </PrimaryButton>
           </XStack>

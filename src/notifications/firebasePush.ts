@@ -2,6 +2,7 @@ import { DOMAIN } from '@/config/domain.config';
 import { createLogger } from '@/observability/logger';
 import { emitNotificationEvent } from '@/observability/notificationEvents';
 import Constants from 'expo-constants';
+import * as Device from 'expo-device';
 import { WEB_NOTIFICATION_PERMISSION } from '@/notifications/status';
 import { Platform } from 'react-native';
 
@@ -12,9 +13,7 @@ export type PushRegistrationResult =
   | { status: 'error'; message: string };
 
 export type PushRevokeResult =
-  | { status: 'revoked' }
-  | { status: 'unavailable' }
-  | { status: 'error'; message: string };
+  { status: 'revoked' } | { status: 'unavailable' } | { status: 'error'; message: string };
 
 // Module-level flag to prevent double listener registration on web
 let webForegroundListenerRegistered = false;
@@ -106,10 +105,10 @@ export async function registerForPushNotifications(): Promise<PushRegistrationRe
   nativeRegisterInFlight = (async () => {
     try {
       logger.debug('Loading @react-native-firebase/messaging...');
-      const messagingModule = require('@react-native-firebase/messaging');
-      const messaging = messagingModule.default;
+      const messagingModule =
+        require('@react-native-firebase/messaging') as typeof import('@react-native-firebase/messaging');
       const AuthorizationStatus = messagingModule.AuthorizationStatus;
-      const instance = messaging();
+      const instance = messagingModule.getMessaging();
       logger.debug('Firebase messaging instance created');
 
       if (Platform.OS === 'ios') {
@@ -148,11 +147,11 @@ export async function registerForPushNotifications(): Promise<PushRegistrationRe
         }
       }
 
-      // Ensure the device is registered for remote messages before requesting a token
-      logger.debug('Registering device for remote messages...');
-      if (instance.registerDeviceForRemoteMessages) {
-        await instance.registerDeviceForRemoteMessages();
-        logger.debug('Device registered for remote messages');
+      // Firebase auto-registers with APNs by default. Avoid forcing registration here:
+      // iOS simulators cannot complete APNs registration or provide an FCM token.
+      if (Platform.OS === 'ios' && !Device.isDevice) {
+        logger.info('Remote push registration is unavailable on the iOS simulator.');
+        return { status: 'unavailable' };
       }
 
       // For Android 13+, we need to request POST_NOTIFICATIONS permission first
@@ -181,7 +180,7 @@ export async function registerForPushNotifications(): Promise<PushRegistrationRe
       }
 
       logger.debug('Requesting FCM permission...');
-      const authStatus = await instance.requestPermission();
+      const authStatus = await messagingModule.requestPermission(instance);
       logger.debug('FCM authStatus:', authStatus);
       const enabled =
         authStatus === AuthorizationStatus.AUTHORIZED ||
@@ -193,7 +192,7 @@ export async function registerForPushNotifications(): Promise<PushRegistrationRe
       }
 
       logger.debug('Getting FCM token...');
-      const token = await instance.getToken();
+      const token = await messagingModule.getToken(instance);
       logger.debug('Token result:', token ? 'received' : 'null');
       if (token) {
         logger.info('✅ Token registered (copy this for your backend):', token);
@@ -237,37 +236,40 @@ export function initializeFCMListeners() {
   }
 
   try {
-    const messagingModule = require('@react-native-firebase/messaging');
-    const messaging = messagingModule.default;
-    const instance = messaging();
+    const messagingModule =
+      require('@react-native-firebase/messaging') as typeof import('@react-native-firebase/messaging');
+    const instance = messagingModule.getMessaging();
 
     // Handle foreground notifications
-    const unsubscribeForeground = instance.onMessage(async (remoteMessage: any) => {
-      logger.info('Foreground notification received:', remoteMessage);
+    const unsubscribeForeground = messagingModule.onMessage(
+      instance,
+      async (remoteMessage: any) => {
+        logger.info('Foreground notification received:', remoteMessage);
 
-      // Display notification using expo-notifications or react-native-notifications
-      if (remoteMessage.notification) {
-        const { title, body } = remoteMessage.notification;
+        // Display notification using expo-notifications or react-native-notifications
+        if (remoteMessage.notification) {
+          const { title, body } = remoteMessage.notification;
 
-        // Use Expo Notifications to display the notification
-        try {
-          const Notifications = require('expo-notifications');
-          await Notifications.scheduleNotificationAsync({
-            content: {
-              title: title || 'New Notification',
-              body: body || '',
-              data: remoteMessage.data || {},
-            },
-            trigger: null, // Show immediately
-          });
-        } catch (notifError) {
-          logger.warn('Failed to display foreground notification:', notifError);
+          // Use Expo Notifications to display the notification
+          try {
+            const Notifications = require('expo-notifications');
+            await Notifications.scheduleNotificationAsync({
+              content: {
+                title: title || 'New Notification',
+                body: body || '',
+                data: remoteMessage.data || {},
+              },
+              trigger: null, // Show immediately
+            });
+          } catch (notifError) {
+            logger.warn('Failed to display foreground notification:', notifError);
+          }
         }
-      }
-    });
+      },
+    );
 
     // Handle token refresh (fires when token changes, including after app reinstall)
-    const unsubscribeOnTokenRefresh = instance.onTokenRefresh((token: string) => {
+    const unsubscribeOnTokenRefresh = messagingModule.onTokenRefresh(instance, (token: string) => {
       logger.info('Token refreshed:', token);
       logger.info(
         'Token was regenerated (app reinstall, token rotation, or first launch). Update this token in your backend.',
@@ -305,14 +307,16 @@ export function setupBackgroundMessageHandler() {
   }
 
   try {
-    const messagingModule = require('@react-native-firebase/messaging');
-    const messaging = messagingModule.default;
-
-    messaging().setBackgroundMessageHandler(async (remoteMessage: any) => {
-      logger.info('Background notification received:', remoteMessage);
-      // Background notifications are automatically displayed by FCM
-      // You can add custom logic here if needed (e.g., update local database)
-    });
+    const messagingModule =
+      require('@react-native-firebase/messaging') as typeof import('@react-native-firebase/messaging');
+    messagingModule.setBackgroundMessageHandler(
+      messagingModule.getMessaging(),
+      async (remoteMessage: any) => {
+        logger.info('Background notification received:', remoteMessage);
+        // Background notifications are automatically displayed by FCM
+        // You can add custom logic here if needed (e.g., update local database)
+      },
+    );
 
     logger.debug('Background message handler registered');
   } catch (error) {
@@ -383,7 +387,7 @@ export function setupWebForegroundMessageListener() {
       webLogger.debug('Payload:', JSON.stringify(payload, null, 2));
 
       // Extract notification content from either notification or data payload
-      const title = payload.notification?.title || payload.data?.title || 'Better Habits';
+      const title = payload.notification?.title || payload.data?.title || 'App';
       const body = payload.notification?.body || payload.data?.body || '';
 
       webLogger.debug('Displaying notification:', { title, body });
@@ -522,10 +526,9 @@ export async function revokePushToken(): Promise<PushRevokeResult> {
     return { status: 'unavailable' };
   }
   try {
-    const messagingModule = require('@react-native-firebase/messaging');
-    const messaging = messagingModule.default;
-    const instance = messaging();
-    await instance.deleteToken();
+    const messagingModule =
+      require('@react-native-firebase/messaging') as typeof import('@react-native-firebase/messaging');
+    await messagingModule.deleteToken(messagingModule.getMessaging());
     lastLoggedNativeToken = null;
     try {
       getNativeStore()?.delete(NATIVE_TOKEN_STORAGE_KEY);

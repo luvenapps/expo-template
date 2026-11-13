@@ -520,7 +520,7 @@ export function AppProviders({ children }: PropsWithChildren) {
 function AppContent({ children, resolvedTheme }: PropsWithChildren<{ resolvedTheme: string }>) {
   return (
     <>
-      <YStack flex={1} backgroundColor="$background" testID="app-root-container">
+      <YStack flex={1} backgroundColor="background" testID="app-root-container">
         {children}
       </YStack>
       <StatusBar style={resolvedTheme === 'dark' ? 'light' : 'dark'} />

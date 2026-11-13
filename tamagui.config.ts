@@ -1,15 +1,12 @@
-/* istanbul ignore file */
 import { createInterFont } from '@tamagui/font-inter';
 import { createFont, createTamagui, createTokens } from 'tamagui';
 import { tamaguiColorTokens } from './src/ui/theme/palette';
 
 const colorTokens = {
   ...tamaguiColorTokens,
-  transparent: 'transparent',
   shadowColorLight: 'rgba(15, 23, 42, 0.25)',
   shadowColorDark: 'rgba(0, 0, 0, 0.65)',
 } as typeof tamaguiColorTokens & {
-  transparent: string;
   shadowColorLight: string;
   shadowColorDark: string;
 };
@@ -26,7 +23,6 @@ const tokens = createTokens({
     6: 32,
     7: 40,
     8: 48,
-    true: 16,
   },
   size: {
     0: 0,
@@ -38,7 +34,6 @@ const tokens = createTokens({
     6: 32,
     7: 40,
     8: 48,
-    true: 16,
   },
   radius: {
     0: 0,
@@ -50,7 +45,6 @@ const tokens = createTokens({
     6: 32,
     7: 40,
     8: 48,
-    true: 12,
   },
   zIndex: {
     0: 0,
@@ -58,7 +52,6 @@ const tokens = createTokens({
     2: 10,
     3: 20,
     4: 30,
-    true: 1,
   },
 });
 
@@ -72,7 +65,7 @@ const bodyFont = createFont({
     3: 16,
     4: 18,
     5: 24,
-    true: 16,
+    sm: 16,
   },
   lineHeight: {
     1: 16,
@@ -82,7 +75,7 @@ const bodyFont = createFont({
     5: 32,
     6: 40,
     7: 48,
-    true: 24,
+    sm: 24,
   },
   weight: {
     1: '300',
@@ -90,6 +83,7 @@ const bodyFont = createFont({
     3: '500',
     4: '600',
     5: '700',
+    sm: '500',
   },
 });
 
@@ -148,12 +142,85 @@ const themes = {
   },
 };
 
+// These recipes preserve the old numeric control sizes using the existing token scale.
+const sizing = {
+  default: 'legacy4',
+  sizes: {
+    legacy2: {
+      fontSize: '2',
+      controlFontSize: '2',
+      paddingInline: '2',
+      paddingBlock: '0',
+      gap: '0',
+      radius: '2',
+      px: { height: 6, icon: 14, square: 4 },
+    },
+    legacy4: {
+      fontSize: '4',
+      controlFontSize: '4',
+      paddingInline: '4',
+      paddingBlock: '0',
+      gap: '0',
+      radius: '4',
+      px: { height: 14, icon: 18, square: 8 },
+    },
+    legacy5: {
+      fontSize: '5',
+      controlFontSize: '5',
+      paddingInline: '5',
+      paddingBlock: '0',
+      gap: '0',
+      radius: '5',
+      px: { height: 22, icon: 24, square: 12 },
+    },
+    legacy6: {
+      fontSize: '5',
+      controlFontSize: '5',
+      paddingInline: '6',
+      paddingBlock: '0',
+      gap: '0',
+      radius: '6',
+      px: { height: 30, icon: 12, square: 16 },
+    },
+    legacy7: {
+      fontSize: '5',
+      controlFontSize: '5',
+      paddingInline: '7',
+      paddingBlock: '0',
+      gap: '0',
+      radius: '7',
+      px: { height: 38, icon: 12, square: 30 },
+    },
+  },
+} as const;
+
+const flatThemes = Object.fromEntries(
+  Object.entries(themes).map(([name, theme]) => [
+    name,
+    {
+      ...theme,
+      'background-hover': theme.backgroundHover,
+      'background-press': theme.backgroundPress,
+      'background-focus': theme.backgroundFocus,
+      'border-color': theme.borderColor,
+      'border-color-hover': theme.borderColorHover,
+      'border-color-press': theme.borderColorPress,
+      'border-color-focus': theme.borderColorFocus,
+      'accent-color': theme.accentColor,
+      'outline-color': theme.outlineColor,
+    },
+  ]),
+);
+
 export const tamaguiConfig = createTamagui({
   tokens,
-  themes,
+  themes: flatThemes,
+  sizing,
   fonts: {
     body: bodyFont,
+    heading: bodyFont,
   },
+  settings: { defaultFont: 'body' },
   defaultTheme: 'light',
 });
 

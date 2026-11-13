@@ -20,7 +20,13 @@ import {
   getReminderRepository,
   getDeviceRepository,
 } from '@/data/repositories';
-import { createRepository } from '@/db/sqlite';
+import {
+  createRepository,
+  deviceEntity,
+  entryEntity,
+  primaryEntity,
+  reminderEntity,
+} from '@/db/sqlite';
 
 describe('repositories', () => {
   const mockDatabase = {} as any;
@@ -30,7 +36,7 @@ describe('repositories', () => {
 
     expect(createRepository).toHaveBeenCalledWith({
       db: mockDatabase,
-      table: 'primaryEntity',
+      table: primaryEntity,
       primaryKey: 'id',
       createdAtColumn: 'createdAt',
       updatedAtColumn: 'updatedAt',
@@ -45,7 +51,7 @@ describe('repositories', () => {
 
     expect(createRepository).toHaveBeenCalledWith({
       db: mockDatabase,
-      table: 'entryEntity',
+      table: entryEntity,
       primaryKey: 'id',
       createdAtColumn: 'createdAt',
       updatedAtColumn: 'updatedAt',
@@ -60,7 +66,7 @@ describe('repositories', () => {
 
     expect(createRepository).toHaveBeenCalledWith({
       db: mockDatabase,
-      table: 'reminderEntity',
+      table: reminderEntity,
       primaryKey: 'id',
       createdAtColumn: 'createdAt',
       updatedAtColumn: 'updatedAt',
@@ -75,7 +81,7 @@ describe('repositories', () => {
 
     expect(createRepository).toHaveBeenCalledWith({
       db: mockDatabase,
-      table: 'deviceEntity',
+      table: deviceEntity,
       primaryKey: 'id',
       createdAtColumn: 'createdAt',
       updatedAtColumn: 'updatedAt',

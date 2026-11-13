@@ -1,3 +1,15 @@
+import { findByType } from '../../../helpers/testInstance';
+
+jest.mock('react-native/Libraries/Components/Keyboard/KeyboardAvoidingView', () => {
+  const React = jest.requireActual('react');
+
+  return {
+    __esModule: true,
+    default: ({ children, ...props }: any) =>
+      React.createElement('KeyboardAvoidingView', props, children),
+  };
+});
+
 // Mock react-native-safe-area-context
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: jest.fn(() => ({
@@ -33,7 +45,7 @@ jest.mock('@/ui/theme/ThemeProvider', () => {
 
 import { render } from '@testing-library/react-native';
 import React from 'react';
-import { KeyboardAvoidingView, Platform, Text } from 'react-native';
+import { Platform, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenContainer } from '@/ui/components/ScreenContainer';
 
@@ -49,8 +61,8 @@ describe('ScreenContainer', () => {
   });
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { getByTestId } = render(
+    it('should render without crashing', async () => {
+      const { getByTestId } = await render(
         <ScreenContainer>
           <Text>Test Content</Text>
         </ScreenContainer>,
@@ -59,8 +71,8 @@ describe('ScreenContainer', () => {
       expect(getByTestId('screen-container')).toBeDefined();
     });
 
-    it('should render children correctly', () => {
-      const { getByText } = render(
+    it('should render children correctly', async () => {
+      const { getByText } = await render(
         <ScreenContainer>
           <Text>Child Component</Text>
         </ScreenContainer>,
@@ -69,8 +81,8 @@ describe('ScreenContainer', () => {
       expect(getByText('Child Component')).toBeDefined();
     });
 
-    it('should render multiple children', () => {
-      const { getByText } = render(
+    it('should render multiple children', async () => {
+      const { getByText } = await render(
         <ScreenContainer>
           <Text>First Child</Text>
           <Text>Second Child</Text>
@@ -85,8 +97,8 @@ describe('ScreenContainer', () => {
   });
 
   describe('Default Props', () => {
-    it('should apply default justifyContent', () => {
-      const { getByTestId } = render(
+    it('should apply default justifyContent', async () => {
+      const { getByTestId } = await render(
         <ScreenContainer>
           <Text>Content</Text>
         </ScreenContainer>,
@@ -96,8 +108,8 @@ describe('ScreenContainer', () => {
       expect(container.props.justifyContent).toBe('flex-start');
     });
 
-    it('should apply default alignItems', () => {
-      const { getByTestId } = render(
+    it('should apply default alignItems', async () => {
+      const { getByTestId } = await render(
         <ScreenContainer>
           <Text>Content</Text>
         </ScreenContainer>,
@@ -107,30 +119,30 @@ describe('ScreenContainer', () => {
       expect(container.props.alignItems).toBe('stretch');
     });
 
-    it('should apply default paddingHorizontal', () => {
-      const { getByTestId } = render(
+    it('should apply default paddingHorizontal', async () => {
+      const { getByTestId } = await render(
         <ScreenContainer>
           <Text>Content</Text>
         </ScreenContainer>,
       );
 
       const container = getByTestId('screen-container');
-      expect(container.props.paddingHorizontal).toBe('$6');
+      expect(container.props.paddingHorizontal).toBe('6');
     });
 
-    it('should apply default backgroundColor from palette', () => {
-      const { getByTestId } = render(
+    it('should apply default backgroundColor from palette', async () => {
+      const { getByTestId } = await render(
         <ScreenContainer>
           <Text>Content</Text>
         </ScreenContainer>,
       );
 
       const container = getByTestId('screen-container');
-      expect(container.props.backgroundColor).toBe('$background');
+      expect(container.props.backgroundColor).toBe('background');
     });
 
-    it('should apply flex: 1', () => {
-      const { getByTestId } = render(
+    it('should apply flex: 1', async () => {
+      const { getByTestId } = await render(
         <ScreenContainer>
           <Text>Content</Text>
         </ScreenContainer>,
@@ -142,8 +154,8 @@ describe('ScreenContainer', () => {
   });
 
   describe('Custom Props', () => {
-    it('should accept custom justifyContent', () => {
-      const { getByTestId } = render(
+    it('should accept custom justifyContent', async () => {
+      const { getByTestId } = await render(
         <ScreenContainer justifyContent="flex-start">
           <Text>Content</Text>
         </ScreenContainer>,
@@ -153,8 +165,8 @@ describe('ScreenContainer', () => {
       expect(container.props.justifyContent).toBe('flex-start');
     });
 
-    it('should accept custom alignItems', () => {
-      const { getByTestId } = render(
+    it('should accept custom alignItems', async () => {
+      const { getByTestId } = await render(
         <ScreenContainer alignItems="flex-end">
           <Text>Content</Text>
         </ScreenContainer>,
@@ -164,19 +176,19 @@ describe('ScreenContainer', () => {
       expect(container.props.alignItems).toBe('flex-end');
     });
 
-    it('should accept custom paddingHorizontal as string', () => {
-      const { getByTestId } = render(
-        <ScreenContainer paddingHorizontal="$4">
+    it('should accept custom paddingHorizontal as string', async () => {
+      const { getByTestId } = await render(
+        <ScreenContainer paddingHorizontal="4">
           <Text>Content</Text>
         </ScreenContainer>,
       );
 
       const container = getByTestId('screen-container');
-      expect(container.props.paddingHorizontal).toBe('$4');
+      expect(container.props.paddingHorizontal).toBe('4');
     });
 
-    it('should accept custom paddingHorizontal as number', () => {
-      const { getByTestId } = render(
+    it('should accept custom paddingHorizontal as number', async () => {
+      const { getByTestId } = await render(
         <ScreenContainer paddingHorizontal={20}>
           <Text>Content</Text>
         </ScreenContainer>,
@@ -186,8 +198,8 @@ describe('ScreenContainer', () => {
       expect(container.props.paddingHorizontal).toBe(20);
     });
 
-    it('should accept custom gap as string', () => {
-      const { getByTestId } = render(
+    it('should accept custom gap as string', async () => {
+      const { getByTestId } = await render(
         <ScreenContainer gap="$3">
           <Text>Content</Text>
         </ScreenContainer>,
@@ -197,8 +209,8 @@ describe('ScreenContainer', () => {
       expect(container.props.gap).toBe('$3');
     });
 
-    it('should accept custom gap as number', () => {
-      const { getByTestId } = render(
+    it('should accept custom gap as number', async () => {
+      const { getByTestId } = await render(
         <ScreenContainer gap={16}>
           <Text>Content</Text>
         </ScreenContainer>,
@@ -208,19 +220,19 @@ describe('ScreenContainer', () => {
       expect(container.props.gap).toBe(16);
     });
 
-    it('should accept custom backgroundColor', () => {
-      const { getByTestId } = render(
-        <ScreenContainer backgroundColor="$backgroundStrong">
+    it('should accept custom backgroundColor', async () => {
+      const { getByTestId } = await render(
+        <ScreenContainer backgroundColor="backgroundStrong">
           <Text>Content</Text>
         </ScreenContainer>,
       );
 
       const container = getByTestId('screen-container');
-      expect(container.props.backgroundColor).toBe('$backgroundStrong');
+      expect(container.props.backgroundColor).toBe('backgroundStrong');
     });
 
-    it('should accept non-token backgroundColor values', () => {
-      const { getByTestId } = render(
+    it('should accept non-token backgroundColor values', async () => {
+      const { getByTestId } = await render(
         <ScreenContainer backgroundColor="#123456">
           <Text>Content</Text>
         </ScreenContainer>,
@@ -232,7 +244,7 @@ describe('ScreenContainer', () => {
   });
 
   describe('Safe Area Insets', () => {
-    it('should apply safe area insets to top padding', () => {
+    it('should apply safe area insets to top padding', async () => {
       (useSafeAreaInsets as jest.Mock).mockReturnValue({
         top: 44,
         bottom: 0,
@@ -240,7 +252,7 @@ describe('ScreenContainer', () => {
         right: 0,
       });
 
-      const { getByTestId } = render(
+      const { getByTestId } = await render(
         <ScreenContainer>
           <Text>Content</Text>
         </ScreenContainer>,
@@ -250,7 +262,7 @@ describe('ScreenContainer', () => {
       expect(container.props.paddingTop).toBe(28);
     });
 
-    it('should apply safe area insets to bottom padding', () => {
+    it('should apply safe area insets to bottom padding', async () => {
       (useSafeAreaInsets as jest.Mock).mockReturnValue({
         top: 0,
         bottom: 34,
@@ -258,7 +270,7 @@ describe('ScreenContainer', () => {
         right: 0,
       });
 
-      const { getByTestId } = render(
+      const { getByTestId } = await render(
         <ScreenContainer>
           <Text>Content</Text>
         </ScreenContainer>,
@@ -268,7 +280,7 @@ describe('ScreenContainer', () => {
       expect(container.props.paddingBottom).toBe(46);
     });
 
-    it('should apply safe area insets to both top and bottom', () => {
+    it('should apply safe area insets to both top and bottom', async () => {
       (useSafeAreaInsets as jest.Mock).mockReturnValue({
         top: 50,
         bottom: 30,
@@ -276,7 +288,7 @@ describe('ScreenContainer', () => {
         right: 0,
       });
 
-      const { getByTestId } = render(
+      const { getByTestId } = await render(
         <ScreenContainer>
           <Text>Content</Text>
         </ScreenContainer>,
@@ -287,7 +299,7 @@ describe('ScreenContainer', () => {
       expect(container.props.paddingBottom).toBe(42);
     });
 
-    it('should add 24px base padding when insets are zero', () => {
+    it('should add 24px base padding when insets are zero', async () => {
       (useSafeAreaInsets as jest.Mock).mockReturnValue({
         top: 0,
         bottom: 0,
@@ -295,7 +307,7 @@ describe('ScreenContainer', () => {
         right: 0,
       });
 
-      const { getByTestId } = render(
+      const { getByTestId } = await render(
         <ScreenContainer>
           <Text>Content</Text>
         </ScreenContainer>,
@@ -308,7 +320,7 @@ describe('ScreenContainer', () => {
   });
 
   describe('Props Combinations', () => {
-    it('should apply all custom props together', () => {
+    it('should apply all custom props together', async () => {
       (useSafeAreaInsets as jest.Mock).mockReturnValue({
         top: 20,
         bottom: 10,
@@ -316,13 +328,13 @@ describe('ScreenContainer', () => {
         right: 0,
       });
 
-      const { getByTestId } = render(
+      const { getByTestId } = await render(
         <ScreenContainer
           justifyContent="space-between"
           alignItems="stretch"
-          paddingHorizontal="$8"
+          paddingHorizontal="8"
           gap="$5"
-          backgroundColor="$backgroundHover"
+          backgroundColor="background-hover"
         >
           <Text>Content</Text>
         </ScreenContainer>,
@@ -331,17 +343,17 @@ describe('ScreenContainer', () => {
       const container = getByTestId('screen-container');
       expect(container.props.justifyContent).toBe('space-between');
       expect(container.props.alignItems).toBe('stretch');
-      expect(container.props.paddingHorizontal).toBe('$8');
+      expect(container.props.paddingHorizontal).toBe('8');
       expect(container.props.gap).toBe('$5');
-      expect(container.props.backgroundColor).toBe('$backgroundHover');
+      expect(container.props.backgroundColor).toBe('background-hover');
       expect(container.props.paddingTop).toBe(28);
       expect(container.props.paddingBottom).toBe(24);
     });
   });
 
   describe('Scrollable and Keyboard Avoiding', () => {
-    it('should render with scrollable=false (non-scrollable)', () => {
-      const { getByTestId } = render(
+    it('should render with scrollable=false (non-scrollable)', async () => {
+      const { getByTestId } = await render(
         <ScreenContainer scrollable={false}>
           <Text>Non-scrollable Content</Text>
         </ScreenContainer>,
@@ -350,8 +362,8 @@ describe('ScreenContainer', () => {
       expect(getByTestId('screen-container')).toBeDefined();
     });
 
-    it('should render with keyboardAvoiding=false', () => {
-      const { getByTestId } = render(
+    it('should render with keyboardAvoiding=false', async () => {
+      const { getByTestId } = await render(
         <ScreenContainer keyboardAvoiding={false}>
           <Text>No Keyboard Avoiding</Text>
         </ScreenContainer>,
@@ -360,20 +372,20 @@ describe('ScreenContainer', () => {
       expect(getByTestId('screen-container')).toBeDefined();
     });
 
-    it('should use height behavior for non-ios keyboard avoiding', () => {
+    it('should use height behavior for non-ios keyboard avoiding', async () => {
       Object.defineProperty(Platform, 'OS', { value: 'android' });
-      const { UNSAFE_getByType } = render(
+      const { container } = await render(
         <ScreenContainer>
           <Text>Android Keyboard</Text>
         </ScreenContainer>,
       );
 
-      const keyboardView = UNSAFE_getByType(KeyboardAvoidingView);
+      const keyboardView = findByType(container, 'KeyboardAvoidingView');
       expect(keyboardView.props.behavior).toBe('height');
     });
 
-    it('should render with both scrollable=false and keyboardAvoiding=false', () => {
-      const { getByTestId } = render(
+    it('should render with both scrollable=false and keyboardAvoiding=false', async () => {
+      const { getByTestId } = await render(
         <ScreenContainer scrollable={false} keyboardAvoiding={false}>
           <Text>Static Content</Text>
         </ScreenContainer>,
@@ -382,9 +394,9 @@ describe('ScreenContainer', () => {
       expect(getByTestId('screen-container')).toBeDefined();
     });
 
-    it('should accept contentContainerStyle prop', () => {
+    it('should accept contentContainerStyle prop', async () => {
       const style = { paddingBottom: 100 };
-      const { getByTestId } = render(
+      const { getByTestId } = await render(
         <ScreenContainer contentContainerStyle={style}>
           <Text>Custom Style</Text>
         </ScreenContainer>,
@@ -395,8 +407,8 @@ describe('ScreenContainer', () => {
   });
 
   describe('Edge Cases', () => {
-    it('should handle undefined gap prop', () => {
-      const { getByTestId } = render(
+    it('should handle undefined gap prop', async () => {
+      const { getByTestId } = await render(
         <ScreenContainer>
           <Text>Content</Text>
         </ScreenContainer>,
@@ -406,13 +418,13 @@ describe('ScreenContainer', () => {
       expect(container.props.gap).toBeUndefined();
     });
 
-    it('should render with empty children', () => {
-      const { getByTestId } = render(<ScreenContainer />);
+    it('should render with empty children', async () => {
+      const { getByTestId } = await render(<ScreenContainer />);
 
       expect(getByTestId('screen-container')).toBeDefined();
     });
 
-    it('should handle all justifyContent values', () => {
+    it('should handle all justifyContent values', async () => {
       const values: ('flex-start' | 'flex-end' | 'center' | 'space-between' | 'space-around')[] = [
         'flex-start',
         'flex-end',
@@ -421,8 +433,8 @@ describe('ScreenContainer', () => {
         'space-around',
       ];
 
-      values.forEach((value) => {
-        const { getByTestId } = render(
+      for (const value of values) {
+        const { getByTestId } = await render(
           <ScreenContainer justifyContent={value}>
             <Text>Content</Text>
           </ScreenContainer>,
@@ -430,10 +442,10 @@ describe('ScreenContainer', () => {
 
         const container = getByTestId('screen-container');
         expect(container.props.justifyContent).toBe(value);
-      });
+      }
     });
 
-    it('should handle all alignItems values', () => {
+    it('should handle all alignItems values', async () => {
       const values: ('flex-start' | 'flex-end' | 'center' | 'stretch' | 'baseline')[] = [
         'flex-start',
         'flex-end',
@@ -442,8 +454,8 @@ describe('ScreenContainer', () => {
         'baseline',
       ];
 
-      values.forEach((value) => {
-        const { getByTestId } = render(
+      for (const value of values) {
+        const { getByTestId } = await render(
           <ScreenContainer alignItems={value}>
             <Text>Content</Text>
           </ScreenContainer>,
@@ -451,7 +463,7 @@ describe('ScreenContainer', () => {
 
         const container = getByTestId('screen-container');
         expect(container.props.alignItems).toBe(value);
-      });
+      }
     });
   });
 });

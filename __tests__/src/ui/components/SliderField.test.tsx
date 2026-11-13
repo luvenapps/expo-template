@@ -36,25 +36,16 @@ jest.mock('tamagui', () => {
 /* eslint-enable react/no-unknown-property */
 
 // Mock Text components with simplified structure
-/* eslint-disable react/no-unknown-property */
 jest.mock('@/ui/components/Text', () => {
   const React = require('react');
+  const { Text } = require('react-native');
 
-  const LabelText = (props: any) => (
-    <div testID={props.testID} {...props}>
-      {props.children}
-    </div>
-  );
+  const LabelText = (props: any) => React.createElement(Text, props, props.children);
 
-  const CaptionText = (props: any) => (
-    <div testID={props.testID} {...props}>
-      {props.children}
-    </div>
-  );
+  const CaptionText = (props: any) => React.createElement(Text, props, props.children);
 
   return { LabelText, CaptionText };
 });
-/* eslint-enable react/no-unknown-property */
 
 import { render } from '@testing-library/react-native';
 import React from 'react';
@@ -67,8 +58,8 @@ describe('SliderField', () => {
     jest.clearAllMocks();
   });
 
-  it('renders with single value', () => {
-    const { getByTestId } = render(
+  it('renders with single value', async () => {
+    const { getByTestId } = await render(
       <SliderField
         labelTestID="slider-label"
         label="Volume"
@@ -80,8 +71,8 @@ describe('SliderField', () => {
     expect(getByTestId('slider-label')).toHaveTextContent('Volume • 50');
   });
 
-  it('renders with range values', () => {
-    const { getByTestId } = render(
+  it('renders with range values', async () => {
+    const { getByTestId } = await render(
       <SliderField
         labelTestID="slider-label"
         label="Price Range"
@@ -93,8 +84,8 @@ describe('SliderField', () => {
     expect(getByTestId('slider-label')).toHaveTextContent('Price Range • 25 – 75');
   });
 
-  it('rounds decimal values in label', () => {
-    const { getByTestId } = render(
+  it('rounds decimal values in label', async () => {
+    const { getByTestId } = await render(
       <SliderField
         labelTestID="slider-label"
         label="Temperature"
@@ -106,8 +97,8 @@ describe('SliderField', () => {
     expect(getByTestId('slider-label')).toHaveTextContent('Temperature • 24 – 45');
   });
 
-  it('renders helperText when provided', () => {
-    const { getByTestId } = render(
+  it('renders helperText when provided', async () => {
+    const { getByTestId } = await render(
       <SliderField
         helperTestID="slider-helper"
         label="Brightness"
@@ -120,16 +111,16 @@ describe('SliderField', () => {
     expect(getByTestId('slider-helper')).toHaveTextContent('Adjust screen brightness');
   });
 
-  it('does not render helperText when not provided', () => {
-    const { queryByTestId } = render(
+  it('does not render helperText when not provided', async () => {
+    const { queryByTestId } = await render(
       <SliderField label="Brightness" value={[80]} onValueChange={mockOnValueChange} />,
     );
 
     expect(queryByTestId('slider-helper')).toBeNull();
   });
 
-  it('passes onValueChange prop to slider', () => {
-    const { getByTestId } = render(
+  it('passes onValueChange prop to slider', async () => {
+    const { getByTestId } = await render(
       <SliderField label="Volume" value={[30]} onValueChange={mockOnValueChange} />,
     );
 
@@ -137,8 +128,8 @@ describe('SliderField', () => {
     expect(getByTestId('slider')).toBeDefined();
   });
 
-  it('renders with container testID', () => {
-    const { getByTestId } = render(
+  it('renders with container testID', async () => {
+    const { getByTestId } = await render(
       <SliderField
         testID="volume-slider"
         label="Volume"
@@ -150,8 +141,8 @@ describe('SliderField', () => {
     expect(getByTestId('volume-slider')).toBeDefined();
   });
 
-  it('handles min, max, and step props', () => {
-    const { getByTestId } = render(
+  it('handles min, max, and step props', async () => {
+    const { getByTestId } = await render(
       <SliderField
         label="Custom Range"
         value={[5]}
@@ -166,8 +157,8 @@ describe('SliderField', () => {
     expect(getByTestId('slider')).toBeDefined();
   });
 
-  it('renders single thumb for single value', () => {
-    const { getByTestId, queryByTestId } = render(
+  it('renders single thumb for single value', async () => {
+    const { getByTestId, queryByTestId } = await render(
       <SliderField label="Volume" value={[50]} onValueChange={mockOnValueChange} />,
     );
 
@@ -175,8 +166,8 @@ describe('SliderField', () => {
     expect(queryByTestId('slider-thumb-1')).toBeNull();
   });
 
-  it('renders two thumbs for range values', () => {
-    const { getByTestId } = render(
+  it('renders two thumbs for range values', async () => {
+    const { getByTestId } = await render(
       <SliderField label="Range" value={[25, 75]} onValueChange={mockOnValueChange} />,
     );
 
@@ -184,8 +175,8 @@ describe('SliderField', () => {
     expect(getByTestId('slider-thumb-1')).toBeDefined();
   });
 
-  it('formats multiple values with en dash separator', () => {
-    const { getByTestId } = render(
+  it('formats multiple values with en dash separator', async () => {
+    const { getByTestId } = await render(
       <SliderField
         labelTestID="slider-label"
         label="Range"

@@ -26,8 +26,7 @@ function isWeb() {
 }
 
 export function getQueryClientPersistOptions():
-  | PersistQueryClientProviderProps['persistOptions']
-  | null {
+  PersistQueryClientProviderProps['persistOptions'] | null {
   if (!isWeb()) {
     persistOptions = null;
     return null;

@@ -110,8 +110,8 @@ describe('ThemeProvider', () => {
   const expectedDarkPalette = themePalettes.dark;
 
   describe('Provider Rendering', () => {
-    it('should provide theme context to children', () => {
-      const { result } = renderHook(() => useThemeContext(), { wrapper });
+    it('should provide theme context to children', async () => {
+      const { result } = await renderHook(() => useThemeContext(), { wrapper });
 
       expect(result.current).toBeDefined();
       expect(result.current.preference).toBe('system');
@@ -120,19 +120,19 @@ describe('ThemeProvider', () => {
       expect(result.current.resolvedTheme).toBe('dark');
     });
 
-    it('should initialize with system preference by default', () => {
-      const { result } = renderHook(() => useThemeContext(), { wrapper });
+    it('should initialize with system preference by default', async () => {
+      const { result } = await renderHook(() => useThemeContext(), { wrapper });
 
       expect(result.current.preference).toBe('system');
       expect(result.current.resolvedTheme).toBe('dark');
     });
 
-    it('should initialize system theme based on Appearance.getColorScheme', () => {
+    it('should initialize system theme based on Appearance.getColorScheme', async () => {
       mockColorScheme = 'light';
-      const { result } = renderHook(() => useThemeContext(), { wrapper });
+      const { result } = await renderHook(() => useThemeContext(), { wrapper });
 
       // Default theme is 'dark', but if we set it to 'system', it should use light
-      act(() => {
+      await act(() => {
         result.current.setPreference('system');
       });
 
@@ -141,19 +141,19 @@ describe('ThemeProvider', () => {
   });
 
   describe('useThemeContext Hook', () => {
-    it('should throw error when used outside ThemeProvider', () => {
+    it('should throw error when used outside ThemeProvider', async () => {
       // Suppress console.error for this test
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
 
-      expect(() => {
-        renderHook(() => useThemeContext());
-      }).toThrow('useThemeContext must be used within a ThemeProvider');
+      await expect(renderHook(() => useThemeContext())).rejects.toThrow(
+        'useThemeContext must be used within a ThemeProvider',
+      );
 
       consoleSpy.mockRestore();
     });
 
-    it('should return theme context value', () => {
-      const { result } = renderHook(() => useThemeContext(), { wrapper });
+    it('should return theme context value', async () => {
+      const { result } = await renderHook(() => useThemeContext(), { wrapper });
 
       expect(result.current).toMatchObject({
         preference: expect.any(String),
@@ -165,14 +165,14 @@ describe('ThemeProvider', () => {
   });
 
   describe('useOptionalThemeContext Hook', () => {
-    it('should return undefined when used outside ThemeProvider', () => {
-      const { result } = renderHook(() => useOptionalThemeContext());
+    it('should return undefined when used outside ThemeProvider', async () => {
+      const { result } = await renderHook(() => useOptionalThemeContext());
 
       expect(result.current).toBeUndefined();
     });
 
-    it('should return theme context value when used inside ThemeProvider', () => {
-      const { result } = renderHook(() => useOptionalThemeContext(), { wrapper });
+    it('should return theme context value when used inside ThemeProvider', async () => {
+      const { result } = await renderHook(() => useOptionalThemeContext(), { wrapper });
 
       expect(result.current).toBeDefined();
       expect(result.current).toMatchObject({
@@ -185,10 +185,10 @@ describe('ThemeProvider', () => {
   });
 
   describe('Theme Setting', () => {
-    it('should set theme to light', () => {
-      const { result } = renderHook(() => useThemeContext(), { wrapper });
+    it('should set theme to light', async () => {
+      const { result } = await renderHook(() => useThemeContext(), { wrapper });
 
-      act(() => {
+      await act(() => {
         result.current.setPreference('light');
       });
 
@@ -196,13 +196,13 @@ describe('ThemeProvider', () => {
       expect(result.current.resolvedTheme).toBe('light');
     });
 
-    it('should set theme to dark', () => {
-      const { result } = renderHook(() => useThemeContext(), { wrapper });
+    it('should set theme to dark', async () => {
+      const { result } = await renderHook(() => useThemeContext(), { wrapper });
 
-      act(() => {
+      await act(() => {
         result.current.setPreference('light');
       });
-      act(() => {
+      await act(() => {
         result.current.setPreference('dark');
       });
 
@@ -210,11 +210,11 @@ describe('ThemeProvider', () => {
       expect(result.current.resolvedTheme).toBe('dark');
     });
 
-    it('should set theme to system', () => {
+    it('should set theme to system', async () => {
       mockColorScheme = 'light';
-      const { result } = renderHook(() => useThemeContext(), { wrapper });
+      const { result } = await renderHook(() => useThemeContext(), { wrapper });
 
-      act(() => {
+      await act(() => {
         result.current.setPreference('system');
       });
 
@@ -224,31 +224,31 @@ describe('ThemeProvider', () => {
   });
 
   describe('Theme Resolution', () => {
-    it('should resolve light theme to light palette', () => {
-      const { result } = renderHook(() => useThemeContext(), { wrapper });
+    it('should resolve light theme to light palette', async () => {
+      const { result } = await renderHook(() => useThemeContext(), { wrapper });
 
-      act(() => {
+      await act(() => {
         result.current.setPreference('light');
       });
 
       expect(result.current.palette).toEqual(expectedLightPalette);
     });
 
-    it('should resolve dark theme to dark palette', () => {
-      const { result } = renderHook(() => useThemeContext(), { wrapper });
+    it('should resolve dark theme to dark palette', async () => {
+      const { result } = await renderHook(() => useThemeContext(), { wrapper });
 
-      act(() => {
+      await act(() => {
         result.current.setPreference('dark');
       });
 
       expect(result.current.palette).toEqual(expectedDarkPalette);
     });
 
-    it('should resolve system theme to light palette when system is light', () => {
+    it('should resolve system theme to light palette when system is light', async () => {
       mockColorScheme = 'light';
-      const { result } = renderHook(() => useThemeContext(), { wrapper });
+      const { result } = await renderHook(() => useThemeContext(), { wrapper });
 
-      act(() => {
+      await act(() => {
         result.current.setPreference('system');
       });
 
@@ -256,11 +256,11 @@ describe('ThemeProvider', () => {
       expect(result.current.palette).toEqual(expectedLightPalette);
     });
 
-    it('should resolve system theme to dark palette when system is dark', () => {
+    it('should resolve system theme to dark palette when system is dark', async () => {
       mockColorScheme = 'dark';
-      const { result } = renderHook(() => useThemeContext(), { wrapper });
+      const { result } = await renderHook(() => useThemeContext(), { wrapper });
 
-      act(() => {
+      await act(() => {
         result.current.setPreference('system');
       });
 
@@ -270,18 +270,18 @@ describe('ThemeProvider', () => {
   });
 
   describe('System Theme Changes', () => {
-    it('should update resolved theme when system theme changes from light to dark', () => {
+    it('should update resolved theme when system theme changes from light to dark', async () => {
       mockColorScheme = 'light';
-      const { result } = renderHook(() => useThemeContext(), { wrapper });
+      const { result } = await renderHook(() => useThemeContext(), { wrapper });
 
-      act(() => {
+      await act(() => {
         result.current.setPreference('system');
       });
 
       expect(result.current.resolvedTheme).toBe('light');
 
       // Simulate system theme change
-      act(() => {
+      await act(() => {
         mockListeners.forEach((listener) => listener({ colorScheme: 'dark' }));
       });
 
@@ -289,18 +289,18 @@ describe('ThemeProvider', () => {
       expect(result.current.palette.background).toBe(expectedDarkPalette.background);
     });
 
-    it('should update resolved theme when system theme changes from dark to light', () => {
+    it('should update resolved theme when system theme changes from dark to light', async () => {
       mockColorScheme = 'dark';
-      const { result } = renderHook(() => useThemeContext(), { wrapper });
+      const { result } = await renderHook(() => useThemeContext(), { wrapper });
 
-      act(() => {
+      await act(() => {
         result.current.setPreference('system');
       });
 
       expect(result.current.resolvedTheme).toBe('dark');
 
       // Simulate system theme change
-      act(() => {
+      await act(() => {
         mockListeners.forEach((listener) => listener({ colorScheme: 'light' }));
       });
 
@@ -308,36 +308,36 @@ describe('ThemeProvider', () => {
       expect(result.current.palette.background).toBe(expectedLightPalette.background);
     });
 
-    it('should ignore null colorScheme changes', () => {
+    it('should ignore null colorScheme changes', async () => {
       mockColorScheme = 'dark';
-      const { result } = renderHook(() => useThemeContext(), { wrapper });
+      const { result } = await renderHook(() => useThemeContext(), { wrapper });
 
-      act(() => {
+      await act(() => {
         result.current.setPreference('system');
       });
 
       const initialTheme = result.current.resolvedTheme;
 
       // Simulate null colorScheme event
-      act(() => {
+      await act(() => {
         mockListeners.forEach((listener) => listener({ colorScheme: null }));
       });
 
       expect(result.current.resolvedTheme).toBe(initialTheme);
     });
 
-    it('should not affect resolved theme when user theme is not system', () => {
+    it('should not affect resolved theme when user theme is not system', async () => {
       mockColorScheme = 'dark';
-      const { result } = renderHook(() => useThemeContext(), { wrapper });
+      const { result } = await renderHook(() => useThemeContext(), { wrapper });
 
-      act(() => {
+      await act(() => {
         result.current.setPreference('light');
       });
 
       expect(result.current.resolvedTheme).toBe('light');
 
       // Simulate system theme change
-      act(() => {
+      await act(() => {
         mockListeners.forEach((listener) => listener({ colorScheme: 'dark' }));
       });
 
@@ -347,12 +347,12 @@ describe('ThemeProvider', () => {
   });
 
   describe('Subscription Cleanup', () => {
-    it('should clean up appearance listener on unmount', () => {
-      const { unmount } = renderHook(() => useThemeContext(), { wrapper });
+    it('should clean up appearance listener on unmount', async () => {
+      const { unmount } = await renderHook(() => useThemeContext(), { wrapper });
 
       expect(mockListeners.length).toBe(1);
 
-      unmount();
+      await unmount();
 
       expect(mockListeners.length).toBe(0);
     });
@@ -394,10 +394,10 @@ describe('ThemeProvider', () => {
   });
 
   describe('Palette Values', () => {
-    it('should have correct light palette values', () => {
-      const { result } = renderHook(() => useThemeContext(), { wrapper });
+    it('should have correct light palette values', async () => {
+      const { result } = await renderHook(() => useThemeContext(), { wrapper });
 
-      act(() => {
+      await act(() => {
         result.current.setPreference('light');
       });
 
@@ -406,10 +406,10 @@ describe('ThemeProvider', () => {
       expect(result.current.palette.mutedText).toBe(expectedLightPalette.mutedText);
     });
 
-    it('should have correct dark palette values', () => {
-      const { result } = renderHook(() => useThemeContext(), { wrapper });
+    it('should have correct dark palette values', async () => {
+      const { result } = await renderHook(() => useThemeContext(), { wrapper });
 
-      act(() => {
+      await act(() => {
         result.current.setPreference('dark');
       });
 
@@ -431,19 +431,19 @@ describe('ThemeProvider', () => {
       storage = {};
     });
 
-    it('hydrates preference from localStorage', () => {
+    it('hydrates preference from localStorage', async () => {
       storage[STORAGE_KEY] = 'dark';
 
-      const { result } = renderHook(() => useThemeContext(), { wrapper });
+      const { result } = await renderHook(() => useThemeContext(), { wrapper });
 
       expect(result.current.preference).toBe('dark');
       expect(result.current.resolvedTheme).toBe('dark');
     });
 
-    it('persists preference via localStorage', () => {
-      const { result } = renderHook(() => useThemeContext(), { wrapper });
+    it('persists preference via localStorage', async () => {
+      const { result } = await renderHook(() => useThemeContext(), { wrapper });
 
-      act(() => {
+      await act(() => {
         result.current.setPreference('light');
       });
 
@@ -472,23 +472,23 @@ describe('ThemeProvider', () => {
       }
     });
 
-    it('hydrates preference from MMKV storage', () => {
+    it('hydrates preference from MMKV storage', async () => {
       const mmkvModule = require('react-native-mmkv');
       mmkvModule.__store.set(STORAGE_KEY, 'dark');
 
-      const { result } = renderHook(() => useThemeContext(), { wrapper });
+      const { result } = await renderHook(() => useThemeContext(), { wrapper });
 
       expect(mmkvModule.createMMKV).toHaveBeenCalled();
       expect(result.current.preference).toBe('dark');
       expect(result.current.resolvedTheme).toBe('dark');
     });
 
-    it('persists preference via MMKV storage', () => {
+    it('persists preference via MMKV storage', async () => {
       const mmkvModule = require('react-native-mmkv');
 
-      const { result } = renderHook(() => useThemeContext(), { wrapper });
+      const { result } = await renderHook(() => useThemeContext(), { wrapper });
 
-      act(() => {
+      await act(() => {
         result.current.setPreference('light');
       });
 
@@ -500,20 +500,20 @@ describe('ThemeProvider', () => {
   });
 
   describe('Context Value Memoization', () => {
-    it('should memoize context value when theme does not change', () => {
-      const { result, rerender } = renderHook(() => useThemeContext(), { wrapper });
+    it('should memoize context value when theme does not change', async () => {
+      const { result, rerender } = await renderHook(() => useThemeContext(), { wrapper });
 
       const firstValue = result.current;
-      rerender(undefined);
+      await rerender(undefined);
       const secondValue = result.current;
 
       expect(firstValue).toBe(secondValue);
     });
 
     it('should update context value when theme changes', async () => {
-      const { result } = renderHook(() => useThemeContext(), { wrapper });
+      const { result } = await renderHook(() => useThemeContext(), { wrapper });
 
-      act(() => {
+      await act(() => {
         result.current.setPreference('light');
       });
 
@@ -522,17 +522,17 @@ describe('ThemeProvider', () => {
       expect(result.current.palette).toEqual(expectedLightPalette);
     });
 
-    it('should update context value when system theme changes and user theme is system', () => {
+    it('should update context value when system theme changes and user theme is system', async () => {
       mockColorScheme = 'light';
-      const { result } = renderHook(() => useThemeContext(), { wrapper });
+      const { result } = await renderHook(() => useThemeContext(), { wrapper });
 
-      act(() => {
+      await act(() => {
         result.current.setPreference('system');
       });
 
       const firstValue = result.current;
 
-      act(() => {
+      await act(() => {
         mockListeners.forEach((listener) => listener({ colorScheme: 'dark' }));
       });
 
@@ -594,10 +594,17 @@ describe('ThemeProvider', () => {
         return metaTags[name];
       };
 
+      const appRoot = {
+        style: {
+          backgroundColor: '',
+        },
+      };
+
       Object.defineProperty(globalThis, 'document', {
         configurable: true,
         writable: true,
         value: {
+          getElementById: jest.fn((id: string) => (id === 'root' ? appRoot : null)),
           querySelector: jest.fn((selector: string) => {
             const match = selector.match(/^meta\[name="(.+)"\]$/);
             if (!match) {
@@ -627,8 +634,18 @@ describe('ThemeProvider', () => {
             ),
           },
           documentElement: {
+            dataset: {
+              theme: '',
+            },
             style: {
               colorScheme: '',
+              backgroundColor: '',
+              setProperty: jest.fn(),
+            },
+          },
+          body: {
+            style: {
+              backgroundColor: '',
             },
           },
         },
@@ -640,19 +657,19 @@ describe('ThemeProvider', () => {
       delete (globalThis as { document?: unknown }).document;
     });
 
-    it('should use matchMedia to detect system theme on web', () => {
+    it('should use matchMedia to detect system theme on web', async () => {
       mockColorScheme = 'dark';
-      const { result } = renderHook(() => useThemeContext(), { wrapper });
+      const { result } = await renderHook(() => useThemeContext(), { wrapper });
 
       expect(mockMatchMedia).toHaveBeenCalledWith('(prefers-color-scheme: dark)');
       expect(result.current.resolvedTheme).toBe('dark');
     });
 
-    it('should listen to matchMedia changes on web', () => {
+    it('should listen to matchMedia changes on web', async () => {
       mockColorScheme = 'light';
-      const { result } = renderHook(() => useThemeContext(), { wrapper });
+      const { result } = await renderHook(() => useThemeContext(), { wrapper });
 
-      act(() => {
+      await act(() => {
         result.current.setPreference('system');
       });
 
@@ -660,7 +677,7 @@ describe('ThemeProvider', () => {
 
       // Simulate media query change
       mockColorScheme = 'dark';
-      act(() => {
+      await act(() => {
         mediaQueryListeners.forEach((listener) =>
           listener({ matches: true, media: '(prefers-color-scheme: dark)' } as MediaQueryListEvent),
         );
@@ -669,17 +686,17 @@ describe('ThemeProvider', () => {
       expect(result.current.resolvedTheme).toBe('dark');
     });
 
-    it('should clean up matchMedia listener on unmount', () => {
-      const { unmount } = renderHook(() => useThemeContext(), { wrapper });
+    it('should clean up matchMedia listener on unmount', async () => {
+      const { unmount } = await renderHook(() => useThemeContext(), { wrapper });
 
       expect(mediaQueryListeners.length).toBe(1);
 
-      unmount();
+      await unmount();
 
       expect(mediaQueryListeners.length).toBe(0);
     });
 
-    it('should handle matchMedia call exceptions gracefully in resolveWebSystemTheme', () => {
+    it('should handle matchMedia call exceptions gracefully in resolveWebSystemTheme', async () => {
       // Mock matchMedia to throw on first call (during initial state setup)
       // but succeed on subsequent calls (during useEffect)
       // This tests the try-catch in resolveWebSystemTheme (lines 38-42)
@@ -698,12 +715,12 @@ describe('ThemeProvider', () => {
       });
 
       // Should not throw and should default to light theme from resolveWebSystemTheme fallback
-      const { result } = renderHook(() => useThemeContext(), { wrapper });
+      const { result } = await renderHook(() => useThemeContext(), { wrapper });
 
       expect(result.current.resolvedTheme).toBe('light');
     });
 
-    it('should handle missing matchMedia gracefully', () => {
+    it('should handle missing matchMedia gracefully', async () => {
       Object.defineProperty(globalThis, 'window', {
         configurable: true,
         writable: true,
@@ -712,32 +729,32 @@ describe('ThemeProvider', () => {
         },
       });
 
-      const { result } = renderHook(() => useThemeContext(), { wrapper });
+      const { result } = await renderHook(() => useThemeContext(), { wrapper });
 
       // Should not throw and should have a resolved theme
       expect(result.current.resolvedTheme).toBeDefined();
     });
 
-    it('should not register listener when matchMedia is not available', () => {
+    it('should not register listener when matchMedia is not available', async () => {
       Object.defineProperty(globalThis, 'window', {
         configurable: true,
         writable: true,
         value: {},
       });
 
-      const { result } = renderHook(() => useThemeContext(), { wrapper });
+      const { result } = await renderHook(() => useThemeContext(), { wrapper });
 
       // Should still render without errors
       expect(result.current).toBeDefined();
     });
 
-    it('updates browser chrome metadata for dark theme on web', () => {
-      const { result } = renderHook(() => useThemeContext(), { wrapper });
+    it('updates browser chrome metadata for dark theme on web', async () => {
+      const { result } = await renderHook(() => useThemeContext(), { wrapper });
 
-      act(() => {
+      await act(() => {
         result.current.setPreference('light');
       });
-      act(() => {
+      await act(() => {
         result.current.setPreference('dark');
       });
 
@@ -747,13 +764,23 @@ describe('ThemeProvider', () => {
       expect(result.current.resolvedTheme).toBe('dark');
       expect(themeColorTag?.getAttribute('content')).toBe(expectedDarkPalette.background);
       expect(colorSchemeTag?.getAttribute('content')).toBe('dark');
+      expect(document.documentElement.dataset.theme).toBe('dark');
       expect(document.documentElement.style.colorScheme).toBe('dark');
+      expect(document.documentElement.style.setProperty).toHaveBeenLastCalledWith(
+        '--app-background',
+        expectedDarkPalette.background,
+      );
+      expect(document.documentElement.style.backgroundColor).toBe(expectedDarkPalette.background);
+      expect(document.body.style.backgroundColor).toBe(expectedDarkPalette.background);
+      expect(document.getElementById('root')?.style.backgroundColor).toBe(
+        expectedDarkPalette.background,
+      );
     });
 
-    it('updates browser chrome metadata when switching from dark to light', () => {
-      const { result } = renderHook(() => useThemeContext(), { wrapper });
+    it('updates browser chrome metadata when switching from dark to light', async () => {
+      const { result } = await renderHook(() => useThemeContext(), { wrapper });
 
-      act(() => {
+      await act(() => {
         result.current.setPreference('light');
       });
 
@@ -763,7 +790,17 @@ describe('ThemeProvider', () => {
       expect(result.current.resolvedTheme).toBe('light');
       expect(themeColorTag?.getAttribute('content')).toBe(expectedLightPalette.background);
       expect(colorSchemeTag?.getAttribute('content')).toBe('light');
+      expect(document.documentElement.dataset.theme).toBe('light');
       expect(document.documentElement.style.colorScheme).toBe('light');
+      expect(document.documentElement.style.setProperty).toHaveBeenLastCalledWith(
+        '--app-background',
+        expectedLightPalette.background,
+      );
+      expect(document.documentElement.style.backgroundColor).toBe(expectedLightPalette.background);
+      expect(document.body.style.backgroundColor).toBe(expectedLightPalette.background);
+      expect(document.getElementById('root')?.style.backgroundColor).toBe(
+        expectedLightPalette.background,
+      );
     });
   });
 
@@ -783,12 +820,12 @@ describe('ThemeProvider', () => {
       (Constants as { appOwnership?: string }).appOwnership = originalAppOwnership;
     });
 
-    it('should skip MMKV persistence in Expo Go (storeClient)', () => {
+    it('should skip MMKV persistence in Expo Go (storeClient)', async () => {
       (Constants as { executionEnvironment: string }).executionEnvironment = 'storeClient';
 
-      const { result } = renderHook(() => useThemeContext(), { wrapper });
+      const { result } = await renderHook(() => useThemeContext(), { wrapper });
 
-      act(() => {
+      await act(() => {
         result.current.setPreference('dark');
       });
 
@@ -797,12 +834,12 @@ describe('ThemeProvider', () => {
       // The MMKV is still called during load, but persist should skip it
     });
 
-    it('should skip MMKV persistence in Expo Go (expo ownership)', () => {
+    it('should skip MMKV persistence in Expo Go (expo ownership)', async () => {
       (Constants as { appOwnership: string }).appOwnership = 'expo';
 
-      const { result } = renderHook(() => useThemeContext(), { wrapper });
+      const { result } = await renderHook(() => useThemeContext(), { wrapper });
 
-      act(() => {
+      await act(() => {
         result.current.setPreference('light');
       });
 
@@ -810,7 +847,7 @@ describe('ThemeProvider', () => {
       expect(result.current.preference).toBe('light');
     });
 
-    it('should return system when loading preference in Expo Go', () => {
+    it('should return system when loading preference in Expo Go', async () => {
       // This test verifies the behavior of loadStoredPreference in Expo Go
       // by testing it indirectly through the component
       const originalExecEnv = (Constants as { executionEnvironment?: string }).executionEnvironment;
@@ -822,7 +859,7 @@ describe('ThemeProvider', () => {
         <ThemeProvider>{children}</ThemeProvider>
       );
 
-      const { result } = renderHook(() => useThemeContext(), { wrapper: testWrapper });
+      const { result } = await renderHook(() => useThemeContext(), { wrapper: testWrapper });
 
       // In a real Expo Go environment, this would be 'system'
       // In our test, the component may have already been initialized,

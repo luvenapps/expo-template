@@ -1,5 +1,6 @@
 // This file is the entry point for the app
 // It must be at the root level to ensure background message handler is registered early
+import 'react-native-get-random-values';
 import { setupBackgroundMessageHandler } from './src/notifications/firebasePush';
 
 // Register FCM background message handler BEFORE any React components load

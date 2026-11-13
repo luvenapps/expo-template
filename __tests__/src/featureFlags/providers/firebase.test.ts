@@ -34,79 +34,100 @@ let mockRawStringValue = 'true';
 let mockSetDefaultsShouldFail = false;
 let mockOnConfigUpdatedShouldThrow = false;
 
-const remoteConfigState = {
+const mockRemoteConfigState = {
   listener: null as null | ((event?: { updatedKeys?: string[] }) => void | Promise<void>),
+  listenerError: null as null | ((error: Error) => void),
+  listenerComplete: null as null | (() => void),
   instance: null as null | {
-    setConfigSettings: jest.Mock;
-    setDefaults: jest.Mock;
-    fetchAndActivate: jest.Mock;
-    activate: jest.Mock;
-    getValue: jest.Mock;
-    onConfigUpdated?: jest.Mock;
+    settings: { minimumFetchIntervalMillis: number; fetchTimeoutMillis: number };
+    defaultConfig: Record<string, string | number | boolean>;
   },
+  fetchAndActivate: jest.fn(),
+  activate: jest.fn(),
+  getValue: jest.fn(),
+  onConfigUpdate: jest.fn(),
 };
 
 jest.mock('@react-native-firebase/remote-config', () => ({
   __esModule: true,
-  default: () => {
+  getRemoteConfig: () => {
     if (mockShouldThrowRemoteConfig) {
       throw new Error('no remote config');
     }
     const instance = {
-      setConfigSettings: jest.fn().mockResolvedValue(undefined),
-      setDefaults: jest.fn().mockImplementation(() => {
+      settings: { minimumFetchIntervalMillis: 0, fetchTimeoutMillis: 60_000 },
+      _defaultConfig: {} as Record<string, string | number | boolean>,
+      get defaultConfig() {
+        return this._defaultConfig;
+      },
+      set defaultConfig(defaults: Record<string, string | number | boolean>) {
         if (mockSetDefaultsShouldFail) {
-          return Promise.reject(new Error('defaults failed'));
+          throw new Error('defaults failed');
         }
-        return Promise.resolve();
-      }),
-      fetchAndActivate: jest.fn().mockImplementation(() => {
-        if (mockFetchShouldFail) {
-          return Promise.reject(new Error('fetch failed'));
-        }
-        if (mockFetchShouldReturnFalse) {
-          return Promise.resolve(false);
-        }
-        if (mockFetchShouldDelay) {
-          return new Promise<boolean>((resolve) => {
-            mockFetchDeferred = { resolve };
-          });
-        }
-        return Promise.resolve(true);
-      }),
-      activate: jest.fn().mockImplementation(() => {
-        if (mockActivateShouldFail) {
-          return Promise.reject(new Error('activate failed'));
-        }
-        return Promise.resolve(true);
-      }),
-      getValue: jest.fn(() => ({
-        asBoolean: () => true,
-        asNumber: () => 42,
-        asString: () => mockRawStringValue,
-        getSource: () => 'default',
-      })),
-      onConfigUpdated: mockOnConfigUpdatedAvailable
-        ? jest.fn((listener) => {
-            if (mockOnConfigUpdatedShouldThrow) {
-              throw new Error('listener failed');
-            }
-            remoteConfigState.listener = listener;
-            return jest.fn();
-          })
-        : undefined,
+        this._defaultConfig = defaults;
+      },
     };
-    remoteConfigState.instance = instance;
+    mockRemoteConfigState.instance = instance;
     return instance;
   },
+  fetchAndActivate: jest.fn(() => {
+    if (mockFetchShouldFail) {
+      return Promise.reject(new Error('fetch failed'));
+    }
+    if (mockFetchShouldReturnFalse) {
+      return Promise.resolve(false);
+    }
+    if (mockFetchShouldDelay) {
+      return new Promise<boolean>((resolve) => {
+        mockFetchDeferred = { resolve };
+      });
+    }
+    return Promise.resolve(true);
+  }),
+  activate: jest.fn(() => {
+    if (mockActivateShouldFail) {
+      return Promise.reject(new Error('activate failed'));
+    }
+    return Promise.resolve(true);
+  }),
+  getValue: jest.fn(() => ({
+    asBoolean: () => true,
+    asNumber: () => 42,
+    asString: () => mockRawStringValue,
+    getSource: () => 'default',
+  })),
+  onConfigUpdate: jest.fn((_instance, observer) => {
+    if (!mockOnConfigUpdatedAvailable || mockOnConfigUpdatedShouldThrow) {
+      throw new Error('listener failed');
+    }
+    mockRemoteConfigState.listener = (event) =>
+      observer.next({ getUpdatedKeys: () => event?.updatedKeys as any });
+    mockRemoteConfigState.listenerError = observer.error;
+    mockRemoteConfigState.listenerComplete = observer.complete;
+    return jest.fn();
+  }),
 }));
 
 const { createFirebaseProvider } = require('@/featureFlags/providers/firebase');
 
 describe('featureFlags firebase provider', () => {
   beforeEach(() => {
-    remoteConfigState.listener = null;
-    remoteConfigState.instance = null;
+    mockRemoteConfigState.listener = null;
+    mockRemoteConfigState.listenerError = null;
+    mockRemoteConfigState.listenerComplete = null;
+    mockRemoteConfigState.instance = null;
+    mockRemoteConfigState.fetchAndActivate = jest.requireMock(
+      '@react-native-firebase/remote-config',
+    ).fetchAndActivate;
+    mockRemoteConfigState.activate = jest.requireMock(
+      '@react-native-firebase/remote-config',
+    ).activate;
+    mockRemoteConfigState.getValue = jest.requireMock(
+      '@react-native-firebase/remote-config',
+    ).getValue;
+    mockRemoteConfigState.onConfigUpdate = jest.requireMock(
+      '@react-native-firebase/remote-config',
+    ).onConfigUpdate;
     appStateListeners.length = 0;
     jest.clearAllMocks();
     mockShouldThrowRemoteConfig = false;
@@ -135,9 +156,21 @@ describe('featureFlags firebase provider', () => {
     const listener = jest.fn();
     provider.subscribe(listener);
 
-    await remoteConfigState.listener?.({ updatedKeys: ['test_feature_flag'] });
+    await mockRemoteConfigState.listener?.({ updatedKeys: ['test_feature_flag'] });
 
     expect(listener).toHaveBeenCalledWith('test_feature_flag');
+    provider.destroy();
+  });
+
+  it('logs real-time listener errors and accepts completion', async () => {
+    const provider = createFirebaseProvider();
+    await provider.ready();
+
+    const error = new Error('listener stream failed');
+    mockRemoteConfigState.listenerError?.(error);
+    expect(mockLogger.warn).toHaveBeenCalledWith('Remote Config update listener failed', error);
+    expect(() => mockRemoteConfigState.listenerComplete?.()).not.toThrow();
+
     provider.destroy();
   });
 
@@ -150,7 +183,7 @@ describe('featureFlags firebase provider', () => {
     unsubscribe();
     provider.destroy();
 
-    await remoteConfigState.listener?.({ updatedKeys: ['test_feature_flag'] });
+    await mockRemoteConfigState.listener?.({ updatedKeys: ['test_feature_flag'] });
 
     expect(listener).not.toHaveBeenCalled();
   });
@@ -213,7 +246,7 @@ describe('featureFlags firebase provider', () => {
     const listener = jest.fn();
     provider.subscribe(listener);
 
-    await remoteConfigState.listener?.({ updatedKeys: [] });
+    await mockRemoteConfigState.listener?.({ updatedKeys: [] });
 
     expect(listener).toHaveBeenCalled();
     provider.destroy();
@@ -226,7 +259,7 @@ describe('featureFlags firebase provider', () => {
     const listener = jest.fn();
     provider.subscribe(listener);
 
-    await remoteConfigState.listener?.({ updatedKeys: 'test_feature_flag' as never });
+    await mockRemoteConfigState.listener?.({ updatedKeys: 'test_feature_flag' as never });
 
     expect(listener).toHaveBeenCalled();
     provider.destroy();
@@ -239,7 +272,7 @@ describe('featureFlags firebase provider', () => {
     const listener = jest.fn();
     provider.subscribe(listener);
 
-    await remoteConfigState.listener?.({ updatedKeys: ['unknown_flag'] });
+    await mockRemoteConfigState.listener?.({ updatedKeys: ['unknown_flag'] });
 
     expect(listener).toHaveBeenCalled();
     provider.destroy();
@@ -252,7 +285,7 @@ describe('featureFlags firebase provider', () => {
     const listener = jest.fn();
     provider.subscribe(listener);
 
-    await remoteConfigState.listener?.({ updatedKeys: ['test_feature_flag', 'unknown_flag'] });
+    await mockRemoteConfigState.listener?.({ updatedKeys: ['test_feature_flag', 'unknown_flag'] });
 
     expect(listener).toHaveBeenCalledWith('test_feature_flag');
     provider.destroy();
@@ -266,7 +299,7 @@ describe('featureFlags firebase provider', () => {
     const listener = jest.fn();
     provider.subscribe(listener);
 
-    await remoteConfigState.listener?.({ updatedKeys: ['test_feature_flag'] });
+    await mockRemoteConfigState.listener?.({ updatedKeys: ['test_feature_flag'] });
 
     expect(mockLogger.warn).toHaveBeenCalledWith(
       'Failed to activate real-time update',
@@ -369,7 +402,10 @@ describe('featureFlags firebase provider', () => {
     const provider = createFirebaseProvider();
     await provider.ready();
 
-    expect(mockLogger.warn).toHaveBeenCalledWith('Real-time listener not available');
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      'Real-time listener not available',
+      expect.any(Error),
+    );
   });
 
   it('avoids duplicate listener registrations', async () => {
@@ -377,8 +413,8 @@ describe('featureFlags firebase provider', () => {
     await provider.ready();
     await provider.ready();
 
-    expect(remoteConfigState.instance).not.toBeNull();
-    expect(remoteConfigState.instance?.onConfigUpdated).toHaveBeenCalledTimes(1);
+    expect(mockRemoteConfigState.instance).not.toBeNull();
+    expect(mockRemoteConfigState.onConfigUpdate).toHaveBeenCalledTimes(1);
     provider.destroy();
   });
 
@@ -438,9 +474,9 @@ describe('featureFlags firebase provider', () => {
         const provider = createProvider();
 
         provider.ready().then(() => {
-          expect(remoteConfigState.instance?.setConfigSettings).toHaveBeenCalledWith({
-            minimumFetchIntervalMillis: 60 * 1000,
-          });
+          expect(mockRemoteConfigState.instance?.settings.minimumFetchIntervalMillis).toBe(
+            60 * 1000,
+          );
           runtime.__DEV__ = originalDev;
           resolve();
         });
@@ -470,8 +506,8 @@ describe('featureFlags firebase provider', () => {
 
     return provider.ready().then(() => {
       // Mock getValue to throw
-      if (remoteConfigState.instance) {
-        remoteConfigState.instance.getValue.mockImplementationOnce(() => {
+      if (mockRemoteConfigState.instance) {
+        mockRemoteConfigState.getValue.mockImplementationOnce(() => {
           throw new Error('getValue failed');
         });
       }
@@ -489,10 +525,12 @@ describe('featureFlags firebase provider', () => {
     provider.subscribe(listener);
 
     // First update - should process
-    const firstUpdatePromise = remoteConfigState.listener?.({ updatedKeys: ['test_feature_flag'] });
+    const firstUpdatePromise = mockRemoteConfigState.listener?.({
+      updatedKeys: ['test_feature_flag'],
+    });
 
     // Second update while first is processing - should be ignored
-    const secondUpdatePromise = remoteConfigState.listener?.({
+    const secondUpdatePromise = mockRemoteConfigState.listener?.({
       updatedKeys: ['test_feature_flag'],
     });
 
@@ -510,10 +548,10 @@ describe('featureFlags firebase provider', () => {
     provider.subscribe(listener);
 
     // First update
-    await remoteConfigState.listener?.({ updatedKeys: ['test_feature_flag'] });
+    await mockRemoteConfigState.listener?.({ updatedKeys: ['test_feature_flag'] });
 
     // Second update immediately after (within 500ms) - should be ignored
-    await remoteConfigState.listener?.({ updatedKeys: ['test_feature_flag'] });
+    await mockRemoteConfigState.listener?.({ updatedKeys: ['test_feature_flag'] });
 
     expect(mockLogger.debug).toHaveBeenCalledWith(
       'Ignoring duplicate real-time update (too recent)',
@@ -531,7 +569,7 @@ describe('featureFlags firebase provider', () => {
     provider.destroy();
 
     // Try to trigger a real-time update - should not notify
-    await remoteConfigState.listener?.({ updatedKeys: ['test_feature_flag'] });
+    await mockRemoteConfigState.listener?.({ updatedKeys: ['test_feature_flag'] });
 
     // Listener should not be called because provider is destroyed
     expect(listener).not.toHaveBeenCalled();
@@ -542,8 +580,8 @@ describe('featureFlags firebase provider', () => {
     await provider.ready();
 
     // Mock getValue to return a source
-    if (remoteConfigState.instance) {
-      remoteConfigState.instance.getValue.mockImplementationOnce(() => ({
+    if (mockRemoteConfigState.instance) {
+      mockRemoteConfigState.getValue.mockImplementationOnce(() => ({
         asBoolean: jest.fn(),
         asNumber: jest.fn(),
         asString: jest.fn(),

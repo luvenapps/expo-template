@@ -60,7 +60,7 @@ fi
 
 if ! grep -qF 'mise activate' "$shell_rc" 2>/dev/null; then
   echo "" >> "$shell_rc"
-  echo "# Added by betterhabits setup:local" >> "$shell_rc"
+  echo "# Added by template setup:local" >> "$shell_rc"
   echo "$activate_cmd" >> "$shell_rc"
   echo "🐚 Added mise activation to $shell_rc — restart your terminal or run: source $shell_rc"
 else

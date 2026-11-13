@@ -14,6 +14,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
 
 concurrency:
   group: quality-${{ github.workflow }}-${{ github.run_id }}
@@ -26,13 +27,14 @@ jobs:
     timeout-minutes: 90
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
-      - name: Prepare isolated GnuPG home for mise
+      - name: Prepare isolated mise state and GnuPG home
         shell: bash
         run: |
-          mkdir -p "${RUNNER_TEMP}/gnupg"
-          chmod 700 "${RUNNER_TEMP}/gnupg"
+          mkdir -p "${RUNNER_TEMP}/gnupg" "${RUNNER_TEMP}/mise-state"
+          chmod 700 "${RUNNER_TEMP}/gnupg" "${RUNNER_TEMP}/mise-state"
+          echo "MISE_STATE_DIR=$RUNNER_TEMP/mise-state" >> "$GITHUB_ENV"
 
       - name: Pin mise cache to local disk
         if: ${{ inputs.runner_target == 'selfhosted' }}
@@ -44,9 +46,9 @@ jobs:
           echo "MISE_CACHE_DIR=$MISE_LOCAL/cache" >> "$GITHUB_ENV"
 
       - name: Setup mise toolchain
-        uses: jdx/mise-action@v3
+        uses: jdx/mise-action@v5
         with:
-          version: '2026.2.13'
+          version: '2026.10.25'
           install: true
           cache: ${{ inputs.runner_target != 'selfhosted' }}
           log_level: ${{ runner.debug == '1' && 'debug' || 'info' }}
@@ -80,6 +82,49 @@ jobs:
         run: |
           echo "::error::Expo Doctor reported issues. Review the Doctor step logs for details."
 
+      - name: Update Expo Doctor PR comment
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && (steps.expo_doctor.outcome == 'failure' || steps.expo_doctor.outcome == 'success') }}
+        uses: actions/github-script@v9
+        continue-on-error: true
+        env:
+          DOCTOR_OUTCOME: ${{ steps.expo_doctor.outcome }}
+          EXPO_DEPS_OUTCOME: ${{ steps.expo_deps.outcome }}
+        with:
+          script: |
+            const marker = '<!-- expo-doctor-report -->';
+            const passedMarker = '<!-- expo-doctor-passed -->';
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+            const existing = comments.find((comment) =>
+              comment.user?.login === 'github-actions[bot]' && comment.body?.includes(marker),
+            );
+            const passed = process.env.DOCTOR_OUTCOME === 'success';
+            if (passed && (!existing || existing.body.includes(passedMarker))) return;
+
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+            const sha = context.payload.pull_request.head.sha.slice(0, 7);
+            const body = passed
+              ? [marker, passedMarker, `✅ Expo Doctor passed for \`${sha}\`.`, `[View CI run](${runUrl})`].join('\n')
+              : [
+                  marker,
+                  `⚠️ Expo Doctor reported issues for \`${sha}\`.`,
+                  `[View the CI run](${runUrl}) and open the Doctor step for details.`,
+                  ...(process.env.EXPO_DEPS_OUTCOME === 'failure'
+                    ? ['Expo dependencies are also out of alignment. Run `npx expo install --fix` and commit the changes.']
+                    : []),
+                ].join('\n');
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
+
       - name: Check formatting
         run: npm run format:check
 
@@ -97,21 +142,21 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: ${{ !cancelled() }}
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
-          slug: org/repo # <-- UPDATE THIS
+          slug: ${{ github.repository }}
           flags: ${{ inputs.runner_target }}-quality
           fail_ci_if_error: false
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./junit.xml
-          slug: org/repo # <-- UPDATE THIS
+          slug: ${{ github.repository }}
           flags: ${{ inputs.runner_target }}-quality
           report_type: test_results
           fail_ci_if_error: false

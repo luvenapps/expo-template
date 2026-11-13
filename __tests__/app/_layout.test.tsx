@@ -1,7 +1,13 @@
 const recordedScreens: string[] = [];
+const recordedNavigationThemes: any[] = [];
 
 jest.mock('react-native-gesture-handler', () => ({
   GestureHandlerRootView: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+}));
+
+jest.mock('expo-notifications', () => ({
+  getLastNotificationResponseAsync: jest.fn(() => Promise.resolve(null)),
+  addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
 }));
 
 jest.mock('react-native-safe-area-context', () => ({
@@ -10,6 +16,10 @@ jest.mock('react-native-safe-area-context', () => ({
 
 jest.mock('expo-status-bar', () => ({
   StatusBar: () => null,
+}));
+
+jest.mock('expo-font', () => ({
+  useFonts: jest.fn(() => [true, null]),
 }));
 
 jest.mock('@/auth/session', () => ({
@@ -49,6 +59,11 @@ jest.mock('@/notifications/useNotificationSettings', () => ({
   }),
 }));
 
+// Keep root layout tests independent of application startup and browser listeners.
+jest.mock('@/ui/providers/AppProviders', () => ({
+  AppProviders: ({ children }: React.PropsWithChildren) => <>{children}</>,
+}));
+
 // Mock ThemeProvider
 jest.mock('@/ui/theme/ThemeProvider', () => {
   const { themePalettes } = jest.requireActual('@/ui/theme/palette');
@@ -80,6 +95,7 @@ jest.mock('@/ui/theme/ThemeProvider', () => {
 // Mock Tamagui
 jest.mock('tamagui', () => {
   const React = jest.requireActual('react');
+  const { Text } = jest.requireActual('react-native');
   const Dialog: any = ({ children }: any) => <>{children}</>;
   Dialog.displayName = 'Dialog';
   Dialog.Portal = ({ children }: any) => <>{children}</>;
@@ -107,7 +123,8 @@ jest.mock('tamagui', () => {
     Text: ({ children, ...props }: any) => React.createElement('Text', props, children),
     YStack: ({ children, ...props }: any) => React.createElement('YStack', props, children),
     XStack: ({ children, ...props }: any) => React.createElement('XStack', props, children),
-    Paragraph: ({ children, ...props }: any) => React.createElement('Paragraph', props, children),
+    Paragraph: ({ children, ...props }: any) =>
+      React.createElement('Paragraph', props, React.createElement(Text, {}, children)),
     Dialog,
     Button: ({ children, ...props }: any) => React.createElement('Button', props, children),
     createTamagui: jest.fn(() => ({})),
@@ -120,9 +137,14 @@ jest.mock('tamagui', () => {
 // Mock PrimaryButton
 jest.mock('@/ui/components/PrimaryButton', () => {
   const React = jest.requireActual('react');
+  const { Text } = jest.requireActual('react-native');
   return {
     PrimaryButton: ({ children, ...props }: any) =>
-      React.createElement('PrimaryButton', props, children),
+      React.createElement(
+        'PrimaryButton',
+        props,
+        typeof children === 'string' ? React.createElement(Text, {}, children) : children,
+      ),
   };
 });
 
@@ -142,14 +164,14 @@ jest.mock('@tamagui/font-inter', () => ({
 }));
 
 // Mock React Navigation
-jest.mock('@react-navigation/native', () => ({
-  ThemeProvider: ({ children }: any) => children,
-  DefaultTheme: {},
-  DarkTheme: {},
-}));
+jest.mock('@react-navigation/native', () => jest.requireActual('@react-navigation/native'));
 
 jest.mock('expo-router', () => {
+  const { ThemeProvider, DarkTheme, DefaultTheme, useTheme } = jest.requireActual('expo-router');
   const MockStack: any = ({ children }: React.PropsWithChildren<Record<string, unknown>>) => {
+    recordedNavigationThemes.push(useTheme());
+    const nativeTheme = jest.requireActual('@react-navigation/native').useTheme();
+    expect(nativeTheme).toEqual(useTheme());
     return <>{children}</>;
   };
 
@@ -161,6 +183,9 @@ jest.mock('expo-router', () => {
 
   return {
     Stack: MockStack,
+    ThemeProvider,
+    DarkTheme,
+    DefaultTheme,
     useRouter: jest.fn(() => ({
       push: jest.fn(),
       replace: jest.fn(),
@@ -181,9 +206,13 @@ jest.mock('@/db/sqlite/maintenance', () => ({
   optimizeDatabase: jest.fn().mockResolvedValue(undefined),
 }));
 
-import { render } from '@testing-library/react-native';
+import { render, screen } from '@testing-library/react-native';
+import { useFonts } from 'expo-font';
+import { Platform } from 'react-native';
 import React from 'react';
 import RootLayout from '../../app/_layout';
+
+const mockedUseFonts = useFonts as jest.MockedFunction<typeof useFonts>;
 
 jest.mock('@/observability/AnalyticsProvider', () => ({
   AnalyticsProvider: ({ children }: any) => children,
@@ -227,6 +256,11 @@ jest.mock('@/state', () => ({
 }));
 
 describe('RootLayout', () => {
+  const originalPlatform = Object.getOwnPropertyDescriptor(Platform, 'OS')!;
+
+  afterEach(() => {
+    Object.defineProperty(Platform, 'OS', originalPlatform);
+  });
   // Suppress console output during tests
   const originalConsoleLog = console.log;
   const originalConsoleError = console.error;
@@ -255,15 +289,23 @@ describe('RootLayout', () => {
 
   beforeEach(() => {
     recordedScreens.length = 0;
+    mockedUseFonts.mockReturnValue([true, null]);
+    recordedNavigationThemes.length = 0;
   });
 
-  test('registers all screens', () => {
-    render(<RootLayout />);
+  test('registers all screens', async () => {
+    await render(<RootLayout />);
 
     expect(recordedScreens).toEqual(expect.arrayContaining(['index', '(auth)', '(tabs)']));
+    expect(screen.queryByTestId('web-footer')).toBeNull();
+    const { themePalettes } = require('@/ui/theme/palette');
+    expect(recordedNavigationThemes[0]).toMatchObject({
+      dark: false,
+      colors: { background: themePalettes.light.background, card: themePalettes.light.background },
+    });
   });
 
-  test('renders with dark theme when resolvedTheme is dark', () => {
+  test('renders with dark theme when resolvedTheme is dark', async () => {
     // Mock dark theme
     const { useThemeContext } = require('@/ui/theme/ThemeProvider');
     const { themePalettes } = require('@/ui/theme/palette');
@@ -278,9 +320,51 @@ describe('RootLayout', () => {
       },
     });
 
-    render(<RootLayout />);
+    await render(<RootLayout />);
 
-    // Verify it renders without errors
+    expect(recordedNavigationThemes[0]).toMatchObject({
+      dark: true,
+      colors: { background: themePalettes.dark.background, card: themePalettes.dark.background },
+    });
     expect(recordedScreens).toEqual(expect.arrayContaining(['index', '(auth)', '(tabs)']));
+  });
+
+  test('waits for Inter to load before rendering the app', async () => {
+    mockedUseFonts.mockReturnValueOnce([false, null]);
+
+    const { toJSON } = await render(<RootLayout />);
+
+    expect(toJSON()).toBeNull();
+  });
+
+  test('renders with the system fallback if Inter fails to load', async () => {
+    mockedUseFonts.mockReturnValueOnce([false, new Error('Font load failed')]);
+
+    await render(<RootLayout />);
+
+    expect(recordedScreens).toEqual(expect.arrayContaining(['index', '(auth)', '(tabs)']));
+  });
+
+  test('renders the web footer with dark navigation backgrounds', async () => {
+    Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
+    const { useThemeContext } = require('@/ui/theme/ThemeProvider');
+    const { themePalettes } = require('@/ui/theme/palette');
+    useThemeContext.mockReturnValueOnce({
+      resolvedTheme: 'dark',
+      palette: themePalettes.dark,
+    });
+
+    await render(<RootLayout />);
+
+    expect(screen.getByTestId('web-footer')).toBeOnTheScreen();
+    expect(screen.getByText('footer.copyright')).toBeOnTheScreen();
+    expect(recordedNavigationThemes[0]).toMatchObject({
+      dark: true,
+      colors: {
+        background: themePalettes.dark.background,
+        card: themePalettes.dark.background,
+        text: themePalettes.dark.text,
+      },
+    });
   });
 });

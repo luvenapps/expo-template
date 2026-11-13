@@ -1,6 +1,7 @@
-import type { ComponentProps, ReactNode } from 'react';
+import type { ComponentProps, ReactNode, Ref } from 'react';
 import { forwardRef } from 'react';
-import { Input, View, YStack } from 'tamagui';
+import type { TextInputInstance } from 'react-native';
+import { Input, View, YStack, useTheme } from 'tamagui';
 import { CaptionText, LabelText } from './Text';
 
 type InputProps = ComponentProps<typeof Input>;
@@ -15,68 +16,75 @@ export type FormFieldProps = InputProps & {
   labelTestID?: string;
   inputTestID?: string;
   helperTestID?: string;
-  borderColorHover?: InputProps['borderColor'];
-  borderColorPress?: InputProps['borderColor'];
-  focusStyle?: InputProps['focusStyle'];
+  editable?: boolean;
 };
 
-export const FormField = forwardRef<React.ComponentRef<typeof Input>, FormFieldProps>(
-  function FormField(
-    {
-      label,
-      helperText,
-      errorText,
-      required,
-      rightElement,
-      testID,
-      labelTestID,
-      inputTestID,
-      helperTestID,
-      ...inputProps
-    },
-    ref,
-  ) {
-    const helperColor = errorText ? '$dangerColor' : '$colorMuted';
-
-    return (
-      <YStack gap="$2" width="100%" testID={testID}>
-        <LabelText color="$color" testID={labelTestID}>
-          {label}
-          {required ? ' *' : ''}
-        </LabelText>
-        <View position="relative" width="100%">
-          <Input
-            ref={ref}
-            width="100%"
-            borderColor="$borderColor"
-            backgroundColor="$background"
-            borderWidth={1}
-            borderRadius="$3"
-            size="$2"
-            height={56}
-            testID={inputTestID}
-            {...inputProps}
-          />
-          {rightElement ? (
-            <View
-              position="absolute"
-              right="$3"
-              top={0}
-              bottom={0}
-              alignItems="center"
-              justifyContent="center"
-              style={{ pointerEvents: 'box-none' }}
-            >
-              {rightElement}
-            </View>
-          ) : null}
-        </View>
-        {(helperText || errorText) && (
-          <CaptionText color={helperColor} testID={helperTestID}>
-            {errorText ?? helperText}
-          </CaptionText>
-        )}
-      </YStack>
-    );
+export const FormField = forwardRef<TextInputInstance, FormFieldProps>(function FormField(
+  {
+    label,
+    helperText,
+    errorText,
+    required,
+    rightElement,
+    testID,
+    labelTestID,
+    inputTestID,
+    helperTestID,
+    editable,
+    borderColor,
+    placeholderTextColor,
+    ...inputProps
   },
-);
+  ref,
+) {
+  const theme = useTheme();
+  const helperColor = errorText ? 'dangerColor' : 'colorMuted';
+
+  return (
+    <YStack gap="$2" width="100%" testID={testID}>
+      <LabelText color="color" testID={labelTestID}>
+        {label}
+        {required ? ' *' : ''}
+      </LabelText>
+      <View position="relative" width="100%">
+        <Input
+          ref={ref as Ref<React.ComponentRef<typeof Input>>}
+          width="100%"
+          borderColor={
+            borderColor ?? 'border-color hover:border-color-hover focus:border-color-focus'
+          }
+          backgroundColor="background"
+          borderWidth={1}
+          borderRadius="3"
+          placeholderTextColor={
+            placeholderTextColor === 'colorMuted' ? theme.colorMuted?.get() : placeholderTextColor
+          }
+          disabled={editable === false}
+          fontSize="2"
+          paddingHorizontal="2"
+          height={56}
+          {...inputProps}
+          testID={inputTestID}
+        />
+        {rightElement ? (
+          <View
+            position="absolute"
+            right="3"
+            top={0}
+            bottom={0}
+            alignItems="center"
+            justifyContent="center"
+            style={{ pointerEvents: 'box-none' }}
+          >
+            {rightElement}
+          </View>
+        ) : null}
+      </View>
+      {(helperText || errorText) && (
+        <CaptionText color={helperColor} testID={helperTestID}>
+          {errorText ?? helperText}
+        </CaptionText>
+      )}
+    </YStack>
+  );
+});

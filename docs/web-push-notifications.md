@@ -137,19 +137,19 @@ Same as cURL, but use a GUI:
 
 ### Test 1: Foreground Notification
 
-1. Keep the Better Habits web app open and focused
+1. Keep the {{APP_NAME}} web app open and focused
 2. Send a data-only message (see methods above)
 3. **Expected**: See ONE notification displayed via `onMessage` handler
 
 ### Test 2: Background Notification
 
-1. Keep the Better Habits web app open but switch to another tab
+1. Keep the {{APP_NAME}} web app open but switch to another tab
 2. Send a data-only message
 3. **Expected**: See ONE notification displayed via `onBackgroundMessage` (service worker)
 
 ### Test 3: Closed App
 
-1. Close all Better Habits tabs
+1. Close all {{APP_NAME}} tabs
 2. Send a data-only message
 3. **Expected**: No notification (service worker only runs when app is open in background)
    - Note: True background push (app completely closed) requires persistent service worker setup
@@ -413,7 +413,7 @@ messaging.onBackgroundMessage((payload) => {
   }
 
   // Only display data-only messages manually
-  const notificationTitle = payload.data?.title || 'Better Habits';
+  const notificationTitle = payload.data?.title || '{{APP_NAME}}';
   // ... display notification
 });
 ```

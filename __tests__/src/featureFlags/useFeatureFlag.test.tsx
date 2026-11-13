@@ -9,30 +9,30 @@ describe('useFeatureFlag', () => {
     __setFeatureFlagClientForTests(null);
   });
 
-  it('returns default value and updates on change', () => {
+  it('returns default value and updates on change', async () => {
     const { client, set } = createMockProvider({ test_feature_flag: false });
     __setFeatureFlagClientForTests(client);
 
-    const { result } = renderHook(() => useFeatureFlag('test_feature_flag', true));
+    const { result } = await renderHook(() => useFeatureFlag('test_feature_flag', true));
 
     expect(result.current.value).toBe(false);
     expect(result.current.source).toBe('default');
 
-    act(() => {
+    await act(() => {
       set('test_feature_flag', true);
     });
 
     expect(result.current.value).toBe(true);
   });
 
-  it('ignores updates for other keys', () => {
+  it('ignores updates for other keys', async () => {
     const { client, set } = createMockProvider({ test_feature_flag: false, other_flag: false });
     __setFeatureFlagClientForTests(client);
 
-    const { result } = renderHook(() => useFeatureFlag('test_feature_flag', true));
+    const { result } = await renderHook(() => useFeatureFlag('test_feature_flag', true));
     const { value: initialValue, status: initialStatus } = result.current;
 
-    act(() => {
+    await act(() => {
       set('other_flag', true);
     });
 
@@ -40,16 +40,16 @@ describe('useFeatureFlag', () => {
     expect(result.current.status).toBe(initialStatus);
   });
 
-  it('exposes ready status', () => {
+  it('exposes ready status', async () => {
     const { client } = createMockProvider({}, 'ready');
     __setFeatureFlagClientForTests(client);
 
-    const { result } = renderHook(() => useFeatureFlagsReady());
+    const { result } = await renderHook(() => useFeatureFlagsReady());
     expect(result.current.ready).toBe(true);
     expect(result.current.status).toBe('ready');
   });
 
-  it('uses server snapshot when provided', () => {
+  it('uses server snapshot when provided', async () => {
     const syncSpy = jest
       .spyOn(React, 'useSyncExternalStore')
       .mockImplementation((_subscribe, _getSnapshot, getServerSnapshot) => {
@@ -62,7 +62,7 @@ describe('useFeatureFlag', () => {
     const { client } = createMockProvider({ test_feature_flag: false }, 'ready');
     __setFeatureFlagClientForTests(client);
 
-    const { result: flagResult, rerender } = renderHook(
+    const { result: flagResult, rerender } = await renderHook(
       ({ flagKey, fallback }: { flagKey: 'test_feature_flag'; fallback: boolean }) =>
         useFeatureFlag(flagKey, fallback),
       {
@@ -72,9 +72,9 @@ describe('useFeatureFlag', () => {
     expect(flagResult.current.value).toBe(false);
     expect(flagResult.current.status).toBe('ready');
 
-    rerender({ flagKey: 'test_feature_flag', fallback: true });
+    await rerender({ flagKey: 'test_feature_flag', fallback: true });
 
-    const { result: readyResult } = renderHook(() => useFeatureFlagsReady());
+    const { result: readyResult } = await renderHook(() => useFeatureFlagsReady());
     expect(readyResult.current.ready).toBe(true);
     expect(readyResult.current.status).toBe('ready');
 
@@ -95,12 +95,12 @@ describe('useFeatureFlag', () => {
 
     __setFeatureFlagClientForTests(mockClient);
 
-    const { result } = renderHook(() => useFeatureFlag('test_feature_flag', false));
+    const { result } = await renderHook(() => useFeatureFlag('test_feature_flag', false));
     await act(async () => {});
     expect(result.current.value).toBe(true);
     expect(result.current.source).toBe('default');
 
-    const { result: readyResult } = renderHook(() => useFeatureFlagsReady());
+    const { result: readyResult } = await renderHook(() => useFeatureFlagsReady());
     await act(async () => {});
     expect(readyResult.current.ready).toBe(true);
   });

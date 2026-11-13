@@ -37,7 +37,7 @@ describe('useFriendlyErrorHandler', () => {
   });
 
   describe('isFriendlyError type guard', () => {
-    it('handles FriendlyError objects', () => {
+    it('handles FriendlyError objects', async () => {
       const friendlyError: FriendlyError = {
         code: 'unknown',
         titleKey: 'errors.test.title',
@@ -45,7 +45,7 @@ describe('useFriendlyErrorHandler', () => {
         type: 'error',
       };
 
-      const { result } = renderHook(() => useFriendlyErrorHandler(mockToast));
+      const { result } = await renderHook(() => useFriendlyErrorHandler(mockToast));
       const handler = result.current;
 
       handler(friendlyError, { surface: 'test-surface' });
@@ -58,7 +58,7 @@ describe('useFriendlyErrorHandler', () => {
       });
     });
 
-    it('resolves non-FriendlyError objects', () => {
+    it('resolves non-FriendlyError objects', async () => {
       const genericError = new Error('Generic error');
       const resolvedError: FriendlyError = {
         code: 'unknown',
@@ -69,7 +69,7 @@ describe('useFriendlyErrorHandler', () => {
 
       mockResolveFriendlyError.mockReturnValue(resolvedError);
 
-      const { result } = renderHook(() => useFriendlyErrorHandler(mockToast));
+      const { result } = await renderHook(() => useFriendlyErrorHandler(mockToast));
       const handler = result.current;
 
       handler(genericError, { surface: 'test-surface' });
@@ -82,7 +82,7 @@ describe('useFriendlyErrorHandler', () => {
       });
     });
 
-    it('handles null error', () => {
+    it('handles null error', async () => {
       const resolvedError: FriendlyError = {
         code: 'unknown',
         titleKey: 'errors.unknown.title',
@@ -92,7 +92,7 @@ describe('useFriendlyErrorHandler', () => {
 
       mockResolveFriendlyError.mockReturnValue(resolvedError);
 
-      const { result } = renderHook(() => useFriendlyErrorHandler(mockToast));
+      const { result } = await renderHook(() => useFriendlyErrorHandler(mockToast));
       const handler = result.current;
 
       handler(null, { surface: 'test-surface' });
@@ -100,7 +100,7 @@ describe('useFriendlyErrorHandler', () => {
       expect(mockResolveFriendlyError).toHaveBeenCalledWith(null);
     });
 
-    it('handles undefined error', () => {
+    it('handles undefined error', async () => {
       const resolvedError: FriendlyError = {
         code: 'unknown',
         titleKey: 'errors.unknown.title',
@@ -110,7 +110,7 @@ describe('useFriendlyErrorHandler', () => {
 
       mockResolveFriendlyError.mockReturnValue(resolvedError);
 
-      const { result } = renderHook(() => useFriendlyErrorHandler(mockToast));
+      const { result } = await renderHook(() => useFriendlyErrorHandler(mockToast));
       const handler = result.current;
 
       handler(undefined, { surface: 'test-surface' });
@@ -118,7 +118,7 @@ describe('useFriendlyErrorHandler', () => {
       expect(mockResolveFriendlyError).toHaveBeenCalledWith(undefined);
     });
 
-    it('handles objects without required FriendlyError fields', () => {
+    it('handles objects without required FriendlyError fields', async () => {
       const incompleteError = { code: 'test', title: 'Test' }; // missing 'type' field
       const resolvedError: FriendlyError = {
         code: 'unknown',
@@ -129,7 +129,7 @@ describe('useFriendlyErrorHandler', () => {
 
       mockResolveFriendlyError.mockReturnValue(resolvedError);
 
-      const { result } = renderHook(() => useFriendlyErrorHandler(mockToast));
+      const { result } = await renderHook(() => useFriendlyErrorHandler(mockToast));
       const handler = result.current;
 
       handler(incompleteError, { surface: 'test-surface' });
@@ -138,7 +138,7 @@ describe('useFriendlyErrorHandler', () => {
     });
   });
 
-  it('does not attempt to show toast when none provided', () => {
+  it('does not attempt to show toast when none provided', async () => {
     const resolvedError: FriendlyError = {
       code: 'unknown',
       titleKey: 'errors.unknown.title',
@@ -148,14 +148,14 @@ describe('useFriendlyErrorHandler', () => {
 
     mockResolveFriendlyError.mockReturnValue(resolvedError);
 
-    const { result } = renderHook(() => useFriendlyErrorHandler());
+    const { result } = await renderHook(() => useFriendlyErrorHandler());
     const handler = result.current;
 
     expect(() => handler(new Error('boom'), { surface: 'test-surface' })).not.toThrow();
   });
 
   describe('toast display', () => {
-    it('shows toast by default', () => {
+    it('shows toast by default', async () => {
       const friendlyError: FriendlyError = {
         code: 'unknown',
         title: 'Test Error',
@@ -163,7 +163,7 @@ describe('useFriendlyErrorHandler', () => {
         type: 'error',
       };
 
-      const { result } = renderHook(() => useFriendlyErrorHandler(mockToast));
+      const { result } = await renderHook(() => useFriendlyErrorHandler(mockToast));
       const handler = result.current;
 
       handler(friendlyError, { surface: 'test-surface' });
@@ -178,7 +178,7 @@ describe('useFriendlyErrorHandler', () => {
       });
     });
 
-    it('suppresses toast when suppressToast is true', () => {
+    it('suppresses toast when suppressToast is true', async () => {
       const friendlyError: FriendlyError = {
         code: 'unknown',
         title: 'Test Error',
@@ -186,7 +186,7 @@ describe('useFriendlyErrorHandler', () => {
         type: 'error',
       };
 
-      const { result } = renderHook(() => useFriendlyErrorHandler(mockToast));
+      const { result } = await renderHook(() => useFriendlyErrorHandler(mockToast));
       const handler = result.current;
 
       handler(friendlyError, { surface: 'test-surface', suppressToast: true });
@@ -194,7 +194,7 @@ describe('useFriendlyErrorHandler', () => {
       expect(mockToast.show).not.toHaveBeenCalled();
     });
 
-    it('shows toast when suppressToast is false', () => {
+    it('shows toast when suppressToast is false', async () => {
       const friendlyError: FriendlyError = {
         code: 'unknown',
         title: 'Test Error',
@@ -202,7 +202,7 @@ describe('useFriendlyErrorHandler', () => {
         type: 'error',
       };
 
-      const { result } = renderHook(() => useFriendlyErrorHandler(mockToast));
+      const { result } = await renderHook(() => useFriendlyErrorHandler(mockToast));
       const handler = result.current;
 
       handler(friendlyError, { surface: 'test-surface', suppressToast: false });
@@ -210,7 +210,7 @@ describe('useFriendlyErrorHandler', () => {
       expect(mockToast.show).toHaveBeenCalled();
     });
 
-    it('dismisses existing toast when id is provided', () => {
+    it('dismisses existing toast when id is provided', async () => {
       const friendlyError: FriendlyError = {
         code: 'unknown',
         title: 'Test Error',
@@ -218,7 +218,7 @@ describe('useFriendlyErrorHandler', () => {
         type: 'error',
       };
 
-      const { result } = renderHook(() => useFriendlyErrorHandler(mockToast));
+      const { result } = await renderHook(() => useFriendlyErrorHandler(mockToast));
       const handler = result.current;
 
       handler(friendlyError, { surface: 'test-surface', toast: { id: 'existing-toast' } });
@@ -231,7 +231,7 @@ describe('useFriendlyErrorHandler', () => {
       );
     });
 
-    it('does not dismiss when no id is provided', () => {
+    it('does not dismiss when no id is provided', async () => {
       const friendlyError: FriendlyError = {
         code: 'unknown',
         title: 'Test Error',
@@ -239,7 +239,7 @@ describe('useFriendlyErrorHandler', () => {
         type: 'error',
       };
 
-      const { result } = renderHook(() => useFriendlyErrorHandler(mockToast));
+      const { result } = await renderHook(() => useFriendlyErrorHandler(mockToast));
       const handler = result.current;
 
       handler(friendlyError, { surface: 'test-surface' });
@@ -249,7 +249,7 @@ describe('useFriendlyErrorHandler', () => {
   });
 
   describe('retry functionality', () => {
-    it('uses custom retryLabel when provided', () => {
+    it('uses custom retryLabel when provided', async () => {
       const friendlyError: FriendlyError = {
         code: 'unknown',
         title: 'Test Error',
@@ -259,7 +259,7 @@ describe('useFriendlyErrorHandler', () => {
 
       const onRetry = jest.fn();
 
-      const { result } = renderHook(() => useFriendlyErrorHandler(mockToast));
+      const { result } = await renderHook(() => useFriendlyErrorHandler(mockToast));
       const handler = result.current;
 
       handler(friendlyError, {
@@ -280,7 +280,7 @@ describe('useFriendlyErrorHandler', () => {
       });
     });
 
-    it('defaults to "Retry" when onRetry is provided but no retryLabel', () => {
+    it('defaults to "Retry" when onRetry is provided but no retryLabel', async () => {
       const friendlyError: FriendlyError = {
         code: 'unknown',
         title: 'Test Error',
@@ -290,7 +290,7 @@ describe('useFriendlyErrorHandler', () => {
 
       const onRetry = jest.fn();
 
-      const { result } = renderHook(() => useFriendlyErrorHandler(mockToast));
+      const { result } = await renderHook(() => useFriendlyErrorHandler(mockToast));
       const handler = result.current;
 
       handler(friendlyError, {
@@ -310,7 +310,7 @@ describe('useFriendlyErrorHandler', () => {
       });
     });
 
-    it('has no actionLabel when neither retryLabel nor onRetry is provided', () => {
+    it('has no actionLabel when neither retryLabel nor onRetry is provided', async () => {
       const friendlyError: FriendlyError = {
         code: 'unknown',
         title: 'Test Error',
@@ -318,7 +318,7 @@ describe('useFriendlyErrorHandler', () => {
         type: 'error',
       };
 
-      const { result } = renderHook(() => useFriendlyErrorHandler(mockToast));
+      const { result } = await renderHook(() => useFriendlyErrorHandler(mockToast));
       const handler = result.current;
 
       handler(friendlyError, { surface: 'test-surface' });
@@ -333,7 +333,7 @@ describe('useFriendlyErrorHandler', () => {
       });
     });
 
-    it('has no actionLabel when toast config is not provided', () => {
+    it('has no actionLabel when toast config is not provided', async () => {
       const friendlyError: FriendlyError = {
         code: 'unknown',
         title: 'Test Error',
@@ -341,7 +341,7 @@ describe('useFriendlyErrorHandler', () => {
         type: 'error',
       };
 
-      const { result } = renderHook(() => useFriendlyErrorHandler(mockToast));
+      const { result } = await renderHook(() => useFriendlyErrorHandler(mockToast));
       const handler = result.current;
 
       handler(friendlyError, { surface: 'test-surface' });
@@ -356,7 +356,7 @@ describe('useFriendlyErrorHandler', () => {
       });
     });
 
-    it('uses custom retryLabel even when onRetry is not provided', () => {
+    it('uses custom retryLabel even when onRetry is not provided', async () => {
       const friendlyError: FriendlyError = {
         code: 'unknown',
         title: 'Test Error',
@@ -364,7 +364,7 @@ describe('useFriendlyErrorHandler', () => {
         type: 'error',
       };
 
-      const { result } = renderHook(() => useFriendlyErrorHandler(mockToast));
+      const { result } = await renderHook(() => useFriendlyErrorHandler(mockToast));
       const handler = result.current;
 
       handler(friendlyError, {
@@ -386,7 +386,7 @@ describe('useFriendlyErrorHandler', () => {
   });
 
   describe('analytics tracking', () => {
-    it('tracks error with originalMessage when present', () => {
+    it('tracks error with originalMessage when present', async () => {
       const friendlyError: FriendlyError = {
         code: 'unknown',
         title: 'Test Error',
@@ -395,7 +395,7 @@ describe('useFriendlyErrorHandler', () => {
         originalMessage: 'Original error message',
       };
 
-      const { result } = renderHook(() => useFriendlyErrorHandler(mockToast));
+      const { result } = await renderHook(() => useFriendlyErrorHandler(mockToast));
       const handler = result.current;
 
       handler(friendlyError, { surface: 'test-surface' });
@@ -407,7 +407,7 @@ describe('useFriendlyErrorHandler', () => {
       });
     });
 
-    it('tracks error without originalMessage', () => {
+    it('tracks error without originalMessage', async () => {
       const friendlyError: FriendlyError = {
         code: 'unknown',
         title: 'Test Error',
@@ -415,7 +415,7 @@ describe('useFriendlyErrorHandler', () => {
         type: 'error',
       };
 
-      const { result } = renderHook(() => useFriendlyErrorHandler(mockToast));
+      const { result } = await renderHook(() => useFriendlyErrorHandler(mockToast));
       const handler = result.current;
 
       handler(friendlyError, { surface: 'test-surface' });
@@ -429,7 +429,7 @@ describe('useFriendlyErrorHandler', () => {
   });
 
   describe('return value', () => {
-    it('returns the friendly error with toastId', () => {
+    it('returns the friendly error with toastId', async () => {
       const friendlyError: FriendlyError = {
         code: 'unknown',
         title: 'Test Error',
@@ -439,7 +439,7 @@ describe('useFriendlyErrorHandler', () => {
 
       (mockToast.show as jest.Mock).mockReturnValue('toast-123');
 
-      const { result } = renderHook(() => useFriendlyErrorHandler(mockToast));
+      const { result } = await renderHook(() => useFriendlyErrorHandler(mockToast));
       const handler = result.current;
 
       const returned = handler(friendlyError, { surface: 'test-surface' });
@@ -448,7 +448,7 @@ describe('useFriendlyErrorHandler', () => {
       expect(returned.toastId).toBe('toast-123');
     });
 
-    it('returns the resolved friendly error', () => {
+    it('returns the resolved friendly error', async () => {
       const genericError = new Error('Generic error');
       const resolvedError: FriendlyError = {
         code: 'unknown',
@@ -460,7 +460,7 @@ describe('useFriendlyErrorHandler', () => {
       mockResolveFriendlyError.mockReturnValue(resolvedError);
       (mockToast.show as jest.Mock).mockReturnValue('toast-456');
 
-      const { result } = renderHook(() => useFriendlyErrorHandler(mockToast));
+      const { result } = await renderHook(() => useFriendlyErrorHandler(mockToast));
       const handler = result.current;
 
       const returned = handler(genericError, { surface: 'test-surface' });
@@ -469,7 +469,7 @@ describe('useFriendlyErrorHandler', () => {
       expect(returned.toastId).toBe('toast-456');
     });
 
-    it('returns undefined toastId when toast is suppressed', () => {
+    it('returns undefined toastId when toast is suppressed', async () => {
       const friendlyError: FriendlyError = {
         code: 'unknown',
         title: 'Test Error',
@@ -477,7 +477,7 @@ describe('useFriendlyErrorHandler', () => {
         type: 'error',
       };
 
-      const { result } = renderHook(() => useFriendlyErrorHandler(mockToast));
+      const { result } = await renderHook(() => useFriendlyErrorHandler(mockToast));
       const handler = result.current;
 
       const returned = handler(friendlyError, { surface: 'test-surface', suppressToast: true });

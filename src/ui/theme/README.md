@@ -4,18 +4,18 @@ This directory contains the theme configuration for the application.
 
 ## Quick Start
 
-To change the active theme, edit [palette.ts](./palette.ts) line 33:
+Coinbase is the active palette. To switch it, edit [palette.ts](./palette.ts):
 
 ```typescript
-// Change 'default' to any available theme
-export const themeColorSets: Record<ThemeVariant, ThemeColorSet> = themes.default;
+// Choose any palette defined in themes.ts
+export const themeColorSets: Record<ThemeVariant, ThemeColorSet> = themes.coinbase;
 ```
 
 ## Available Themes
 
 All themes are defined in [themes.ts](./themes.ts):
 
-### 1. **default** (Current)
+### 1. **default**
 
 Tailwind-inspired blue theme with clean grays
 
@@ -106,7 +106,7 @@ iOS Human Interface Guidelines system colors ([developer.apple.com/design/human-
 - Uses official Apple system colors that adapt to light/dark modes
 - Features true black background in dark mode (ideal for OLED screens)
 
-### 12. **coinbase**
+### 12. **coinbase** (Current)
 
 Clean, professional design from Coinbase Design System ([github.com/coinbase/cds](https://github.com/coinbase/cds))
 
@@ -255,3 +255,9 @@ When creating custom themes, ensure:
 - [Nord Theme](https://www.nordtheme.com)
 - [Dracula Theme](https://draculatheme.com)
 - [Catppuccin](https://github.com/catppuccin/catppuccin)
+
+## Tamagui v3
+
+`tamagui.config.ts` keeps the application color, font, spacing, and control-size values; the available palettes above remain selectable in `palette.ts`. Tamagui style values use bare token names (for example `padding="4"` and `color="accent-color"`), and numeric line heights that represent pixels must use `px`. Compiler settings live in `tamagui.build.ts` and are loaded by the Metro plugin. Restart Metro with `npm start -- --clear` after changing either config.
+
+Generate additional Lucide icons with `mise exec -- ./node_modules/.bin/tamagui icons add IconName --out src/ui/icons`, then import them from `@/ui/icons`. Put layout props on a Tamagui wrapper rather than the SVG icon.

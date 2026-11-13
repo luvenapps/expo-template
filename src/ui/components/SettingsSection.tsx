@@ -34,47 +34,54 @@ export function SettingsSection({
 
   const wrappedChildren = flatten(children).map((child, index) => {
     const key = `item-${index}`;
+    const content =
+      typeof child === 'string' || typeof child === 'number' ? (
+        <Paragraph>{child}</Paragraph>
+      ) : (
+        child
+      );
 
     return (
-      <XStack key={key} width="100%">
-        {child}
+      <XStack flexDirection="row" key={key} width="100%">
+        {content}
       </XStack>
     );
   });
 
   return (
-    <Card size="$4" bordered backgroundColor="$surface" testID={testID}>
-      <Card.Header padded gap="$2" alignItems="center">
-        <XStack alignItems="center" gap="$2">
+    <Card
+      borderRadius="4"
+      backgroundColor="surface"
+      borderWidth={1}
+      borderColor="border-color"
+      testID={testID}
+    >
+      <Card.Header padding="4" gap="2" alignItems="center">
+        <XStack flexDirection="row" alignItems="center" gap="2">
           {icon}
           <Paragraph
             fontWeight="700"
-            fontSize="$5"
-            color="$color"
-            paddingBottom="$1"
+            fontSize="5"
+            color="color"
+            paddingBottom="1"
             textTransform="capitalize"
           >
             {title}
           </Paragraph>
         </XStack>
         {description ? (
-          <Paragraph
-            color="$colorMuted"
-            fontSize="$3"
-            textAlign="center"
-            testID={descriptionTestID}
-          >
+          <Paragraph color="colorMuted" fontSize="3" textAlign="center" testID={descriptionTestID}>
             {description}
           </Paragraph>
         ) : null}
       </Card.Header>
-      <YStack gap="$3" paddingHorizontal="$3" paddingBottom="$3">
+      <YStack gap="3" paddingHorizontal="3" paddingBottom="3">
         {wrappedChildren}
       </YStack>
       {footer ? (
-        <Card.Footer padded>
+        <Card.Footer padding="4">
           {typeof footer === 'string' ? (
-            <Paragraph color="$colorMuted" fontSize="$2" textAlign="center" testID={footerTestID}>
+            <Paragraph color="colorMuted" fontSize="2" textAlign="center" testID={footerTestID}>
               {footer}
             </Paragraph>
           ) : (

@@ -121,35 +121,35 @@ describe('NamePromptModal', () => {
   });
 
   describe('Rendering', () => {
-    it('renders when open is true', () => {
-      const { getByTestId } = render(<NamePromptModal {...defaultProps} />);
+    it('renders when open is true', async () => {
+      const { getByTestId } = await render(<NamePromptModal {...defaultProps} />);
 
       expect(getByTestId('dialog')).toBeTruthy();
       expect(getByTestId('name-prompt-input')).toBeTruthy();
       expect(getByTestId('name-prompt-save')).toBeTruthy();
     });
 
-    it('does not render when open is false', () => {
-      const { queryByTestId } = render(<NamePromptModal {...defaultProps} open={false} />);
+    it('does not render when open is false', async () => {
+      const { queryByTestId } = await render(<NamePromptModal {...defaultProps} open={false} />);
 
       expect(queryByTestId('dialog')).toBeNull();
     });
 
-    it('displays title and message', () => {
-      const { getByText } = render(<NamePromptModal {...defaultProps} />);
+    it('displays title and message', async () => {
+      const { getByText } = await render(<NamePromptModal {...defaultProps} />);
 
       expect(getByText('What is your name?')).toBeTruthy();
       expect(getByText('Please enter your full name')).toBeTruthy();
     });
 
-    it('displays action label on button', () => {
-      const { getByText } = render(<NamePromptModal {...defaultProps} />);
+    it('displays action label on button', async () => {
+      const { getByText } = await render(<NamePromptModal {...defaultProps} />);
 
       expect(getByText('Save')).toBeTruthy();
     });
 
-    it('displays the current value in input', () => {
-      const { getByTestId } = render(<NamePromptModal {...defaultProps} value="John Doe" />);
+    it('displays the current value in input', async () => {
+      const { getByTestId } = await render(<NamePromptModal {...defaultProps} value="John Doe" />);
 
       const input = getByTestId('name-prompt-input');
       expect(input.props.value).toBe('John Doe');
@@ -157,43 +157,47 @@ describe('NamePromptModal', () => {
   });
 
   describe('Input handling', () => {
-    it('calls onChangeText when input changes', () => {
+    it('calls onChangeText when input changes', async () => {
       const onChangeText = jest.fn();
-      const { getByTestId } = render(
+      const { getByTestId } = await render(
         <NamePromptModal {...defaultProps} onChangeText={onChangeText} />,
       );
 
       const input = getByTestId('name-prompt-input');
-      fireEvent.changeText(input, 'Ada Lovelace');
+      await fireEvent.changeText(input, 'Ada Lovelace');
 
       expect(onChangeText).toHaveBeenCalledWith('Ada Lovelace');
     });
   });
 
   describe('Save button state', () => {
-    it('disables save button when value is empty', () => {
-      const { getByTestId } = render(<NamePromptModal {...defaultProps} value="" />);
+    it('disables save button when value is empty', async () => {
+      const { getByTestId } = await render(<NamePromptModal {...defaultProps} value="" />);
 
       const button = getByTestId('name-prompt-save');
       expect(button.props.accessibilityState.disabled).toBe(true);
     });
 
-    it('disables save button when value is only whitespace', () => {
-      const { getByTestId } = render(<NamePromptModal {...defaultProps} value="   " />);
+    it('disables save button when value is only whitespace', async () => {
+      const { getByTestId } = await render(<NamePromptModal {...defaultProps} value="   " />);
 
       const button = getByTestId('name-prompt-save');
       expect(button.props.accessibilityState.disabled).toBe(true);
     });
 
-    it('enables save button when value has content', () => {
-      const { getByTestId } = render(<NamePromptModal {...defaultProps} value="Grace Hopper" />);
+    it('enables save button when value has content', async () => {
+      const { getByTestId } = await render(
+        <NamePromptModal {...defaultProps} value="Grace Hopper" />,
+      );
 
       const button = getByTestId('name-prompt-save');
       expect(button.props.accessibilityState.disabled).toBe(false);
     });
 
-    it('enables save button when value has content after trimming', () => {
-      const { getByTestId } = render(<NamePromptModal {...defaultProps} value="  Alan Turing  " />);
+    it('enables save button when value has content after trimming', async () => {
+      const { getByTestId } = await render(
+        <NamePromptModal {...defaultProps} value="  Alan Turing  " />,
+      );
 
       const button = getByTestId('name-prompt-save');
       expect(button.props.accessibilityState.disabled).toBe(false);
@@ -201,51 +205,51 @@ describe('NamePromptModal', () => {
   });
 
   describe('Save functionality', () => {
-    it('calls onSave with trimmed value when button is pressed', () => {
+    it('calls onSave with trimmed value when button is pressed', async () => {
       const onSave = jest.fn();
-      const { getByTestId } = render(
+      const { getByTestId } = await render(
         <NamePromptModal {...defaultProps} value="  Margaret Hamilton  " onSave={onSave} />,
       );
 
       const button = getByTestId('name-prompt-save');
-      fireEvent.press(button);
+      await fireEvent.press(button);
 
       expect(onSave).toHaveBeenCalledWith('Margaret Hamilton');
     });
 
-    it('does not call onSave when value is empty', () => {
+    it('does not call onSave when value is empty', async () => {
       const onSave = jest.fn();
-      const { getByTestId } = render(
+      const { getByTestId } = await render(
         <NamePromptModal {...defaultProps} value="" onSave={onSave} />,
       );
 
       const button = getByTestId('name-prompt-save');
-      fireEvent.press(button);
+      await fireEvent.press(button);
 
       expect(onSave).not.toHaveBeenCalled();
     });
 
-    it('does not call onSave when value is only whitespace', () => {
+    it('does not call onSave when value is only whitespace', async () => {
       const onSave = jest.fn();
-      const { getByTestId } = render(
+      const { getByTestId } = await render(
         <NamePromptModal {...defaultProps} value="   " onSave={onSave} />,
       );
 
       const button = getByTestId('name-prompt-save');
-      fireEvent.press(button);
+      await fireEvent.press(button);
 
       expect(onSave).not.toHaveBeenCalled();
     });
 
-    it('handleSave returns early when canSave is false', () => {
+    it('handleSave returns early when canSave is false', async () => {
       const onSave = jest.fn();
-      const { getByTestId } = render(
+      const { getByTestId } = await render(
         <NamePromptModal {...defaultProps} value="" onSave={onSave} />,
       );
 
       const button = getByTestId('name-prompt-save');
       // Even though button is disabled, we can still fire press event to trigger handleSave
-      fireEvent.press(button);
+      await fireEvent.press(button);
 
       // onSave should not be called because canSave is false
       expect(onSave).not.toHaveBeenCalled();
@@ -253,10 +257,10 @@ describe('NamePromptModal', () => {
   });
 
   describe('Dialog close behavior', () => {
-    it('calls onOpenChange when dialog is closed after save', () => {
+    it('calls onOpenChange when dialog is closed after save', async () => {
       const onOpenChange = jest.fn();
       const onSave = jest.fn();
-      const { getByTestId } = render(
+      const { getByTestId } = await render(
         <NamePromptModal
           {...defaultProps}
           value="Katherine Johnson"
@@ -267,7 +271,7 @@ describe('NamePromptModal', () => {
 
       // Press save button - this sets allowCloseRef to true
       const button = getByTestId('name-prompt-save');
-      fireEvent.press(button);
+      await fireEvent.press(button);
 
       // Simulate dialog trying to close by calling onOpenChange from Dialog
       // In real usage, Dialog component would call this
@@ -280,9 +284,9 @@ describe('NamePromptModal', () => {
       expect(onOpenChange).toHaveBeenCalledWith(false);
     });
 
-    it('prevents closing dialog when save has not been triggered', () => {
+    it('prevents closing dialog when save has not been triggered', async () => {
       const onOpenChange = jest.fn();
-      const { getByTestId } = render(
+      const { getByTestId } = await render(
         <NamePromptModal {...defaultProps} value="Test" onOpenChange={onOpenChange} />,
       );
 
@@ -296,22 +300,20 @@ describe('NamePromptModal', () => {
       expect(onOpenChange).not.toHaveBeenCalled();
     });
 
-    it('does not error when onOpenChange is not provided', () => {
-      const { getByTestId } = render(
+    it('does not error when onOpenChange is not provided', async () => {
+      const { getByTestId } = await render(
         <NamePromptModal {...defaultProps} onOpenChange={undefined} value="Test" />,
       );
 
       // Should not throw when onOpenChange is undefined
-      expect(() => {
-        const button = getByTestId('name-prompt-save');
-        fireEvent.press(button);
-      }).not.toThrow();
+      const button = getByTestId('name-prompt-save');
+      await expect(fireEvent.press(button)).resolves.toBeUndefined();
     });
   });
 
   describe('Edge cases', () => {
-    it('renders with empty string props', () => {
-      const { getByTestId } = render(
+    it('renders with empty string props', async () => {
+      const { getByTestId } = await render(
         <NamePromptModal
           {...defaultProps}
           title=""
@@ -326,79 +328,79 @@ describe('NamePromptModal', () => {
       expect(getByTestId('dialog')).toBeTruthy();
     });
 
-    it('handles very long names', () => {
+    it('handles very long names', async () => {
       const longName = 'A'.repeat(1000);
       const onSave = jest.fn();
-      const { getByTestId } = render(
+      const { getByTestId } = await render(
         <NamePromptModal {...defaultProps} value={longName} onSave={onSave} />,
       );
 
       const button = getByTestId('name-prompt-save');
-      fireEvent.press(button);
+      await fireEvent.press(button);
 
       expect(onSave).toHaveBeenCalledWith(longName);
     });
 
-    it('handles special characters in name', () => {
+    it('handles special characters in name', async () => {
       const specialName = "O'Brien-Smith";
       const onSave = jest.fn();
-      const { getByTestId } = render(
+      const { getByTestId } = await render(
         <NamePromptModal {...defaultProps} value={specialName} onSave={onSave} />,
       );
 
       const button = getByTestId('name-prompt-save');
-      fireEvent.press(button);
+      await fireEvent.press(button);
 
       expect(onSave).toHaveBeenCalledWith(specialName);
     });
 
-    it('handles unicode characters', () => {
+    it('handles unicode characters', async () => {
       const unicodeName = '田中 太郎';
       const onSave = jest.fn();
-      const { getByTestId } = render(
+      const { getByTestId } = await render(
         <NamePromptModal {...defaultProps} value={unicodeName} onSave={onSave} />,
       );
 
       const button = getByTestId('name-prompt-save');
-      fireEvent.press(button);
+      await fireEvent.press(button);
 
       expect(onSave).toHaveBeenCalledWith(unicodeName);
     });
 
-    it('calls onSave when value has exactly one character after trimming', () => {
+    it('calls onSave when value has exactly one character after trimming', async () => {
       const onSave = jest.fn();
-      const { getByTestId } = render(
+      const { getByTestId } = await render(
         <NamePromptModal {...defaultProps} value=" X " onSave={onSave} />,
       );
 
       const button = getByTestId('name-prompt-save');
-      fireEvent.press(button);
+      await fireEvent.press(button);
 
       expect(onSave).toHaveBeenCalledWith('X');
     });
 
-    it('falls back when theme color is missing', () => {
+    it('falls back when theme color is missing', async () => {
       const tamagui = require('tamagui');
       tamagui.useTheme.mockReturnValueOnce({});
 
-      const { getByTestId } = render(<NamePromptModal {...defaultProps} value="Test" />);
+      const { getByTestId } = await render(<NamePromptModal {...defaultProps} value="Test" />);
       expect(getByTestId('name-prompt-save')).toBeTruthy();
     });
 
-    it('renders on narrow and wide screens to cover icon size branches', () => {
+    it('renders on narrow and wide screens to cover icon size branches', async () => {
       const RN = require('react-native');
       const originalUseWindowDimensions = RN.useWindowDimensions;
       const originalPlatform = Platform.OS;
 
       RN.useWindowDimensions = jest.fn(() => ({ width: 360, height: 700 }));
-      const narrow = render(<NamePromptModal {...defaultProps} value="Narrow" />);
+      const narrow = await render(<NamePromptModal {...defaultProps} value="Narrow" />);
       expect(narrow.getByTestId('name-prompt-save')).toBeTruthy();
-      narrow.unmount();
+      await narrow.unmount();
 
       RN.useWindowDimensions = jest.fn(() => ({ width: 420, height: 800 }));
-      const wide = render(<NamePromptModal {...defaultProps} value="Wide" />);
+      const wide = await render(<NamePromptModal {...defaultProps} value="Wide" />);
       expect(wide.getByTestId('name-prompt-save')).toBeTruthy();
-      wide.unmount();
+      await wide.unmount();
 
       RN.useWindowDimensions = originalUseWindowDimensions;
       Object.defineProperty(Platform, 'OS', { value: originalPlatform });

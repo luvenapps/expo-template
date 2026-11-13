@@ -107,9 +107,9 @@ describe('PromptUpgradeModal', () => {
     jest.restoreAllMocks();
   });
 
-  it('dismisses when not now is pressed', () => {
+  it('dismisses when not now is pressed', async () => {
     const onNotNow = jest.fn();
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <PromptUpgradeModal
         open
         title="Update available"
@@ -120,7 +120,7 @@ describe('PromptUpgradeModal', () => {
       />,
     );
 
-    fireEvent.press(getByTestId('prompt-upgrade-not-now'));
+    await fireEvent.press(getByTestId('prompt-upgrade-not-now'));
     mockOnOpenChange?.(false);
 
     expect(onNotNow).toHaveBeenCalledTimes(2);
@@ -130,7 +130,7 @@ describe('PromptUpgradeModal', () => {
     Object.defineProperty(Platform, 'OS', { value: 'android' });
     canOpenUrlSpy.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
 
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <PromptUpgradeModal
         open
         title="Update available"
@@ -141,7 +141,7 @@ describe('PromptUpgradeModal', () => {
       />,
     );
 
-    fireEvent.press(getByTestId('prompt-upgrade-action'));
+    await fireEvent.press(getByTestId('prompt-upgrade-action'));
 
     await waitFor(() => {
       expect(canOpenUrlSpy).toHaveBeenCalledTimes(2);
@@ -155,7 +155,7 @@ describe('PromptUpgradeModal', () => {
   it('continues to fallback URL when canOpenURL throws', async () => {
     canOpenUrlSpy.mockRejectedValueOnce(new Error('bad-url')).mockResolvedValueOnce(true);
 
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <PromptUpgradeModal
         open
         title="Update available"
@@ -166,7 +166,7 @@ describe('PromptUpgradeModal', () => {
       />,
     );
 
-    fireEvent.press(getByTestId('prompt-upgrade-action'));
+    await fireEvent.press(getByTestId('prompt-upgrade-action'));
 
     await waitFor(() => {
       expect(canOpenUrlSpy).toHaveBeenCalledTimes(2);
@@ -178,7 +178,7 @@ describe('PromptUpgradeModal', () => {
     Object.defineProperty(Platform, 'OS', { value: 'android' });
     (Constants as any).expoConfig.extra.storeIds = {};
 
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <PromptUpgradeModal
         open
         title="Update available"
@@ -189,7 +189,7 @@ describe('PromptUpgradeModal', () => {
       />,
     );
 
-    fireEvent.press(getByTestId('prompt-upgrade-action'));
+    await fireEvent.press(getByTestId('prompt-upgrade-action'));
 
     await waitFor(() => {
       expect(openUrlSpy).toHaveBeenCalledWith('https://play.google.com/store');
@@ -200,7 +200,7 @@ describe('PromptUpgradeModal', () => {
     Object.defineProperty(Platform, 'OS', { value: 'android' });
     (Constants as any).expoConfig = undefined;
 
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <PromptUpgradeModal
         open
         title="Update available"
@@ -211,7 +211,7 @@ describe('PromptUpgradeModal', () => {
       />,
     );
 
-    fireEvent.press(getByTestId('prompt-upgrade-action'));
+    await fireEvent.press(getByTestId('prompt-upgrade-action'));
 
     await waitFor(() => {
       expect(openUrlSpy).toHaveBeenCalledWith('https://play.google.com/store');
@@ -222,7 +222,7 @@ describe('PromptUpgradeModal', () => {
     canOpenUrlSpy.mockResolvedValue(false);
     mockHandleError.mockReturnValue({ friendly: { code: 'unknown', type: 'error' } });
 
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <PromptUpgradeModal
         open
         title="Update available"
@@ -233,7 +233,7 @@ describe('PromptUpgradeModal', () => {
       />,
     );
 
-    fireEvent.press(getByTestId('prompt-upgrade-action'));
+    await fireEvent.press(getByTestId('prompt-upgrade-action'));
 
     await waitFor(() => {
       expect(getByTestId('prompt-upgrade-error').props.children).toBe('errors.unknown.title');
@@ -251,7 +251,7 @@ describe('PromptUpgradeModal', () => {
       },
     });
 
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <PromptUpgradeModal
         open
         title="Update available"
@@ -262,7 +262,7 @@ describe('PromptUpgradeModal', () => {
       />,
     );
 
-    fireEvent.press(getByTestId('prompt-upgrade-action'));
+    await fireEvent.press(getByTestId('prompt-upgrade-action'));
 
     await waitFor(() => {
       expect(getByTestId('prompt-upgrade-error').props.children).toBe(
@@ -274,7 +274,7 @@ describe('PromptUpgradeModal', () => {
   it('shows an inline error when no store URL can be opened', async () => {
     canOpenUrlSpy.mockResolvedValue(false);
 
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <PromptUpgradeModal
         open
         title="Update available"
@@ -285,7 +285,7 @@ describe('PromptUpgradeModal', () => {
       />,
     );
 
-    fireEvent.press(getByTestId('prompt-upgrade-action'));
+    await fireEvent.press(getByTestId('prompt-upgrade-action'));
 
     await waitFor(() => {
       expect(getByTestId('prompt-upgrade-error')).toBeTruthy();
@@ -293,10 +293,10 @@ describe('PromptUpgradeModal', () => {
     expect(mockHandleError).toHaveBeenCalled();
   });
 
-  it('does not dismiss when dialog closes without explicit not now action', () => {
+  it('does not dismiss when dialog closes without explicit not now action', async () => {
     const onNotNow = jest.fn();
 
-    render(
+    await render(
       <PromptUpgradeModal
         open
         title="Update available"
@@ -315,7 +315,7 @@ describe('PromptUpgradeModal', () => {
   it('opens the app store when update is pressed', async () => {
     Object.defineProperty(Platform, 'OS', { value: 'ios' });
     const onNotNow = jest.fn();
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <PromptUpgradeModal
         open
         title="Update available"
@@ -326,7 +326,7 @@ describe('PromptUpgradeModal', () => {
       />,
     );
 
-    fireEvent.press(getByTestId('prompt-upgrade-action'));
+    await fireEvent.press(getByTestId('prompt-upgrade-action'));
 
     await waitFor(() => {
       expect(canOpenUrlSpy).toHaveBeenCalled();
@@ -334,10 +334,10 @@ describe('PromptUpgradeModal', () => {
     });
   });
 
-  it('renders correctly on web to cover web dialog sizing branch', () => {
+  it('renders correctly on web to cover web dialog sizing branch', async () => {
     Object.defineProperty(Platform, 'OS', { value: 'web' });
 
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <PromptUpgradeModal
         open
         title="Update available"
@@ -351,10 +351,10 @@ describe('PromptUpgradeModal', () => {
     expect(getByTestId('prompt-upgrade-action')).toBeTruthy();
   });
 
-  it('falls back when theme color is missing', () => {
+  it('falls back when theme color is missing', async () => {
     mockUseTheme.mockReturnValueOnce({} as any);
 
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <PromptUpgradeModal
         open
         title="Update available"

@@ -8,9 +8,11 @@
  *  - Remove template-only metadata ("x-template") from package.json
  *  - Replace placeholders (__APP_NAME__, __APP_ID__) in app.config.ts and __tests__/app.config.test.ts
  *  - Replace placeholders in Maestro flows (.maestro/flows/*.yml|yaml)
- *  - Replace tokens in README.md (if present)
+ *  - Replace app identity tokens in README.md and generated docs (if present)
+ *  - Materialize _AGENTS.md and _CLAUDE.md as generated app root instructions
+ *  - Set generated app IDs in the fake Firebase base64 config in .env.example
  *  - Replace tockens in Domain Config if present
- *  - Restore .gitignore from "gitignore" (if present)
+ * *  - Restore .gitignore from "gitignore" (if present)
  *  - Rename _prettierrc.json → .prettierrc.json if present
  *  - Rename _prettierignore → .prettierignore if present
  *  - Copy _mise.toml → .mise.toml (runtime toolchain pins)
@@ -20,6 +22,7 @@
  *  - Materialize .maestro from _maestro if needed
  *  - Restore .github (delete existing .github and rename _github → .github
  *  - Ensure all shell scripts in .github are executable
+ *  - Remove consumed underscore placeholders and template-sync metadata
  *  - Run Prettier to format updated files
  *  - Remove postinstall from package.json
  *  - Self-delete this script
@@ -45,8 +48,7 @@ const exists = (p) => {
   }
 };
 const readJson = (p) => JSON.parse(fs.readFileSync(p, 'utf8'));
-const writeJson = (p, o) =>
-  fs.writeFileSync(p, JSON.stringify(o, null, 2) + '\n', 'utf8');
+const writeJson = (p, o) => fs.writeFileSync(p, JSON.stringify(o, null, 2) + '\n', 'utf8');
 const runSilent = (cmd, args, opts = {}) => {
   try {
     cp.execFileSync(cmd, args, { stdio: 'ignore', ...opts });
@@ -66,6 +68,52 @@ const copyDir = (src, dst) => {
     const stat = fs.lstatSync(s);
     if (stat.isDirectory()) copyDir(s, d);
     else if (stat.isFile()) fs.copyFileSync(s, d);
+  }
+};
+
+// Adapt only the bundled fake config in the example environment file.
+// Real credentials and existing local environment files are left untouched.
+const updateFirebaseExampleIds = (appId) => {
+  const examplePath = path.join(CWD, '.env.example');
+  if (!exists(examplePath)) return;
+  const before = fs.readFileSync(examplePath, 'utf8');
+  const after = before.replace(
+    /^(GOOGLE_SERVICE_INFO_PLIST_B64|GOOGLE_SERVICES_JSON_B64)=([A-Za-z0-9+/=]+)$/gm,
+    (line, key, encoded) => {
+      const decoded = Buffer.from(encoded, 'base64').toString('utf8');
+      const updated = decoded.replaceAll('com.luvenapps.expotemplatetesting', appId);
+      return `${key}=${Buffer.from(updated).toString('base64')}`;
+    },
+  );
+  if (after !== before) {
+    fs.writeFileSync(examplePath, after, 'utf8');
+    console.log(`✅ Example Firebase config IDs updated: ${appId}`);
+  }
+};
+
+const materializeRootGuidance = (summary) => {
+  for (const [templateName, appName] of [
+    ['_AGENTS.md', 'AGENTS.md'],
+    ['_CLAUDE.md', 'CLAUDE.md'],
+  ]) {
+    const templatePath = path.join(CWD, templateName);
+    if (!exists(templatePath)) continue;
+
+    try {
+      const before = fs.readFileSync(templatePath, 'utf8');
+      const after = before
+        .replace(/\{\{APP_NAME\}\}/g, summary.appName)
+        .replace(/\{\{APP_SLUG\}\}/g, summary.slug)
+        .replace(/\{\{APP_ID\}\}/g, summary.appId)
+        .replace(/__APP_NAME__SINGULAR__/g, summary.singular)
+        .replace(/__APP_NAME__/g, summary.appName)
+        .replace(/__APP_SLUG__/g, summary.slug)
+        .replace(/__APP_ID__/g, summary.appId);
+      fs.writeFileSync(path.join(CWD, appName), after, 'utf8');
+      console.log(`✅ ${appName} materialized from ${templateName}`);
+    } catch (e) {
+      console.log(`⚠️  ${appName} materialization skipped (${e.message})`);
+    }
   }
 };
 
@@ -101,6 +149,7 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
     console.log('⚠️  package.json not found — aborting postinstall');
     return;
   }
+
   const pkg = readJson(pkgPath);
   const folderName = path.basename(CWD);
   if (!pkg.name || pkg.name === 'template-starter') {
@@ -129,15 +178,17 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
   // Android/iOS bundle id segment: letters/digits only, no dashes/underscores; must start with a letter
   const idSegmentBase = rawName.replace(/[^a-z0-9]+/g, '');
   const idSegment =
-    /^[a-z]/.test(idSegmentBase) && idSegmentBase.length
-      ? idSegmentBase
-      : `app${idSegmentBase}`; // ensure it starts with a letter
+    /^[a-z]/.test(idSegmentBase) && idSegmentBase.length ? idSegmentBase : `app${idSegmentBase}`; // ensure it starts with a letter
 
   const appId = `${bundleIdBase}.${idSegment}`.replace(/\.+/g, '.');
 
   summary.slug = slugSafe;
   summary.appId = appId;
   summary.singular = singularize(idSegmentBase);
+
+  materializeRootGuidance(summary);
+
+  updateFirebaseExampleIds(appId);
 
   if (exists(appConfigPath)) {
     try {
@@ -159,21 +210,16 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
   if (exists(appConfigTestPath)) {
     try {
       const before = fs.readFileSync(appConfigTestPath, 'utf8');
-      const after = before.replace(/__APP_NAME__/g, pkg.name);
+      const after = before.replace(/__APP_NAME__/g, pkg.name).replace(/__APP_SLUG__/g, slugSafe);
       if (after !== before) fs.writeFileSync(appConfigTestPath, after, 'utf8');
       console.log('✅ __tests__/app.config.test.ts updated (app name)');
     } catch (e) {
-      console.log(
-        `⚠️  __tests__/app.config.test.ts update skipped (${e.message})`,
-      );
+      console.log(`⚠️  __tests__/app.config.test.ts update skipped (${e.message})`);
     }
   }
 
   // Maestro flows (update in .maestro or _maestro if present)
-  const flowRoots = [
-    path.join(CWD, '.maestro', 'flows'),
-    path.join(CWD, '_maestro', 'flows'),
-  ];
+  const flowRoots = [path.join(CWD, '.maestro', 'flows'), path.join(CWD, '_maestro', 'flows')];
 
   let touchedTotal = 0;
   for (const flowsDir of flowRoots) {
@@ -199,12 +245,43 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
   if (exists(readmePath)) {
     const before = fs.readFileSync(readmePath, 'utf8');
     const after = before
+      .replace(/\{\{APP_DOMAIN_NAME\}\}/g, idSegmentBase)
+      .replace(/\{\{APP_ENTITY_NAME\}\}/g, summary.singular)
+      .replace(/\{\{APP_NAME\}\}/g, summary.appName)
+      .replace(/\{\{APP_SLUG\}\}/g, summary.slug)
+      .replace(/\{\{APP_ID\}\}/g, summary.appId)
       .replace(/__APP_NAME__/g, summary.appName)
+      .replace(/__APP_SLUG__/g, summary.slug)
       .replace(/__APP_ID__/g, summary.appId);
     if (after !== before) {
       fs.writeFileSync(readmePath, after, 'utf8');
       console.log('✅ README tokens replaced.');
     }
+  }
+
+  // Replace identity tokens in copied setup and architecture documentation.
+  const docsRoot = path.join(CWD, 'docs');
+  if (exists(docsRoot)) {
+    const visitDocs = (dir) => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          visitDocs(fullPath);
+        } else if (entry.isFile() && entry.name.endsWith('.md')) {
+          const before = fs.readFileSync(fullPath, 'utf8');
+          const after = before
+            .replace(/\{\{APP_NAME\}\}/g, summary.appName)
+            .replace(/\{\{APP_SLUG\}\}/g, summary.slug)
+            .replace(/\{\{APP_ID\}\}/g, summary.appId)
+            .replace(/__APP_NAME__SINGULAR__/g, summary.singular)
+            .replace(/__APP_NAME__/g, summary.appName)
+            .replace(/__APP_SLUG__/g, summary.slug)
+            .replace(/__APP_ID__/g, summary.appId);
+          if (after !== before) fs.writeFileSync(fullPath, after, 'utf8');
+        }
+      }
+    };
+    visitDocs(docsRoot);
   }
 
   // Domain Config tokens
@@ -229,9 +306,7 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
     try {
       if (exists(giDst)) {
         fs.unlinkSync(giDst);
-        console.log(
-          '🧹 Removed existing .gitignore to replace with template version',
-        );
+        console.log('🧹 Removed existing .gitignore to replace with template version');
       }
       fs.renameSync(giSrc, giDst);
       console.log('✅ Restored .gitignore from template');
@@ -249,9 +324,7 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
     try {
       if (exists(prettierrcDst)) {
         fs.unlinkSync(prettierrcDst);
-        console.log(
-          '🧹 Removed existing .prettierrc.json to replace with template version',
-        );
+        console.log('🧹 Removed existing .prettierrc.json to replace with template version');
       }
       fs.renameSync(prettierrcSrc, prettierrcDst);
       console.log('✅ Restored .prettierrc.json from template');
@@ -259,9 +332,7 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
       console.log(`⚠️  Failed to restore .prettierrc.json (${e.message})`);
     }
   } else {
-    console.log(
-      '⚠️  No _prettierrc.json found in template directory — skipping',
-    );
+    console.log('⚠️  No _prettierrc.json found in template directory — skipping');
   }
 
   // Rename _prettierignore → .prettierignore if present
@@ -271,9 +342,7 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
     try {
       if (exists(prettierignoreDst)) {
         fs.unlinkSync(prettierignoreDst);
-        console.log(
-          '🧹 Removed existing .prettierignore to replace with template version',
-        );
+        console.log('🧹 Removed existing .prettierignore to replace with template version');
       }
       fs.renameSync(prettierignoreSrc, prettierignoreDst);
       console.log('✅ Restored .prettierignore from template');
@@ -281,9 +350,7 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
       console.log(`⚠️  Failed to restore .prettierignore (${e.message})`);
     }
   } else {
-    console.log(
-      '⚠️  No _prettierignore found in template directory — skipping',
-    );
+    console.log('⚠️  No _prettierignore found in template directory — skipping');
   }
 
   // Copy _mise.toml → .mise.toml if present
@@ -313,9 +380,7 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
       console.log(`⚠️  Failed to copy _mcp-vscode.json (${e.message})`);
     }
   } else {
-    console.log(
-      '⚠️  No _mcp-vscode.json found in template directory — skipping',
-    );
+    console.log('⚠️  No _mcp-vscode.json found in template directory — skipping');
   }
 
   // Copy _mcp-claude.json → .mcp.json if present
@@ -329,9 +394,7 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
       console.log(`⚠️  Failed to copy _mcp-claude.json (${e.message})`);
     }
   } else {
-    console.log(
-      '⚠️  No _mcp-claude.json found in template directory — skipping',
-    );
+    console.log('⚠️  No _mcp-claude.json found in template directory — skipping');
   }
 
   // Husky v9+ (no `husky install`): set hooksPath + chmod, and materialize from _husky if needed
@@ -339,8 +402,8 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
   if (!isGit) runSilent('git', ['init']);
   const huskyDst = path.join(CWD, '.husky');
   const huskySrcCandidates = [
-    path.join(CWD, '.husky'), // present for local copies
     path.join(CWD, '_husky'), // present when installed from GitHub/npm tarball
+    path.join(CWD, '.husky'), // present for local copies
   ];
   const huskySrc = huskySrcCandidates.find(exists);
 
@@ -374,10 +437,7 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
 
   // Materialize Maestro folder (.maestro) from _maestro if needed
   const maestroDst = path.join(CWD, '.maestro');
-  const maestroSrcCandidates = [
-    path.join(CWD, '.maestro'),
-    path.join(CWD, '_maestro'),
-  ];
+  const maestroSrcCandidates = [path.join(CWD, '_maestro'), path.join(CWD, '.maestro')];
   const maestroSrc = maestroSrcCandidates.find(exists);
 
   if (maestroSrc) {
@@ -396,17 +456,12 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
       console.log(`⚠️  Maestro restore failed (${e.message})`);
     }
   } else {
-    console.log(
-      '⚠️  No .maestro/_maestro found in template directory — skipping',
-    );
+    console.log('⚠️  No .maestro/_maestro found in template directory — skipping');
   }
 
   // Restore .github (delete existing .github and rename _github → .github)
   const githubDst = path.join(CWD, '.github');
-  const githubSrcCandidates = [
-    path.join(CWD, '.github'),
-    path.join(CWD, '_github'),
-  ];
+  const githubSrcCandidates = [path.join(CWD, '_github'), path.join(CWD, '.github')];
   const githubSrc = githubSrcCandidates.find(exists);
 
   if (githubSrc) {
@@ -425,9 +480,7 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
       console.log(`⚠️  github restore failed (${e.message})`);
     }
   } else {
-    console.log(
-      '⚠️  No .github/_maestro found in template directory — skipping',
-    );
+    console.log('⚠️  No .github/_maestro found in template directory — skipping');
   }
 
   // Ensure all shell scripts in .github are executable
@@ -452,9 +505,46 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
       makeExecutable(githubDir);
       console.log('✅ All .sh scripts in .github are executable');
     } catch (e) {
-      console.log(
-        `⚠️  Failed to make .github scripts executable (${e.message})`,
-      );
+      console.log(`⚠️  Failed to make .github scripts executable (${e.message})`);
+    }
+  }
+
+  // Remove underscore placeholders only after their generated counterparts exist.
+  // These are template source files, not part of a generated app.
+  const materializedTemplatePaths = [
+    ['_AGENTS.md', 'AGENTS.md'],
+    ['_CLAUDE.md', 'CLAUDE.md'],
+    ['_mise.toml', '.mise.toml'],
+    ['_mcp-vscode.json', '.vscode/mcp.json'],
+    ['_mcp-claude.json', '.mcp.json'],
+    ['_husky', '.husky'],
+    ['_maestro', '.maestro'],
+    ['_github', '.github'],
+    ['_gitignore', '.gitignore'],
+    ['_prettierrc.json', '.prettierrc.json'],
+    ['_prettierignore', '.prettierignore'],
+  ];
+  for (const [templatePath, generatedPath] of materializedTemplatePaths) {
+    const templateFile = path.join(CWD, templatePath);
+    const generatedFile = path.join(CWD, generatedPath);
+    if (!exists(templateFile) || !exists(generatedFile)) continue;
+
+    try {
+      fs.rmSync(templateFile, { recursive: true, force: true });
+      console.log(`🧹 Removed ${templatePath} template placeholder`);
+    } catch (e) {
+      console.log(`⚠️  Failed to remove ${templatePath} (${e.message})`);
+    }
+  }
+
+  // This manifest configures expo-template's source-sync workflow only.
+  const syncManifest = path.join(CWD, '.template-sync-manifest.json');
+  if (exists(syncManifest)) {
+    try {
+      fs.unlinkSync(syncManifest);
+      console.log('🧹 Removed expo-template sync manifest');
+    } catch (e) {
+      console.log(`⚠️  Failed to remove expo-template sync manifest (${e.message})`);
     }
   }
 
@@ -489,9 +579,7 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
       console.log('🧹 Removed postinstall script from package.json');
     }
   } catch (e) {
-    console.log(
-      `⚠️  Failed to remove postinstall script from package.json (${e.message})`,
-    );
+    console.log(`⚠️  Failed to remove postinstall script from package.json (${e.message})`);
   }
 
   // Self-delete

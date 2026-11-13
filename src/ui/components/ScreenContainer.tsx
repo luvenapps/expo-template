@@ -1,5 +1,5 @@
 import { PropsWithChildren } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, type ScrollViewProps } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useOptionalThemeContext } from '@/ui/theme/ThemeProvider';
 import { YStack } from 'tamagui';
@@ -12,14 +12,14 @@ type ScreenContainerProps = PropsWithChildren<{
   backgroundColor?: string;
   scrollable?: boolean;
   keyboardAvoiding?: boolean;
-  contentContainerStyle?: ScrollView['props']['contentContainerStyle'];
+  contentContainerStyle?: ScrollViewProps['contentContainerStyle'];
 }>;
 
 export function ScreenContainer({
   children,
   justifyContent = 'flex-start',
   alignItems = 'stretch',
-  paddingHorizontal = '$6',
+  paddingHorizontal = '6',
   gap,
   backgroundColor,
   scrollable = true,
@@ -32,15 +32,15 @@ export function ScreenContainer({
   const topPadding = Math.min(Math.max(insets.top + 8, 16), 28);
   const bottomPadding = Math.max(insets.bottom, 12) + 12;
 
-  const resolvedBackground = backgroundColor ?? '$background';
+  const resolvedBackground = backgroundColor ?? 'background';
   const backgroundTokenMap: Record<string, string | undefined> = {
-    $background: palette?.background,
-    $backgroundStrong: palette?.surface,
-    $surface: palette?.surface,
-    $backgroundHover: palette?.secondaryBackground,
+    background: palette?.background,
+    backgroundStrong: palette?.surface,
+    surface: palette?.surface,
+    'background-hover': palette?.secondaryBackground,
   };
   const resolvedNativeBackground =
-    typeof resolvedBackground === 'string' && resolvedBackground.startsWith('$')
+    typeof resolvedBackground === 'string' && resolvedBackground in backgroundTokenMap
       ? (backgroundTokenMap[resolvedBackground] ?? palette?.background)
       : resolvedBackground;
   const keyboardBehavior: 'padding' | 'height' = Platform.OS === 'ios' ? 'padding' : 'height';

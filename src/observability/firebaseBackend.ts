@@ -61,9 +61,10 @@ function createNativeBackendIfAvailable(): AnalyticsBackend | null {
   }
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const analytics = require('@react-native-firebase/analytics');
-    if (!analytics?.default) {
+    const analyticsModule =
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require('@react-native-firebase/analytics') as typeof import('@react-native-firebase/analytics');
+    if (!analyticsModule.getAnalytics) {
       logger.warn(
         'Native analytics module not available. Rebuild the app after running: npx expo prebuild --clean',
       );
@@ -71,34 +72,29 @@ function createNativeBackendIfAvailable(): AnalyticsBackend | null {
     }
 
     // Cache the analytics instance
-    // Note: Deprecation warnings are expected - v22 modular API not yet available in v23
-    const analyticsInstance = analytics.default();
+    // RN Firebase v27 exposes only the modular API.
+    const analyticsInstance = analyticsModule.getAnalytics();
 
     return {
       trackEvent: (envelope) => {
         const eventName = sanitizeEventName(envelope.event);
         const payload = buildPayload(envelope, envelope.payload);
         logger.debug('Sending native event:', { eventName, payload });
-        analyticsInstance
-          .setUserId(envelope.distinctId)
+        analyticsModule
+          .setUserId(analyticsInstance, envelope.distinctId)
           .then(() => {
             logger.debug('User ID set successfully');
           })
           .catch((err: Error) => {
             logger.error('Failed to set user ID:', err);
           });
-        analyticsInstance
-          .logEvent(eventName, payload)
-          .then(() => {
-            logger.debug('Event logged successfully:', eventName);
-          })
-          .catch((err: Error) => {
-            logger.error('Failed to log event:', { eventName, err });
-          });
+        analyticsModule.logEvent(analyticsInstance, eventName, payload);
+        logger.debug('Native event submitted to Firebase SDK:', eventName);
       },
       trackError: (envelope) => {
-        void analyticsInstance.setUserId(envelope.distinctId);
-        void analyticsInstance.logEvent(
+        void analyticsModule.setUserId(analyticsInstance, envelope.distinctId);
+        analyticsModule.logEvent(
+          analyticsInstance,
           'observability_error',
           buildPayload(envelope, {
             message: envelope.message,
@@ -108,8 +104,9 @@ function createNativeBackendIfAvailable(): AnalyticsBackend | null {
         );
       },
       trackPerformance: (envelope) => {
-        void analyticsInstance.setUserId(envelope.distinctId);
-        void analyticsInstance.logEvent(
+        void analyticsModule.setUserId(analyticsInstance, envelope.distinctId);
+        analyticsModule.logEvent(
+          analyticsInstance,
           'observability_perf',
           buildPayload(envelope, {
             metric_name: envelope.name,
