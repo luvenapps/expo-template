@@ -5,7 +5,7 @@ source "$SCRIPT_DIR/with_timeout.sh"
 mkdir -p e2e-artifacts
 rm -f .simulator_udid
 
-# Select one specific device; Simulator.app need not render a window in CI.
+# Select one specific simulator, then launch the UI bundled with active Xcode.
 run_with_timeout 30 xcrun simctl list devices available --json > e2e-artifacts/devices.json
 UDID=$(python3 - "${IOS_DEVICE:-}" <<'PY'
 import json, sys
@@ -19,11 +19,34 @@ print(matches[0]['udid'])
 PY
 )
 
+open_simulator_ui() {
+  local developer_dir xcode_app device_hub_app simulator_app
+  developer_dir="$(xcode-select -p)"
+  xcode_app="${developer_dir%/Contents/Developer}"
+  device_hub_app="$xcode_app/Contents/Applications/DeviceHub.app"
+  simulator_app="$developer_dir/Applications/Simulator.app"
+
+  if [ -d "$device_hub_app" ]; then
+    echo "📱 Opening Device Hub..."
+    open -a "$device_hub_app"
+  elif [ -d "$simulator_app" ]; then
+    echo "📱 Opening Simulator..."
+    open -a "$simulator_app"
+  else
+    echo "❌ No simulator UI found in the active Xcode installation" >&2
+    echo "   Active Developer directory: $developer_dir" >&2
+    echo "   Expected Device Hub: $device_hub_app" >&2
+    echo "   Expected Simulator: $simulator_app" >&2
+    return 1
+  fi
+}
+
 # One readiness gate with a wall-clock deadline. bootstatus waits for OS services,
 # rather than treating the early "Booted" state as ready to install applications.
 ATTEMPTS="${RETRIES:-2}"
 DELAY="${RETRY_DELAY:-2}"
 for ((attempt=1; attempt<=ATTEMPTS; attempt++)); do
+  open_simulator_ui
   echo "Booting $UDID (attempt $attempt/$ATTEMPTS)"
   if run_with_timeout 180 xcrun simctl bootstatus "$UDID" -b > e2e-artifacts/bootstatus.log 2>&1; then
     cat e2e-artifacts/bootstatus.log

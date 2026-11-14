@@ -1,5 +1,5 @@
 /** @jest-environment node */
-import { existsSync, writeFileSync } from 'node:fs';
+import { existsSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { useCiScriptTestContext } from '../helpers/ciScriptTestContext';
 
@@ -10,13 +10,46 @@ describe('ios_boot_simulator', () => {
     context.boot();
     expect(context.read('.simulator_udid')).toBe('test-udid');
     expect(context.read('commands.log')).toContain('simctl bootstatus test-udid -b');
+    expect(context.read('commands.log')).toMatch(/-a .*DeviceHub\.app/);
     expect(context.read('commands.log')).not.toMatch(/shutdown|erase/);
+  });
+
+  test('falls back to Simulator.app when Device Hub is unavailable', () => {
+    rmSync(
+      join(context.root, 'DevTools/Xcode.app/Contents/Applications/DeviceHub.app'),
+      { recursive: true, force: true },
+    );
+
+    context.boot();
+
+    expect(context.read('commands.log')).toMatch(/-a .*Simulator\.app/);
+    expect(context.read('commands.log')).not.toMatch(/DeviceHub\.app/);
+  });
+
+  test('reports both expected app locations when no simulator UI is available', () => {
+    rmSync(
+      join(context.root, 'DevTools/Xcode.app/Contents/Applications/DeviceHub.app'),
+      { recursive: true, force: true },
+    );
+    rmSync(
+      join(context.root, 'DevTools/Xcode.app/Contents/Developer/Applications/Simulator.app'),
+      { recursive: true, force: true },
+    );
+
+    const result = context.runScript('ios_boot_simulator.sh');
+
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('No simulator UI found');
+    expect(result.stderr).toContain('Expected Device Hub:');
+    expect(result.stderr).toContain('Expected Simulator:');
+    expect(context.read('commands.log')).not.toContain('bootstatus');
   });
 
   test('recovers from a failed boot with one reset', () => {
     context.boot({ BOOT_FAIL: 'once' });
     const commands = context.read('commands.log').split('\n');
     expect(commands.filter((line) => line.includes('bootstatus'))).toHaveLength(2);
+    expect(commands.filter((line) => line.includes('DeviceHub.app'))).toHaveLength(2);
     expect(commands.filter((line) => line.includes('shutdown'))).toHaveLength(1);
     expect(commands.filter((line) => line.includes('erase'))).toHaveLength(1);
   });
