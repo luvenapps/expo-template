@@ -180,7 +180,7 @@ jobs:
       - name: Setup Fastlane
         if: steps.ios_cache.outputs.cache-hit != 'true'
         shell: bash
-        run: bash "$GITHUB_WORKSPACE/.github/scripts/setup_fastlane.sh" "$FASTLANE_VERSION"
+        run: node "$GITHUB_WORKSPACE/.github/scripts/setup_fastlane.mjs" "$FASTLANE_VERSION"
 
       - name: Install EAS CLI
         if: steps.ios_cache.outputs.cache-hit != 'true'
@@ -321,7 +321,7 @@ jobs:
 
       - name: Setup Maestro
         shell: bash
-        run: bash "$GITHUB_WORKSPACE/.github/scripts/setup_maestro.sh" "$MAESTRO_VERSION"
+        run: node "$GITHUB_WORKSPACE/.github/scripts/setup_maestro.mjs" "$MAESTRO_VERSION"
 
       - name: Locate .app artifact
         id: find_app
@@ -337,17 +337,17 @@ jobs:
       - name: Boot simulator
         shell: bash
         timeout-minutes: 8
-        run: bash "$GITHUB_WORKSPACE/.github/scripts/ios_boot_simulator.sh"
+        run: node "$GITHUB_WORKSPACE/.github/scripts/ios_boot_simulator.mjs"
 
       - name: Install on simulator
         shell: bash
         timeout-minutes: 5
-        run: bash "$GITHUB_WORKSPACE/.github/scripts/ios_install_app.sh" "${{ steps.find_app.outputs.app }}"
+        run: node "$GITHUB_WORKSPACE/.github/scripts/ios_install_app.mjs" "${{ steps.find_app.outputs.app }}"
 
       - name: Run E2E tests
         shell: bash
         timeout-minutes: 10
-        run: bash "$GITHUB_WORKSPACE/.github/scripts/ios_run_e2e.sh"
+        run: node "$GITHUB_WORKSPACE/.github/scripts/ios_run_e2e.mjs"
 
       - name: Upload E2E diagnostics
         if: ${{ !cancelled() && failure() }}

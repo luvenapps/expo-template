@@ -70,7 +70,7 @@ jobs:
           FIREBASE_PROJECT_ID: ${{ secrets[format('{0}_FIREBASE_PROJECT_ID', inputs.env_prefix)] || secrets.FIREBASE_PROJECT_ID || '' }}
           FIREBASE_STORAGE_BUCKET: ${{ secrets[format('{0}_FIREBASE_STORAGE_BUCKET', inputs.env_prefix)] || secrets.FIREBASE_STORAGE_BUCKET || '' }}
           FIREBASE_VAPID_KEY: ${{ secrets[format('{0}_FIREBASE_VAPID_KEY', inputs.env_prefix)] || secrets.FIREBASE_VAPID_KEY || '' }}
-        run: .github/scripts/map_runtime_env.sh
+        run: node .github/scripts/map_runtime_env.mjs
 
       - name: Validate EAS CLI version variable
         shell: bash
@@ -86,16 +86,13 @@ jobs:
           npm i -g eas-cli@${{ vars.EAS_CLI_VERSION }}
           eas --version
 
-      - name: Make CI scripts executable
-        run: chmod +x .github/scripts/*.sh
-
       - name: Setup Fastlane
         shell: bash
-        run: .github/scripts/setup_fastlane.sh  "${{ env.FASTLANE_VERSION }}"
+        run: node .github/scripts/setup_fastlane.mjs  "${{ env.FASTLANE_VERSION }}"
 
       - name: Setup Maestro
         shell: bash
-        run: .github/scripts/setup_maestro.sh "${{ env.MAESTRO_VERSION }}"
+        run: node .github/scripts/setup_maestro.mjs "${{ env.MAESTRO_VERSION }}"
 
       - name: Compute iOS build fingerprint
         id: ios_fp
@@ -103,7 +100,7 @@ jobs:
         env:
           GOOGLE_SERVICE_INFO_PLIST_B64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_B64 }}
           GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
-        run: ./.github/scripts/compute_fingerprint.sh ios >> "$GITHUB_OUTPUT"
+        run: node .github/scripts/compute_fingerprint.mjs ios >> "$GITHUB_OUTPUT"
 
       - name: Restore the tar.gz iOS app
         id: ios_cache
@@ -209,7 +206,7 @@ jobs:
       - name: Validate Hermes + bundle compatibility before repack
         if: steps.ios_cache.outputs.cache-hit == 'true'
         shell: bash
-        run: .github/scripts/validate_hermes_bundle.sh ios
+        run: node .github/scripts/validate_hermes_bundle.mjs ios
 
       - name: Repack iOS app artifact with latest JS bundle
         if: steps.ios_cache.outputs.cache-hit == 'true'
@@ -237,7 +234,7 @@ jobs:
 
       - name: Boot simulator
         shell: bash
-        run: .github/scripts/ios_boot_simulator.sh
+        run: node .github/scripts/ios_boot_simulator.mjs
 
       - name: Resolve app path for simulator install
         id: install_app
@@ -262,11 +259,11 @@ jobs:
       - name: Install on simulator and warm up
         shell: bash
         timeout-minutes: 10
-        run: .github/scripts/ios_install_app.sh "${{ steps.install_app.outputs.app }}"
+        run: node .github/scripts/ios_install_app.mjs "${{ steps.install_app.outputs.app }}"
 
       - name: Run E2E tests
         shell: bash
-        run: .github/scripts/ios_run_e2e.sh
+        run: node .github/scripts/ios_run_e2e.mjs
 
       - name: Upload Xcode build artifacts
         if: failure() && steps.ios_cache.outputs.cache-hit != 'true'

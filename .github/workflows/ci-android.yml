@@ -121,7 +121,7 @@ jobs:
 
       - name: Setup Maestro
         shell: bash
-        run: bash "$GITHUB_WORKSPACE/.github/scripts/setup_maestro.sh" "$MAESTRO_VERSION"
+        run: node "$GITHUB_WORKSPACE/.github/scripts/setup_maestro.mjs" "$MAESTRO_VERSION"
 
       - name: Inject EAS projectId, slug and owner into app.config.ts
         shell: bash
@@ -367,7 +367,7 @@ jobs:
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           disable-animations: true
           working-directory: expo-template-testing
-          script: ../.github/scripts/android_run_e2e.sh ${{ steps.find_apk.outputs.apk }} ${{ steps.find_apk.outputs.pkg }}
+          script: node ../.github/scripts/android_run_e2e.mjs ${{ steps.find_apk.outputs.apk }} ${{ steps.find_apk.outputs.pkg }}
 
       - name: Collect emulator logs on failure
         if: failure() && steps.e2e_android.outcome == 'failure'

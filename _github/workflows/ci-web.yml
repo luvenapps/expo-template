@@ -124,7 +124,7 @@ jobs:
           FIREBASE_PROJECT_ID: ${{ secrets[format('{0}_FIREBASE_PROJECT_ID', inputs.env_prefix)] || secrets.FIREBASE_PROJECT_ID || '' }}
           FIREBASE_STORAGE_BUCKET: ${{ secrets[format('{0}_FIREBASE_STORAGE_BUCKET', inputs.env_prefix)] || secrets.FIREBASE_STORAGE_BUCKET || '' }}
           FIREBASE_VAPID_KEY: ${{ secrets[format('{0}_FIREBASE_VAPID_KEY', inputs.env_prefix)] || secrets.FIREBASE_VAPID_KEY || '' }}
-        run: .github/scripts/map_runtime_env.sh
+        run: node .github/scripts/map_runtime_env.mjs
 
       - name: Export and deploy web
         id: deploy_web
@@ -140,7 +140,7 @@ jobs:
             PR_NUMBER='${{ inputs.pr_number }}'
           fi
 
-          DEPLOY_OUTPUT=$(.github/scripts/export_and_deploy_web.sh "$EVENT_NAME" "$PR_NUMBER")
+          DEPLOY_OUTPUT=$(node .github/scripts/export_and_deploy_web.mjs "$EVENT_NAME" "$PR_NUMBER")
           DEPLOY_URL=$(printf '%s\n' "$DEPLOY_OUTPUT" | sed -n '1p')
           DEPLOYMENT_URL=$(printf '%s\n' "$DEPLOY_OUTPUT" | sed -n '2p')
 
@@ -221,4 +221,4 @@ jobs:
       - name: Clean self-hosted workspace
         if: ${{ always() && inputs.runner_target == 'selfhosted' }}
         shell: bash
-        run: .github/scripts/clean_selfhosted_workspace.sh
+        run: node .github/scripts/clean_selfhosted_workspace.mjs

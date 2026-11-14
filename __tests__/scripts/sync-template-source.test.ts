@@ -109,6 +109,11 @@ describe('sync-template-source', () => {
     writeFile(source, 'README.md', 'Source README\n');
     writeFile(source, 'scripts/postinstall.mjs', 'source bootstrap\n');
     writeFile(source, 'scripts/postinstall.js', 'legacy source bootstrap\n');
+    writeFile(
+      source,
+      'scripts/setup-local-deps.mjs',
+      "// Added by betterhabits setup:local\n",
+    );
     writeFile(source, 'AGENTS.md', 'Source instructions\n');
     writeFile(source, 'CLAUDE.md', '@AGENTS.md\n');
     writeFile(source, '.env.local', 'SECRET=value\n');
@@ -296,6 +301,9 @@ describe('sync-template-source', () => {
     );
     expect(fs.readFileSync(path.join(target, 'scripts/postinstall.mjs'), 'utf8')).toBe(
       'template bootstrap\n',
+    );
+    expect(fs.readFileSync(path.join(target, 'scripts/setup-local-deps.mjs'), 'utf8')).toBe(
+      '// Added by template setup:local\n',
     );
     expect(
       fs.readFileSync(path.join(target, '__tests__/scripts/sync-template-source.test.ts'), 'utf8'),

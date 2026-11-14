@@ -1,9 +1,12 @@
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
-export const scripts = resolve(__dirname, '../../.github/scripts');
+const templateScripts = resolve(process.cwd(), '../.github/scripts');
+export const scripts = existsSync(join(templateScripts, 'with_timeout.mjs'))
+  ? templateScripts
+  : resolve(__dirname, '../../.github/scripts');
 
 // Execute real CI scripts against fake commands, without devices or a network.
 export function useCiScriptTestContext() {
@@ -31,7 +34,10 @@ export function useCiScriptTestContext() {
     args: string[] = [],
     overrides: Partial<NodeJS.ProcessEnv> = {},
   ) {
-    return run(['bash', join(scripts, name), ...args], overrides);
+    const helperDirectory = join(root, '.github/scripts');
+    mkdirSync(helperDirectory, { recursive: true });
+    copyFileSync(join(scripts, 'with_timeout.mjs'), join(helperDirectory, 'with_timeout.mjs'));
+    return run([process.execPath, join(scripts, name), ...args], overrides);
   }
 
   function read(name: string) {
@@ -39,7 +45,7 @@ export function useCiScriptTestContext() {
   }
 
   function boot(overrides: Partial<NodeJS.ProcessEnv> = {}) {
-    const result = runScript('ios_boot_simulator.sh', [], {
+    const result = runScript('ios_boot_simulator.mjs', [], {
       IOS_DEVICE: 'iPhone 17',
       ...overrides,
     });

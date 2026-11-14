@@ -238,4 +238,4 @@ jobs:
       - name: Clean self-hosted workspace
         if: ${{ always() && inputs.runner_target == 'selfhosted' }}
         shell: bash
-        run: .github/scripts/clean_selfhosted_workspace.sh
+        run: node .github/scripts/clean_selfhosted_workspace.mjs

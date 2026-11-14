@@ -72,7 +72,7 @@ jobs:
           FIREBASE_PROJECT_ID: ${{ secrets[format('{0}_FIREBASE_PROJECT_ID', inputs.env_prefix)] || secrets.FIREBASE_PROJECT_ID || '' }}
           FIREBASE_STORAGE_BUCKET: ${{ secrets[format('{0}_FIREBASE_STORAGE_BUCKET', inputs.env_prefix)] || secrets.FIREBASE_STORAGE_BUCKET || '' }}
           FIREBASE_VAPID_KEY: ${{ secrets[format('{0}_FIREBASE_VAPID_KEY', inputs.env_prefix)] || secrets.FIREBASE_VAPID_KEY || '' }}
-        run: .github/scripts/map_runtime_env.sh
+        run: node .github/scripts/map_runtime_env.mjs
 
       - name: Validate EAS CLI version variable
         shell: bash
@@ -88,16 +88,13 @@ jobs:
           npm i -g eas-cli@${{ vars.EAS_CLI_VERSION }}
           eas --version
 
-      - name: Make CI scripts executable
-        run: chmod +x .github/scripts/*.sh
-
       - name: Setup Fastlane
         shell: bash
-        run: .github/scripts/setup_fastlane.sh  "${{ env.FASTLANE_VERSION }}"
+        run: node .github/scripts/setup_fastlane.mjs  "${{ env.FASTLANE_VERSION }}"
 
       - name: Setup Maestro
         shell: bash
-        run: .github/scripts/setup_maestro.sh "${{ env.MAESTRO_VERSION }}"
+        run: node .github/scripts/setup_maestro.mjs "${{ env.MAESTRO_VERSION }}"
 
       - name: Compute Android build fingerprint
         id: android_fingerprint
@@ -105,7 +102,7 @@ jobs:
         env:
           GOOGLE_SERVICE_INFO_PLIST_B64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_B64 }}
           GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
-        run: ./.github/scripts/compute_fingerprint.sh android >> "$GITHUB_OUTPUT"
+        run: node .github/scripts/compute_fingerprint.mjs android >> "$GITHUB_OUTPUT"
 
       - name: Restore cached APK
         id: apk-cache
@@ -297,7 +294,7 @@ jobs:
       - name: Validate Hermes + bundle compatibility before repack
         if: steps.apk-cache.outputs.cache-hit == 'true'
         shell: bash
-        run: .github/scripts/validate_hermes_bundle.sh android
+        run: node .github/scripts/validate_hermes_bundle.mjs android
 
       - name: Repack Android app artifact with embedded bundle
         if: steps.apk-cache.outputs.cache-hit == 'true'
@@ -370,7 +367,7 @@ jobs:
           arch: x86_64
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           disable-animations: true
-          script: .github/scripts/android_run_e2e.sh ${{ steps.find_apk.outputs.apk }} ${{ steps.find_apk.outputs.pkg }}
+          script: node .github/scripts/android_run_e2e.mjs ${{ steps.find_apk.outputs.apk }} ${{ steps.find_apk.outputs.pkg }}
 
       - name: Collect emulator logs on failure
         if: failure() && steps.e2e_android.outcome == 'failure'

@@ -38,7 +38,7 @@ describe('ios_boot_simulator', () => {
       { recursive: true, force: true },
     );
 
-    const result = context.runScript('ios_boot_simulator.sh');
+    const result = context.runScript('ios_boot_simulator.mjs');
 
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain('No simulator UI found');
@@ -58,7 +58,7 @@ describe('ios_boot_simulator', () => {
   });
 
   test('honors the shared retry count', () => {
-    const result = context.runScript('ios_boot_simulator.sh', [], {
+    const result = context.runScript('ios_boot_simulator.mjs', [], {
       BOOT_FAIL: 'always',
       RETRIES: '1',
     });
@@ -80,7 +80,7 @@ describe('ios_boot_simulator', () => {
 
   test('removes stale device selection when boot fails', () => {
     writeFileSync(join(context.root, '.simulator_udid'), 'stale');
-    expect(context.runScript('ios_boot_simulator.sh', [], { BOOT_FAIL: 'always' }).status).not.toBe(
+    expect(context.runScript('ios_boot_simulator.mjs', [], { BOOT_FAIL: 'always' }).status).not.toBe(
       0,
     );
     expect(existsSync(join(context.root, '.simulator_udid'))).toBe(false);
@@ -88,7 +88,7 @@ describe('ios_boot_simulator', () => {
 
   test('fails before boot when the requested device is unavailable', () => {
     expect(
-      context.runScript('ios_boot_simulator.sh', [], { IOS_DEVICE: 'missing' }).status,
+      context.runScript('ios_boot_simulator.mjs', [], { IOS_DEVICE: 'missing' }).status,
     ).not.toBe(0);
     expect(context.read('commands.log')).not.toContain('bootstatus');
   });
