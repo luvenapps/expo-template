@@ -156,9 +156,10 @@ jobs:
           path: expo-template-testing/*.apk
           key: ${{ steps.android_fingerprint.outputs.key }}
 
-      - name: Cache Gradle dependencies
+      - name: Restore Gradle dependencies
+        id: gradle-cache
         if: steps.apk-cache.outputs.cache-hit != 'true'
-        uses: actions/cache@v6
+        uses: actions/cache/restore@v6
         with:
           path: |
             ~/.gradle/caches
@@ -224,6 +225,15 @@ jobs:
 
           echo "❌ Build failed after $ATTEMPTS attempts"
           exit 1
+
+      - name: Save Gradle cache (post-build)
+        if: always() && steps.gradle-cache.outputs.cache-primary-key != '' && steps.gradle-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ steps.gradle-cache.outputs.cache-primary-key }}
 
       - name: Locate APK artifact & app.config.ts
         id: find_apk

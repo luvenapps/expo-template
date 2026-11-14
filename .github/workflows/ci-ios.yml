@@ -167,6 +167,16 @@ jobs:
           path: expo-template-testing/*.tar.gz
           key: ${{ steps.ios_fp.outputs.key }}
 
+      - name: Restore CocoaPods downloads
+        id: pods-cache
+        if: steps.ios_cache.outputs.cache-hit != 'true'
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/Library/Caches/CocoaPods
+          key: pods-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json', 'eas.json', '.mise.toml') }}
+          restore-keys: |
+            pods-${{ runner.os }}-${{ runner.arch }}-
+
       - name: Setup Fastlane
         if: steps.ios_cache.outputs.cache-hit != 'true'
         shell: bash
@@ -201,6 +211,13 @@ jobs:
           done
           echo "❌ Build failed after $ATTEMPTS attempts"
           exit 1
+
+      - name: Save CocoaPods cache (post-build)
+        if: always() && steps.pods-cache.outputs.cache-primary-key != '' && steps.pods-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ~/Library/Caches/CocoaPods
+          key: ${{ steps.pods-cache.outputs.cache-primary-key }}
 
       - name: Save the tar.gz iOS app
         if: steps.ios_cache.outputs.cache-hit != 'true'
