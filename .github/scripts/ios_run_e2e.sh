@@ -4,6 +4,10 @@ set -euo pipefail
 ATTEMPTS="${RETRIES:-2}"
 DELAY="${RETRY_DELAY:-2}"
 
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+source "$SCRIPT_DIR/with_timeout.sh"
+UDID=$(tr -d '[:space:]' < .simulator_udid)
+test -n "$UDID"
 mkdir -p e2e-artifacts
 
 for i in $(seq 1 "$ATTEMPTS"); do
@@ -12,9 +16,10 @@ for i in $(seq 1 "$ATTEMPTS"); do
   mkdir -p "$OUT"
 
   set +e
-  npm run e2e:ios -- --test-output-dir "$OUT"
+  run_with_timeout 240 maestro --device "$UDID" test .maestro/flows/smoke.ios.yaml --test-output-dir "$OUT" > "$OUT/maestro.log" 2>&1
   CODE=$?
   set -e
+  cat "$OUT/maestro.log"
 
   if [ "$CODE" -eq 0 ]; then
     echo "✅ E2E passed on attempt $i"

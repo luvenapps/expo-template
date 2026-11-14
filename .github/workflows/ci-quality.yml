@@ -50,7 +50,7 @@ jobs:
         working-directory: expo-template-testing
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Prepare isolated GnuPG home for mise
         shell: bash
@@ -141,6 +141,8 @@ jobs:
       - name: Upload coverage to Codecov
         if: ${{ !cancelled() }}
         uses: codecov/codecov-action@v5
+        env:
+          GNUPGHOME: ${{ runner.temp }}/gnupg
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
@@ -151,6 +153,8 @@ jobs:
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
         uses: codecov/codecov-action@v5
+        env:
+          GNUPGHOME: ${{ runner.temp }}/gnupg
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./junit.xml

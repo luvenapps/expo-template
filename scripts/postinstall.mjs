@@ -15,6 +15,7 @@
  * *  - Restore .gitignore from "gitignore" (if present)
  *  - Rename _prettierrc.json → .prettierrc.json if present
  *  - Rename _prettierignore → .prettierignore if present
+ *  - Rename _renovate.json → renovate.json if present
  *  - Copy _mise.toml → .mise.toml (runtime toolchain pins)
  *  - Copy _mcp-vscode.json → .vscode/mcp.json (creates .vscode if needed)
  *  - Copy _mcp-claude.json → .mcp.json (repo root, Claude MCP config)
@@ -33,9 +34,10 @@
  *  - Idempotent: safe to re-run; it won't double-apply changes.
  */
 
-const fs = require('fs');
-const path = require('path');
-const cp = require('child_process');
+import fs from 'node:fs';
+import path from 'node:path';
+import cp from 'node:child_process';
+import { Buffer } from 'node:buffer';
 
 // Helpers
 const CWD = process.cwd();
@@ -353,6 +355,24 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
     console.log('⚠️  No _prettierignore found in template directory — skipping');
   }
 
+  // Rename _renovate.json → renovate.json if present
+  const renovateSrc = path.join(CWD, '_renovate.json');
+  const renovateDst = path.join(CWD, 'renovate.json');
+  if (exists(renovateSrc)) {
+    try {
+      if (exists(renovateDst)) {
+        fs.unlinkSync(renovateDst);
+        console.log('🧹 Removed existing renovate.json to replace with template version');
+      }
+      fs.renameSync(renovateSrc, renovateDst);
+      console.log('✅ Restored renovate.json from template');
+    } catch (e) {
+      console.log(`⚠️  Failed to restore renovate.json (${e.message})`);
+    }
+  } else {
+    console.log('⚠️  No _renovate.json found in template directory — skipping');
+  }
+
   // Copy _mise.toml → .mise.toml if present
   const miseSrc = path.join(CWD, '_mise.toml');
   const miseDst = path.join(CWD, '.mise.toml');
@@ -523,6 +543,7 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
     ['_gitignore', '.gitignore'],
     ['_prettierrc.json', '.prettierrc.json'],
     ['_prettierignore', '.prettierignore'],
+    ['_renovate.json', 'renovate.json'],
   ];
   for (const [templatePath, generatedPath] of materializedTemplatePaths) {
     const templateFile = path.join(CWD, templatePath);
@@ -572,7 +593,7 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
       pkg.scripts &&
       pkg.scripts.postinstall &&
       typeof pkg.scripts.postinstall === 'string' &&
-      pkg.scripts.postinstall.includes('scripts/postinstall.js')
+      pkg.scripts.postinstall.includes('scripts/postinstall.mjs')
     ) {
       delete pkg.scripts.postinstall;
       writeJson(pkgPath, pkg);
@@ -583,13 +604,13 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
   }
 
   // Self-delete
-  const self = path.join(CWD, 'scripts', 'postinstall.js');
+  const self = path.join(CWD, 'scripts', 'postinstall.mjs');
   try {
     process.on('exit', () => {
       try {
         if (exists(self)) fs.unlinkSync(self);
       } catch {}
-      console.log('🧹 Removed scripts/postinstall.js');
+      console.log('🧹 Removed scripts/postinstall.mjs');
     });
   } catch {}
 

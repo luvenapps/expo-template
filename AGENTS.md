@@ -71,3 +71,12 @@ behavior in a newly generated app, not in this worktree.
 - Do not install app dependencies or run formatting, lint, or tests in this
   template worktree. Validate through the generated-app CI and a fresh generated
   app when requested.
+
+## Template CI
+
+- `.github/workflows/ci-ios.yml` and `ci-android.yml` validate a scaffolded app on hosted runners; `_github/` contains the workflows shipped to generated apps. Keep template-only CI changes in `.github/`.
+- Mobile CI uses `latest` hosted runner labels. `.mise.ci.toml` centralizes CLI version policy (`MISE_ENV=ci`); Maestro/Fastlane retain their existing pins, while create-expo-app/EAS resolve `latest` before computing artifact cache keys. CI installs the checked-in lockfile using `npm ci`. Dependency alignment uses the installed SDK map (`EXPO_OFFLINE=1 expo install --check`), so remote patch recommendations do not change rerun behavior. Mobile artifact caches use Expo's native fingerprint and the existing key format; on a cache hit CI exports the current JavaScript bundle, validates Hermes compatibility, and repacks it into the cached app.
+- iOS template CI builds only the ARM64 simulator architecture, using a generated-app hook after pod installation; CI mise settings prefer prebuilt Ruby without adding environment variables.
+- iOS builds and tests run on separate macOS runners. Startup, install, and Maestro commands have bounded deadlines; tests select the recorded simulator UDID.
+- Android CI builds only the x86_64 emulator ABI and caches a clean AVD snapshot. Production and generated-app build profiles retain their existing architectures.
+- Validate CI shell changes with `bash -n`, workflow YAML parsing, and `npm test -- --runInBand __tests__/scripts` (also included automatically in the unit suite and Quality CI). Hosted performance and simulator compatibility require a GitHub Actions run; compare a cold run with a rerun of the same commit to verify artifact-cache reuse.

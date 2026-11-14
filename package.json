@@ -43,7 +43,7 @@
     "submit:prod:ios": "eas submit --platform ios --profile production",
     "submit:prod:android": "eas submit --platform android --profile production",
     "version:bump": "node scripts/bump-version.mjs",
-    "postinstall": "node scripts/postinstall.js"
+    "postinstall": "node scripts/postinstall.mjs"
   },
   "dependencies": {
     "@react-native-firebase/analytics": "^27.1.0",

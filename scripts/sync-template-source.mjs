@@ -19,8 +19,19 @@ const TEMPLATE_ONLY = new Set([
   'CLAUDE.md',
   'LICENSE',
   'scripts/postinstall.js',
+  'scripts/postinstall.mjs',
   'scripts/sync-template-source.mjs',
   '__tests__/scripts/sync-template-source.test.js',
+  '__tests__/scripts/sync-template-source.test.ts',
+  '__tests__/helpers/ciScriptTestContext.ts',
+  '__tests__/scripts/android_run_e2e.test.ts',
+  '__tests__/scripts/compute_fingerprint.test.ts',
+  '__tests__/scripts/ios_boot_simulator.test.ts',
+  '__tests__/scripts/ios_install_app.test.ts',
+  '__tests__/scripts/ios_run_e2e.test.ts',
+  '__tests__/scripts/ios_simulator_arch.test.ts',
+  '__tests__/scripts/validate_hermes_bundle.test.ts',
+  '__tests__/scripts/with_timeout.test.ts',
   'docs/template-refresh.md',
   '.github/workflows/template-sync.yml',
   '.template-sync-manifest.json',
@@ -75,7 +86,7 @@ const MANAGED_ROOT_FILES = new Set([
   'metro.config.js',
   'package-lock.json',
   'package.json',
-  'renovate.json',
+  '_renovate.json',
   'tamagui.build.ts',
   'tamagui.config.ts',
   'tsconfig.json',
@@ -414,7 +425,7 @@ function transformPackage(sourcePath, content) {
     value.author = 'LuvenApps <github@luvenapps.com>';
     value.private = true;
     value.scripts ??= {};
-    value.scripts.postinstall = 'node scripts/postinstall.js';
+    value.scripts.postinstall = 'node scripts/postinstall.mjs';
     value['x-template'] = {
       bundleIdBase: 'com.luvenapps',
       templateName: 'template-starter',
@@ -444,6 +455,7 @@ function outputPaths(sourcePath) {
     ['CLAUDE.md', ['_CLAUDE.md']],
     ['.gitignore', ['.gitignore', '_gitignore']],
     ['.mise.toml', ['.mise.toml', '_mise.toml']],
+    ['renovate.json', ['_renovate.json']],
     ['.prettierignore', ['_prettierignore']],
     ['.prettierrc.json', ['_prettierrc.json']],
   ]);
