@@ -19,6 +19,7 @@ const TEMPLATE_ONLY = new Set([
   'CLAUDE.md',
   'LICENSE',
   'scripts/postinstall.js',
+  'scripts/postinstall.mjs',
   'scripts/sync-template-source.mjs',
   '__tests__/scripts/sync-template-source.test.js',
   '__tests__/scripts/sync-template-source.test.ts',
@@ -415,7 +416,7 @@ function transformPackage(sourcePath, content) {
     value.author = 'LuvenApps <github@luvenapps.com>';
     value.private = true;
     value.scripts ??= {};
-    value.scripts.postinstall = 'node scripts/postinstall.js';
+    value.scripts.postinstall = 'node scripts/postinstall.mjs';
     value['x-template'] = {
       bundleIdBase: 'com.luvenapps',
       templateName: 'template-starter',

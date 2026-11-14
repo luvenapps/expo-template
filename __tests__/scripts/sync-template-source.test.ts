@@ -95,6 +95,8 @@ describe('sync-template-source', () => {
       ].join('\n'),
     );
     writeFile(source, 'README.md', 'Source README\n');
+    writeFile(source, 'scripts/postinstall.mjs', 'source bootstrap\n');
+    writeFile(source, 'scripts/postinstall.js', 'legacy source bootstrap\n');
     writeFile(source, 'AGENTS.md', 'Source instructions\n');
     writeFile(source, 'CLAUDE.md', '@AGENTS.md\n');
     writeFile(source, '.env.local', 'SECRET=value\n');
@@ -142,7 +144,7 @@ describe('sync-template-source', () => {
     writeFile(target, 'CLAUDE.md', 'Template Claude instructions\n');
     writeFile(target, '_AGENTS.md', 'Old source instructions\n');
     writeFile(target, '_CLAUDE.md', 'Old source Claude instructions\n');
-    writeFile(target, 'scripts/postinstall.js', 'template bootstrap\n');
+    writeFile(target, 'scripts/postinstall.mjs', 'template bootstrap\n');
     writeFile(target, '__tests__/scripts/sync-template-source.test.ts', 'template sync test\n');
     writeFile(target, '.github/workflows/ci-quality.yml', 'template quality workflow\n');
     writeFile(target, '.github/workflows/template-sync.yml', 'template workflow\n');
@@ -205,7 +207,7 @@ describe('sync-template-source', () => {
       '"name": "template-starter"',
     );
     expect(fs.readFileSync(path.join(target, 'package.json'), 'utf8')).toContain(
-      '"postinstall": "node scripts/postinstall.js"',
+      '"postinstall": "node scripts/postinstall.mjs"',
     );
     expect(fs.readFileSync(path.join(target, 'app.config.ts'), 'utf8')).toContain(
       "name: isPreview ? '__APP_NAME__ (Preview)' : '__APP_NAME__',",
@@ -274,7 +276,7 @@ describe('sync-template-source', () => {
     expect(fs.readFileSync(path.join(target, 'CLAUDE.md'), 'utf8')).toBe(
       'Template Claude instructions\n',
     );
-    expect(fs.readFileSync(path.join(target, 'scripts/postinstall.js'), 'utf8')).toBe(
+    expect(fs.readFileSync(path.join(target, 'scripts/postinstall.mjs'), 'utf8')).toBe(
       'template bootstrap\n',
     );
     expect(
@@ -283,6 +285,7 @@ describe('sync-template-source', () => {
     expect(fs.existsSync(path.join(target, '__tests__/scripts/sync-template-source.test.js'))).toBe(
       false,
     );
+    expect(fs.existsSync(path.join(target, 'scripts/postinstall.js'))).toBe(false);
     expect(fs.existsSync(path.join(target, '.env.local'))).toBe(false);
     expect(fs.existsSync(path.join(target, 'docs/roadmap.md'))).toBe(false);
 

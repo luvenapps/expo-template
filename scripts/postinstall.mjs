@@ -34,9 +34,10 @@
  *  - Idempotent: safe to re-run; it won't double-apply changes.
  */
 
-const fs = require('fs');
-const path = require('path');
-const cp = require('child_process');
+import fs from 'node:fs';
+import path from 'node:path';
+import cp from 'node:child_process';
+import { Buffer } from 'node:buffer';
 
 // Helpers
 const CWD = process.cwd();
@@ -592,7 +593,7 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
       pkg.scripts &&
       pkg.scripts.postinstall &&
       typeof pkg.scripts.postinstall === 'string' &&
-      pkg.scripts.postinstall.includes('scripts/postinstall.js')
+      pkg.scripts.postinstall.includes('scripts/postinstall.mjs')
     ) {
       delete pkg.scripts.postinstall;
       writeJson(pkgPath, pkg);
@@ -603,13 +604,13 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
   }
 
   // Self-delete
-  const self = path.join(CWD, 'scripts', 'postinstall.js');
+  const self = path.join(CWD, 'scripts', 'postinstall.mjs');
   try {
     process.on('exit', () => {
       try {
         if (exists(self)) fs.unlinkSync(self);
       } catch {}
-      console.log('🧹 Removed scripts/postinstall.js');
+      console.log('🧹 Removed scripts/postinstall.mjs');
     });
   } catch {}
 
