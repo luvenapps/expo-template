@@ -144,10 +144,10 @@ jobs:
           console.log('Updated app.config.ts with extra.eas.projectId and slug.');
           NODE
 
-      - name: Compute complete Android artifact cache key
+      - name: Compute Android native build fingerprint
         id: android_fingerprint
         shell: bash
-        run: bash "$GITHUB_WORKSPACE/.github/scripts/compute_ci_cache_key.sh" android >> "$GITHUB_OUTPUT"
+        run: node "$GITHUB_WORKSPACE/.github/scripts/compute_fingerprint.mjs" android >> "$GITHUB_OUTPUT"
 
       - name: Restore cached APK
         id: apk-cache
@@ -258,6 +258,54 @@ jobs:
         with:
           path: expo-template-testing/*.apk
           key: ${{ steps.android_fingerprint.outputs.key }}
+
+      - name: Prepare current Android JS bundle for repack
+        if: steps.apk-cache.outputs.cache-hit == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf android ios dist
+          npx expo export:embed \
+            --platform android \
+            --entry-file index.js \
+            --bundle-output dist/index.android.bundle \
+            --assets-dest dist/assets \
+            --dev false
+          echo "export:embed" > dist/.bundle-source
+          test -s dist/index.android.bundle
+          test -d dist/assets
+
+      - name: Validate Android Hermes bundle before repack
+        if: steps.apk-cache.outputs.cache-hit == 'true'
+        shell: bash
+        run: node "$GITHUB_WORKSPACE/.github/scripts/validate_hermes_bundle.mjs" android
+
+      - name: Repack cached Android app with current JS bundle
+        if: steps.apk-cache.outputs.cache-hit == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          RESOLVED_SDK_DIR="${ANDROID_SDK_DIR:-${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}}"
+          if [ ! -d "$RESOLVED_SDK_DIR/build-tools" ]; then
+            for candidate in "$HOME/Library/Android/sdk" "${ANDROID_HOME:-}" "${ANDROID_SDK_ROOT:-}"; do
+              if [ -n "$candidate" ] && [ -d "$candidate/build-tools" ]; then
+                RESOLVED_SDK_DIR="$candidate"
+                break
+              fi
+            done
+          fi
+          if [ ! -d "$RESOLVED_SDK_DIR/build-tools" ]; then
+            echo "Unable to find Android build-tools for repack-app."
+            exit 1
+          fi
+
+          export ANDROID_SDK_ROOT="$RESOLVED_SDK_DIR"
+          export ANDROID_HOME="$RESOLVED_SDK_DIR"
+          TEMP_OUTPUT="repacked_output"
+          rm -rf "$TEMP_OUTPUT"
+          npx @expo/repack-app --platform android --source-app "${{ steps.find_apk.outputs.apk }}" --output "$TEMP_OUTPUT"
+          test -e "$TEMP_OUTPUT"
+          mv "$TEMP_OUTPUT" "${{ steps.find_apk.outputs.apk }}"
 
       - name: Upload Gradle reports
         if: failure()

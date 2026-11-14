@@ -155,10 +155,10 @@ jobs:
           console.log('Updated app.config.ts with extra.eas.projectId and slug.');
           NODE
 
-      - name: Compute complete iOS artifact cache key
+      - name: Compute iOS native build fingerprint
         id: ios_fp
         shell: bash
-        run: bash "$GITHUB_WORKSPACE/.github/scripts/compute_ci_cache_key.sh" ios >> "$GITHUB_OUTPUT"
+        run: node "$GITHUB_WORKSPACE/.github/scripts/compute_fingerprint.mjs" ios >> "$GITHUB_OUTPUT"
 
       - name: Restore the tar.gz iOS app
         id: ios_cache
@@ -225,6 +225,43 @@ jobs:
         with:
           path: expo-template-testing/*.tar.gz
           key: ${{ steps.ios_fp.outputs.key }}
+
+      - name: Prepare current iOS JS bundle for repack
+        if: steps.ios_cache.outputs.cache-hit == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf dist
+          npx expo export --platform ios --output-dir ./dist --clear
+          echo "expo-export" > dist/.bundle-source
+
+      - name: Validate iOS Hermes bundle before repack
+        if: steps.ios_cache.outputs.cache-hit == 'true'
+        shell: bash
+        run: node "$GITHUB_WORKSPACE/.github/scripts/validate_hermes_bundle.mjs" ios
+
+      - name: Repack cached iOS app with current JS bundle
+        if: steps.ios_cache.outputs.cache-hit == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARCHIVE="$(find . -maxdepth 1 -name '*.tar.gz' -print -quit)"
+          test -n "$ARCHIVE"
+          mkdir -p extracted_app
+          tar -xzf "$ARCHIVE" -C extracted_app
+          SOURCE_APP="$(find extracted_app -maxdepth 6 -type d -name '*.app' -print -quit)"
+          test -n "$SOURCE_APP"
+
+          REPACKED_APP="repacked_output.app"
+          rm -rf "$REPACKED_APP"
+          npx @expo/repack-app --platform ios --source-app "$SOURCE_APP" --output "$REPACKED_APP"
+          test -d "$REPACKED_APP"
+          rm -rf "$SOURCE_APP"
+          mv "$REPACKED_APP" "$SOURCE_APP"
+
+          REPACKED_ARCHIVE="${ARCHIVE%.tar.gz}.repacked.tar.gz"
+          tar -czf "$REPACKED_ARCHIVE" -C extracted_app .
+          mv "$REPACKED_ARCHIVE" "$ARCHIVE"
 
       - name: Upload iOS test inputs
         uses: actions/upload-artifact@v7

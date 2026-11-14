@@ -8,11 +8,12 @@ const scriptPath = path.resolve(process.cwd(), 'scripts/sync-template-source.mjs
 const templateCiFiles = [
   '__tests__/helpers/ciScriptTestContext.ts',
   '__tests__/scripts/android_run_e2e.test.ts',
-  '__tests__/scripts/compute_ci_cache_key.test.ts',
+  '__tests__/scripts/compute_fingerprint.test.ts',
   '__tests__/scripts/ios_boot_simulator.test.ts',
   '__tests__/scripts/ios_install_app.test.ts',
   '__tests__/scripts/ios_run_e2e.test.ts',
   '__tests__/scripts/ios_simulator_arch.test.ts',
+  '__tests__/scripts/validate_hermes_bundle.test.ts',
   '__tests__/scripts/with_timeout.test.ts',
 ];
 
