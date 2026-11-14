@@ -5,6 +5,17 @@ import { spawnSync } from 'node:child_process';
 
 const scriptPath = path.resolve(process.cwd(), 'scripts/sync-template-source.mjs');
 
+const templateCiFiles = [
+  '__tests__/helpers/ciScriptTestContext.ts',
+  '__tests__/scripts/android_run_e2e.test.ts',
+  '__tests__/scripts/compute_ci_cache_key.test.ts',
+  '__tests__/scripts/ios_boot_simulator.test.ts',
+  '__tests__/scripts/ios_install_app.test.ts',
+  '__tests__/scripts/ios_run_e2e.test.ts',
+  '__tests__/scripts/ios_simulator_arch.test.ts',
+  '__tests__/scripts/with_timeout.test.ts',
+];
+
 function writeFile(root: string, relativePath: string, content: string) {
   const fullPath = path.join(root, relativePath);
   fs.mkdirSync(path.dirname(fullPath), { recursive: true });
@@ -137,6 +148,12 @@ describe('sync-template-source', () => {
       'docs/app-build-size.md',
       'Keeping these reports up to date means the Stage 7 database work—and eventual habit UI—won’t surprise us later.\n',
     );
+
+    // Exercise both deletion (missing upstream) and replacement (same upstream path).
+    templateCiFiles.forEach((file, index) => {
+      writeFile(target, file, 'template CI coverage\n');
+      if (index % 2 === 0) writeFile(source, file, 'source replacement\n');
+    });
 
     writeFile(target, 'README.md', 'Template README\n');
     writeFile(target, 'renovate.json', '{"enabledManagers":["github-actions"]}\n');
@@ -285,6 +302,9 @@ describe('sync-template-source', () => {
     expect(fs.existsSync(path.join(target, '__tests__/scripts/sync-template-source.test.js'))).toBe(
       false,
     );
+    for (const file of templateCiFiles) {
+      expect(fs.readFileSync(path.join(target, file), 'utf8')).toBe('template CI coverage\n');
+    }
     expect(fs.existsSync(path.join(target, 'scripts/postinstall.js'))).toBe(false);
     expect(fs.existsSync(path.join(target, '.env.local'))).toBe(false);
     expect(fs.existsSync(path.join(target, 'docs/roadmap.md'))).toBe(false);

@@ -279,14 +279,15 @@ jobs:
         id: emulator-image
         run: echo "version=$ImageVersion" >> "$GITHUB_OUTPUT"
 
-      - name: Cache clean Android emulator snapshot
+      - name: Restore clean Android emulator snapshot
         id: avd-cache
-        uses: actions/cache@v6
+        uses: actions/cache/restore@v6
         with:
           path: ~/.android/avd
           key: avd-v1-${{ runner.os }}-${{ runner.arch }}-${{ env.ANDROID_API_LEVEL }}-${{ env.ANDROID_TARGET }}-x86_64-${{ steps.emulator-image.outputs.version }}
 
       - name: Create clean Android emulator snapshot
+        id: create-avd-snapshot
         if: steps.avd-cache.outputs.cache-hit != 'true'
         uses: reactivecircus/android-emulator-runner@v2
         timeout-minutes: 10
@@ -298,6 +299,13 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: false
           script: echo "Clean emulator snapshot ready"
+
+      - name: Save clean Android emulator snapshot
+        if: steps.create-avd-snapshot.outcome == 'success'
+        uses: actions/cache/save@v6
+        with:
+          path: ~/.android/avd
+          key: ${{ steps.avd-cache.outputs.cache-primary-key }}
 
       - name: Run E2E tests
         id: e2e_android
