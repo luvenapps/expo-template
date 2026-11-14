@@ -153,7 +153,7 @@ if [ "\${TEST_FAIL:-}" = once ] && [ ! -f test-retried ]; then touch test-retrie
 `,
       );
     }
-    const command = [process.execPath, join(scripts, 'ios_simulator_arch.cjs')];
+    const command = [process.execPath, join(scripts, 'ios_simulator_arch.mjs')];
     expect(run(command).status).toBe(0);
     for (const project of projects) {
       const contents = read(`${project}/project.pbxproj`);
@@ -168,7 +168,7 @@ if [ "\${TEST_FAIL:-}" = once ] && [ ! -f test-retried ]; then touch test-retrie
   });
 
   test('fails when the native app has not been generated yet', () => {
-    expect(run([process.execPath, join(scripts, 'ios_simulator_arch.cjs')]).status).not.toBe(0);
+    expect(run([process.execPath, join(scripts, 'ios_simulator_arch.mjs')]).status).not.toBe(0);
   });
 
   test('records the ready simulator without resetting it', () => {

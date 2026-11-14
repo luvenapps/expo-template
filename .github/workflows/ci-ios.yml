@@ -124,13 +124,13 @@ jobs:
         run: |
           set -euo pipefail
           test "$(uname -m)" = arm64
-          cp "$GITHUB_WORKSPACE/.github/scripts/ios_simulator_arch.cjs" .ci-ios-simulator.cjs
+          cp "$GITHUB_WORKSPACE/.github/scripts/ios_simulator_arch.mjs" .ci-ios-simulator.mjs
           node - <<'NODE'
           const fs = require('fs');
           const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
           const hook = pkg.scripts['eas-build-post-install'];
           pkg.scripts['eas-build-post-install'] =
-            (hook ? `(${hook}) && ` : '') + 'node .ci-ios-simulator.cjs';
+            (hook ? `(${hook}) && ` : '') + 'node .ci-ios-simulator.mjs';
           fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
           NODE
 

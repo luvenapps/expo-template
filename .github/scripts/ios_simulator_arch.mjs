@@ -1,6 +1,6 @@
 // Run after EAS prebuild and pod install, in the temporary CI app only.
-const { globSync, writeFileSync } = require('node:fs');
-const xcode = require('xcode');
+import { globSync, writeFileSync } from 'node:fs';
+import xcode from 'xcode';
 
 const projects = globSync('ios/*.xcodeproj/project.pbxproj');
 if (projects.length === 0) throw new Error('No generated iOS app project found');
