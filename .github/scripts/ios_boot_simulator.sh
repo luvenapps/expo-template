@@ -46,10 +46,10 @@ open_simulator_ui() {
 ATTEMPTS="${RETRIES:-2}"
 DELAY="${RETRY_DELAY:-2}"
 for ((attempt=1; attempt<=ATTEMPTS; attempt++)); do
-  open_simulator_ui
   echo "Booting $UDID (attempt $attempt/$ATTEMPTS)"
   if run_with_timeout 180 xcrun simctl bootstatus "$UDID" -b > e2e-artifacts/bootstatus.log 2>&1; then
     cat e2e-artifacts/bootstatus.log
+    open_simulator_ui
     printf '%s\n' "$UDID" > .simulator_udid
     exit 0
   fi

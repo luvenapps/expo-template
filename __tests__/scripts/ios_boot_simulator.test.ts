@@ -9,9 +9,11 @@ describe('ios_boot_simulator', () => {
   test('records the ready simulator without resetting it', () => {
     context.boot();
     expect(context.read('.simulator_udid')).toBe('test-udid');
-    expect(context.read('commands.log')).toContain('simctl bootstatus test-udid -b');
-    expect(context.read('commands.log')).toMatch(/-a .*DeviceHub\.app/);
-    expect(context.read('commands.log')).not.toMatch(/shutdown|erase/);
+    const commands = context.read('commands.log');
+    expect(commands).toContain('simctl bootstatus test-udid -b');
+    expect(commands).toMatch(/-a .*DeviceHub\.app/);
+    expect(commands.indexOf('simctl bootstatus')).toBeLessThan(commands.indexOf('-a '));
+    expect(commands).not.toMatch(/shutdown|erase/);
   });
 
   test('falls back to Simulator.app when Device Hub is unavailable', () => {
@@ -42,14 +44,15 @@ describe('ios_boot_simulator', () => {
     expect(result.stderr).toContain('No simulator UI found');
     expect(result.stderr).toContain('Expected Device Hub:');
     expect(result.stderr).toContain('Expected Simulator:');
-    expect(context.read('commands.log')).not.toContain('bootstatus');
+    expect(context.read('commands.log')).toContain('bootstatus');
+    expect(existsSync(join(context.root, '.simulator_udid'))).toBe(false);
   });
 
   test('recovers from a failed boot with one reset', () => {
     context.boot({ BOOT_FAIL: 'once' });
     const commands = context.read('commands.log').split('\n');
     expect(commands.filter((line) => line.includes('bootstatus'))).toHaveLength(2);
-    expect(commands.filter((line) => line.includes('DeviceHub.app'))).toHaveLength(2);
+    expect(commands.filter((line) => line.includes('DeviceHub.app'))).toHaveLength(1);
     expect(commands.filter((line) => line.includes('shutdown'))).toHaveLength(1);
     expect(commands.filter((line) => line.includes('erase'))).toHaveLength(1);
   });
