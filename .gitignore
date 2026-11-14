@@ -51,9 +51,6 @@ certs/
 .tamagui/
 credentials/
 
-# GitHub Actions Self-Hosted Runner (Local Runtime)
-.github/runner/_
-
 # other
 .builds
 e2e-artifacts

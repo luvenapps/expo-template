@@ -43,4 +43,3 @@
 6. Summarize the result and checks, and give manual testing steps (or say no runtime
    behavior changed). Provide the commit title and body in separate fenced blocks.
    Keep PR descriptions brief, omit a testing section, and omit agent session links.
-
