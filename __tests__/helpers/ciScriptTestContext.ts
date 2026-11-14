@@ -59,6 +59,11 @@ export function useCiScriptTestContext() {
     };
     mockCommand('git', 'printf "%s\\n" "${MOCK_TREE:-tree-one}"');
     mockCommand(
+      'xcode-select',
+      'printf "%s\\n" "$GITHUB_WORKSPACE/DevTools/Xcode.app/Contents/Developer"',
+    );
+    mockCommand('open', 'printf "%s\\n" "$*" >> commands.log');
+    mockCommand(
       'xcrun',
       `echo "$*" >> commands.log
 case "$*" in
@@ -75,6 +80,14 @@ esac`,
       `echo "$*" >> maestro-commands.log
 if [ "\${TEST_FAIL:-}" = always ]; then exit 1; fi
 if [ "\${TEST_FAIL:-}" = once ] && [ ! -f test-retried ]; then touch test-retried; exit 1; fi`,
+    );
+    mkdirSync(
+      join(root, 'DevTools/Xcode.app/Contents/Applications/DeviceHub.app'),
+      { recursive: true },
+    );
+    mkdirSync(
+      join(root, 'DevTools/Xcode.app/Contents/Developer/Applications/Simulator.app'),
+      { recursive: true },
     );
   });
 
