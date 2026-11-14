@@ -75,7 +75,7 @@ const MANAGED_ROOT_FILES = new Set([
   'metro.config.js',
   'package-lock.json',
   'package.json',
-  'renovate.json',
+  '_renovate.json',
   'tamagui.build.ts',
   'tamagui.config.ts',
   'tsconfig.json',
@@ -444,6 +444,7 @@ function outputPaths(sourcePath) {
     ['CLAUDE.md', ['_CLAUDE.md']],
     ['.gitignore', ['.gitignore', '_gitignore']],
     ['.mise.toml', ['.mise.toml', '_mise.toml']],
+    ['renovate.json', ['_renovate.json']],
     ['.prettierignore', ['_prettierignore']],
     ['.prettierrc.json', ['_prettierrc.json']],
   ]);

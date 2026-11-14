@@ -68,7 +68,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Prepare isolated GnuPG home for mise
         shell: bash
@@ -88,7 +88,7 @@ jobs:
           MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
 
       - name: Cache npm downloads
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.npm
           key: npm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json', '.mise.toml') }}
@@ -151,14 +151,14 @@ jobs:
 
       - name: Restore cached APK
         id: apk-cache
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: expo-template-testing/*.apk
           key: ${{ steps.android_fingerprint.outputs.key }}
 
       - name: Cache Gradle dependencies
         if: steps.apk-cache.outputs.cache-hit != 'true'
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             ~/.gradle/caches
@@ -244,14 +244,14 @@ jobs:
 
       - name: Save APK to cache
         if: steps.apk-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         with:
           path: expo-template-testing/*.apk
           key: ${{ steps.android_fingerprint.outputs.key }}
 
       - name: Upload Gradle reports
         if: failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: gradle-reports-android-hosted
           path: |
@@ -271,7 +271,7 @@ jobs:
 
       - name: Cache clean Android emulator snapshot
         id: avd-cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.android/avd
           key: avd-v1-${{ runner.os }}-${{ runner.arch }}-${{ env.ANDROID_API_LEVEL }}-${{ env.ANDROID_TARGET }}-x86_64-${{ steps.emulator-image.outputs.version }}
@@ -315,7 +315,7 @@ jobs:
 
       - name: Upload E2E artifacts on failure
         if: failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-artifacts-android-hosted
           path: |

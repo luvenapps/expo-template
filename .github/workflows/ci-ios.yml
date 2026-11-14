@@ -68,7 +68,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Prepare isolated GnuPG home for mise
         shell: bash
@@ -88,7 +88,7 @@ jobs:
           MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
 
       - name: Cache npm downloads
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.npm
           key: npm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json', '.mise.toml') }}
@@ -147,7 +147,7 @@ jobs:
 
       - name: Restore the tar.gz iOS app
         id: ios_cache
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: expo-template-testing/*.tar.gz
           key: ${{ steps.ios_fp.outputs.key }}
@@ -189,13 +189,13 @@ jobs:
 
       - name: Save the tar.gz iOS app
         if: steps.ios_cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         with:
           path: expo-template-testing/*.tar.gz
           key: ${{ steps.ios_fp.outputs.key }}
 
       - name: Upload iOS test inputs
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: ios-test-inputs
           path: |
@@ -207,7 +207,7 @@ jobs:
 
       - name: Upload Xcode build artifacts
         if: failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: xcode-build-artifacts-ios-hosted
           path: |
@@ -226,7 +226,7 @@ jobs:
         working-directory: expo-template-testing
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Prepare isolated GnuPG home for mise
         shell: bash
@@ -245,7 +245,7 @@ jobs:
           MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
 
       - name: Download iOS test inputs
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: ios-test-inputs
           path: expo-template-testing
@@ -282,7 +282,7 @@ jobs:
 
       - name: Upload E2E diagnostics
         if: ${{ !cancelled() && failure() }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-artifacts-ios-hosted
           path: |

@@ -76,6 +76,7 @@ describe('sync-template-source', () => {
     writeFile(source, '.husky/pre-commit', 'npm run lint\n');
     writeFile(source, '.maestro/flows/smoke.yaml', 'appId: com.luvenapps.betterhabits\n');
     writeFile(source, '.gitignore', 'node_modules\n');
+    writeFile(source, 'renovate.json', '{"extends":["config:recommended"]}\n');
     writeFile(
       source,
       'scripts/troubleshoot.mjs',
@@ -135,6 +136,7 @@ describe('sync-template-source', () => {
     );
 
     writeFile(target, 'README.md', 'Template README\n');
+    writeFile(target, 'renovate.json', '{"enabledManagers":["github-actions"]}\n');
     writeFile(target, 'AGENTS.md', 'Template instructions\n');
     writeFile(target, 'CLAUDE.md', 'Template Claude instructions\n');
     writeFile(target, '_AGENTS.md', 'Old source instructions\n');
@@ -229,6 +231,12 @@ describe('sync-template-source', () => {
     );
     expect(fs.existsSync(path.join(target, '.github/workflows/ci.yml'))).toBe(false);
     expect(fs.existsSync(path.join(target, '_github/workflows/ci.yml'))).toBe(true);
+    expect(fs.readFileSync(path.join(target, '_renovate.json'), 'utf8')).toBe(
+      '{"extends":["config:recommended"]}\n',
+    );
+    expect(fs.readFileSync(path.join(target, 'renovate.json'), 'utf8')).toBe(
+      '{"enabledManagers":["github-actions"]}\n',
+    );
     expect(fs.readFileSync(path.join(target, '_AGENTS.md'), 'utf8')).toBe('Source instructions\n');
     expect(fs.readFileSync(path.join(target, '_CLAUDE.md'), 'utf8')).toBe('@AGENTS.md\n');
     expect(fs.existsSync(path.join(target, '.github/workflows/template-sync.yml'))).toBe(true);
