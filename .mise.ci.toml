@@ -1,4 +1,8 @@
 # Template CI policy. Selected by MISE_ENV=ci; base runtimes stay in .mise.toml.
+# Prefer a prebuilt Ruby instead of compiling it on hosted runners.
+[settings.ruby]
+compile = false
+
 [env]
 MAESTRO_VERSION = "2.0.6"
 FASTLANE_VERSION = "2.228.0"

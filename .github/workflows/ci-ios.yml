@@ -119,6 +119,21 @@ jobs:
           # Validate against the pinned SDK map rather than mutable server recommendations.
           EXPO_OFFLINE=1 npx expo install --check
 
+      - name: Configure ARM64-only simulator build
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = arm64
+          cp "$GITHUB_WORKSPACE/.github/scripts/ios_simulator_arch.cjs" .ci-ios-simulator.cjs
+          node - <<'NODE'
+          const fs = require('fs');
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          const hook = pkg.scripts['eas-build-post-install'];
+          pkg.scripts['eas-build-post-install'] =
+            (hook ? `(${hook}) && ` : '') + 'node .ci-ios-simulator.cjs';
+          fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          NODE
+
       - name: Inject EAS projectId, slug and owner into app.config.ts
         shell: bash
         run: |

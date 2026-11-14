@@ -124,6 +124,53 @@ if [ "\${TEST_FAIL:-}" = once ] && [ ! -f test-retried ]; then touch test-retrie
     expect(runScript('compute_ci_cache_key.sh', ['web']).status).not.toBe(0);
   });
 
+  test('limits the app and CocoaPods simulator architectures while preserving device settings', () => {
+    const projects = ['ios/Example.xcodeproj', 'ios/Pods/Pods.xcodeproj'];
+    for (const project of projects) {
+      mkdirSync(join(root, project), { recursive: true });
+      writeFileSync(
+        join(root, project, 'project.pbxproj'),
+        `// !$*UTF8*$!
+{
+  archiveVersion = 1;
+  classes = {};
+  objectVersion = 46;
+  objects = {
+/* Begin XCBuildConfiguration section */
+    A00000000000000000000001 /* Release */ = {
+      isa = XCBuildConfiguration;
+      buildSettings = {
+        ARCHS = "$(ARCHS_STANDARD)";
+        "ARCHS[sdk=iphoneos*]" = arm64;
+        PRODUCT_NAME = Example;
+      };
+      name = Release;
+    };
+/* End XCBuildConfiguration section */
+  };
+  rootObject = A00000000000000000000001;
+}
+`,
+      );
+    }
+    const command = [process.execPath, join(scripts, 'ios_simulator_arch.cjs')];
+    expect(run(command).status).toBe(0);
+    for (const project of projects) {
+      const contents = read(`${project}/project.pbxproj`);
+      expect(contents).toContain('"ARCHS[sdk=iphonesimulator*]" = arm64;');
+      expect(contents).toContain('"ARCHS[sdk=iphoneos*]" = arm64;');
+      expect(contents).toContain('ARCHS = "$(ARCHS_STANDARD)";');
+      expect(contents).toContain('PRODUCT_NAME = Example;');
+    }
+    const first = read(`${projects[0]}/project.pbxproj`);
+    expect(run(command).status).toBe(0);
+    expect(read(`${projects[0]}/project.pbxproj`)).toBe(first);
+  });
+
+  test('fails when the native app has not been generated yet', () => {
+    expect(run([process.execPath, join(scripts, 'ios_simulator_arch.cjs')]).status).not.toBe(0);
+  });
+
   test('records the ready simulator without resetting it', () => {
     boot();
     expect(read('.simulator_udid')).toBe('test-udid');
