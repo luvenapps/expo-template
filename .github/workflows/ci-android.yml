@@ -200,7 +200,7 @@ jobs:
       - name: Install EAS CLI
         if: steps.apk-cache.outputs.cache-hit != 'true'
         shell: bash
-        run: npm install --global "eas-cli@$EAS_CLI_VERSION" --prefer-offline --no-audit --no-fund
+        run: npm install --global "eas-cli@$EAS_CLI_VERSION" --prefer-online --no-audit --no-fund
 
       - name: Build e2erelease APK
         if: steps.apk-cache.outputs.cache-hit != 'true'
