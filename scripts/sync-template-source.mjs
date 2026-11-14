@@ -21,6 +21,7 @@ const TEMPLATE_ONLY = new Set([
   'scripts/postinstall.js',
   'scripts/sync-template-source.mjs',
   '__tests__/scripts/sync-template-source.test.js',
+  '__tests__/scripts/sync-template-source.test.ts',
   'docs/template-refresh.md',
   '.github/workflows/template-sync.yml',
   '.template-sync-manifest.json',
