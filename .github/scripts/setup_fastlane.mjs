@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
-import { appendFileSync, accessSync, constants } from 'node:fs';
+import { appendFileSync, accessSync, chmodSync, constants, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 
@@ -39,8 +39,8 @@ export async function ensureFastlane(argv = process.argv.slice(2), options = {})
     ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
   const VER = argv[0];
 
-  if (!VER) {
-    io.stderr.write('Fastlane version required\n');
+  if (!/^\d+\.\d+\.\d+$/.test(VER ?? '')) {
+    io.stderr.write('A valid Fastlane version is required\n');
     return 1;
   }
 
@@ -69,7 +69,6 @@ export async function ensureFastlane(argv = process.argv.slice(2), options = {})
   env.GEM_PATH = GEM_DIR;
 
   if (env.GITHUB_PATH) appendFile(env.GITHUB_PATH, `${BIN_DIR}\n`);
-  if (env.GITHUB_ENV) appendFile(env.GITHUB_ENV, `GEM_HOME=${GEM_DIR}\nGEM_PATH=${GEM_DIR}\n`);
 
   let CUR_VER = '';
   if (commandExists('fastlane', { ...env, PATH: BIN_DIR })) {
@@ -116,6 +115,11 @@ export async function ensureFastlane(argv = process.argv.slice(2), options = {})
     if (abbrev.error) io.stderr.write(`${abbrev.error.message}\n`);
     return abbrev.status ?? 1;
   }
+
+  const fastlanePath = path.join(BIN_DIR, 'fastlane');
+  const fastlaneRunner = `#!/usr/bin/env ruby\ngem 'fastlane', '= ${VER}'\nload Gem.bin_path('fastlane', 'fastlane', '= ${VER}')\n`;
+  writeFileSync(fastlanePath, fastlaneRunner);
+  chmodSync(fastlanePath, 0o755);
 
   await sleep(1000);
 
