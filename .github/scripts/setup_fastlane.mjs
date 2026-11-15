@@ -30,7 +30,9 @@ export async function ensureFastlane(argv = process.argv.slice(2), options = {})
   const runCommand = options.runCommand ?? spawnSync;
   const cwd = options.cwd ?? process.cwd();
   const appendFile = options.appendFile ?? appendFileSync;
-  const sleep = options.sleep ?? ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
+  const sleep =
+    options.sleep ??
+    ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
   const VER = argv[0];
 
   if (!VER) {
@@ -52,11 +54,18 @@ export async function ensureFastlane(argv = process.argv.slice(2), options = {})
     return rubyResult.status ?? 1;
   }
 
-  const BIN_DIR = `${(rubyResult.stdout ?? '').replace(/\r?\n+$/, '')}/bin`;
+  const GEM_DIR = (rubyResult.stdout ?? '').replace(/\r?\n+$/, '');
+  const BIN_DIR = path.join(GEM_DIR, 'bin');
   const PATH = env.PATH ?? '';
-  if (!PATH.split(path.delimiter).includes(BIN_DIR)) env.PATH = `${BIN_DIR}:${PATH}`;
+  env.PATH = [
+    BIN_DIR,
+    ...PATH.split(path.delimiter).filter((directory) => directory !== BIN_DIR),
+  ].join(path.delimiter);
+  env.GEM_HOME = GEM_DIR;
+  env.GEM_PATH = GEM_DIR;
 
   if (env.GITHUB_PATH) appendFile(env.GITHUB_PATH, `${BIN_DIR}\n`);
+  if (env.GITHUB_ENV) appendFile(env.GITHUB_ENV, `GEM_HOME=${GEM_DIR}\nGEM_PATH=${GEM_DIR}\n`);
 
   let CUR_VER = '';
   if (commandExists('fastlane', env)) {
