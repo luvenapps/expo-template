@@ -31,6 +31,7 @@ Both coordinators define:
 - `.github/workflows/ci-cache-bust.yml`
 - `.github/workflows/ci-android-hosted.yml`
 - `.github/workflows/ci-android-selfhosted.yml`
+- `.github/workflows/ci-ios-build.yml` — hosted iOS build and E2E implementation called by `ci-ios.yml`
 - `.github/workflows/ci-ios-hosted.yml`
 - `.github/workflows/ci-ios-selfhosted.yml`
 - `.github/workflows/web-deploy.yml`
@@ -197,6 +198,26 @@ npx @expo/repack-app --platform ios --source-app <located-app-path> --output <te
 
 Before repack, `.github/scripts/validate_hermes_bundle.sh <platform>` checks that the cached native binary and the freshly-exported JS bundle are Hermes-compatible (accepts both `.js` and `.hbc` bytecode outputs). If validation fails the workflow aborts before touching the artifact.
 
+## 🧪 iOS native compilation cache spike
+
+`.github/workflows/ci-ios.yml` is the existing PR entry point and calls the reusable `.github/workflows/ci-ios-build.yml`. Its default `standard` strategy preserves normal CI behavior and the completed-app cache. Benchmark strategies bypass that app cache and force an EAS local build. When a same-repository PR changes `ci-ios.yml`, `ci-ios-build.yml`, or the cache-spike helper, `ci-ios.yml` automatically runs the benchmark sequence without a label. The seven benchmark builds run in sequence so each cache strategy can seed a cache before measuring a warm JavaScript-only run. The full sequence uses substantial hosted macOS time, so ordinary app PRs skip it. The same one-off inputs remain available through `workflow_dispatch` after the updated workflow is on the default branch.
+
+| Strategy      | Cached data                | Generated-app behavior                                                                                                               |
+| ------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `none`        | No compiler cache          | Cold-compile comparison                                                                                                              |
+| `ccache`      | `~/Library/Caches/ccache`  | Enables `expo-build-properties.ios.ccacheEnabled` only in the generated CI app                                                       |
+| `deriveddata` | EAS iOS `ios/build` output | Restores data to a staging directory, then hydrates the generated iOS build directory after EAS prepares its clean working directory |
+
+Use `unchanged` to compare the same generated source, `javascript-only` to inject a unique JS marker per run, or `native-config` to inject that JS marker plus a unique iOS Info.plist value. The hosted build verifies the marker is present in the resulting app bundle. The automatic sequence runs `none/unchanged`, `ccache/unchanged`, `ccache/javascript-only`, `ccache/native-config`, then the same three scenarios with `deriveddata`. Dependency changes are keyed by the generated app lockfile. Expo's `ccacheEnabled` option caches C++ compilation, so any whole-build speedup depends on how much time this app spends compiling C++.
+
+Compiler-cache keys include runner OS/architecture, Xcode and simulator SDK versions, native Expo config, native plugins, dependencies, EAS build profile, and build-tool versions. They exclude app JavaScript source. Finished-app caching and current-JS repacking remain unchanged for normal CI. Ccache and DerivedData restore/save time, cache size, build time, and hosted build-job time appear in the Actions summary. Benchmark runs skip uploading E2E inputs and the dependent iOS E2E job.
+
+No hosted benchmark has been run for this spike yet. Record results from each `ios-hosted` job summary here after the automatic PR workflow completes; it reports baseline, cold-cache, warm-cache, and native-config cache-miss timings.
+
+| Strategy / scenario | Cache hit | Restore (s) | EAS/Xcode build (s) | Cache size (KiB) | Save (s) | Hosted build job (s) |
+| ------------------- | --------- | ----------: | ------------------: | ---------------: | -------: | -------------------: |
+| Pending hosted run  | —         |           — |                   — |                — |        — |                    — |
+
 ---
 
 ## 💾 Local disk cache (self-hosted only)
@@ -311,19 +332,20 @@ The same pattern is applied in `expo-go-preview.yml`.
 
 All helper scripts live under `.github/scripts/` and are made executable via `chmod +x .github/scripts/*.sh` early in each workflow.
 
-| Script                          | Purpose                                                                         |
-| ------------------------------- | ------------------------------------------------------------------------------- |
-| `map_runtime_env.sh`            | Maps `env_prefix`-scoped vars/secrets into `$GITHUB_ENV`                        |
-| `validate_hermes_bundle.sh`     | Verifies Hermes compatibility between native binary and JS bundle before repack |
-| `verify_expo_deps.sh`           | Checks that installed Expo package versions match `expo-doctor` expectations    |
-| `compute_fingerprint.sh`        | Computes a deterministic cache key for the native build (Android or iOS)        |
-| `setup_fastlane.sh`             | Installs/verifies the pinned Fastlane version                                   |
-| `setup_maestro.sh`              | Installs/verifies the pinned Maestro version                                    |
-| `android_run_e2e.sh`            | Runs the Android E2E test suite via Maestro                                     |
-| `ios_boot_simulator.sh`         | Boots the target iOS simulator                                                  |
-| `ios_install_app.sh`            | Installs the `.app` on the booted simulator                                     |
-| `ios_run_e2e.sh`                | Runs the iOS E2E test suite via Maestro                                         |
-| `clean_selfhosted_workspace.sh` | Post-job workspace cleanup on self-hosted runners                               |
+| Script                          | Purpose                                                                                       |
+| ------------------------------- | --------------------------------------------------------------------------------------------- |
+| `map_runtime_env.sh`            | Maps `env_prefix`-scoped vars/secrets into `$GITHUB_ENV`                                      |
+| `validate_hermes_bundle.sh`     | Verifies Hermes compatibility between native binary and JS bundle before repack               |
+| `verify_expo_deps.sh`           | Checks that installed Expo package versions match `expo-doctor` expectations                  |
+| `compute_fingerprint.sh`        | Computes a deterministic cache key for the native build (Android or iOS)                      |
+| `ios_build_cache_spike.mjs`     | Prepares benchmark-only app changes, keys compiler caches, and verifies the current JS bundle |
+| `setup_fastlane.sh`             | Installs/verifies the pinned Fastlane version                                                 |
+| `setup_maestro.sh`              | Installs/verifies the pinned Maestro version                                                  |
+| `android_run_e2e.sh`            | Runs the Android E2E test suite via Maestro                                                   |
+| `ios_boot_simulator.sh`         | Boots the target iOS simulator                                                                |
+| `ios_install_app.sh`            | Installs the `.app` on the booted simulator                                                   |
+| `ios_run_e2e.sh`                | Runs the iOS E2E test suite via Maestro                                                       |
+| `clean_selfhosted_workspace.sh` | Post-job workspace cleanup on self-hosted runners                                             |
 
 ---
 
