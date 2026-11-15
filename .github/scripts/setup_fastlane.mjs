@@ -101,6 +101,18 @@ export async function ensureFastlane(argv = process.argv.slice(2), options = {})
     io.stdout.write(`✅ fastlane ${VER} already installed\n`);
   }
 
+  const abbrev = run(
+    'gem',
+    ['install', '-N', '-q', '--user-install', 'abbrev'],
+    { cwd, env, stdio: 'inherit' },
+    runCommand,
+  );
+  if (abbrev.status !== 0 || abbrev.error) {
+    if (abbrev.stderr) io.stderr.write(abbrev.stderr);
+    if (abbrev.error) io.stderr.write(`${abbrev.error.message}\n`);
+    return abbrev.status ?? 1;
+  }
+
   await sleep(1000);
 
   if (!commandExists('fastlane', env)) {
