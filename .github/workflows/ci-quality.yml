@@ -103,7 +103,7 @@ jobs:
       - name: Verify Expo/RN dependency alignment
         id: expo_deps
         shell: bash
-        run: .github/scripts/verify_expo_deps.sh
+        run: node "$GITHUB_WORKSPACE/.github/scripts/verify_expo_deps.mjs"
         continue-on-error: true
 
       - name: Annotate Expo/RN dependency drift

@@ -7,29 +7,22 @@ describe('with_timeout', () => {
   const context = useCiScriptTestContext();
 
   test('preserves command exit codes', () => {
-    const helper = join(scripts, 'with_timeout.sh');
-    expect(
-      context.run(['bash', '-c', 'source "$1"; run_with_timeout 2 bash -c "exit 7"', '_', helper])
-        .status,
-    ).toBe(7);
+    const helper = join(scripts, 'with_timeout.mjs');
+    expect(context.run([process.execPath, helper, '2', process.execPath, '-e', 'process.exit(7)']).status).toBe(7);
   });
 
   test('terminates descendants even when they ignore TERM', async () => {
-    const helper = join(scripts, 'with_timeout.sh');
-    const child = `
-      const fs = require('node:fs');
-      process.on('SIGTERM', () => {});
-      setTimeout(() => fs.writeFileSync('escaped', ''), 1500);
-    `;
+    const helper = join(scripts, 'with_timeout.mjs');
+    const child = "const fs = require('node:fs'); process.on('SIGTERM', () => {}); setTimeout(() => fs.writeFileSync('escaped', ''), 1500);";
+    const parent = `const { spawn } = require('node:child_process'); spawn(process.execPath, ['-e', ${JSON.stringify(child)}], { stdio: 'ignore' }); setTimeout(() => {}, 10000);`;
     const started = Date.now();
     const result = context.run([
-      'bash',
-      '-c',
-      'source "$1"; run_with_timeout 0.2 bash -c \'"$1" -e "$2" & wait\' _ "$2" "$3"',
-      '_',
-      helper,
       process.execPath,
-      child,
+      helper,
+      '0.2',
+      process.execPath,
+      '-e',
+      parent,
     ]);
     expect(result.status).toBe(124);
     expect(Date.now() - started).toBeLessThan(3000);

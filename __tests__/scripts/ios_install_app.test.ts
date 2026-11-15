@@ -9,7 +9,7 @@ describe('ios_install_app', () => {
   test('installs on the recorded device without launching the app', () => {
     context.boot();
     mkdirSync(join(context.root, 'Test.app'));
-    expect(context.runScript('ios_install_app.sh', ['Test.app']).status).toBe(0);
+    expect(context.runScript('ios_install_app.mjs', ['Test.app']).status).toBe(0);
     expect(context.read('commands.log')).toContain('simctl install test-udid Test.app');
     expect(context.read('commands.log')).not.toContain('launch');
   });
@@ -18,7 +18,7 @@ describe('ios_install_app', () => {
     context.boot();
     mkdirSync(join(context.root, 'Test.app'));
     expect(
-      context.runScript('ios_install_app.sh', ['Test.app'], { INSTALL_FAIL: 'always' }).status,
+      context.runScript('ios_install_app.mjs', ['Test.app'], { INSTALL_FAIL: 'always' }).status,
     ).not.toBe(0);
     expect(
       context
