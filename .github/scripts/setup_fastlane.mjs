@@ -16,7 +16,11 @@ function commandExists(command, env) {
 }
 
 function versionFrom(output) {
-  return output.match(/\b[0-9]+\.[0-9]+\.[0-9]+\b/)?.[0] ?? '';
+  return (
+    output.match(/\bfastlane(?:\s+version)?\s+([0-9]+\.[0-9]+\.[0-9]+)\b/i)?.[1] ??
+    output.match(/\b[0-9]+\.[0-9]+\.[0-9]+\b/)?.[0] ??
+    ''
+  );
 }
 
 function run(command, args, options, runCommand) {
