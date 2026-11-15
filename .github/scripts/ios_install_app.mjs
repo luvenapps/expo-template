@@ -3,6 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import { fileURLToPath } from 'node:url';
 
 function statusOf(result) {
   if (result.status !== null && result.status !== undefined) return result.status;
@@ -14,7 +15,7 @@ function run(command, args, root, env, runCommand) {
 }
 
 function runWithTimeout(root, command, args, seconds, env, runCommand) {
-  const helper = path.join(root, '.github/scripts/with_timeout.mjs');
+  const helper = path.join(path.dirname(fileURLToPath(import.meta.url)), 'with_timeout.mjs');
   return run(process.execPath, [helper, String(seconds), command, ...args], root, env, runCommand);
 }
 
