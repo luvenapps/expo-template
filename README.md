@@ -77,7 +77,7 @@ brew upgrade
 Use `mise` as the default local setup path for this repository.
 
 ```bash
-node scripts/setup-local-deps.mjs
+./scripts/setup-local-deps.sh
 ```
 
 That script installs missing Homebrew core dependencies (`mise`, `fastlane`, `watchman`), trusts `.mise.toml`, installs pinned runtimes, and skips anything already installed.

@@ -62,7 +62,7 @@ jobs:
       - name: Verify Expo/RN dependency alignment
         id: expo_deps
         shell: bash
-        run: node .github/scripts/verify_expo_deps.mjs
+        run: .github/scripts/verify_expo_deps.sh
         continue-on-error: true
 
       - name: Annotate Expo/RN dependency drift
@@ -164,4 +164,4 @@ jobs:
       - name: Clean self-hosted workspace
         if: ${{ always() && inputs.runner_target == 'selfhosted' }}
         shell: bash
-        run: node .github/scripts/clean_selfhosted_workspace.mjs
+        run: .github/scripts/clean_selfhosted_workspace.sh

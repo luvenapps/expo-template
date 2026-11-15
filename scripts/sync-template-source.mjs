@@ -402,7 +402,7 @@ function transformContent(sourcePath, outputPath, content) {
   ) {
     content = content.replaceAll('Better Habits', 'App');
   }
-  if (sourcePath === 'scripts/setup-local-deps.mjs') {
+  if (sourcePath === 'scripts/setup-local-deps.sh') {
     content = content.replaceAll('betterhabits setup:local', 'template setup:local');
   }
   if (sourcePath === 'docs/GITHUBACTIONS.md') {
@@ -534,7 +534,7 @@ async function main() {
 
 async function syncSnapshot(args, sourceRoot, targetRoot, sourceCheckout) {
   console.log(`Checking target checkout: ${targetRoot}`);
-  if (runGit(targetRoot, ['rev-parse', '--show-toplevel']) !== fs.realpathSync(targetRoot)) {
+  if (runGit(targetRoot, ['rev-parse', '--show-toplevel']) !== targetRoot) {
     throw new Error('The target must be the root of the expo-template Git checkout.');
   }
   const sourceRelative = path.relative(targetRoot, sourceCheckout).split(path.sep).join('/');

@@ -22,6 +22,7 @@
  *  - Enable Husky hooks *without* using deprecated `husky install` (set hooksPath + chmod +x)
  *  - Materialize .maestro from _maestro if needed
  *  - Restore .github (delete existing .github and rename _github → .github
+ *  - Ensure all shell scripts in .github are executable
  *  - Remove consumed underscore placeholders and template-sync metadata
  *  - Run Prettier to format updated files
  *  - Remove postinstall from package.json
@@ -500,6 +501,32 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
     }
   } else {
     console.log('⚠️  No .github/_maestro found in template directory — skipping');
+  }
+
+  // Ensure all shell scripts in .github are executable
+  const githubDir = path.join(CWD, '.github');
+  if (exists(githubDir)) {
+    try {
+      const makeExecutable = (dir) => {
+        for (const file of fs.readdirSync(dir)) {
+          const fullPath = path.join(dir, file);
+          const stat = fs.statSync(fullPath);
+          if (stat.isDirectory()) {
+            makeExecutable(fullPath);
+          } else if (stat.isFile() && fullPath.endsWith('.sh')) {
+            try {
+              fs.chmodSync(fullPath, 0o755);
+            } catch (e) {
+              console.log(`⚠️  Failed to chmod ${fullPath}: ${e.message}`);
+            }
+          }
+        }
+      };
+      makeExecutable(githubDir);
+      console.log('✅ All .sh scripts in .github are executable');
+    } catch (e) {
+      console.log(`⚠️  Failed to make .github scripts executable (${e.message})`);
+    }
   }
 
   // Remove underscore placeholders only after their generated counterparts exist.
