@@ -68,7 +68,7 @@ export async function ensureFastlane(argv = process.argv.slice(2), options = {})
   if (env.GITHUB_ENV) appendFile(env.GITHUB_ENV, `GEM_HOME=${GEM_DIR}\nGEM_PATH=${GEM_DIR}\n`);
 
   let CUR_VER = '';
-  if (commandExists('fastlane', env)) {
+  if (commandExists('fastlane', { ...env, PATH: BIN_DIR })) {
     const current = run(
       'fastlane',
       ['--version'],
