@@ -103,7 +103,7 @@ export async function ensureFastlane(argv = process.argv.slice(2), options = {})
 
   const abbrev = run(
     'gem',
-    ['install', '-N', '-q', '--user-install', 'abbrev'],
+    ['install', '-N', '-q', '--user-install', 'abbrev', 'ostruct'],
     { cwd, env, stdio: 'inherit' },
     runCommand,
   );
