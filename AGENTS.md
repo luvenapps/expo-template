@@ -36,29 +36,49 @@ behavior in a newly generated app, not in this worktree.
 
 ## What sync copies
 
-- `README.md` comes from the source app. The sync script adapts its app identity
-  and scaffold setup; postinstall fills its generated app placeholders.
-- The script copies eligible source files recursively; it is not a hand-maintained
-  per-file allowlist. Its exclusions and transformations are in
-  `scripts/sync-template-source.mjs`.
+- This repo is a scaffold source, not the source of truth for app files.
+  **Do not edit source-managed paths directly in this checkout.** Sync can
+  overwrite or remove them from the selected source app. Make source-owned
+  changes in that app, then run the template sync. This rule covers all synced
+  paths, not only underscore-prefixed mirrors.
+- `scripts/sync-template-source.mjs` defines path ownership. Before editing a
+  path that could be synced, inspect `MANAGED_ROOTS`, `MANAGED_ROOT_FILES`,
+  `outputPaths()`, `isManagedSourcePath()`, `TEMPLATE_ONLY`, and `EXCLUDED_*`.
+  Source-managed paths include eligible files under `app/`, `src/`,
+  `__tests__/`, `__mocks__/`, `plugins/`, `public/`, `supabase/`, `scripts/`,
+  `docs/`, and `eslint-rules/`, plus managed root files such as `README.md`,
+  `package.json`, and app configuration. Template-owned paths in `TEMPLATE_ONLY`
+  and root template paths outside the managed source set are maintained here,
+  subject to their specific instructions. Excluded paths may be generated,
+  local, or credential data; exclusion alone does not grant edit permission.
+  Content transformations do not make a source-owned path template-owned.
+- Source `.github`, `.husky`, and `.maestro` trees map to `_github`, `_husky`,
+  and `_maestro`. Root source guidance and selected dotfiles also have
+  underscore mirrors. **Do not edit these mirrors directly:** `_github/`,
+  `_husky/`, `_maestro/`, `_AGENTS.md`, `_CLAUDE.md`, `_gitignore`, `_mise.toml`,
+  `_prettierignore`, `_prettierrc.json`, and `_renovate.json`. Postinstall
+  materializes them in generated apps; make source-owned changes in the source
+  app and sync them.
+- `README.md` comes from the source app. Sync adapts its app identity and
+  scaffold setup; postinstall fills generated app placeholders.
+- The script copies eligible source files recursively; it is not a
+  hand-maintained per-file allowlist.
 - Managed source paths are updated as a snapshot, so source deletions can remove
   files from managed template paths. Review deletions and product-specific code
   in every sync PR.
-- The template keeps its own root `AGENTS.md` and `CLAUDE.md`. Source root guidance
-  is copied to `_AGENTS.md` and `_CLAUDE.md`; postinstall replaces those with the
-  generated app's root instructions and fills app identity tokens. Keep
-  `CLAUDE.md` as only `@AGENTS.md`.
-- `.github`, `.husky`, and `.maestro` map to `_github`, `_husky`, and `_maestro`.
-  Selected dotfiles also get underscore copies so postinstall can materialize
-  them after scaffolding.
+- The template keeps its own root `AGENTS.md` and `CLAUDE.md`. Source root
+  guidance is copied to `_AGENTS.md` and `_CLAUDE.md`; postinstall replaces those
+  with the generated app's root instructions and fills app identity tokens.
+  Keep `CLAUDE.md` as only `@AGENTS.md`.
 - Source workflows are copied with their settings unless the sync script has an
   explicit transformation. Generalize source-owned values in the source app
-  first; do not add one-off workflow rewrites here.
+  first; do not add one-off workflow rewrites here. Template-only CI changes
+  belong in root `.github/`, not `_github/`.
 - `credentials/` is excluded from sync. The template-owned `.env.example` holds
   fake Firebase base64 config for scaffold testing; postinstall adjusts its app
   IDs. The native plugin decodes it into missing credential files during builds.
-  `setup.sh` copies `.env.example` to `.env.local` when missing. Never commit real
-  credentials, local environment files, or private signing material.
+  `setup.sh` copies `.env.example` to `.env.local` when missing. Never commit
+  real credentials, local environment files, or private signing material.
 
 ## Review and validation
 
