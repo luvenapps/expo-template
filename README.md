@@ -1,84 +1,34 @@
 # Expo Template
 
-This repository contains two parts: the Expo app payload in \`template-sync/\` and
-the repository tooling that maintains and validates it.
+This repository keeps the app template in `template-sync/` and the tooling for maintaining it at the repository root.
 
 ## Create an app
 
-\`\`\`sh
-npx create-expo-app my-app --template https://github.com/luvenapps/expo-template/tree/main/template-sync
-\`\`\`
+```sh
+npx create-expo-app my-app \
+  --template https://github.com/luvenapps/expo-template/tree/main/template-sync
+```
 
-Create Expo App reads the contents of \`template-sync/\` as the app root. Run app
-commands from the generated \`my-app\` directory. GitHub subdirectory templates
-are supported by Create Expo App ([documentation](https://github.com/expo/expo/blob/main/packages/create-expo/README.md)).
+Create Expo App uses `template-sync/` as the root of the generated app. Run app commands from `my-app/`. See the [Create Expo App template documentation](https://github.com/expo/expo/blob/main/packages/create-expo/README.md) for details about GitHub subdirectory templates.
 
 ## Repository structure
 
-The tree below lists every root-level item and every item at the top of
-\`template-sync/\`. Contents inside the app's source directories are collapsed;
-they remain part of the sync payload.
+The repository root contains expo-template's own CI, sync tooling, and configuration. Only `template-sync/` is used to create an app.
 
-\`\`\`text
-.
-├── .github/
-│ ├── scripts/ # Repository CI helpers
-│ └── workflows/ # Repo CI and template source sync
-├── .vscode/ # Repository editor settings
-├── **tests**/
-│ └── scripts/ # Root sync and CI helper tests
+```text
+expo-template/
+├── .github/                      # Repository workflows and CI scripts
+├── .vscode/                      # Repository editor settings
+├── __tests__/
+│   └── scripts/                  # Tests for repository CI helpers
 ├── docs/
-│ └── template-refresh.md # Source sync and review guide
+│   └── template-refresh.md       # Template source sync and review guide
 ├── scripts/
-│ └── sync-template-source.mjs # Updates only template-sync/
-├── template-sync/ # Complete generated Expo app payload
-│ ├── **mocks**/
-│ ├── **tests**/
-│ ├── _github/ # Restored as .github by postinstall
-│ ├── _husky/ # Restored as .husky by postinstall
-│ ├── _maestro/ # Restored as .maestro by postinstall
-│ ├── app/
-│ ├── assets/
-│ ├── docs/
-│ ├── eslint-rules/
-│ ├── plugins/
-│ ├── public/
-│ ├── scripts/
-│ │ └── postinstall.mjs
-│ ├── src/
-│ ├── supabase/
-│ ├── .env.example
-│ ├── .gitignore
-│ ├── .mcp.json
-│ ├── .mise.toml
-│ ├── .template-sync-manifest.json
-│ ├── _AGENTS.md
-│ ├── _CLAUDE.md
-│ ├── _gitignore
-│ ├── _mise.toml
-│ ├── _prettierignore
-│ ├── _prettierrc.json
-│ ├── _renovate.json
-│ ├── LICENSE
-│ ├── README.md
-│ ├── app.config.ts
-│ ├── babel.config.js
-│ ├── commitlint.config.js # Generated app commit rules
-│ ├── drizzle.config.postgres.ts
-│ ├── drizzle.config.sqlite.ts
-│ ├── eas.json
-│ ├── eslint.config.js
-│ ├── index.js # App entry point
-│ ├── jest.config.js
-│ ├── metro.config.js
-│ ├── package.json
-│ ├── package-lock.json # Or pnpm-lock.yaml for a pnpm app
-│ ├── tamagui.build.ts
-│ ├── tamagui.config.ts
-│ └── tsconfig.json
+│   └── sync-template-source.mjs  # Updates only template-sync/
+├── template-sync/                # Complete generated app payload
 ├── .gitignore
-├── .mise.ci.toml # CI tool versions, including pnpm
-├── .mise.toml # Root maintenance toolchain
+├── .mise.ci.toml                 # CI tool versions
+├── .mise.toml                    # Root maintenance toolchain
 ├── .prettierignore
 ├── .prettierrc.json
 ├── AGENTS.md
@@ -87,23 +37,68 @@ they remain part of the sync payload.
 ├── README.md
 ├── _mcp-claude.json
 ├── _mcp-vscode.json
-├── commitlint.config.js # Root repo commit rules
-├── credentials.json # Root-only; outside the sync payload
+├── commitlint.config.js          # Repository commit rules
+├── credentials.json             # Used by Android CI; not part of the app payload
 ├── eslint.config.js
 ├── jest.config.js
 ├── package.json
 ├── package-lock.json
 ├── renovate.json
 └── tsconfig.json
-\`\`\`
+```
 
-The sync workflow updates and removes files only inside \`template-sync/\`. Root
-documentation, credentials, CI, and tooling stay specific to expo-template. App
-assets are included in the sync; \`credentials.json\` stays outside it.
+`template-sync/` is the app root passed to Create Expo App. Its source layout is:
 
-Root tooling uses npm. App CI selects npm or pnpm from the generated app's single
-lockfile. It fails if both supported lockfiles or neither lockfile are present.
-The pnpm version used by template CI is pinned in \`.mise.ci.toml\`.
+```text
+template-sync/
+├── __mocks__/
+├── __tests__/
+├── _github/                      # Restored as .github/ by postinstall
+├── _husky/                       # Restored as .husky/ by postinstall
+├── _maestro/                     # Restored as .maestro/ by postinstall
+├── app/
+├── assets/
+├── docs/
+├── eslint-rules/
+├── plugins/
+├── public/
+├── scripts/
+│   └── postinstall.mjs
+├── src/
+├── supabase/
+├── .env.example
+├── .gitignore
+├── .mcp.json
+├── .mise.toml
+├── .template-sync-manifest.json
+├── _AGENTS.md
+├── _CLAUDE.md
+├── _gitignore
+├── _mise.toml
+├── _prettierignore
+├── _prettierrc.json
+├── _renovate.json
+├── LICENSE
+├── README.md
+├── app.config.ts
+├── babel.config.js
+├── commitlint.config.js          # Generated app commit rules
+├── drizzle.config.postgres.ts
+├── drizzle.config.sqlite.ts
+├── eas.json
+├── eslint.config.js
+├── index.js                      # App entry point
+├── jest.config.js
+├── metro.config.js
+├── package.json
+├── package-lock.json             # Replaced by pnpm-lock.yaml when applicable
+├── tamagui.build.ts
+├── tamagui.config.ts
+└── tsconfig.json
+```
 
-See [docs/template-refresh.md](docs/template-refresh.md) for the source sync
-workflow and review process.
+The sync workflow changes files only in `template-sync/`. Root documentation, credentials, CI, and tooling stay specific to expo-template. The Android workflow copies the root `credentials.json` into its generated app for the local EAS build.
+
+Root tooling uses npm. Template CI selects npm or pnpm from the generated app's lockfile and fails if both supported lockfiles or neither is present. The pnpm version used by template CI is pinned in `.mise.ci.toml`.
+
+See [docs/template-refresh.md](docs/template-refresh.md) for the source sync and review process.
