@@ -1,103 +1,100 @@
-# Refresh and promote the app foundation
+# Refresh and promote the app template
 
-`expo-template` is a reusable snapshot of the Luven Apps app foundation. Use the
-manual **Prepare template source sync** workflow to propose a refresh from
-Betterhabits or a later app that contains reusable improvements.
+The generated Expo app lives entirely in template-sync/. The root contains the
+expo-template repository's own documentation, sync tooling, CI, credentials, and
+maintenance package. Create Expo App uses the template-sync/ GitHub subdirectory
+as the generated app root.
 
 ## Configure the workflow
 
-Add an Actions secret named `SOURCE_REPO_TOKEN` to `expo-template`. Use a
-fine-grained personal access token with **Contents: Read-only** access to the
-private source repository. When promoting a different private app, add that
-repository to the token's allowed repositories. The workflow's `GITHUB_TOKEN`
-is read-only. Add a second Actions secret named `TEMPLATE_AUTOMATION_TOKEN`,
-scoped to `expo-template` with **Contents: Read and write** and **Pull requests:
-Read and write**. The workflow uses this token to update the sync branch and
-open a PR. Using a repository-scoped token also lets GitHub start the normal PR
-checks for the generated update.
+Add an Actions secret named SOURCE_REPO_TOKEN to expo-template. Use a
+fine-grained personal access token with Contents: Read-only access to the
+selected private source repository. When promoting another private app, allow
+that repository in the token.
+
+Add TEMPLATE_AUTOMATION_TOKEN to expo-template with Contents and Pull requests
+read/write access. The workflow uses this token to push its sync branch and open
+a PR. The workflow's GITHUB_TOKEN remains read-only.
 
 ## Prepare a refresh
 
-1. Make sure the source branch contains the intended base app and has no
-   in-progress product work that should stay out of the template.
-2. In `expo-template`, run **Actions → Prepare template source sync → Run
-   workflow**. Choose the source repository and branch. The destination is
-   always `expo-template` `main`.
-3. Review the generated PR. Check app identity, package and lock
-   file changes, source deletions, hidden-file copies, and product-specific
-   material. The sync keeps template-owned identity/bootstrap files, maps source
-   `AGENTS.md` and `CLAUDE.md` to `_AGENTS.md` and `_CLAUDE.md`, and maps
-   `.github`, `.husky`, `.maestro`, and selected root dotfiles to underscore
-   paths. Postinstall materializes the source guidance in the generated app.
-   Sync excludes `credentials/`, runner registration scripts, and Betterhabits
-   planning documents. The template keeps its own `.env.example` with fake
-   Firebase base64 config. Postinstall adapts the fake config to the generated
-   app's bundle ID/package name; the native plugin creates missing credential
-   files from those environment variables during builds.
-4. Wait for the PR's normal CI. Before merging, create a fresh app from the
-   updated template and verify bootstrap, local setup, and the platform you
-   intend to build.
-5. Merge the PR only after the diff and checks are acceptable.
+1. Make sure the selected source branch contains the reusable app foundation
+   and no product work that should stay out of the template.
+2. In expo-template, run Actions → Prepare template source sync → Run workflow.
+   Choose the source repository and branch. The destination is expo-template
+   main.
+3. Review the PR. Sync updates and removes files only inside template-sync/.
+   The root README, guidance, CI, maintenance package, credentials.json, and
+   repository configuration stay template-owned. The source app's assets/ are
+   included. credentials.json and credential directories are excluded.
+4. Review app identity, package and lockfile changes, workflow changes,
+   deletions, credentials, and hidden-file materialization. Source AGENTS.md and
+   CLAUDE.md become _AGENTS.md and _CLAUDE.md. Source .github, .husky, and
+   .maestro become underscore paths inside template-sync/; postinstall
+   materializes them in the generated app. The app .env.example, LICENSE, and
+   scripts/postinstall.mjs remain template-owned inside template-sync/.
+5. Wait for normal CI. Before merging, create a fresh generated app and verify
+   bootstrap, local setup, and the platform you intend to build.
 
-For a local preview, run:
+## Preview locally
 
 ```sh
 node scripts/sync-template-source.mjs --source-dir <source-checkout> --target-dir <template-checkout> --dry-run
 ```
 
-The script fetches source `main` from origin, creates a temporary detached
-worktree at that exact SHA, and compares its tracked files with freshly fetched
-`expo-template` `main`. Use `--source-branch <branch-or-tag>` to select a different
-source ref. Local source branches and edits are preserved; ignored local files
-are excluded. Fetch failures stop the sync. The temporary source worktree is
-removed after completion, cancellation, or failure. It shows the planned
-updates/removals, PR title, and PR description. If the recorded source commit is
-unchanged, or no managed files differ, it prints “Nothing to update” and exits.
+The script fetches the selected source ref, creates a temporary detached
+worktree at that commit, and compares tracked files with freshly fetched
+expo-template main. Use --source-branch <branch-or-tag> to select another source
+ref. Local source branches and edits are preserved; ignored files are excluded.
+The temporary source worktree is removed after completion, cancellation, or
+failure.
 
-Run the same command without `--dry-run` to review the preview and confirm.
-Confirmation defaults to no. After approval, the script creates a UTC timestamped
-`automation/template-source-sync-YYYYMMDD-HHMMSSZ` branch from template `main`,
-commits the changes, pushes it, and opens the PR using `gh`. The target checkout
-must be clean and `gh` must be authenticated. Source changes must be pushed to
-the selected remote branch before they can be synced.
+The preview shows the planned updates and removals. The target must be clean
+before apply mode. After confirmation, the script creates a timestamped sync
+branch from template main, commits the selected changes, pushes it, and opens a
+PR. The script needs gh authentication. Actions supplies --yes to skip the
+terminal prompt. Unchanged source commits and snapshots that do not affect
+managed app files create no branch or PR.
 
-Actions invokes this same script with `--yes` to skip the terminal prompt.
-Unchanged sources never create a branch or PR. Existing PRs remain for review.
+The source baseline is recorded at
+template-sync/.template-sync-manifest.json. It is removed by app postinstall
+after Create Expo App has extracted the subdirectory.
 
-The PR description lists source commit hashes and subjects since the last merged
-sync for that repository and branch. `.template-sync-manifest.json` records the
-source SHA in the proposed PR, so it becomes the baseline when merged. If no
-baseline exists, the preview explicitly reports an initial sync; it does not
-invent a previous SHA or claim there are no new commits.
+## Package managers
 
-## Promote a later app
-
-When a new app has reusable improvements, run the same workflow with that
-repository and branch as the source. Review the proposed changes against the
-template's reusable foundation; keep product features, app-specific branding,
-and generated environment state in the app unless they are intentionally being
-generalized. Credentials are excluded from sync. The new app remains independent,
-and the resulting PR still targets `expo-template` `main`.
+The source app's single lockfile is synced with its package.json. Generated-app
+CI selects the manager from the generated app directory and supports
+package-lock.json with npm or pnpm-lock.yaml with pnpm. Both lockfiles or no
+supported lockfile fail. The pnpm version used by the template repository's
+workflows is pinned in .mise.ci.toml. The root maintenance package uses its
+separate npm package-lock.json.
 
 ## Validate a generated app
 
-From a clean clone created from the template:
+Create a fresh app from the repo subdirectory:
 
-```bash
-npm ci
-npm run type-check
-npm run lint
-npm test -- --runInBand
-npx expo install --check
+```sh
+npx create-expo-app my-app --template https://github.com/luvenapps/expo-template/tree/main/template-sync
 ```
 
-For local runtime checks, run `npm run setup:local`, then keep
-`npm run supabase:dev` running in one terminal while starting the app with
-`npm start` in another. Configure Supabase before testing authenticated sync.
+From my-app, install with the one manager matching the app lockfile:
 
-For local scaffold testing, copy `.env.example` to `.env.local` if missing
-(`setup.sh` already does this). The fake Firebase values support native builds
-with Firebase disabled at runtime. Use real Firebase configuration when testing
-Firebase services. Existing local environment and credential files take precedence.
-Native builds also require the matching local Xcode/Android SDK setup and Apple
-signing configuration when shipping to Apple platforms.
+```sh
+npm ci
+```
+
+or:
+
+```sh
+pnpm install --frozen-lockfile
+```
+
+Then run the corresponding app scripts, including type-check, lint, test, and
+Expo dependency alignment. The root repository's iOS, Android, and quality
+workflows perform these generated-app checks automatically.
+
+For local runtime checks, run the app's setup:local command, then keep
+supabase:dev running in one terminal while starting the app in another.
+Configure Supabase before testing authenticated sync. Native builds also need
+the matching local Xcode or Android SDK setup and Apple signing configuration
+when shipping to Apple platforms.

@@ -37,6 +37,9 @@ on:
 permissions:
   contents: read
 
+env:
+  MISE_ENV: ci
+
 concurrency:
   group: quality-${{ github.ref }}
   cancel-in-progress: true
@@ -69,36 +72,46 @@ jobs:
           GNUPGHOME: ${{ runner.temp }}/gnupg
           MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
 
-      - name: Scaffold & verify (retry once)
+      - name: Check root repository tooling
+        working-directory: ${{ github.workspace }}
+        run: |
+          npm ci
+          npm run lint
+          npm test -- --runInBand __tests__/scripts
+
+      - name: Scaffold generated app
+        id: scaffold
         working-directory: .
         shell: bash
         run: |
           set -euo pipefail
-          max=2
-          attempt=1
-          while [ "$attempt" -le "$max" ]; do
-            echo "==> Attempt $attempt/$max: scaffold + verify"
-            rm -rf expo-template-testing || true
-            npx create-expo-app expo-template-testing --template "$GITHUB_WORKSPACE" --yes
-            pushd expo-template-testing >/dev/null
-            npx expo --version || true
-            node -e "console.log('react-native', require('react-native/package.json').version)" || true
-            node -e "console.log('expo', require('expo/package.json').version)" || true
-            if npx expo install --check; then
-              echo "✅ Expo dependency alignment OK"
-              popd >/dev/null
-              break
-            fi
-            popd >/dev/null
-            if [ "$attempt" -lt "$max" ]; then
-              echo "⚠️ Verification failed. Retrying from scratch..." >&2
-              attempt=$((attempt+1))
-              continue
-            else
-              echo "❌ Verification failed after $max attempts." >&2
-              exit 1
-            fi
-          done
+          rm -rf expo-template-testing
+          npx create-expo-app expo-template-testing \
+            --template "$GITHUB_WORKSPACE/template-sync" \
+            --yes \
+            --no-install
+          node "$GITHUB_WORKSPACE/.github/scripts/generated-app-package-manager.mjs" \
+            stage expo-template-testing "$GITHUB_WORKSPACE/template-sync"
+
+      - name: Setup pnpm for generated app
+        if: ${{ steps.scaffold.outputs.manager == 'pnpm' }}
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+          cache: true
+          cache_dependency_path: expo-template-testing/pnpm-lock.yaml
+
+      - name: Install generated app dependencies
+        working-directory: expo-template-testing
+        run: node "$GITHUB_WORKSPACE/.github/scripts/generated-app-package-manager.mjs" install
+
+      - name: Check installed Expo versions
+        working-directory: expo-template-testing
+        run: |
+          node "$GITHUB_WORKSPACE/.github/scripts/generated-app-package-manager.mjs" exec expo --version
+          node -e "console.log('react-native', require('react-native/package.json').version)"
+          node -e "console.log('expo', require('expo/package.json').version)"
 
       - name: Verify Expo/RN dependency alignment
         id: expo_deps
@@ -110,11 +123,11 @@ jobs:
         if: ${{ steps.expo_deps.outcome == 'failure' }}
         shell: bash
         run: |
-          echo "::error::Expo/RN dependency drift detected. Run 'npx expo install --fix' and commit the lockfile changes."
+          echo "::error::Expo/RN dependency drift detected. Run the matching Expo install command for the app lockfile manager and commit the lockfile changes."
 
       - name: Doctor
         id: expo_doctor
-        run: npm run doctor
+        run: node "$GITHUB_WORKSPACE/.github/scripts/generated-app-package-manager.mjs" run doctor
         continue-on-error: true
 
       - name: Annotate Expo Doctor issues
@@ -124,13 +137,13 @@ jobs:
           echo "::error::Expo Doctor reported issues. Review the Doctor step logs for details."
 
       - name: Check formatting
-        run: npm run format:check
+        run: node "$GITHUB_WORKSPACE/.github/scripts/generated-app-package-manager.mjs" run format:check
 
       - name: Lint
-        run: npm run lint
+        run: node "$GITHUB_WORKSPACE/.github/scripts/generated-app-package-manager.mjs" run lint
 
       - name: Unit tests
-        run: npm run test -- --coverage --runInBand
+        run: node "$GITHUB_WORKSPACE/.github/scripts/generated-app-package-manager.mjs" run test -- --coverage --runInBand
 
       - name: Install GPG
         if: ${{ !cancelled() }}

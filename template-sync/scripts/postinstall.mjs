@@ -581,7 +581,10 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
   // Run database migrations
   try {
     process.stdout.write('🗄️  Running database migrations...');
-    cp.execSync('npm run db:migrate', { stdio: 'ignore' });
+    const packageManager = process.env.npm_config_user_agent?.startsWith('pnpm/')
+      ? 'pnpm'
+      : 'npm';
+    cp.execSync(packageManager + ' run db:migrate', { stdio: 'ignore' });
     process.stdout.write(' ✅ Done!\n');
   } catch (err) {
     console.log(`\n⚠️  Database migrations skipped or failed: ${err.message}`);

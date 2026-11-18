@@ -5,10 +5,15 @@ import { Buffer } from 'node:buffer';
 import { spawnSync } from 'node:child_process';
 
 function runNpx(args, description) {
-  const result = spawnSync('npx', args, { encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 });
+  const result = spawnSync('npx', args, {
+    encoding: 'utf8',
+    maxBuffer: 10 * 1024 * 1024,
+  });
   if (result.error) throw result.error;
   if (result.status !== 0) {
-    throw new Error(`${description} failed${result.stderr ? `: ${result.stderr.trim()}` : ''}`);
+    throw new Error(
+      `${description} failed${result.stderr ? `: ${result.stderr.trim()}` : ''}`,
+    );
   }
   return result.stdout;
 }
@@ -25,7 +30,10 @@ function findIosBundle(dist) {
       }
       const parts = filePath.split(path.sep);
       const iosBundlePath = parts.slice(-5, -1).join('/');
-      if (iosBundlePath === '_expo/static/js/ios' && /\.(js|hbc)$/.test(entry.name)) {
+      if (
+        iosBundlePath === '_expo/static/js/ios' &&
+        /\.(js|hbc)$/.test(entry.name)
+      ) {
         return filePath;
       }
     }
@@ -42,7 +50,8 @@ function validate(platform) {
   try {
     config = JSON.parse(runNpx(['expo', 'config', '--json'], 'Expo config'));
   } catch (error) {
-    if (error instanceof SyntaxError) throw new Error('Expo config did not return valid JSON.');
+    if (error instanceof SyntaxError)
+      throw new Error('Expo config did not return valid JSON.');
     throw error;
   }
 
@@ -63,7 +72,9 @@ function validate(platform) {
     bundlePath = path.join(dist, 'index.android.bundle');
     expectedSource = 'export:embed';
     if (!fs.existsSync(path.join(dist, 'assets'))) {
-      throw new Error('Required Android assets directory is missing: dist/assets');
+      throw new Error(
+        'Required Android assets directory is missing: dist/assets',
+      );
     }
   }
 
@@ -72,20 +83,31 @@ function validate(platform) {
   }
 
   const bundle = fs.readFileSync(bundlePath);
-  if (bundle.length === 0) throw new Error(`JavaScript bundle is empty: ${bundlePath}`);
+  if (bundle.length === 0)
+    throw new Error(`JavaScript bundle is empty: ${bundlePath}`);
 
   const markerPath = path.join(dist, '.bundle-source');
-  const bundleSource = fs.existsSync(markerPath) ? fs.readFileSync(markerPath, 'utf8').trim() : '';
+  const bundleSource = fs.existsSync(markerPath)
+    ? fs.readFileSync(markerPath, 'utf8').trim()
+    : '';
   const hasHermesMarker = bundle.includes(Buffer.from('Hermes'));
-  if (expectedEngine === 'hermes' && !hasHermesMarker && bundleSource !== expectedSource) {
-    throw new Error(`Hermes is expected, but the bundle is not marked as ${expectedSource}.`);
+  if (
+    expectedEngine === 'hermes' &&
+    !hasHermesMarker &&
+    bundleSource !== expectedSource
+  ) {
+    throw new Error(
+      `Hermes is expected, but the bundle is not marked as ${expectedSource}.`,
+    );
   }
 
   console.log(`[validation] platform: ${platform}`);
   console.log(`[validation] expected engine: ${expectedEngine}`);
   console.log(`[validation] bundle path: ${bundlePath}`);
   console.log(`[validation] bundle file size (bytes): ${bundle.length}`);
-  console.log(`[validation] Hermes marker present: ${hasHermesMarker ? 'yes' : 'no'}`);
+  console.log(
+    `[validation] Hermes marker present: ${hasHermesMarker ? 'yes' : 'no'}`,
+  );
   console.log(`[validation] bundle source: ${bundleSource || 'unknown'}`);
 }
 

@@ -16,21 +16,31 @@ function commandExists(command, env) {
 }
 
 function versionFrom(output) {
-  return output.match(/\b[0-9]+\.[0-9]+\.[0-9]+\b/)?.[0] ?? '';
+  return (
+    output.match(
+      /\bfastlane(?:\s+version)?\s+v?([0-9]+\.[0-9]+\.[0-9]+)\b/i,
+    )?.[1] ?? ''
+  );
 }
 
 function run(command, args, options, runCommand) {
   return runCommand(command, args, options);
 }
 
-export async function ensureFastlane(argv = process.argv.slice(2), options = {}) {
+export async function ensureFastlane(
+  argv = process.argv.slice(2),
+  options = {},
+) {
   const sourceEnv = options.env ?? process.env;
   const env = { ...sourceEnv };
   const io = options.io ?? process;
   const runCommand = options.runCommand ?? spawnSync;
   const cwd = options.cwd ?? process.cwd();
   const appendFile = options.appendFile ?? appendFileSync;
-  const sleep = options.sleep ?? ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
+  const sleep =
+    options.sleep ??
+    ((milliseconds) =>
+      new Promise((resolve) => setTimeout(resolve, milliseconds)));
   const VER = argv[0];
 
   if (!VER) {
@@ -54,7 +64,8 @@ export async function ensureFastlane(argv = process.argv.slice(2), options = {})
 
   const BIN_DIR = `${(rubyResult.stdout ?? '').replace(/\r?\n+$/, '')}/bin`;
   const PATH = env.PATH ?? '';
-  if (!PATH.split(path.delimiter).includes(BIN_DIR)) env.PATH = `${BIN_DIR}:${PATH}`;
+  if (!PATH.split(path.delimiter).includes(BIN_DIR))
+    env.PATH = `${BIN_DIR}:${PATH}`;
 
   if (env.GITHUB_PATH) appendFile(env.GITHUB_PATH, `${BIN_DIR}\n`);
 
@@ -76,7 +87,12 @@ export async function ensureFastlane(argv = process.argv.slice(2), options = {})
 
   if (!CUR_VER || CUR_VER !== VER) {
     io.stdout.write(`📦 Installing fastlane ${VER}...\n`);
-    run('gem', ['uninstall', '-aIx', 'fastlane'], { cwd, env, stdio: 'ignore' }, runCommand);
+    run(
+      'gem',
+      ['uninstall', '-aIx', 'fastlane'],
+      { cwd, env, stdio: 'ignore' },
+      runCommand,
+    );
     const installation = run(
       'gem',
       ['install', '-N', '-q', '--user-install', 'fastlane', '-v', VER],
@@ -85,7 +101,8 @@ export async function ensureFastlane(argv = process.argv.slice(2), options = {})
     );
     if (installation.status !== 0 || installation.error) {
       if (installation.stderr) io.stderr.write(installation.stderr);
-      if (installation.error) io.stderr.write(`${installation.error.message}\n`);
+      if (installation.error)
+        io.stderr.write(`${installation.error.message}\n`);
       return installation.status ?? 1;
     }
   } else {
@@ -114,16 +131,22 @@ export async function ensureFastlane(argv = process.argv.slice(2), options = {})
   const ACT_VER = versionFrom(`${actual.stdout ?? ''}${actual.stderr ?? ''}`);
   if (!ACT_VER) {
     io.stderr.write('❌ Could not determine fastlane version\n');
-    io.stderr.write(`Full output: ${actual.stdout ?? ''}${actual.stderr ?? ''}`);
+    io.stderr.write(
+      `Full output: ${actual.stdout ?? ''}${actual.stderr ?? ''}`,
+    );
     return 1;
   }
 
   if (ACT_VER !== VER) {
-    io.stderr.write(`❌ Fastlane version mismatch: expected ${VER}, got ${ACT_VER}\n`);
+    io.stderr.write(
+      `❌ Fastlane version mismatch: expected ${VER}, got ${ACT_VER}\n`,
+    );
     return 1;
   }
 
-  io.stdout.write(`✅ Fastlane ${ACT_VER} successfully installed and verified\n`);
+  io.stdout.write(
+    `✅ Fastlane ${ACT_VER} successfully installed and verified\n`,
+  );
   return 0;
 }
 
@@ -136,7 +159,11 @@ export async function main(argv = process.argv.slice(2), options = {}) {
   }
 }
 
-if (process.argv[1]?.replaceAll('\\', '/').endsWith('/.github/scripts/setup_fastlane.mjs')) {
+if (
+  process.argv[1]
+    ?.replaceAll('\\', '/')
+    .endsWith('/.github/scripts/setup_fastlane.mjs')
+) {
   main().then((code) => {
     process.exitCode = code;
   });

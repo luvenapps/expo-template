@@ -1,11 +1,18 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { join, resolve } from 'node:path';
 import process from 'node:process';
 
 function statusOf(result) {
-  if (result.status !== null && result.status !== undefined) return result.status;
+  if (result.status !== null && result.status !== undefined)
+    return result.status;
   return result.error?.code === 'ENOENT' ? 127 : 1;
 }
 
@@ -21,26 +28,41 @@ function printResult(result, io) {
 
 function positiveInteger(value, fallback, name) {
   const parsed = Number(value ?? fallback);
-  if (!Number.isInteger(parsed) || parsed < 1) throw new Error(`${name} must be a positive integer`);
+  if (!Number.isInteger(parsed) || parsed < 1)
+    throw new Error(`${name} must be a positive integer`);
   return parsed;
 }
 
 function nonnegativeInteger(value, fallback, name) {
   const parsed = Number(value ?? fallback);
-  if (!Number.isInteger(parsed) || parsed < 0) throw new Error(`${name} must be a non-negative integer`);
+  if (!Number.isInteger(parsed) || parsed < 0)
+    throw new Error(`${name} must be a non-negative integer`);
   return parsed;
 }
 
 function pause(seconds) {
-  if (seconds > 0) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, seconds * 1000);
+  if (seconds > 0)
+    Atomics.wait(
+      new Int32Array(new SharedArrayBuffer(4)),
+      0,
+      0,
+      seconds * 1000,
+    );
 }
 
 export function runAndroidE2E(argv = process.argv.slice(2), options = {}) {
   const root = options.root ?? process.cwd();
   const env = options.env ?? process.env;
   const io = options.io ?? process;
-  const runCommand = options.runCommand ?? ((command, args, commandOptions) =>
-    spawnSync(command, args, { ...commandOptions, cwd: root, env, encoding: 'utf8' }));
+  const runCommand =
+    options.runCommand ??
+    ((command, args, commandOptions) =>
+      spawnSync(command, args, {
+        ...commandOptions,
+        cwd: root,
+        env,
+        encoding: 'utf8',
+      }));
   const sleep = options.sleep ?? pause;
   const APK = argv[0];
   const PKG = argv[1];
@@ -63,15 +85,25 @@ export function runAndroidE2E(argv = process.argv.slice(2), options = {}) {
 
     if (!INSTALLED) {
       io.stdout.write(`📦 Uninstall (if present): ${PKG}\n`);
-      printResult(run('adb', ['uninstall', PKG], { stdio: 'inherit' }, runCommand), io);
+      printResult(
+        run('adb', ['uninstall', PKG], { stdio: 'inherit' }, runCommand),
+        io,
+      );
 
       io.stdout.write(`📥 Install: ${APK}\n`);
-      const install = run('adb', ['install', '-r', APK], { stdio: 'inherit' }, runCommand);
+      const install = run(
+        'adb',
+        ['install', '-r', APK],
+        { stdio: 'inherit' },
+        runCommand,
+      );
       printResult(install, io);
       if (statusOf(install) !== 0) {
         io.stdout.write(`⚠️  Install failed on attempt ${attempt}\n`);
         if (attempt < ATTEMPTS) {
-          io.stdout.write(`🧹 Cooling down ${env.RETRY_DELAY || '5'}s before retry...\n`);
+          io.stdout.write(
+            `🧹 Cooling down ${env.RETRY_DELAY || '5'}s before retry...\n`,
+          );
           sleep(DELAY);
           attempt += 1;
           continue;
@@ -82,8 +114,24 @@ export function runAndroidE2E(argv = process.argv.slice(2), options = {}) {
       INSTALLED = true;
     }
 
-    printResult(run('adb', ['shell', 'input', 'keyevent', '224'], { stdio: 'inherit' }, runCommand), io);
-    printResult(run('adb', ['shell', 'input', 'keyevent', '82'], { stdio: 'inherit' }, runCommand), io);
+    printResult(
+      run(
+        'adb',
+        ['shell', 'input', 'keyevent', '224'],
+        { stdio: 'inherit' },
+        runCommand,
+      ),
+      io,
+    );
+    printResult(
+      run(
+        'adb',
+        ['shell', 'input', 'keyevent', '82'],
+        { stdio: 'inherit' },
+        runCommand,
+      ),
+      io,
+    );
 
     mkdirSync(artifactDirectory, { recursive: true });
     const OUT = `e2e-artifacts/attempt-${attempt}`;
@@ -106,9 +154,24 @@ export function runAndroidE2E(argv = process.argv.slice(2), options = {}) {
 
     io.stdout.write(`❌ Attempt ${attempt} failed\n`);
     if (attempt < ATTEMPTS) {
-      io.stdout.write(`🧹 Cooling down ${env.RETRY_DELAY || '5'}s & stopping app before retry...\n`);
-      printResult(run('adb', ['shell', 'am', 'force-stop', PKG], { stdio: 'inherit' }, runCommand), io);
-      const clear = run('adb', ['shell', 'pm', 'clear', PKG], { stdio: 'inherit' }, runCommand);
+      io.stdout.write(
+        `🧹 Cooling down ${env.RETRY_DELAY || '5'}s & stopping app before retry...\n`,
+      );
+      printResult(
+        run(
+          'adb',
+          ['shell', 'am', 'force-stop', PKG],
+          { stdio: 'inherit' },
+          runCommand,
+        ),
+        io,
+      );
+      const clear = run(
+        'adb',
+        ['shell', 'pm', 'clear', PKG],
+        { stdio: 'inherit' },
+        runCommand,
+      );
       printResult(clear, io);
       if (statusOf(clear) !== 0) INSTALLED = false;
       sleep(DELAY);
@@ -132,6 +195,10 @@ export function main(argv = process.argv.slice(2), options = {}) {
   }
 }
 
-if (process.argv[1]?.replaceAll('\\', '/').endsWith('/.github/scripts/android_run_e2e.mjs')) {
+if (
+  process.argv[1]
+    ?.replaceAll('\\', '/')
+    .endsWith('/.github/scripts/android_run_e2e.mjs')
+) {
   process.exitCode = main();
 }

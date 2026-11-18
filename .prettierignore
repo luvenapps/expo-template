@@ -1,0 +1,4 @@
+template-sync/
+node_modules/
+coverage/
+credentials.json

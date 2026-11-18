@@ -1,17 +1,29 @@
 #!/usr/bin/env node
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
+import {
+  detectPackageManager,
+  packageManagerCommand,
+} from './generated-app-package-manager.mjs';
 
 function fingerprintNativeProject(platform) {
-  const result = spawnSync(
-    'npx',
-    ['@expo/fingerprint', 'fingerprint:generate', '--platform', platform],
-    { encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 },
-  );
+  const packageManager = detectPackageManager(process.cwd());
+  const [command, args] = packageManagerCommand(packageManager, 'dlx', [
+    '@expo/fingerprint',
+    'fingerprint:generate',
+    '--platform',
+    platform,
+  ]);
+  const result = spawnSync(command, args, {
+    encoding: 'utf8',
+    maxBuffer: 10 * 1024 * 1024,
+  });
 
   if (result.error) throw result.error;
   if (result.status !== 0) {
-    throw new Error(`Expo fingerprint failed${result.stderr ? `: ${result.stderr.trim()}` : ''}`);
+    throw new Error(
+      `Expo fingerprint failed${result.stderr ? `: ${result.stderr.trim()}` : ''}`,
+    );
   }
 
   let fingerprint;
@@ -34,12 +46,19 @@ function cacheKey(platform, fingerprint, environment) {
 
   if (firebaseEnabled === 'true') {
     const credentialName =
-      platform === 'ios' ? 'GOOGLE_SERVICE_INFO_PLIST_B64' : 'GOOGLE_SERVICES_JSON_B64';
+      platform === 'ios'
+        ? 'GOOGLE_SERVICE_INFO_PLIST_B64'
+        : 'GOOGLE_SERVICES_JSON_B64';
     const credentials = environment[credentialName];
     if (!credentials) {
-      throw new Error(`${credentialName} is required when Firebase is enabled.`);
+      throw new Error(
+        `${credentialName} is required when Firebase is enabled.`,
+      );
     }
-    credentialsHash = createHash('sha256').update(credentials).digest('hex').slice(0, 8);
+    credentialsHash = createHash('sha256')
+      .update(credentials)
+      .digest('hex')
+      .slice(0, 8);
   }
 
   const artifact = platform === 'ios' ? 'app' : 'apk';

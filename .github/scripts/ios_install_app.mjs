@@ -6,17 +6,32 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 function statusOf(result) {
-  if (result.status !== null && result.status !== undefined) return result.status;
+  if (result.status !== null && result.status !== undefined)
+    return result.status;
   return result.error?.code === 'ENOENT' ? 127 : 1;
 }
 
 function run(command, args, root, env, runCommand) {
-  return runCommand(command, args, { cwd: root, env, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 });
+  return runCommand(command, args, {
+    cwd: root,
+    env,
+    encoding: 'utf8',
+    maxBuffer: 10 * 1024 * 1024,
+  });
 }
 
 function runWithTimeout(root, command, args, seconds, env, runCommand) {
-  const helper = path.join(path.dirname(fileURLToPath(import.meta.url)), 'with_timeout.mjs');
-  return run(process.execPath, [helper, String(seconds), command, ...args], root, env, runCommand);
+  const helper = path.join(
+    path.dirname(fileURLToPath(import.meta.url)),
+    'with_timeout.mjs',
+  );
+  return run(
+    process.execPath,
+    [helper, String(seconds), command, ...args],
+    root,
+    env,
+    runCommand,
+  );
 }
 
 function printResult(result, io) {
@@ -34,7 +49,8 @@ export function installApp(argv = process.argv.slice(2), options = {}) {
 
   if (!appPath) throw new Error('App path required');
   const absoluteAppPath = path.resolve(root, appPath);
-  if (!existsSync(absoluteAppPath) || !statSync(absoluteAppPath).isDirectory()) return 1;
+  if (!existsSync(absoluteAppPath) || !statSync(absoluteAppPath).isDirectory())
+    return 1;
 
   const udidFile = path.join(root, '.simulator_udid');
   if (!existsSync(udidFile)) return 1;
@@ -66,6 +82,10 @@ export function main(argv = process.argv.slice(2), options = {}) {
   }
 }
 
-if (process.argv[1]?.replaceAll('\\', '/').endsWith('/.github/scripts/ios_install_app.mjs')) {
+if (
+  process.argv[1]
+    ?.replaceAll('\\', '/')
+    .endsWith('/.github/scripts/ios_install_app.mjs')
+) {
   process.exitCode = main();
 }

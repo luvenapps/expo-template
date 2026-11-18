@@ -24,7 +24,8 @@ function printResult(result, io) {
 }
 
 function statusOf(result) {
-  if (result.status !== null && result.status !== undefined) return result.status;
+  if (result.status !== null && result.status !== undefined)
+    return result.status;
   return result.error?.code === 'ENOENT' ? 127 : 1;
 }
 
@@ -42,8 +43,15 @@ export function setupMaestro(argv = process.argv.slice(2), options = {}) {
   const VERSION = argv[0] || 'latest';
 
   if (commandExists('maestro', env)) {
-    const current = run('maestro', ['--version'], { cwd, env, encoding: 'utf8' }, runCommand);
-    io.stdout.write(`✅ Maestro already installed: ${(current.stdout ?? '').trim()}\n`);
+    const current = run(
+      'maestro',
+      ['--version'],
+      { cwd, env, encoding: 'utf8' },
+      runCommand,
+    );
+    io.stdout.write(
+      `✅ Maestro already installed: ${(current.stdout ?? '').trim()}\n`,
+    );
     if (current.stderr) io.stderr.write(current.stderr);
     return 0;
   }
@@ -70,7 +78,13 @@ export function setupMaestro(argv = process.argv.slice(2), options = {}) {
   const installation = run(
     'bash',
     ['-s'],
-    { cwd, env, input: download.stdout ?? '', encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 },
+    {
+      cwd,
+      env,
+      input: download.stdout ?? '',
+      encoding: 'utf8',
+      maxBuffer: 10 * 1024 * 1024,
+    },
     runCommand,
   );
   printResult(installation, io);
@@ -86,8 +100,15 @@ export function setupMaestro(argv = process.argv.slice(2), options = {}) {
     return 1;
   }
 
-  const installed = run('maestro', ['--version'], { cwd, env, encoding: 'utf8' }, runCommand);
-  io.stdout.write(`✅ Maestro installed successfully: ${(installed.stdout ?? '').trim()}\n`);
+  const installed = run(
+    'maestro',
+    ['--version'],
+    { cwd, env, encoding: 'utf8' },
+    runCommand,
+  );
+  io.stdout.write(
+    `✅ Maestro installed successfully: ${(installed.stdout ?? '').trim()}\n`,
+  );
   if (installed.stderr) io.stderr.write(installed.stderr);
   return 0;
 }
@@ -101,6 +122,10 @@ export function main(argv = process.argv.slice(2), options = {}) {
   }
 }
 
-if (process.argv[1]?.replaceAll('\\', '/').endsWith('/.github/scripts/setup_maestro.mjs')) {
+if (
+  process.argv[1]
+    ?.replaceAll('\\', '/')
+    .endsWith('/.github/scripts/setup_maestro.mjs')
+) {
   process.exitCode = main();
 }

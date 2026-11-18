@@ -40,13 +40,26 @@ const TEMPLATE_ONLY = new Set([
   'credentials.json',
 ]);
 
+const TEMPLATE_SYNC_DIR = 'template-sync';
+const TEMPLATE_SYNC_MANIFEST = `${TEMPLATE_SYNC_DIR}/.template-sync-manifest.json`;
+const TEMPLATE_ONLY_TARGETS = new Set([
+  `${TEMPLATE_SYNC_DIR}/.env.example`,
+  `${TEMPLATE_SYNC_DIR}/LICENSE`,
+  `${TEMPLATE_SYNC_DIR}/scripts/postinstall.mjs`,
+  TEMPLATE_SYNC_MANIFEST,
+]);
+
 const SYNCED_ROOT_GUIDANCE_FILES = new Set(['AGENTS.md', 'CLAUDE.md']);
 
 const MANAGED_ROOTS = [
   'app',
+  'assets',
   'src',
   '__tests__',
   '__mocks__',
+  '.github',
+  '.husky',
+  '.maestro',
   'plugins',
   'public',
   'supabase',
@@ -86,6 +99,7 @@ const MANAGED_ROOT_FILES = new Set([
   'metro.config.js',
   'package-lock.json',
   'package.json',
+  'pnpm-lock.yaml',
   '_renovate.json',
   'tamagui.build.ts',
   'tamagui.config.ts',
@@ -112,7 +126,6 @@ const EXCLUDED_FILES = new Set(['.DS_Store', 'credentials.json']);
 
 const EXCLUDED_PREFIXES = [
   '.github/runner/',
-  'assets/',
   'docs/habit-tracker/',
   'docs/habit-tracker-plan.md',
   'docs/roadmap.md',
@@ -139,7 +152,8 @@ function parseArgs(argv) {
       key === '--source-branch'
     ) {
       const value = argv[i + 1];
-      if (!value || value.startsWith('--')) throw new Error(`Missing value for ${key}`);
+      if (!value || value.startsWith('--'))
+        throw new Error(`Missing value for ${key}`);
       const argName = {
         '--source-dir': 'sourceDir',
         '--target-dir': 'targetDir',
@@ -174,22 +188,31 @@ function inferSourceRepository(sourceRoot, override) {
   try {
     remote = runGit(sourceRoot, ['config', '--get', 'remote.origin.url']);
   } catch {
-    throw new Error('Could not infer the source repository. Pass --source-repository <owner/name>.');
+    throw new Error(
+      'Could not infer the source repository. Pass --source-repository <owner/name>.',
+    );
   }
   const match = remote.match(/github\.com[:/]([^/]+\/[^/]+?)(?:\.git)?\/?$/);
   if (!match) {
-    throw new Error(`Could not infer owner/name from source origin ${remote}. Pass --source-repository.`);
+    throw new Error(
+      `Could not infer owner/name from source origin ${remote}. Pass --source-repository.`,
+    );
   }
   return match[1];
 }
 
 function renderPullRequestDescription(sourceRoot, manifest, args) {
-  const sourceRepository = inferSourceRepository(sourceRoot, args.sourceRepository);
+  const sourceRepository = inferSourceRepository(
+    sourceRoot,
+    args.sourceRepository,
+  );
   let sourceBranch = args.sourceBranch;
   if (!sourceBranch) {
     sourceBranch = runGit(sourceRoot, ['branch', '--show-current']);
     if (!sourceBranch) {
-      throw new Error('The source checkout is detached. Pass --source-branch <branch>.');
+      throw new Error(
+        'The source checkout is detached. Pass --source-branch <branch>.',
+      );
     }
   }
 
@@ -199,10 +222,15 @@ function renderPullRequestDescription(sourceRoot, manifest, args) {
 
   if (previousSha) {
     try {
-      runGit(sourceRoot, ['merge-base', '--is-ancestor', previousSha, sourceSha]);
+      runGit(sourceRoot, [
+        'merge-base',
+        '--is-ancestor',
+        previousSha,
+        sourceSha,
+      ]);
     } catch {
       throw new Error(
-        `Last synced source commit ${previousSha} is not an ancestor of ${sourceRepository}@${sourceBranch}. Review the source history rewrite and update .template-sync-manifest.json.`,
+        `Last synced source commit ${previousSha} is not an ancestor of ${sourceRepository}@${sourceBranch}. Review the source history rewrite and update template-sync/.template-sync-manifest.json.`,
       );
     }
 
@@ -227,6 +255,8 @@ function renderPullRequestDescription(sourceRoot, manifest, args) {
   const description = [
     `Refresh the reusable app foundation from \`${sourceRepository}@${sourceSha}\`.`,
     '',
+    'This sync changes files only under template-sync/.',
+    '',
     'Source commits since the last sync of this source branch:',
     sourceCommits,
     '',
@@ -235,16 +265,30 @@ function renderPullRequestDescription(sourceRoot, manifest, args) {
     `Source branch: \`${sourceBranch}\``,
   ].join('\n');
 
-  return { sourceSha, previousSha, sourceRepository, sourceBranch, sourceCommits, description };
+  return {
+    sourceSha,
+    previousSha,
+    sourceRepository,
+    sourceBranch,
+    sourceCommits,
+    description,
+  };
 }
 
 async function confirmApply() {
   if (!process.stdin.isTTY) {
-    throw new Error('Confirmation requires a terminal. Use --yes for an automated run.');
+    throw new Error(
+      'Confirmation requires a terminal. Use --yes for an automated run.',
+    );
   }
-  const prompt = createInterface({ input: process.stdin, output: process.stdout });
+  const prompt = createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
   try {
-    const answer = await prompt.question('Apply this sync to the target directory? [y/N] ');
+    const answer = await prompt.question(
+      'Apply this sync to the target directory? [y/N] ',
+    );
     return /^y(?:es)?$/i.test(answer.trim());
   } finally {
     prompt.close();
@@ -255,7 +299,10 @@ function walkFiles(root, relative = '') {
   const directory = path.join(root, relative);
   return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     if (entry.isSymbolicLink()) return [];
-    const relativePath = path.posix.join(relative.split(path.sep).join('/'), entry.name);
+    const relativePath = path.posix.join(
+      relative.split(path.sep).join('/'),
+      entry.name,
+    );
     if (entry.isDirectory()) {
       if (EXCLUDED_DIRS.has(entry.name)) return [];
       return walkFiles(root, relativePath);
@@ -270,10 +317,11 @@ function shouldExclude(sourcePath) {
   if (['claude.md', 'LICENSE'].includes(sourcePath)) {
     return true;
   }
-  if (sourcePath.startsWith('assets/')) return true;
   if (sourcePath.startsWith('docs/habit-tracker/')) return true;
-  if (EXCLUDED_PREFIXES.some((prefix) => sourcePath.startsWith(prefix))) return true;
-  if (/^\.env\.(?!example$)/.test(basename) || /^\.env$/.test(basename)) return true;
+  if (EXCLUDED_PREFIXES.some((prefix) => sourcePath.startsWith(prefix)))
+    return true;
+  if (/^\.env\.(?!example$)/.test(basename) || /^\.env$/.test(basename))
+    return true;
   if (/\.(?:p12|p8|mobileprovision|keystore|jks)$/i.test(basename)) return true;
   return false;
 }
@@ -322,7 +370,10 @@ function transformDocumentation(content) {
     .replaceAll('HWJZHVS443', 'YOUR_APPLE_TEAM_ID')
     .replaceAll('betterhabits.com', 'yourdomain.com')
     .replaceAll('betterhabits', '{{APP_SLUG}}')
-    .replace(/^- \[Roadmap\]\(\.\/roadmap\.md\) - Current status and upcoming milestones\s*$/gm, '')
+    .replace(
+      /^- \[Roadmap\]\(\.\/roadmap\.md\) - Current status and upcoming milestones\s*$/gm,
+      '',
+    )
     .replace(
       'Stage 7 database work—and eventual habit UI',
       'future database work and product features',
@@ -352,14 +403,18 @@ function transformReadme(content) {
   content = transformDocumentation(content);
   return content.replace(
     '\n---\n',
-    '\n## Create a new app\n\nRun `npx create-expo-app my-app --template /path/to/expo-template` from the parent directory for your new app. Postinstall fills app identity placeholders and restores hidden configuration files. Run the development commands below inside the generated app.\n\nSee [the refresh guide](docs/template-refresh.md) for syncing this template from the source app.\n\n---\n',
+    '\n## Create a new app\n\nRun `npx create-expo-app my-app --template https://github.com/luvenapps/expo-template/tree/main/template-sync`. Postinstall fills app identity placeholders and restores hidden configuration files. Run the development commands below inside the generated app.\n\nSee the [template refresh guide](https://github.com/luvenapps/expo-template/blob/main/docs/template-refresh.md) to learn how the app payload is maintained.\n\n---\n',
   );
 }
 
 function transformContent(sourcePath, outputPath, content) {
   if (sourcePath === 'README.md') return transformReadme(content);
-  if (outputPath === 'app.config.ts') return transformAppConfig(content);
-  if (outputPath === 'src/config/domain.config.ts') return transformDomainConfig(content);
+  if (outputPath === `${TEMPLATE_SYNC_DIR}/app.config.ts`)
+    return transformAppConfig(content);
+  if (outputPath === `${TEMPLATE_SYNC_DIR}/src/config/domain.config.ts`)
+    return transformDomainConfig(content);
+  if (sourcePath === 'pnpm-lock.yaml')
+    return content.replace(/^name:.*$/m, 'name: template-starter');
   if (sourcePath === 'package.json' || sourcePath === 'package-lock.json') {
     return transformPackage(sourcePath, content);
   }
@@ -376,7 +431,10 @@ function transformContent(sourcePath, outputPath, content) {
       )
       .replaceAll("'betterhabits (Preview)'", "'__APP_NAME__ (Preview)'")
       .replaceAll("'betterhabits'", "'__APP_NAME__'")
-      .replaceAll("config.slug).toBe('__APP_NAME__')", "config.slug).toBe('__APP_SLUG__')");
+      .replaceAll(
+        "config.slug).toBe('__APP_NAME__')",
+        "config.slug).toBe('__APP_SLUG__')",
+      );
   }
   if (sourcePath === '__tests__/app/(tabs)/settings/terms.test.tsx') {
     content = content.replace(
@@ -385,7 +443,10 @@ function transformContent(sourcePath, outputPath, content) {
     );
   }
   if (sourcePath === '__tests__/config/tamagui-build.test.ts') {
-    content = content.replaceAll('betterhabits-metro-test', 'template-metro-test');
+    content = content.replaceAll(
+      'betterhabits-metro-test',
+      'template-metro-test',
+    );
   }
   if (/^\.(?:github|husky|maestro)\//.test(sourcePath)) {
     content = content.replaceAll('com.luvenapps.betterhabits', '__APP_ID__');
@@ -403,7 +464,10 @@ function transformContent(sourcePath, outputPath, content) {
     content = content.replaceAll('Better Habits', 'App');
   }
   if (sourcePath === 'scripts/setup-local-deps.sh') {
-    content = content.replaceAll('betterhabits setup:local', 'template setup:local');
+    content = content.replaceAll(
+      'betterhabits setup:local',
+      'template setup:local',
+    );
   }
   if (sourcePath === 'docs/GITHUBACTIONS.md') {
     content = content.replace(
@@ -440,6 +504,7 @@ function transformPackage(sourcePath, content) {
 }
 
 function outputPaths(sourcePath) {
+  const prefix = (relativePath) => `${TEMPLATE_SYNC_DIR}/${relativePath}`;
   const mappings = new Map([
     ['.github', ['_github']],
     ['.husky', ['_husky']],
@@ -447,7 +512,9 @@ function outputPaths(sourcePath) {
   ]);
   for (const [sourceRoot, targetRoots] of mappings) {
     if (sourcePath === sourceRoot || sourcePath.startsWith(`${sourceRoot}/`)) {
-      return targetRoots.map((root) => sourcePath.replace(sourceRoot, root));
+      return targetRoots.map((root) =>
+        prefix(sourcePath.replace(sourceRoot, root)),
+      );
     }
   }
   const hiddenFileMappings = new Map([
@@ -459,24 +526,39 @@ function outputPaths(sourcePath) {
     ['.prettierignore', ['_prettierignore']],
     ['.prettierrc.json', ['_prettierrc.json']],
   ]);
-  return hiddenFileMappings.get(sourcePath) ?? [sourcePath];
+  return (hiddenFileMappings.get(sourcePath) ?? [sourcePath]).map(prefix);
 }
 
 function isManagedPath(relativePath) {
-  if (MANAGED_ROOT_FILES.has(relativePath)) return true;
-  return MANAGED_ROOTS.some((root) => relativePath === root || relativePath.startsWith(`${root}/`));
+  return (
+    relativePath === TEMPLATE_SYNC_DIR ||
+    relativePath.startsWith(`${TEMPLATE_SYNC_DIR}/`)
+  );
 }
 
 function isManagedSourcePath(sourcePath) {
   if (SYNCED_ROOT_GUIDANCE_FILES.has(sourcePath)) return true;
-  return outputPaths(sourcePath).some(isManagedPath);
+  const sourceName = path.posix.basename(sourcePath);
+  if (
+    MANAGED_ROOT_FILES.has(sourcePath) ||
+    MANAGED_ROOT_FILES.has(sourceName) ||
+    outputPaths(sourcePath).some((outputPath) =>
+      MANAGED_ROOT_FILES.has(path.posix.basename(outputPath)),
+    )
+  ) {
+    return true;
+  }
+  return MANAGED_ROOTS.some(
+    (root) => sourcePath === root || sourcePath.startsWith(`${root}/`),
+  );
 }
 
 function removePath(targetPath) {
   if (!fs.existsSync(targetPath)) return;
   const stat = fs.lstatSync(targetPath);
   if (stat.isDirectory()) {
-    for (const child of fs.readdirSync(targetPath)) removePath(path.join(targetPath, child));
+    for (const child of fs.readdirSync(targetPath))
+      removePath(path.join(targetPath, child));
     fs.rmdirSync(targetPath);
   } else {
     fs.unlinkSync(targetPath);
@@ -485,20 +567,33 @@ function removePath(targetPath) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  const sourceCheckout = path.resolve(args.sourceDir);
-  const targetRoot = path.resolve(args.targetDir);
-  if (!fs.statSync(sourceCheckout).isDirectory() || !fs.statSync(targetRoot).isDirectory()) {
+  const sourceCheckout = fs.realpathSync(path.resolve(args.sourceDir));
+  const targetRoot = fs.realpathSync(path.resolve(args.targetDir));
+  if (
+    !fs.statSync(sourceCheckout).isDirectory() ||
+    !fs.statSync(targetRoot).isDirectory()
+  ) {
     throw new Error('Both source and target must be existing directories.');
   }
-  args.sourceRepository = inferSourceRepository(sourceCheckout, args.sourceRepository);
+  args.sourceRepository = inferSourceRepository(
+    sourceCheckout,
+    args.sourceRepository,
+  );
   args.sourceBranch ??= 'main';
 
   // Fetch explicitly: the local checkout's HEAD and working files are never the source.
-  console.log(`Fetching ${args.sourceRepository}@${args.sourceBranch} from origin...`);
+  console.log(
+    `Fetching ${args.sourceRepository}@${args.sourceBranch} from origin...`,
+  );
   runGit(sourceCheckout, ['fetch', 'origin', args.sourceBranch]);
-  const sourceSha = runGit(sourceCheckout, ['rev-parse', 'FETCH_HEAD^{commit}']);
+  const sourceSha = runGit(sourceCheckout, [
+    'rev-parse',
+    'FETCH_HEAD^{commit}',
+  ]);
   console.log(`Fetched source commit: ${sourceSha}`);
-  const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'template-sync-source-'));
+  const temporaryDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'template-sync-source-'),
+  );
   const sourceRoot = path.join(temporaryDirectory, 'checkout');
   let attached = false;
   const cleanup = () => {
@@ -513,15 +608,29 @@ async function main() {
     console.log('Source cleanup complete.');
   };
   const interrupt = () => {
-    console.log('Sync interrupted. Cleaning up the temporary source worktree...');
-    try { cleanup(); } catch (error) { console.error(`Source worktree cleanup failed: ${error.message}`); }
+    console.log(
+      'Sync interrupted. Cleaning up the temporary source worktree...',
+    );
+    try {
+      cleanup();
+    } catch (error) {
+      console.error(`Source worktree cleanup failed: ${error.message}`);
+    }
     process.exit(130);
   };
   process.once('SIGINT', interrupt);
   process.once('SIGTERM', interrupt);
   try {
-    console.log(`Creating detached source worktree at ${sourceSha}: ${sourceRoot}`);
-    runGit(sourceCheckout, ['worktree', 'add', '--detach', sourceRoot, sourceSha]);
+    console.log(
+      `Creating detached source worktree at ${sourceSha}: ${sourceRoot}`,
+    );
+    runGit(sourceCheckout, [
+      'worktree',
+      'add',
+      '--detach',
+      sourceRoot,
+      sourceSha,
+    ]);
     attached = true;
     console.log('Temporary source worktree ready.');
     await syncSnapshot(args, sourceRoot, targetRoot, sourceCheckout);
@@ -535,15 +644,26 @@ async function main() {
 async function syncSnapshot(args, sourceRoot, targetRoot, sourceCheckout) {
   console.log(`Checking target checkout: ${targetRoot}`);
   if (runGit(targetRoot, ['rev-parse', '--show-toplevel']) !== targetRoot) {
-    throw new Error('The target must be the root of the expo-template Git checkout.');
+    throw new Error(
+      'The target must be the root of the expo-template Git checkout.',
+    );
   }
-  const sourceRelative = path.relative(targetRoot, sourceCheckout).split(path.sep).join('/');
+  const sourceRelative = path
+    .relative(targetRoot, sourceCheckout)
+    .split(path.sep)
+    .join('/');
   const targetPaths = ['.'];
-  if (sourceRelative && !sourceRelative.startsWith('../') && !path.isAbsolute(sourceRelative)) {
+  if (
+    sourceRelative &&
+    !sourceRelative.startsWith('../') &&
+    !path.isAbsolute(sourceRelative)
+  ) {
     targetPaths.push(`:(exclude)${sourceRelative}`);
   }
   if (runGit(sourceRoot, ['status', '--porcelain', '--untracked-files=no'])) {
-    throw new Error('Commit tracked source changes before syncing so the source SHA describes the files.');
+    throw new Error(
+      'Commit tracked source changes before syncing so the source SHA describes the files.',
+    );
   }
 
   // Preview and apply both use the same freshly fetched destination main.
@@ -551,37 +671,58 @@ async function syncSnapshot(args, sourceRoot, targetRoot, sourceCheckout) {
   runGit(targetRoot, ['fetch', 'origin', 'main']);
   const baseSha = runGit(targetRoot, ['rev-parse', 'FETCH_HEAD']);
   console.log(`Fetched template main: ${baseSha}`);
-  console.log('Reading committed template files and the source sync baseline...');
-  const trackedTarget = runGit(targetRoot, ['ls-tree', '-r', '--name-only', baseSha])
-    .split('\n').filter(Boolean);
-  const manifest = trackedTarget.includes('.template-sync-manifest.json')
-    ? JSON.parse(runGit(targetRoot, ['show', `${baseSha}:.template-sync-manifest.json`]))
+  console.log(
+    'Reading committed template files and the source sync baseline...',
+  );
+  const trackedTarget = runGit(targetRoot, [
+    'ls-tree',
+    '-r',
+    '--name-only',
+    baseSha,
+  ])
+    .split('\n')
+    .filter(Boolean);
+  const manifest = trackedTarget.includes(TEMPLATE_SYNC_MANIFEST)
+    ? JSON.parse(
+        runGit(targetRoot, ['show', `${baseSha}:${TEMPLATE_SYNC_MANIFEST}`]),
+      )
     : { sources: {} };
   const summary = renderPullRequestDescription(sourceRoot, manifest, args);
   if (summary.previousSha === summary.sourceSha) {
-    console.log(`Nothing to update. ${summary.sourceRepository}@${summary.sourceBranch} is already synced at ${summary.sourceSha}.`);
+    console.log(
+      `Nothing to update. ${summary.sourceRepository}@${summary.sourceBranch} is already synced at ${summary.sourceSha}.`,
+    );
     return;
   }
 
-  console.log('Selecting tracked source files and applying template transformations...');
+  console.log(
+    'Selecting tracked source files and applying template transformations...',
+  );
   const desired = new Map();
-  for (const sourcePath of runGit(sourceRoot, ['ls-files', '-z']).split('\0').filter(Boolean)) {
+  for (const sourcePath of runGit(sourceRoot, ['ls-files', '-z'])
+    .split('\0')
+    .filter(Boolean)) {
     if (
       !isManagedSourcePath(sourcePath) ||
       shouldExclude(sourcePath) ||
-      (TEMPLATE_ONLY.has(sourcePath) && !SYNCED_ROOT_GUIDANCE_FILES.has(sourcePath))
+      (TEMPLATE_ONLY.has(sourcePath) &&
+        !SYNCED_ROOT_GUIDANCE_FILES.has(sourcePath))
     ) {
       continue;
     }
     const sourceFile = path.join(sourceRoot, sourcePath);
-    if (!fs.existsSync(sourceFile) || fs.lstatSync(sourceFile).isSymbolicLink()) continue;
+    if (!fs.existsSync(sourceFile) || fs.lstatSync(sourceFile).isSymbolicLink())
+      continue;
     let content = fs.readFileSync(sourceFile);
     const text = content.toString('utf8');
     const isText = !text.includes('\u0000');
     for (const outputPath of outputPaths(sourcePath)) {
-      if (TEMPLATE_ONLY.has(outputPath)) continue;
+      if (TEMPLATE_ONLY_TARGETS.has(outputPath)) continue;
       let outputContent = content;
-      if (isText) outputContent = Buffer.from(transformContent(sourcePath, outputPath, text));
+      if (isText)
+        outputContent = Buffer.from(
+          transformContent(sourcePath, outputPath, text),
+        );
       if (isText && sourcePath === 'scripts/troubleshoot.mjs') {
         const content = outputContent
           .toString('utf8')
@@ -603,27 +744,41 @@ async function syncSnapshot(args, sourceRoot, targetRoot, sourceCheckout) {
   console.log(`Comparing ${desired.size} selected files with template main...`);
   // Compare committed destination files only; ignored local artifacts are not managed.
   const stale = trackedTarget.filter(
-    (relativePath) => isManagedPath(relativePath) && !desired.has(relativePath) && !TEMPLATE_ONLY.has(relativePath),
+    (relativePath) =>
+      isManagedPath(relativePath) &&
+      !desired.has(relativePath) &&
+      !TEMPLATE_ONLY_TARGETS.has(relativePath),
   );
   const updates = [];
   for (const [relativePath, file] of desired) {
     let current = null;
     let mode = null;
     if (trackedTarget.includes(relativePath)) {
-      current = execFileSync('git', ['-C', targetRoot, 'show', `${baseSha}:${relativePath}`], {
-        maxBuffer: 64 * 1024 * 1024,
-      });
-      mode = runGit(targetRoot, ['ls-tree', baseSha, '--', relativePath]).split(' ')[0];
+      current = execFileSync(
+        'git',
+        ['-C', targetRoot, 'show', `${baseSha}:${relativePath}`],
+        {
+          maxBuffer: 64 * 1024 * 1024,
+        },
+      );
+      mode = runGit(targetRoot, ['ls-tree', baseSha, '--', relativePath]).split(
+        ' ',
+      )[0];
     }
     const desiredMode = file.mode & 0o111 ? '100755' : '100644';
-    if (!current || !current.equals(file.content) || mode !== desiredMode) updates.push(relativePath);
+    if (!current || !current.equals(file.content) || mode !== desiredMode)
+      updates.push(relativePath);
   }
   if (!updates.length && !stale.length) {
-    console.log('Nothing to update. New source commits do not change the managed template files.');
+    console.log(
+      'Nothing to update. New source commits do not change the managed template files.',
+    );
     return;
   }
 
-  console.log(`Source: ${summary.sourceRepository}@${summary.sourceBranch} (${summary.sourceSha})`);
+  console.log(
+    `Source: ${summary.sourceRepository}@${summary.sourceBranch} (${summary.sourceSha})`,
+  );
   console.log(`Target: origin/main (${baseSha})`);
   console.log(`Files to update: ${updates.length}`);
   for (const relativePath of updates) console.log(`  update ${relativePath}`);
@@ -635,12 +790,19 @@ async function syncSnapshot(args, sourceRoot, targetRoot, sourceCheckout) {
   console.log(`\nPR title: ${title}\n\nPR description preview:\n`);
   console.log(summary.description);
   if (args.dryRun) {
-    console.log('\nDry run complete. No target files were changed; no branch or PR was created.');
+    console.log(
+      '\nDry run complete. No target files were changed; no branch or PR was created.',
+    );
     return;
   }
   console.log('Checking that the target is clean before applying...');
-  if (!args.dryRun && runGit(targetRoot, ['status', '--porcelain', '--', ...targetPaths])) {
-    throw new Error('The target has uncommitted changes. Commit them before creating a sync branch.');
+  if (
+    !args.dryRun &&
+    runGit(targetRoot, ['status', '--porcelain', '--', ...targetPaths])
+  ) {
+    throw new Error(
+      'The target has uncommitted changes. Commit them before creating a sync branch.',
+    );
   }
   if (args.yes) console.log('Confirmation supplied with --yes.');
   if (!args.yes && !(await confirmApply())) {
@@ -649,19 +811,30 @@ async function syncSnapshot(args, sourceRoot, targetRoot, sourceCheckout) {
   }
 
   console.log('Rechecking source and target after preview...');
-  if (runGit(sourceRoot, ['rev-parse', 'HEAD']) !== summary.sourceSha ||
-      runGit(sourceRoot, ['status', '--porcelain', '--untracked-files=no'])) {
+  if (
+    runGit(sourceRoot, ['rev-parse', 'HEAD']) !== summary.sourceSha ||
+    runGit(sourceRoot, ['status', '--porcelain', '--untracked-files=no'])
+  ) {
     throw new Error('The source changed during review. Run the sync again.');
   }
 
   if (runGit(targetRoot, ['status', '--porcelain', '--', ...targetPaths])) {
-    throw new Error('The target changed during review. Commit the changes and run the sync again.');
+    throw new Error(
+      'The target changed during review. Commit the changes and run the sync again.',
+    );
   }
 
   // Verify publishing prerequisites before changing the target checkout.
   console.log('Checking GitHub CLI authentication...');
-  execFileSync('gh', ['auth', 'status'], { cwd: targetRoot, stdio: ['ignore', 'pipe', 'pipe'] });
-  const timestamp = new Date().toISOString().replace(/[-:]/g, '').replace('T', '-').replace(/\.\d{3}Z$/, 'Z');
+  execFileSync('gh', ['auth', 'status'], {
+    cwd: targetRoot,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  const timestamp = new Date()
+    .toISOString()
+    .replace(/[-:]/g, '')
+    .replace('T', '-')
+    .replace(/\.\d{3}Z$/, 'Z');
   const branch = `automation/template-source-sync-${timestamp}`;
   console.log(`Creating and switching to branch ${branch} from ${baseSha}...`);
   runGit(targetRoot, ['switch', '-c', branch, baseSha]);
@@ -677,13 +850,26 @@ async function syncSnapshot(args, sourceRoot, targetRoot, sourceCheckout) {
     fs.writeFileSync(targetFile, file.content, { mode: file.mode || 0o644 });
     fs.chmodSync(targetFile, file.mode || 0o644);
   }
-  console.log(`Recording synced source SHA ${summary.sourceSha} in .template-sync-manifest.json...`);
+  console.log(
+    `Recording synced source SHA ${summary.sourceSha} in ${TEMPLATE_SYNC_MANIFEST}...`,
+  );
   manifest.sources ??= {};
   manifest.sources[summary.sourceRepository] ??= {};
-  manifest.sources[summary.sourceRepository][summary.sourceBranch] = summary.sourceSha;
-  fs.writeFileSync(path.join(targetRoot, '.template-sync-manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+  manifest.sources[summary.sourceRepository][summary.sourceBranch] =
+    summary.sourceSha;
+  fs.writeFileSync(
+    path.join(targetRoot, TEMPLATE_SYNC_MANIFEST),
+    `${JSON.stringify(manifest, null, 2)}\n`,
+  );
   console.log('Staging the planned changes and source sync manifest...');
-  runGit(targetRoot, ['add', '-A', '--', ...updates, ...stale, '.template-sync-manifest.json']);
+  runGit(targetRoot, [
+    'add',
+    '-A',
+    '--',
+    ...updates,
+    ...stale,
+    TEMPLATE_SYNC_MANIFEST,
+  ]);
   console.log(`Committing: ${commitMessage}`);
   runGit(targetRoot, ['commit', '-m', commitMessage]);
   console.log(`Created commit: ${runGit(targetRoot, ['rev-parse', 'HEAD'])}`);
@@ -698,17 +884,35 @@ async function syncSnapshot(args, sourceRoot, targetRoot, sourceCheckout) {
   console.log(`Pushing branch: ${branch}`);
   runGit(targetRoot, ['push', '-u', 'origin', branch]);
   console.log('Branch pushed.');
-  const bodyDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'template-sync-pr-'));
+  const bodyDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'template-sync-pr-'),
+  );
   try {
     const bodyFile = path.join(bodyDirectory, 'body.md');
     console.log(`Writing temporary PR description: ${bodyFile}`);
     fs.writeFileSync(bodyFile, summary.description);
     console.log(`Opening PR from ${branch} to main...`);
-    const url = execFileSync('gh', ['pr', 'create', '--base', 'main', '--head', branch,
-      '--title', title, '--body-file', bodyFile], { cwd: targetRoot, encoding: 'utf8' }).trim();
+    const url = execFileSync(
+      'gh',
+      [
+        'pr',
+        'create',
+        '--base',
+        'main',
+        '--head',
+        branch,
+        '--title',
+        title,
+        '--body-file',
+        bodyFile,
+      ],
+      { cwd: targetRoot, encoding: 'utf8' },
+    ).trim();
     console.log(`\nCreated ${url}`);
   } finally {
-    console.log(`Deleting temporary PR description directory: ${bodyDirectory}`);
+    console.log(
+      `Deleting temporary PR description directory: ${bodyDirectory}`,
+    );
     fs.rmSync(bodyDirectory, { recursive: true, force: true });
     console.log('Temporary PR description removed.');
   }
