@@ -49,10 +49,10 @@ export function packageManagerCommand(manager, operation, args = []) {
   if (operation === 'run') {
     const [script, ...scriptArgs] = args;
     if (!script) throw new Error('Provide an app script name after "run".');
-    const separator = scriptArgs.length ? ['--', ...scriptArgs] : [];
+    const npmSeparator = scriptArgs.length ? ['--'] : [];
     return manager === 'npm'
-      ? ['npm', ['run', script, ...separator]]
-      : ['pnpm', ['run', script, ...separator]];
+      ? ['npm', ['run', script, ...npmSeparator, ...scriptArgs]]
+      : ['pnpm', ['run', script, ...scriptArgs]];
   }
 
   if (operation === 'exec') {

@@ -154,7 +154,7 @@ describe('generated app package manager', () => {
     expect(fs.readFileSync(path.join(root, 'pnpm.log'), 'utf8')).toBe(
       [
         'install --frozen-lockfile --prefer-offline --reporter=append-only',
-        'run test -- --coverage',
+        'run test --coverage',
         'exec expo install --check',
         'dlx @expo/repack-app --platform ios',
         '',
