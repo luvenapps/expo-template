@@ -231,7 +231,8 @@ jobs:
 
           for attempt in $(seq 1 "$ATTEMPTS"); do
             echo "🏗️ Build attempt $attempt/$ATTEMPTS"
-            if eas build --platform android --profile e2eRelease --local --non-interactive; then
+            if EAS_NO_VCS=1 EAS_PROJECT_ROOT="$PWD" \
+              eas build --platform android --profile e2eRelease --local --non-interactive; then
               echo "✅ Build succeeded"
               exit 0
             fi
