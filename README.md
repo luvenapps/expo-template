@@ -18,7 +18,6 @@ The repository root contains expo-template's own CI, sync tooling, and configura
 ```text
 expo-template/
 ├── .github/                      # Repository workflows and CI scripts
-├── .vscode/                      # Repository editor settings
 ├── __tests__/
 │   └── scripts/                  # Tests for repository CI helpers
 ├── docs/
