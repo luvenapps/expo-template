@@ -23,15 +23,6 @@ function versionFrom(output) {
   );
 }
 
-function executableExists(file) {
-  try {
-    accessSync(file, constants.X_OK);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 function run(command, args, options, runCommand) {
   return runCommand(command, args, options);
 }
@@ -72,7 +63,6 @@ export async function ensureFastlane(
   }
 
   const BIN_DIR = `${(rubyResult.stdout ?? '').replace(/\r?\n+$/, '')}/bin`;
-  const FASTLANE_BIN = path.join(BIN_DIR, 'fastlane');
   const PATH = env.PATH ?? '';
   if (!PATH.split(path.delimiter).includes(BIN_DIR))
     env.PATH = `${BIN_DIR}:${PATH}`;
@@ -121,13 +111,13 @@ export async function ensureFastlane(
 
   await sleep(1000);
 
-  if (!executableExists(FASTLANE_BIN)) {
-    io.stderr.write(`❌ Fastlane not found at ${FASTLANE_BIN}\n`);
+  if (!commandExists('fastlane', env)) {
+    io.stderr.write('❌ Fastlane not found in PATH\n');
     return 1;
   }
 
   const actual = run(
-    FASTLANE_BIN,
+    'fastlane',
     ['--version'],
     { cwd, env, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 },
     runCommand,

@@ -73,4 +73,31 @@ describe('Fastlane setup script', () => {
       path.join(gemHome, 'bin') + newline,
     );
   });
+
+  test('accepts a matching Fastlane already on PATH outside the user gem bin', () => {
+    const githubPath = path.join(root, 'github-path');
+    writeExecutable(
+      path.join(bin, 'fastlane'),
+      "#!/bin/sh\nprintf '%s\\n' 'RubyGems 4.0.0' 'fastlane 2.228.0'\n",
+    );
+
+    const result = spawnSync(process.execPath, [helper, '2.228.0'], {
+      cwd: process.cwd(),
+      env: {
+        ...process.env,
+        PATH: bin + path.delimiter + '/usr/bin:/bin',
+        FASTLANE_GEM_HOME: gemHome,
+        GITHUB_PATH: githubPath,
+      },
+      encoding: 'utf8',
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('fastlane 2.228.0 already installed');
+    expect(result.stdout).toContain(
+      'Fastlane 2.228.0 successfully installed and verified',
+    );
+    expect(result.stderr).toBe('');
+    expect(fs.existsSync(path.join(gemHome, 'bin', 'fastlane'))).toBe(false);
+  });
 });
