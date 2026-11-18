@@ -16,7 +16,20 @@ function commandExists(command, env) {
 }
 
 function versionFrom(output) {
-  return output.match(/\b[0-9]+\.[0-9]+\.[0-9]+\b/)?.[0] ?? '';
+  return (
+    output.match(
+      /\bfastlane(?:\s+version)?\s+v?([0-9]+\.[0-9]+\.[0-9]+)\b/i,
+    )?.[1] ?? ''
+  );
+}
+
+function executableExists(file) {
+  try {
+    accessSync(file, constants.X_OK);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function run(command, args, options, runCommand) {
@@ -59,6 +72,7 @@ export async function ensureFastlane(
   }
 
   const BIN_DIR = `${(rubyResult.stdout ?? '').replace(/\r?\n+$/, '')}/bin`;
+  const FASTLANE_BIN = path.join(BIN_DIR, 'fastlane');
   const PATH = env.PATH ?? '';
   if (!PATH.split(path.delimiter).includes(BIN_DIR))
     env.PATH = `${BIN_DIR}:${PATH}`;
@@ -107,13 +121,13 @@ export async function ensureFastlane(
 
   await sleep(1000);
 
-  if (!commandExists('fastlane', env)) {
-    io.stderr.write('❌ Fastlane not found in PATH\n');
+  if (!executableExists(FASTLANE_BIN)) {
+    io.stderr.write(`❌ Fastlane not found at ${FASTLANE_BIN}\n`);
     return 1;
   }
 
   const actual = run(
-    'fastlane',
+    FASTLANE_BIN,
     ['--version'],
     { cwd, env, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 },
     runCommand,

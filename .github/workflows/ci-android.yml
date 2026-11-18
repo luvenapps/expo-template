@@ -216,6 +216,10 @@ jobs:
         shell: bash
         run: npm install --global "eas-cli@$EAS_CLI_VERSION" --prefer-online --no-audit --no-fund
 
+      - name: Copy local Android credentials
+        if: steps.apk-cache.outputs.cache-hit != 'true'
+        run: cp "$GITHUB_WORKSPACE/credentials.json" credentials.json
+
       - name: Build e2erelease APK
         if: steps.apk-cache.outputs.cache-hit != 'true'
         env:
