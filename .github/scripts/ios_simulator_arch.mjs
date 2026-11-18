@@ -8,7 +8,8 @@ const requireFromApp = createRequire(resolve(appRoot, 'package.json'));
 const xcode = requireFromApp('xcode');
 
 const projects = globSync('ios/*.xcodeproj/project.pbxproj');
-if (projects.length === 0) throw new Error('No generated iOS app project found');
+if (projects.length === 0)
+  throw new Error('No generated iOS app project found');
 projects.push('ios/Pods/Pods.xcodeproj/project.pbxproj');
 
 for (const file of projects) {

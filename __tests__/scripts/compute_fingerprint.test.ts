@@ -1,13 +1,18 @@
 /** @jest-environment node */
 import { createHash } from 'node:crypto';
+import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { scripts, useCiScriptTestContext } from '../helpers/ciScriptTestContext';
+import {
+  scripts,
+  useCiScriptTestContext,
+} from '../helpers/ciScriptTestContext';
 
 describe('compute_fingerprint', () => {
   const context = useCiScriptTestContext();
   const script = join(scripts, 'compute_fingerprint.mjs');
 
   beforeEach(() => {
+    writeFileSync(join(context.root, 'package-lock.json'), '{}');
     context.mockCommand(
       'npx',
       `echo "$*" >> fingerprint-commands.log
@@ -24,10 +29,12 @@ printf '{"hash":"%s"}\\n' "\${MOCK_FINGERPRINT:-native-one}"`,
     });
 
     expect(result.status).toBe(0);
-    expect(result.stdout).toBe('key=ios-luvenapps_expo-template-app-native-one-false-\n');
+    expect(result.stdout).toBe(
+      'key=ios-luvenapps_expo-template-app-native-one-false-\n',
+    );
     expect(result.stderr).toContain('IOS_FINGERPRINT=native-one');
     expect(context.read('fingerprint-commands.log')).toBe(
-      '@expo/fingerprint fingerprint:generate --platform ios',
+      '--yes @expo/fingerprint fingerprint:generate --platform ios',
     );
   });
 
@@ -38,12 +45,19 @@ printf '{"hash":"%s"}\\n' "\${MOCK_FINGERPRINT:-native-one}"`,
     });
 
     expect(result.status).toBe(0);
-    expect(result.stdout).toBe('key=android-luvenapps_expo-template-apk-native-one-false-\n');
-    expect(context.read('fingerprint-commands.log')).toContain('--platform android');
+    expect(result.stdout).toBe(
+      'key=android-luvenapps_expo-template-apk-native-one-false-\n',
+    );
+    expect(context.read('fingerprint-commands.log')).toContain(
+      '--platform android',
+    );
   });
 
   test('hashes only the current platform Firebase credential when Firebase is enabled', () => {
-    const iosCredentialHash = createHash('sha256').update('ios-config').digest('hex').slice(0, 8);
+    const iosCredentialHash = createHash('sha256')
+      .update('ios-config')
+      .digest('hex')
+      .slice(0, 8);
     const ios = context.run([process.execPath, script, 'ios'], {
       GITHUB_REPOSITORY: 'luvenapps/expo-template',
       EXPO_PUBLIC_TURN_ON_FIREBASE: 'true',
@@ -100,7 +114,9 @@ printf '{"hash":"%s"}\\n' "\${MOCK_FINGERPRINT:-native-one}"`,
     });
 
     expect(unsupported.status).not.toBe(0);
-    expect(missingCredential.stderr).toContain('GOOGLE_SERVICE_INFO_PLIST_B64 is required');
+    expect(missingCredential.stderr).toContain(
+      'GOOGLE_SERVICE_INFO_PLIST_B64 is required',
+    );
     expect(invalidFingerprint.stderr).toContain('did not return valid JSON');
     expect(failedFingerprint.stderr).toContain('fingerprint failed');
   });

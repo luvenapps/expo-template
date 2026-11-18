@@ -3,7 +3,10 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
-const scriptPath = path.resolve(process.cwd(), 'scripts/sync-template-source.mjs');
+const scriptPath = path.resolve(
+  process.cwd(),
+  'scripts/sync-template-source.mjs',
+);
 
 const templateCiFiles = [
   '__tests__/helpers/ciScriptTestContext.ts',
@@ -31,7 +34,9 @@ describe('sync-template-source', () => {
   let remote: string;
 
   function git(directory: string, ...args: string[]) {
-    const result = spawnSync('git', ['-C', directory, ...args], { encoding: 'utf8' });
+    const result = spawnSync('git', ['-C', directory, ...args], {
+      encoding: 'utf8',
+    });
     if (result.status !== 0) throw new Error(result.stderr);
     return result.stdout.trim();
   }
@@ -46,7 +51,10 @@ describe('sync-template-source', () => {
     writeFile(
       source,
       'package.json',
-      JSON.stringify({ name: 'betterhabits', scripts: { postinstall: 'source setup' } }),
+      JSON.stringify({
+        name: 'betterhabits',
+        scripts: { postinstall: 'source setup' },
+      }),
     );
     writeFile(
       source,
@@ -56,6 +64,17 @@ describe('sync-template-source', () => {
         lockfileVersion: 3,
         packages: { '': { name: 'betterhabits' } },
       }),
+    );
+    writeFile(source, 'commitlint.config.js', 'source app commitlint\n');
+    writeFile(source, 'drizzle.config.postgres.ts', 'source postgres config\n');
+    writeFile(source, 'drizzle.config.sqlite.ts', 'source sqlite config\n');
+    writeFile(source, 'tamagui.build.ts', 'source Tamagui build config\n');
+    writeFile(source, 'index.js', 'source app entry\n');
+    writeFile(source, 'credentials.json', 'source credential data\n');
+    fs.mkdirSync(path.join(source, 'assets'), { recursive: true });
+    fs.writeFileSync(
+      path.join(source, 'assets/icon.png'),
+      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x00, 0x01]),
     );
     writeFile(
       source,
@@ -83,10 +102,22 @@ describe('sync-template-source', () => {
       ].join('\n'),
     );
     writeFile(source, '.github/workflows/ci.yml', 'name: CI\n');
-    writeFile(source, '.github/workflows/template-sync.yml', 'source version\n');
-    writeFile(source, '.github/runner/register-runner.sh', 'credential setup\n');
+    writeFile(
+      source,
+      '.github/workflows/template-sync.yml',
+      'source version\n',
+    );
+    writeFile(
+      source,
+      '.github/runner/register-runner.sh',
+      'credential setup\n',
+    );
     writeFile(source, '.husky/pre-commit', 'npm run lint\n');
-    writeFile(source, '.maestro/flows/smoke.yaml', 'appId: com.luvenapps.betterhabits\n');
+    writeFile(
+      source,
+      '.maestro/flows/smoke.yaml',
+      'appId: com.luvenapps.betterhabits\n',
+    );
     writeFile(source, '.gitignore', 'node_modules\n');
     writeFile(source, 'renovate.json', '{"extends":["config:recommended"]}\n');
     writeFile(
@@ -106,14 +137,22 @@ describe('sync-template-source', () => {
         '}',
       ].join('\n'),
     );
-    writeFile(source, 'README.md', 'Source README\n');
+    writeFile(source, 'README.md', 'Source README\n\n---\n');
     writeFile(source, 'scripts/postinstall.mjs', 'source bootstrap\n');
     writeFile(source, 'scripts/postinstall.js', 'legacy source bootstrap\n');
     writeFile(source, 'AGENTS.md', 'Source instructions\n');
     writeFile(source, 'CLAUDE.md', '@AGENTS.md\n');
     writeFile(source, '.env.local', 'SECRET=value\n');
-    writeFile(source, '__tests__/scripts/sync-template-source.test.ts', 'source version\n');
-    writeFile(source, '__tests__/scripts/sync-template-source.test.js', 'legacy source test\n');
+    writeFile(
+      source,
+      '__tests__/scripts/sync-template-source.test.ts',
+      'source version\n',
+    );
+    writeFile(
+      source,
+      '__tests__/scripts/sync-template-source.test.js',
+      'legacy source test\n',
+    );
     writeFile(source, 'docs/roadmap.md', 'Product roadmap\n');
     writeFile(
       source,
@@ -156,19 +195,61 @@ describe('sync-template-source', () => {
       if (index % 2 === 0) writeFile(source, file, 'source replacement\n');
     });
 
-    writeFile(target, 'README.md', 'Template README\n');
-    writeFile(target, 'renovate.json', '{"enabledManagers":["github-actions"]}\n');
+    writeFile(target, 'README.md', 'Template repository README\n');
+    writeFile(target, 'package.json', '{"name":"expo-template-tools"}\n');
+    writeFile(target, 'package-lock.json', '{"name":"expo-template-tools"}\n');
+    writeFile(target, 'commitlint.config.js', 'root commitlint\n');
+    writeFile(target, 'LICENSE', 'Root repository license\n');
+    writeFile(target, 'credentials.json', 'root credential data\n');
+    writeFile(
+      target,
+      'renovate.json',
+      '{"enabledManagers":["github-actions"]}\n',
+    );
     writeFile(target, 'AGENTS.md', 'Template instructions\n');
     writeFile(target, 'CLAUDE.md', 'Template Claude instructions\n');
-    writeFile(target, '_AGENTS.md', 'Old source instructions\n');
-    writeFile(target, '_CLAUDE.md', 'Old source Claude instructions\n');
-    writeFile(target, 'scripts/postinstall.mjs', 'template bootstrap\n');
-    writeFile(target, '__tests__/scripts/sync-template-source.test.ts', 'template sync test\n');
-    writeFile(target, '.github/workflows/ci-quality.yml', 'template quality workflow\n');
-    writeFile(target, '.github/workflows/template-sync.yml', 'template workflow\n');
-    writeFile(target, '_github/runner/register-runner.sh', 'old runner setup\n');
-    writeFile(target, 'scripts/old-managed-script.js', 'stale\n');
-    writeFile(target, '.mcp.json', 'stale template MCP config\n');
+    writeFile(target, 'template-sync/README.md', 'Old app README\n');
+    writeFile(target, 'template-sync/_AGENTS.md', 'Old source instructions\n');
+    writeFile(
+      target,
+      'template-sync/_CLAUDE.md',
+      'Old source Claude instructions\n',
+    );
+    writeFile(target, 'template-sync/_renovate.json', 'old app renovate\n');
+    writeFile(target, 'template-sync/.env.example', 'template app env\n');
+    writeFile(target, 'template-sync/LICENSE', 'Template app license\n');
+    writeFile(
+      target,
+      'template-sync/scripts/postinstall.mjs',
+      'template app bootstrap\n',
+    );
+    writeFile(
+      target,
+      '__tests__/scripts/sync-template-source.test.ts',
+      'template sync test\n',
+    );
+    writeFile(
+      target,
+      '.github/workflows/ci-quality.yml',
+      'template quality workflow\n',
+    );
+    writeFile(
+      target,
+      '.github/workflows/template-sync.yml',
+      'template workflow\n',
+    );
+    writeFile(
+      target,
+      'template-sync/_github/runner/register-runner.sh',
+      'old runner setup\n',
+    );
+    writeFile(target, 'template-sync/scripts/old-managed-script.js', 'stale\n');
+    writeFile(
+      target,
+      'scripts/old-managed-script.js',
+      'root template script\n',
+    );
+    writeFile(target, 'template-sync/.mcp.json', 'stale app MCP config\n');
 
     for (const checkout of [source, target]) {
       git(checkout, 'init', '-q', '-b', 'main');
@@ -196,11 +277,75 @@ describe('sync-template-source', () => {
       '#!/bin/sh\nif [ "$1" = "pr" ]; then echo "https://github.com/example/template/pull/1"; fi\n',
     );
     fs.chmodSync(path.join(bin, 'gh'), 0o755);
-    syncEnv = { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}` };
+    syncEnv = {
+      ...process.env,
+      PATH: `${bin}${path.delimiter}${process.env.PATH}`,
+    };
   });
 
   afterEach(() => {
     fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  test('syncs pnpm lockfiles into the app payload with template identity', () => {
+    fs.unlinkSync(path.join(source, 'package-lock.json'));
+    writeFile(
+      source,
+      'pnpm-lock.yaml',
+      [
+        'name: betterhabits',
+        "lockfileVersion: '9.0'",
+        'settings:',
+        '  autoInstallPeers: true',
+        'importers:',
+        '  .: {}',
+      ].join('\n') + '\n',
+    );
+    git(source, 'add', '-A');
+    git(source, 'commit', '-qm', 'Switch source fixture to pnpm');
+    git(source, 'push', '-q', 'origin', 'main');
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        scriptPath,
+        '--source-dir',
+        source,
+        '--target-dir',
+        target,
+        '--source-repository',
+        'luvenapps/betterhabits',
+        '--yes',
+      ],
+      { encoding: 'utf8', env: syncEnv },
+    );
+
+    if (result.status !== 0) {
+      throw new Error([result.stdout, result.stderr].join('\n'));
+    }
+    expect(result.status).toBe(0);
+    expect(
+      fs.readFileSync(
+        path.join(target, 'template-sync/pnpm-lock.yaml'),
+        'utf8',
+      ),
+    ).toContain('name: template-starter');
+    expect(
+      fs.existsSync(path.join(target, 'template-sync/package-lock.json')),
+    ).toBe(false);
+    const syncedPaths = git(
+      target,
+      'diff-tree',
+      '--no-commit-id',
+      '--name-only',
+      '-r',
+      'HEAD',
+    )
+      .split('\n')
+      .filter(Boolean);
+    expect(syncedPaths.every((file) => file.startsWith('template-sync/'))).toBe(
+      true,
+    );
   });
 
   test('copies reusable files, adapts app identity, and preserves template-owned setup', () => {
@@ -219,100 +364,300 @@ describe('sync-template-source', () => {
       { encoding: 'utf8', env: syncEnv },
     );
 
+    if (result.status !== 0) {
+      throw new Error([result.stdout, result.stderr].join('\n'));
+    }
     expect(result.status).toBe(0);
     expect(result.stderr).toBe('');
-    expect(fs.readFileSync(path.join(target, 'package.json'), 'utf8')).toContain(
-      '"name": "template-starter"',
+    const syncedPaths = git(
+      target,
+      'diff-tree',
+      '--no-commit-id',
+      '--name-only',
+      '-r',
+      'HEAD',
+    )
+      .split('\n')
+      .filter(Boolean);
+    expect(syncedPaths.length).toBeGreaterThan(0);
+    expect(syncedPaths.every((file) => file.startsWith('template-sync/'))).toBe(
+      true,
     );
-    expect(fs.readFileSync(path.join(target, 'package.json'), 'utf8')).toContain(
-      '"postinstall": "node scripts/postinstall.mjs"',
+    expect(
+      fs.readFileSync(path.join(target, 'template-sync/package.json'), 'utf8'),
+    ).toContain('"name": "template-starter"');
+    expect(
+      fs.readFileSync(path.join(target, 'template-sync/package.json'), 'utf8'),
+    ).toContain('"postinstall": "node scripts/postinstall.mjs"');
+    expect(
+      fs.readFileSync(
+        path.join(target, 'template-sync/package-lock.json'),
+        'utf8',
+      ),
+    ).toContain('"name": "template-starter"');
+    expect(
+      fs.readFileSync(
+        path.join(target, 'template-sync/commitlint.config.js'),
+        'utf8',
+      ),
+    ).toBe('source app commitlint\n');
+    expect(
+      fs.readFileSync(
+        path.join(target, 'template-sync/drizzle.config.postgres.ts'),
+        'utf8',
+      ),
+    ).toBe('source postgres config\n');
+    expect(
+      fs.readFileSync(
+        path.join(target, 'template-sync/drizzle.config.sqlite.ts'),
+        'utf8',
+      ),
+    ).toBe('source sqlite config\n');
+    expect(
+      fs.readFileSync(
+        path.join(target, 'template-sync/tamagui.build.ts'),
+        'utf8',
+      ),
+    ).toBe('source Tamagui build config\n');
+    expect(
+      fs.readFileSync(path.join(target, 'template-sync/index.js'), 'utf8'),
+    ).toBe('source app entry\n');
+    expect(
+      fs.readFileSync(path.join(target, 'template-sync/assets/icon.png')),
+    ).toEqual(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x00, 0x01]));
+    expect(
+      fs.readFileSync(path.join(target, 'template-sync/app.config.ts'), 'utf8'),
+    ).toContain("name: isPreview ? '__APP_NAME__ (Preview)' : '__APP_NAME__',");
+    expect(
+      fs.readFileSync(path.join(target, 'template-sync/app.config.ts'), 'utf8'),
+    ).toContain("scheme: '__APP_SLUG__',");
+    expect(
+      fs.readFileSync(path.join(target, 'template-sync/app.config.ts'), 'utf8'),
+    ).toContain("data: [{ scheme: '__APP_SLUG__' }],");
+    expect(
+      fs.readFileSync(
+        path.join(target, 'template-sync/src/config/domain.config.ts'),
+        'utf8',
+      ),
+    ).toContain("tableName: '__APP_NAME__',");
+    const troubleshoot = fs.readFileSync(
+      path.join(target, 'template-sync/scripts/troubleshoot.mjs'),
+      'utf8',
     );
-    expect(fs.readFileSync(path.join(target, 'app.config.ts'), 'utf8')).toContain(
-      "name: isPreview ? '__APP_NAME__ (Preview)' : '__APP_NAME__',",
-    );
-    expect(fs.readFileSync(path.join(target, 'app.config.ts'), 'utf8')).toContain(
-      "scheme: '__APP_SLUG__',",
-    );
-    expect(fs.readFileSync(path.join(target, 'app.config.ts'), 'utf8')).toContain(
-      "data: [{ scheme: '__APP_SLUG__' }],",
-    );
-    expect(fs.readFileSync(path.join(target, 'src/config/domain.config.ts'), 'utf8')).toContain(
-      "tableName: '__APP_NAME__',",
-    );
-    const troubleshoot = fs.readFileSync(path.join(target, 'scripts/troubleshoot.mjs'), 'utf8');
     expect(troubleshoot).not.toContain('Self-hosted GitHub Actions runner');
     expect(troubleshoot).not.toContain("import os from 'node:os';");
     expect(troubleshoot).toContain('  // Expo peer deps');
     expect(troubleshoot).not.toContain('\n\n\n  // Expo peer deps');
-    expect(fs.readFileSync(path.join(target, '__tests__/app.config.test.ts'), 'utf8')).toContain(
-      "expect(config.name).toBe('__APP_NAME__ (Preview)');",
-    );
     expect(
-      fs.readFileSync(path.join(target, '__tests__/app/(tabs)/settings/terms.test.tsx'), 'utf8'),
+      fs.readFileSync(
+        path.join(target, 'template-sync/__tests__/app.config.test.ts'),
+        'utf8',
+      ),
+    ).toContain("expect(config.name).toBe('__APP_NAME__ (Preview)');");
+    expect(
+      fs.readFileSync(
+        path.join(
+          target,
+          'template-sync/__tests__/app/(tabs)/settings/terms.test.tsx',
+        ),
+        'utf8',
+      ),
     ).toContain('/Le damos la bienvenida a/');
-    expect(fs.readFileSync(path.join(target, 'docs/architecture.md'), 'utf8')).not.toContain(
-      'roadmap.md',
-    );
-    expect(fs.readFileSync(path.join(target, 'docs/architecture.md'), 'utf8')).toContain(
-      'Welcome to {{APP_NAME}} at {{APP_SLUG}}://settings.',
-    );
     expect(
-      fs.readFileSync(path.join(target, '__tests__/config/tamagui-build.test.ts'), 'utf8'),
+      fs.readFileSync(
+        path.join(target, 'template-sync/docs/architecture.md'),
+        'utf8',
+      ),
+    ).not.toContain('roadmap.md');
+    expect(
+      fs.readFileSync(
+        path.join(target, 'template-sync/docs/architecture.md'),
+        'utf8',
+      ),
+    ).toContain('Welcome to {{APP_NAME}} at {{APP_SLUG}}://settings.');
+    expect(
+      fs.readFileSync(
+        path.join(
+          target,
+          'template-sync/__tests__/config/tamagui-build.test.ts',
+        ),
+        'utf8',
+      ),
     ).toContain('template-metro-test');
-    expect(fs.readFileSync(path.join(target, 'docs/app-build-size.md'), 'utf8')).toContain(
-      'helps spot size increases as the app grows.',
-    );
-    expect(fs.existsSync(path.join(target, '.github/workflows/ci.yml'))).toBe(false);
-    expect(fs.existsSync(path.join(target, '_github/workflows/ci.yml'))).toBe(true);
-    expect(fs.readFileSync(path.join(target, '_renovate.json'), 'utf8')).toBe(
-      '{"extends":["config:recommended"]}\n',
-    );
+    expect(
+      fs.readFileSync(
+        path.join(target, 'template-sync/docs/app-build-size.md'),
+        'utf8',
+      ),
+    ).toContain('helps spot size increases as the app grows.');
+    expect(
+      fs.existsSync(
+        path.join(target, 'template-sync/.github/workflows/ci.yml'),
+      ),
+    ).toBe(false);
+    expect(
+      fs.existsSync(
+        path.join(target, 'template-sync/_github/workflows/ci.yml'),
+      ),
+    ).toBe(true);
+    expect(
+      fs.readFileSync(
+        path.join(target, 'template-sync/_renovate.json'),
+        'utf8',
+      ),
+    ).toBe('{"extends":["config:recommended"]}\n');
     expect(fs.readFileSync(path.join(target, 'renovate.json'), 'utf8')).toBe(
       '{"enabledManagers":["github-actions"]}\n',
     );
-    expect(fs.readFileSync(path.join(target, '_AGENTS.md'), 'utf8')).toBe('Source instructions\n');
-    expect(fs.readFileSync(path.join(target, '_CLAUDE.md'), 'utf8')).toBe('@AGENTS.md\n');
-    expect(fs.existsSync(path.join(target, '.github/workflows/template-sync.yml'))).toBe(true);
-    expect(fs.existsSync(path.join(target, '_husky/pre-commit'))).toBe(true);
-    expect(fs.existsSync(path.join(target, '.husky/pre-commit'))).toBe(false);
-    expect(fs.existsSync(path.join(target, '_maestro/flows/smoke.yaml'))).toBe(true);
-    expect(fs.existsSync(path.join(target, '.maestro/flows/smoke.yaml'))).toBe(false);
-    expect(fs.readFileSync(path.join(target, '.github/workflows/ci-quality.yml'), 'utf8')).toBe(
-      'template quality workflow\n',
-    );
-    expect(fs.existsSync(path.join(target, '_github/workflows/template-sync.yml'))).toBe(false);
-    expect(fs.existsSync(path.join(target, '_github/runner/register-runner.sh'))).toBe(false);
-    expect(fs.existsSync(path.join(target, 'scripts/old-managed-script.js'))).toBe(false);
-    expect(fs.existsSync(path.join(target, '.mcp.json'))).toBe(false);
     expect(
-      JSON.parse(fs.readFileSync(path.join(target, '.template-sync-manifest.json'), 'utf8'))
-        .sources['luvenapps/betterhabits'].main,
+      fs.readFileSync(path.join(target, 'template-sync/_AGENTS.md'), 'utf8'),
+    ).toBe('Source instructions\n');
+    expect(
+      fs.readFileSync(path.join(target, 'template-sync/_CLAUDE.md'), 'utf8'),
+    ).toBe('@AGENTS.md\n');
+    expect(
+      fs.existsSync(path.join(target, '.github/workflows/template-sync.yml')),
+    ).toBe(true);
+    expect(
+      fs.existsSync(path.join(target, 'template-sync/_husky/pre-commit')),
+    ).toBe(true);
+    expect(
+      fs.existsSync(path.join(target, 'template-sync/.husky/pre-commit')),
+    ).toBe(false);
+    expect(
+      fs.existsSync(
+        path.join(target, 'template-sync/_maestro/flows/smoke.yaml'),
+      ),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(target, 'template-sync/.maestro/flows/smoke.yaml'),
+      ),
+    ).toBe(false);
+    expect(
+      fs.readFileSync(
+        path.join(target, '.github/workflows/ci-quality.yml'),
+        'utf8',
+      ),
+    ).toBe('template quality workflow\n');
+    expect(
+      fs.existsSync(
+        path.join(target, 'template-sync/_github/workflows/template-sync.yml'),
+      ),
+    ).toBe(false);
+    expect(
+      fs.existsSync(
+        path.join(target, 'template-sync/_github/runner/register-runner.sh'),
+      ),
+    ).toBe(false);
+    expect(
+      fs.existsSync(
+        path.join(target, 'template-sync/scripts/old-managed-script.js'),
+      ),
+    ).toBe(false);
+    expect(
+      fs.readFileSync(
+        path.join(target, 'scripts/old-managed-script.js'),
+        'utf8',
+      ),
+    ).toBe('root template script\n');
+    expect(fs.existsSync(path.join(target, 'template-sync/.mcp.json'))).toBe(
+      false,
+    );
+    expect(
+      JSON.parse(
+        fs.readFileSync(
+          path.join(target, 'template-sync/.template-sync-manifest.json'),
+          'utf8',
+        ),
+      ).sources['luvenapps/betterhabits'].main,
     ).toBe(git(source, 'rev-parse', 'HEAD'));
-    expect(fs.existsSync(path.join(target, 'README.md'))).toBe(true);
-    expect(fs.readFileSync(path.join(target, 'README.md'), 'utf8')).toBe('Source README\n');
-    expect(fs.readFileSync(path.join(target, 'AGENTS.md'), 'utf8')).toBe('Template instructions\n');
+    expect(
+      fs.readFileSync(path.join(target, 'template-sync/README.md'), 'utf8'),
+    ).toContain(
+      'https://github.com/luvenapps/expo-template/tree/main/template-sync',
+    );
+    expect(
+      fs.readFileSync(path.join(target, 'template-sync/README.md'), 'utf8'),
+    ).toContain(
+      'https://github.com/luvenapps/expo-template/blob/main/docs/template-refresh.md',
+    );
+    expect(fs.readFileSync(path.join(target, 'README.md'), 'utf8')).toBe(
+      'Template repository README\n',
+    );
+    expect(fs.readFileSync(path.join(target, 'package.json'), 'utf8')).toBe(
+      '{"name":"expo-template-tools"}\n',
+    );
+    expect(
+      fs.readFileSync(path.join(target, 'package-lock.json'), 'utf8'),
+    ).toBe('{"name":"expo-template-tools"}\n');
+    expect(
+      fs.readFileSync(path.join(target, 'commitlint.config.js'), 'utf8'),
+    ).toBe('root commitlint\n');
+    expect(fs.readFileSync(path.join(target, 'LICENSE'), 'utf8')).toBe(
+      'Root repository license\n',
+    );
+    expect(fs.readFileSync(path.join(target, 'credentials.json'), 'utf8')).toBe(
+      'root credential data\n',
+    );
+    expect(
+      fs.existsSync(path.join(target, 'template-sync/credentials.json')),
+    ).toBe(false);
+    expect(
+      fs.readFileSync(path.join(target, 'template-sync/.env.example'), 'utf8'),
+    ).toBe('template app env\n');
+    expect(
+      fs.readFileSync(path.join(target, 'template-sync/LICENSE'), 'utf8'),
+    ).toBe('Template app license\n');
+    expect(
+      fs.readFileSync(
+        path.join(target, 'template-sync/scripts/postinstall.mjs'),
+        'utf8',
+      ),
+    ).toBe('template app bootstrap\n');
+    expect(fs.readFileSync(path.join(target, 'AGENTS.md'), 'utf8')).toBe(
+      'Template instructions\n',
+    );
     expect(fs.readFileSync(path.join(target, 'CLAUDE.md'), 'utf8')).toBe(
       'Template Claude instructions\n',
     );
-    expect(fs.readFileSync(path.join(target, 'scripts/postinstall.mjs'), 'utf8')).toBe(
-      'template bootstrap\n',
-    );
     expect(
-      fs.readFileSync(path.join(target, '__tests__/scripts/sync-template-source.test.ts'), 'utf8'),
+      fs.readFileSync(
+        path.join(target, '__tests__/scripts/sync-template-source.test.ts'),
+        'utf8',
+      ),
     ).toBe('template sync test\n');
-    expect(fs.existsSync(path.join(target, '__tests__/scripts/sync-template-source.test.js'))).toBe(
-      false,
-    );
+    expect(
+      fs.existsSync(
+        path.join(target, '__tests__/scripts/sync-template-source.test.js'),
+      ),
+    ).toBe(false);
     for (const file of templateCiFiles) {
-      expect(fs.readFileSync(path.join(target, file), 'utf8')).toBe('template CI coverage\n');
+      expect(fs.readFileSync(path.join(target, file), 'utf8')).toBe(
+        'template CI coverage\n',
+      );
     }
-    expect(fs.existsSync(path.join(target, 'scripts/postinstall.js'))).toBe(false);
+    expect(
+      fs.existsSync(path.join(target, 'template-sync/scripts/postinstall.js')),
+    ).toBe(false);
     expect(fs.existsSync(path.join(target, '.env.local'))).toBe(false);
-    expect(fs.existsSync(path.join(target, 'docs/roadmap.md'))).toBe(false);
+    expect(
+      fs.existsSync(path.join(target, 'template-sync/docs/roadmap.md')),
+    ).toBe(false);
 
     // Once the sync lands on main, the same source revision must create nothing.
-    git(remote, 'update-ref', 'refs/heads/main', git(target, 'rev-parse', 'HEAD'));
-    const before = git(target, 'for-each-ref', '--format=%(refname)', 'refs/heads');
+    git(
+      remote,
+      'update-ref',
+      'refs/heads/main',
+      git(target, 'rev-parse', 'HEAD'),
+    );
+    const before = git(
+      target,
+      'for-each-ref',
+      '--format=%(refname)',
+      'refs/heads',
+    );
     const repeated = spawnSync(
       process.execPath,
       [
@@ -327,10 +672,15 @@ describe('sync-template-source', () => {
       ],
       { encoding: 'utf8', env: syncEnv },
     );
+    if (repeated.status !== 0) {
+      throw new Error([repeated.stdout, repeated.stderr].join('\n'));
+    }
     expect(repeated.status).toBe(0);
     expect(repeated.stdout).toContain('Nothing to update.');
-    expect(repeated.stdout).not.toContain('update README.md');
-    expect(git(target, 'for-each-ref', '--format=%(refname)', 'refs/heads')).toBe(before);
+    expect(repeated.stdout).not.toContain('update template-sync/README.md');
+    expect(
+      git(target, 'for-each-ref', '--format=%(refname)', 'refs/heads'),
+    ).toBe(before);
   });
 
   test('previews fetched main even when the local source checkout has newer unpushed commits', () => {
@@ -354,11 +704,16 @@ describe('sync-template-source', () => {
       ],
       { encoding: 'utf8', env: syncEnv },
     );
+    if (result.status !== 0) {
+      throw new Error([result.stdout, result.stderr].join('\n'));
+    }
     expect(result.status).toBe(0);
     expect(result.stdout).toContain(`(${remoteSha})`);
     expect(result.stdout).not.toContain(localSha);
     expect(git(source, 'rev-parse', 'HEAD')).toBe(localSha);
     expect(git(source, 'worktree', 'list', '--porcelain')).toBe(before);
-    expect(fs.readFileSync(path.join(target, 'README.md'), 'utf8')).toBe('Template README\n');
+    expect(fs.readFileSync(path.join(target, 'README.md'), 'utf8')).toBe(
+      'Template repository README\n',
+    );
   });
 });

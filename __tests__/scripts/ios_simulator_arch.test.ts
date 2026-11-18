@@ -1,7 +1,10 @@
 /** @jest-environment node */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { scripts, useCiScriptTestContext } from '../helpers/ciScriptTestContext';
+import {
+  scripts,
+  useCiScriptTestContext,
+} from '../helpers/ciScriptTestContext';
 
 describe('ios_simulator_arch', () => {
   const context = useCiScriptTestContext();
@@ -51,7 +54,8 @@ describe('ios_simulator_arch', () => {
 
   test('fails when the native app has not been generated yet', () => {
     expect(
-      context.run([process.execPath, join(scripts, 'ios_simulator_arch.mjs')]).status,
+      context.run([process.execPath, join(scripts, 'ios_simulator_arch.mjs')])
+        .status,
     ).not.toBe(0);
   });
 });

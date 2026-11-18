@@ -1,22 +1,44 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 function statusOf(result) {
-  if (result.status !== null && result.status !== undefined) return result.status;
+  if (result.status !== null && result.status !== undefined)
+    return result.status;
   return result.error?.code === 'ENOENT' ? 127 : 1;
 }
 
 function run(command, args, root, env, runCommand) {
-  return runCommand(command, args, { cwd: root, env, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 });
+  return runCommand(command, args, {
+    cwd: root,
+    env,
+    encoding: 'utf8',
+    maxBuffer: 10 * 1024 * 1024,
+  });
 }
 
 function runWithTimeout(root, command, args, seconds, env, runCommand) {
-  const helper = path.join(path.dirname(fileURLToPath(import.meta.url)), 'with_timeout.mjs');
-  return run(process.execPath, [helper, String(seconds), command, ...args], root, env, runCommand);
+  const helper = path.join(
+    path.dirname(fileURLToPath(import.meta.url)),
+    'with_timeout.mjs',
+  );
+  return run(
+    process.execPath,
+    [helper, String(seconds), command, ...args],
+    root,
+    env,
+    runCommand,
+  );
 }
 
 function printResult(result, io) {
@@ -34,7 +56,8 @@ export function runE2E(options = {}) {
   const env = options.env ?? process.env;
   const io = options.io ?? process;
   const runCommand = options.runCommand ?? spawnSync;
-  const wait = options.sleep ?? ((seconds) => sleep(seconds, root, env, runCommand));
+  const wait =
+    options.sleep ?? ((seconds) => sleep(seconds, root, env, runCommand));
   const udidPath = path.join(root, '.simulator_udid');
   if (!existsSync(udidPath)) return 1;
   const udid = readFileSync(udidPath, 'utf8').replace(/\s/g, '');
@@ -42,8 +65,15 @@ export function runE2E(options = {}) {
 
   const attempts = Number(env.RETRIES || '2');
   const delay = Number(env.RETRY_DELAY || '2');
-  if (!Number.isInteger(attempts) || attempts < 1 || !Number.isFinite(delay) || delay < 0) {
-    io.stderr.write('RETRIES must be a positive integer and RETRY_DELAY must be non-negative\n');
+  if (
+    !Number.isInteger(attempts) ||
+    attempts < 1 ||
+    !Number.isFinite(delay) ||
+    delay < 0
+  ) {
+    io.stderr.write(
+      'RETRIES must be a positive integer and RETRY_DELAY must be non-negative\n',
+    );
     return 1;
   }
   const artifacts = path.join(root, 'e2e-artifacts');
@@ -72,7 +102,9 @@ export function runE2E(options = {}) {
     );
     const log = `${result.stdout ?? ''}${result.stderr ?? ''}${result.error ? `${result.error.message}\n` : ''}`;
     writeFileSync(path.join(outputDirectory, 'maestro.log'), log);
-    io.stdout.write(readFileSync(path.join(outputDirectory, 'maestro.log'), 'utf8'));
+    io.stdout.write(
+      readFileSync(path.join(outputDirectory, 'maestro.log'), 'utf8'),
+    );
     const code = statusOf(result);
 
     if (code === 0) {
@@ -104,6 +136,10 @@ export function main(options = {}) {
   }
 }
 
-if (process.argv[1]?.replaceAll('\\', '/').endsWith('/.github/scripts/ios_run_e2e.mjs')) {
+if (
+  process.argv[1]
+    ?.replaceAll('\\', '/')
+    .endsWith('/.github/scripts/ios_run_e2e.mjs')
+) {
   process.exitCode = main();
 }

@@ -1,5 +1,13 @@
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -15,7 +23,9 @@ export function useCiScriptTestContext() {
   let env: NodeJS.ProcessEnv;
 
   function mockCommand(name: string, body: string) {
-    writeFileSync(join(bin, name), `#!/bin/bash\nset -eu\n${body}\n`, { mode: 0o755 });
+    writeFileSync(join(bin, name), `#!/bin/bash\nset -eu\n${body}\n`, {
+      mode: 0o755,
+    });
   }
 
   function run(command: string[], overrides: Partial<NodeJS.ProcessEnv> = {}) {
@@ -36,7 +46,10 @@ export function useCiScriptTestContext() {
   ) {
     const helperDirectory = join(root, '.github/scripts');
     mkdirSync(helperDirectory, { recursive: true });
-    copyFileSync(join(scripts, 'with_timeout.mjs'), join(helperDirectory, 'with_timeout.mjs'));
+    copyFileSync(
+      join(scripts, 'with_timeout.mjs'),
+      join(helperDirectory, 'with_timeout.mjs'),
+    );
     return run([process.execPath, join(scripts, name), ...args], overrides);
   }
 
@@ -49,7 +62,10 @@ export function useCiScriptTestContext() {
       IOS_DEVICE: 'iPhone 17',
       ...overrides,
     });
-    expect({ status: result.status, stderr: result.stderr }).toEqual({ status: 0, stderr: '' });
+    expect({ status: result.status, stderr: result.stderr }).toEqual({
+      status: 0,
+      stderr: '',
+    });
   }
 
   beforeEach(() => {
@@ -92,7 +108,10 @@ if [ "\${TEST_FAIL:-}" = once ] && [ ! -f test-retried ]; then touch test-retrie
       { recursive: true },
     );
     mkdirSync(
-      join(root, 'DevTools/Xcode.app/Contents/Developer/Applications/Simulator.app'),
+      join(
+        root,
+        'DevTools/Xcode.app/Contents/Developer/Applications/Simulator.app',
+      ),
       { recursive: true },
     );
   });

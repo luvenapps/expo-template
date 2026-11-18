@@ -12,13 +12,18 @@ describe('ios_boot_simulator', () => {
     const commands = context.read('commands.log');
     expect(commands).toContain('simctl bootstatus test-udid -b');
     expect(commands).toMatch(/-a .*DeviceHub\.app/);
-    expect(commands.indexOf('simctl bootstatus')).toBeLessThan(commands.indexOf('-a '));
+    expect(commands.indexOf('simctl bootstatus')).toBeLessThan(
+      commands.indexOf('-a '),
+    );
     expect(commands).not.toMatch(/shutdown|erase/);
   });
 
   test('falls back to Simulator.app when Device Hub is unavailable', () => {
     rmSync(
-      join(context.root, 'DevTools/Xcode.app/Contents/Applications/DeviceHub.app'),
+      join(
+        context.root,
+        'DevTools/Xcode.app/Contents/Applications/DeviceHub.app',
+      ),
       { recursive: true, force: true },
     );
 
@@ -30,11 +35,17 @@ describe('ios_boot_simulator', () => {
 
   test('reports both expected app locations when no simulator UI is available', () => {
     rmSync(
-      join(context.root, 'DevTools/Xcode.app/Contents/Applications/DeviceHub.app'),
+      join(
+        context.root,
+        'DevTools/Xcode.app/Contents/Applications/DeviceHub.app',
+      ),
       { recursive: true, force: true },
     );
     rmSync(
-      join(context.root, 'DevTools/Xcode.app/Contents/Developer/Applications/Simulator.app'),
+      join(
+        context.root,
+        'DevTools/Xcode.app/Contents/Developer/Applications/Simulator.app',
+      ),
       { recursive: true, force: true },
     );
 
@@ -51,9 +62,15 @@ describe('ios_boot_simulator', () => {
   test('recovers from a failed boot with one reset', () => {
     context.boot({ BOOT_FAIL: 'once' });
     const commands = context.read('commands.log').split('\n');
-    expect(commands.filter((line) => line.includes('bootstatus'))).toHaveLength(2);
-    expect(commands.filter((line) => line.includes('DeviceHub.app'))).toHaveLength(1);
-    expect(commands.filter((line) => line.includes('shutdown'))).toHaveLength(1);
+    expect(commands.filter((line) => line.includes('bootstatus'))).toHaveLength(
+      2,
+    );
+    expect(
+      commands.filter((line) => line.includes('DeviceHub.app')),
+    ).toHaveLength(1);
+    expect(commands.filter((line) => line.includes('shutdown'))).toHaveLength(
+      1,
+    );
     expect(commands.filter((line) => line.includes('erase'))).toHaveLength(1);
   });
 
@@ -80,15 +97,17 @@ describe('ios_boot_simulator', () => {
 
   test('removes stale device selection when boot fails', () => {
     writeFileSync(join(context.root, '.simulator_udid'), 'stale');
-    expect(context.runScript('ios_boot_simulator.mjs', [], { BOOT_FAIL: 'always' }).status).not.toBe(
-      0,
-    );
+    expect(
+      context.runScript('ios_boot_simulator.mjs', [], { BOOT_FAIL: 'always' })
+        .status,
+    ).not.toBe(0);
     expect(existsSync(join(context.root, '.simulator_udid'))).toBe(false);
   });
 
   test('fails before boot when the requested device is unavailable', () => {
     expect(
-      context.runScript('ios_boot_simulator.mjs', [], { IOS_DEVICE: 'missing' }).status,
+      context.runScript('ios_boot_simulator.mjs', [], { IOS_DEVICE: 'missing' })
+        .status,
     ).not.toBe(0);
     expect(context.read('commands.log')).not.toContain('bootstatus');
   });

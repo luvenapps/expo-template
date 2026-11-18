@@ -91,7 +91,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/.npm
-          key: npm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json', '.mise.toml') }}
+          key: npm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('template-sync/package-lock.json', 'template-sync/pnpm-lock.yaml', '.mise.toml', '.mise.ci.toml') }}
           restore-keys: |
             npm-${{ runner.os }}-${{ runner.arch }}-
 
@@ -107,17 +107,31 @@ jobs:
           echo "CREATE_EXPO_APP_VERSION=$create_expo_app_version" >> "$GITHUB_ENV"
           echo "EAS_CLI_VERSION=$eas_cli_version" >> "$GITHUB_ENV"
 
-      - name: Scaffold with locked dependencies
+      - name: Scaffold generated app
+        id: scaffold
         working-directory: .
         shell: bash
         run: |
           set -euo pipefail
-          npx --yes create-expo-app@"$CREATE_EXPO_APP_VERSION" expo-template-testing --template "$GITHUB_WORKSPACE" --yes --no-install
-          cp package-lock.json expo-template-testing/package-lock.json
-          cd expo-template-testing
-          npm ci --prefer-offline --no-audit --no-fund
-          # Validate against the pinned SDK map rather than mutable server recommendations.
-          EXPO_OFFLINE=1 npx expo install --check
+          npx --yes create-expo-app@"$CREATE_EXPO_APP_VERSION" expo-template-testing \
+            --template "$GITHUB_WORKSPACE/template-sync" --yes --no-install
+          node "$GITHUB_WORKSPACE/.github/scripts/generated-app-package-manager.mjs" \
+            stage expo-template-testing "$GITHUB_WORKSPACE/template-sync"
+
+      - name: Setup pnpm for generated app
+        if: ${{ steps.scaffold.outputs.manager == 'pnpm' }}
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+          cache: true
+          cache_dependency_path: expo-template-testing/pnpm-lock.yaml
+
+      - name: Install generated app dependencies
+        run: node "$GITHUB_WORKSPACE/.github/scripts/generated-app-package-manager.mjs" install
+
+      - name: Check Expo dependency alignment
+        run: EXPO_OFFLINE=1 node "$GITHUB_WORKSPACE/.github/scripts/generated-app-package-manager.mjs" exec expo install --check
 
       - name: Setup Maestro
         shell: bash
@@ -164,7 +178,7 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: gradle-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json', 'eas.json', '.mise.toml') }}
+          key: gradle-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('template-sync/package-lock.json', 'template-sync/pnpm-lock.yaml', 'template-sync/eas.json', '.mise.toml', '.mise.ci.toml') }}
           restore-keys: |
             gradle-${{ runner.os }}-${{ runner.arch }}-
 
@@ -265,7 +279,7 @@ jobs:
         run: |
           set -euo pipefail
           rm -rf android ios dist
-          npx expo export:embed \
+          node "$GITHUB_WORKSPACE/.github/scripts/generated-app-package-manager.mjs" exec expo export:embed \
             --platform android \
             --entry-file index.js \
             --bundle-output dist/index.android.bundle \
@@ -303,7 +317,7 @@ jobs:
           export ANDROID_HOME="$RESOLVED_SDK_DIR"
           TEMP_OUTPUT="repacked_output"
           rm -rf "$TEMP_OUTPUT"
-          npx @expo/repack-app --platform android --source-app "${{ steps.find_apk.outputs.apk }}" --output "$TEMP_OUTPUT"
+          node "$GITHUB_WORKSPACE/.github/scripts/generated-app-package-manager.mjs" dlx @expo/repack-app --platform android --source-app "${{ steps.find_apk.outputs.apk }}" --output "$TEMP_OUTPUT"
           test -e "$TEMP_OUTPUT"
           mv "$TEMP_OUTPUT" "${{ steps.find_apk.outputs.apk }}"
 

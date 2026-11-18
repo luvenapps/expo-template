@@ -41,7 +41,8 @@ export function runWithTimeout(command, args, timeoutSeconds, options = {}) {
     };
 
     const finish = () => {
-      if (settled || result === undefined || (timedOut && !killCompleted)) return;
+      if (settled || result === undefined || (timedOut && !killCompleted))
+        return;
       settled = true;
       resolve(timedOut ? 124 : result);
     };
@@ -68,7 +69,9 @@ export function runWithTimeout(command, args, timeoutSeconds, options = {}) {
 
     timeoutTimer = setTimeout(() => {
       timedOut = true;
-      io.stderr.write(`Command timed out after ${timeoutSeconds}s: ${command}\n`);
+      io.stderr.write(
+        `Command timed out after ${timeoutSeconds}s: ${command}\n`,
+      );
       signalProcessGroup('SIGTERM');
       killTimer = setTimeout(killProcessGroup, 1000);
     }, timeoutSeconds * 1000);
@@ -91,7 +94,11 @@ export async function main(argv = process.argv.slice(2), io = process) {
   return runWithTimeout(command, args, timeoutSeconds, { io });
 }
 
-if (process.argv[1]?.replaceAll('\\', '/').endsWith('/.github/scripts/with_timeout.mjs')) {
+if (
+  process.argv[1]
+    ?.replaceAll('\\', '/')
+    .endsWith('/.github/scripts/with_timeout.mjs')
+) {
   main().then((code) => {
     process.exitCode = code;
   });

@@ -91,7 +91,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/.npm
-          key: npm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json', '.mise.toml') }}
+          key: npm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('template-sync/package-lock.json', 'template-sync/pnpm-lock.yaml', '.mise.toml', '.mise.ci.toml') }}
           restore-keys: |
             npm-${{ runner.os }}-${{ runner.arch }}-
 
@@ -107,17 +107,31 @@ jobs:
           echo "CREATE_EXPO_APP_VERSION=$create_expo_app_version" >> "$GITHUB_ENV"
           echo "EAS_CLI_VERSION=$eas_cli_version" >> "$GITHUB_ENV"
 
-      - name: Scaffold with locked dependencies
+      - name: Scaffold generated app
+        id: scaffold
         working-directory: .
         shell: bash
         run: |
           set -euo pipefail
-          npx --yes create-expo-app@"$CREATE_EXPO_APP_VERSION" expo-template-testing --template "$GITHUB_WORKSPACE" --yes --no-install
-          cp package-lock.json expo-template-testing/package-lock.json
-          cd expo-template-testing
-          npm ci --prefer-offline --no-audit --no-fund
-          # Validate against the pinned SDK map rather than mutable server recommendations.
-          EXPO_OFFLINE=1 npx expo install --check
+          npx --yes create-expo-app@"$CREATE_EXPO_APP_VERSION" expo-template-testing \
+            --template "$GITHUB_WORKSPACE/template-sync" --yes --no-install
+          node "$GITHUB_WORKSPACE/.github/scripts/generated-app-package-manager.mjs" \
+            stage expo-template-testing "$GITHUB_WORKSPACE/template-sync"
+
+      - name: Setup pnpm for generated app
+        if: ${{ steps.scaffold.outputs.manager == 'pnpm' }}
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+          cache: true
+          cache_dependency_path: expo-template-testing/pnpm-lock.yaml
+
+      - name: Install generated app dependencies
+        run: node "$GITHUB_WORKSPACE/.github/scripts/generated-app-package-manager.mjs" install
+
+      - name: Check Expo dependency alignment
+        run: EXPO_OFFLINE=1 node "$GITHUB_WORKSPACE/.github/scripts/generated-app-package-manager.mjs" exec expo install --check
 
       - name: Configure ARM64-only simulator build
         shell: bash
@@ -173,7 +187,7 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: ~/Library/Caches/CocoaPods
-          key: pods-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json', 'eas.json', '.mise.toml') }}
+          key: pods-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('template-sync/package-lock.json', 'template-sync/pnpm-lock.yaml', 'template-sync/eas.json', '.mise.toml', '.mise.ci.toml') }}
           restore-keys: |
             pods-${{ runner.os }}-${{ runner.arch }}-
 
@@ -232,7 +246,7 @@ jobs:
         run: |
           set -euo pipefail
           rm -rf dist
-          npx expo export --platform ios --output-dir ./dist --clear
+          node "$GITHUB_WORKSPACE/.github/scripts/generated-app-package-manager.mjs" exec expo export --platform ios --output-dir ./dist --clear
           echo "expo-export" > dist/.bundle-source
 
       - name: Validate iOS Hermes bundle before repack
@@ -254,7 +268,7 @@ jobs:
 
           REPACKED_APP="repacked_output.app"
           rm -rf "$REPACKED_APP"
-          npx @expo/repack-app --platform ios --source-app "$SOURCE_APP" --output "$REPACKED_APP"
+          node "$GITHUB_WORKSPACE/.github/scripts/generated-app-package-manager.mjs" dlx @expo/repack-app --platform ios --source-app "$SOURCE_APP" --output "$REPACKED_APP"
           test -d "$REPACKED_APP"
           rm -rf "$SOURCE_APP"
           mv "$REPACKED_APP" "$SOURCE_APP"

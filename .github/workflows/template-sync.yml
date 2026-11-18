@@ -80,4 +80,3 @@ jobs:
             --source-repository "$SOURCE_REPOSITORY" \
             --source-branch "$SOURCE_BRANCH" \
             --yes
-

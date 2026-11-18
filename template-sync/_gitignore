@@ -1,0 +1,68 @@
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# dependencies
+node_modules/
+
+# vscode
+.vscode/settings.json
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+build-*
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local SSL certificates
+certs/
+
+# local env files
+.env*.local
+.env.prod
+.env.preview
+
+# typescript
+*.tsbuildinfo
+
+# generated native folders
+/ios
+/android
+.tamagui/
+credentials/
+
+# other
+.builds
+e2e-artifacts
+debug.keystore
+coverage
+junit.xml
+supabase/.temp/
+supabase/.branches/
+codecov*
+
+# Drizzle ORM snapshots (auto-generated state tracking)
+**/migrations/meta/
+
+# Auto-generated RLS policies (regenerate with: npm run db:generate-rls)
+src/db/postgres/rls-policies.sql
