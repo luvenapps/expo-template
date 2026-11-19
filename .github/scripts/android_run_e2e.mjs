@@ -9,6 +9,10 @@ import {
 } from 'node:fs';
 import { join, resolve } from 'node:path';
 import process from 'node:process';
+import {
+  detectPackageManager,
+  packageManagerCommand,
+} from './generated-app-package-manager.mjs';
 
 function statusOf(result) {
   if (result.status !== null && result.status !== undefined)
@@ -76,6 +80,7 @@ export function runAndroidE2E(argv = process.argv.slice(2), options = {}) {
 
   const ATTEMPTS = positiveInteger(env.RETRIES || '2', '2', 'RETRIES');
   const DELAY = nonnegativeInteger(env.RETRY_DELAY || '5', '5', 'RETRY_DELAY');
+  const packageManager = detectPackageManager(root);
   let INSTALLED = false;
   let attempt = 1;
   const artifactDirectory = join(root, 'e2e-artifacts');
@@ -137,12 +142,12 @@ export function runAndroidE2E(argv = process.argv.slice(2), options = {}) {
     const OUT = `e2e-artifacts/attempt-${attempt}`;
     const outputDirectory = join(root, OUT);
     mkdirSync(outputDirectory, { recursive: true });
-    const e2e = run(
-      'npm',
-      ['run', 'e2e:android', '--', '--test-output-dir', OUT],
-      { stdio: 'inherit' },
-      runCommand,
-    );
+    const [command, args] = packageManagerCommand(packageManager, 'run', [
+      'e2e:android',
+      '--test-output-dir',
+      OUT,
+    ]);
+    const e2e = run(command, args, { stdio: 'inherit' }, runCommand);
     printResult(e2e, io);
     if (statusOf(e2e) === 0) {
       io.stdout.write(`✅ Passed on attempt ${attempt}\n`);
