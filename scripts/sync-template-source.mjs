@@ -15,6 +15,7 @@ import { Buffer } from 'node:buffer';
 
 const TEMPLATE_ONLY = new Set([
   '.env.example',
+  '_env.example',
   'AGENTS.md',
   'CLAUDE.md',
   'LICENSE',
@@ -43,7 +44,7 @@ const TEMPLATE_ONLY = new Set([
 const TEMPLATE_SYNC_DIR = 'template-sync';
 const TEMPLATE_SYNC_MANIFEST = `${TEMPLATE_SYNC_DIR}/.template-sync-manifest.json`;
 const TEMPLATE_ONLY_TARGETS = new Set([
-  `${TEMPLATE_SYNC_DIR}/.env.example`,
+  `${TEMPLATE_SYNC_DIR}/_env.example`,
   `${TEMPLATE_SYNC_DIR}/LICENSE`,
   `${TEMPLATE_SYNC_DIR}/scripts/postinstall.mjs`,
   `${TEMPLATE_SYNC_DIR}/_mcp-claude.json`,

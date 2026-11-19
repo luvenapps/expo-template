@@ -63,7 +63,7 @@ template-sync/
 │   └── postinstall.mjs
 ├── src/
 ├── supabase/
-├── .env.example
+├── _env.example                 # Restored as .env.example by postinstall
 ├── .gitignore
 ├── .mcp.json
 ├── .mise.toml
@@ -96,7 +96,9 @@ template-sync/
 └── tsconfig.json
 ```
 
-The dotfiles in `template-sync/` are part of the generated app: `.env.example`, `.gitignore`, `.mcp.json`, and `.mise.toml` provide app configuration. Postinstall removes `.template-sync-manifest.json` and materializes underscore-named configuration files as dotfiles.
+Create Expo App's GitHub-template filter skips dotfiles by default, so app files that need hidden names use underscore names in `template-sync/` and postinstall restores them: `_env.example` becomes `.env.example`, `_gitignore` becomes `.gitignore`, `_mise.toml` becomes `.mise.toml`, and `_mcp-*` becomes the corresponding MCP config. Unsuffixed dotfiles in `template-sync/` are synchronized source snapshots; Create Expo App skips them. `.template-sync-manifest.json` is bookkeeping for expo-template's sync workflow, stored beside the payload and removed by postinstall if present.
+
+The root dotfiles are specific to expo-template: `.gitignore`, `.mise.toml`, `.mise.ci.toml`, `.prettierignore`, and `.prettierrc.json` configure this repository's ignore rules, toolchains, and formatting. Root `.github/` contains this repository's CI. Create Expo App uses only `template-sync/`, so these root files stay with expo-template.
 
 The sync workflow changes files only in `template-sync/`. Root documentation, credentials, CI, and tooling stay specific to expo-template. The Android workflow copies the root `credentials.json` into its generated app for the local EAS build.
 
