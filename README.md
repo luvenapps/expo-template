@@ -34,10 +34,8 @@ expo-template/
 ├── CLAUDE.md
 ├── LICENSE
 ├── README.md
-├── _mcp-claude.json
-├── _mcp-vscode.json
 ├── commitlint.config.js          # Repository commit rules
-├── credentials.json             # Used by Android CI; not part of the app payload
+├── credentials.json              # Used by Android CI; not part of the app payload
 ├── eslint.config.js
 ├── jest.config.js
 ├── package.json
@@ -65,14 +63,13 @@ template-sync/
 │   └── postinstall.mjs
 ├── src/
 ├── supabase/
-├── .env.example
-├── .gitignore
-├── .mcp.json
-├── .mise.toml
-├── .template-sync-manifest.json
+├── _env.example                 # Restored as .env.example by postinstall
+├── .template-sync-manifest.json # Sync metadata, kept here to contain sync changes
 ├── _AGENTS.md
 ├── _CLAUDE.md
 ├── _gitignore
+├── _mcp-claude.json              # Restored as .mcp.json by postinstall
+├── _mcp-vscode.json              # Restored as .vscode/mcp.json by postinstall
 ├── _mise.toml
 ├── _prettierignore
 ├── _prettierrc.json
@@ -95,6 +92,10 @@ template-sync/
 ├── tamagui.config.ts
 └── tsconfig.json
 ```
+
+Create Expo App's GitHub-template filter skips dotfiles by default, so hidden app files in `template-sync/` use underscore names and postinstall restores them: `_env.example` becomes `.env.example`, `_gitignore` becomes `.gitignore`, `_mise.toml` becomes `.mise.toml`, and `_mcp-*` becomes the corresponding MCP config. `.template-sync-manifest.json` is source-sync bookkeeping, not app output. It stays here so source refreshes change only `template-sync/`; Create Expo App skips it.
+
+The root dotfiles are specific to expo-template: `.gitignore`, `.mise.toml`, `.mise.ci.toml`, `.prettierignore`, and `.prettierrc.json` configure this repository's ignore rules, toolchains, and formatting. Root `.github/` contains this repository's CI. Create Expo App uses only `template-sync/`, so these root files stay with expo-template.
 
 The sync workflow changes files only in `template-sync/`. Root documentation, credentials, CI, and tooling stay specific to expo-template. The Android workflow copies the root `credentials.json` into its generated app for the local EAS build.
 

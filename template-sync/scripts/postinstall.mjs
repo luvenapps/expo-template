@@ -10,7 +10,8 @@
  *  - Replace placeholders in Maestro flows (.maestro/flows/*.yml|yaml)
  *  - Replace app identity tokens in README.md and generated docs (if present)
  *  - Materialize _AGENTS.md and _CLAUDE.md as generated app root instructions
- *  - Set generated app IDs in the fake Firebase base64 config in .env.example
+ *  - Restore `_env.example` as `.env.example`
+ *  - Set generated app IDs in the fake Firebase base64 config
  *  - Replace tockens in Domain Config if present
  * *  - Restore .gitignore from "gitignore" (if present)
  *  - Rename _prettierrc.json → .prettierrc.json if present
@@ -70,6 +71,19 @@ const copyDir = (src, dst) => {
     const stat = fs.lstatSync(s);
     if (stat.isDirectory()) copyDir(s, d);
     else if (stat.isFile()) fs.copyFileSync(s, d);
+  }
+};
+
+// Restore the example environment file from its transfer-safe template name.
+const restoreExampleEnv = () => {
+  const sourcePath = path.join(CWD, '_env.example');
+  if (!exists(sourcePath)) return;
+
+  try {
+    fs.copyFileSync(sourcePath, path.join(CWD, '.env.example'));
+    console.log('✅ Restored .env.example from template');
+  } catch (e) {
+    console.log(`⚠️  Failed to restore .env.example (${e.message})`);
   }
 };
 
@@ -190,6 +204,7 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
 
   materializeRootGuidance(summary);
 
+  restoreExampleEnv();
   updateFirebaseExampleIds(appId);
 
   if (exists(appConfigPath)) {
@@ -533,6 +548,7 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
   // These are template source files, not part of a generated app.
   const materializedTemplatePaths = [
     ['_AGENTS.md', 'AGENTS.md'],
+    ['_env.example', '.env.example'],
     ['_CLAUDE.md', 'CLAUDE.md'],
     ['_mise.toml', '.mise.toml'],
     ['_mcp-vscode.json', '.vscode/mcp.json'],

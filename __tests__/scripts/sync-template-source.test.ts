@@ -139,7 +139,6 @@ describe('sync-template-source', () => {
     );
     writeFile(source, 'README.md', 'Source README\n\n---\n');
     writeFile(source, 'scripts/postinstall.mjs', 'source bootstrap\n');
-    writeFile(source, 'scripts/postinstall.js', 'legacy source bootstrap\n');
     writeFile(source, 'AGENTS.md', 'Source instructions\n');
     writeFile(source, 'CLAUDE.md', '@AGENTS.md\n');
     writeFile(source, '.env.local', 'SECRET=value\n');
@@ -216,7 +215,7 @@ describe('sync-template-source', () => {
       'Old source Claude instructions\n',
     );
     writeFile(target, 'template-sync/_renovate.json', 'old app renovate\n');
-    writeFile(target, 'template-sync/.env.example', 'template app env\n');
+    writeFile(target, 'template-sync/_env.example', 'template app env\n');
     writeFile(target, 'template-sync/LICENSE', 'Template app license\n');
     writeFile(
       target,
@@ -604,7 +603,7 @@ describe('sync-template-source', () => {
       fs.existsSync(path.join(target, 'template-sync/credentials.json')),
     ).toBe(false);
     expect(
-      fs.readFileSync(path.join(target, 'template-sync/.env.example'), 'utf8'),
+      fs.readFileSync(path.join(target, 'template-sync/_env.example'), 'utf8'),
     ).toBe('template app env\n');
     expect(
       fs.readFileSync(path.join(target, 'template-sync/LICENSE'), 'utf8'),
@@ -637,9 +636,6 @@ describe('sync-template-source', () => {
         'template CI coverage\n',
       );
     }
-    expect(
-      fs.existsSync(path.join(target, 'template-sync/scripts/postinstall.js')),
-    ).toBe(false);
     expect(fs.existsSync(path.join(target, '.env.local'))).toBe(false);
     expect(
       fs.existsSync(path.join(target, 'template-sync/docs/roadmap.md')),

@@ -13,13 +13,10 @@ import os from 'node:os';
 import { createInterface } from 'node:readline/promises';
 import { Buffer } from 'node:buffer';
 
-const TEMPLATE_ONLY = new Set([
+// Source files intentionally omitted while their parent directories sync.
+const TEMPLATE_ONLY_SOURCE_PATHS = new Set([
+  // Keep the generated app's customized, transfer-safe _env.example.
   '.env.example',
-  'AGENTS.md',
-  'CLAUDE.md',
-  'LICENSE',
-  'scripts/postinstall.js',
-  'scripts/postinstall.mjs',
   'scripts/sync-template-source.mjs',
   '__tests__/scripts/sync-template-source.test.js',
   '__tests__/scripts/sync-template-source.test.ts',
@@ -34,24 +31,22 @@ const TEMPLATE_ONLY = new Set([
   '__tests__/scripts/with_timeout.test.ts',
   'docs/template-refresh.md',
   '.github/workflows/template-sync.yml',
-  '.template-sync-manifest.json',
-  '_mcp-claude.json',
-  '_mcp-vscode.json',
-  'credentials.json',
 ]);
 
 const TEMPLATE_SYNC_DIR = 'template-sync';
 const TEMPLATE_SYNC_MANIFEST = `${TEMPLATE_SYNC_DIR}/.template-sync-manifest.json`;
-const TEMPLATE_ONLY_TARGETS = new Set([
-  `${TEMPLATE_SYNC_DIR}/.env.example`,
+// Template-owned targets preserved by source sync.
+const TEMPLATE_ONLY_TARGET_PATHS = new Set([
+  `${TEMPLATE_SYNC_DIR}/_env.example`,
   `${TEMPLATE_SYNC_DIR}/LICENSE`,
   `${TEMPLATE_SYNC_DIR}/scripts/postinstall.mjs`,
+  `${TEMPLATE_SYNC_DIR}/_mcp-claude.json`,
+  `${TEMPLATE_SYNC_DIR}/_mcp-vscode.json`,
   TEMPLATE_SYNC_MANIFEST,
 ]);
 
-const SYNCED_ROOT_GUIDANCE_FILES = new Set(['AGENTS.md', 'CLAUDE.md']);
-
-const MANAGED_ROOTS = [
+// Source paths are listed before outputPaths() converts hidden app paths.
+const MANAGED_SOURCE_ROOTS = [
   'app',
   'assets',
   'src',
@@ -65,28 +60,19 @@ const MANAGED_ROOTS = [
   'supabase',
   'scripts',
   'docs',
-  '_github',
-  '.husky',
-  '_husky',
-  '.maestro',
-  '_maestro',
   'eslint-rules',
 ];
 
-const MANAGED_ROOT_FILES = new Set([
+const MANAGED_SOURCE_FILES = new Set([
   'README.md',
+  'AGENTS.md',
+  'CLAUDE.md',
   '.env.example',
   '.gitignore',
-  '_gitignore',
-  '_AGENTS.md',
-  '_CLAUDE.md',
   '.mise.toml',
-  '_mise.toml',
   '.prettierignore',
-  '_prettierignore',
   '.prettierrc.json',
-  '_prettierrc.json',
-  '.mcp.json',
+  'renovate.json',
   'app.config.ts',
   'babel.config.js',
   'commitlint.config.js',
@@ -100,13 +86,12 @@ const MANAGED_ROOT_FILES = new Set([
   'package-lock.json',
   'package.json',
   'pnpm-lock.yaml',
-  '_renovate.json',
   'tamagui.build.ts',
   'tamagui.config.ts',
   'tsconfig.json',
 ]);
 
-const EXCLUDED_DIRS = new Set([
+const EXCLUDED_SOURCE_DIRS = new Set([
   'credentials',
   '.git',
   '.expo',
@@ -122,9 +107,9 @@ const EXCLUDED_DIRS = new Set([
   'certs',
 ]);
 
-const EXCLUDED_FILES = new Set(['.DS_Store', 'credentials.json']);
+const EXCLUDED_SOURCE_FILES = new Set(['.DS_Store', 'credentials.json']);
 
-const EXCLUDED_PREFIXES = [
+const EXCLUDED_SOURCE_PREFIXES = [
   '.github/runner/',
   'docs/habit-tracker/',
   'docs/habit-tracker-plan.md',
@@ -295,30 +280,12 @@ async function confirmApply() {
   }
 }
 
-function walkFiles(root, relative = '') {
-  const directory = path.join(root, relative);
-  return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-    if (entry.isSymbolicLink()) return [];
-    const relativePath = path.posix.join(
-      relative.split(path.sep).join('/'),
-      entry.name,
-    );
-    if (entry.isDirectory()) {
-      if (EXCLUDED_DIRS.has(entry.name)) return [];
-      return walkFiles(root, relativePath);
-    }
-    return entry.isFile() ? [relativePath] : [];
-  });
-}
-
 function shouldExclude(sourcePath) {
+  const pathParts = sourcePath.split('/');
+  if (pathParts.some((part) => EXCLUDED_SOURCE_DIRS.has(part))) return true;
   const basename = path.posix.basename(sourcePath);
-  if (EXCLUDED_FILES.has(basename)) return true;
-  if (['claude.md', 'LICENSE'].includes(sourcePath)) {
-    return true;
-  }
-  if (sourcePath.startsWith('docs/habit-tracker/')) return true;
-  if (EXCLUDED_PREFIXES.some((prefix) => sourcePath.startsWith(prefix)))
+  if (EXCLUDED_SOURCE_FILES.has(basename)) return true;
+  if (EXCLUDED_SOURCE_PREFIXES.some((prefix) => sourcePath.startsWith(prefix)))
     return true;
   if (/^\.env\.(?!example$)/.test(basename) || /^\.env$/.test(basename))
     return true;
@@ -520,8 +487,8 @@ function outputPaths(sourcePath) {
   const hiddenFileMappings = new Map([
     ['AGENTS.md', ['_AGENTS.md']],
     ['CLAUDE.md', ['_CLAUDE.md']],
-    ['.gitignore', ['.gitignore', '_gitignore']],
-    ['.mise.toml', ['.mise.toml', '_mise.toml']],
+    ['.gitignore', ['_gitignore']],
+    ['.mise.toml', ['_mise.toml']],
     ['renovate.json', ['_renovate.json']],
     ['.prettierignore', ['_prettierignore']],
     ['.prettierrc.json', ['_prettierrc.json']],
@@ -537,18 +504,14 @@ function isManagedPath(relativePath) {
 }
 
 function isManagedSourcePath(sourcePath) {
-  if (SYNCED_ROOT_GUIDANCE_FILES.has(sourcePath)) return true;
   const sourceName = path.posix.basename(sourcePath);
   if (
-    MANAGED_ROOT_FILES.has(sourcePath) ||
-    MANAGED_ROOT_FILES.has(sourceName) ||
-    outputPaths(sourcePath).some((outputPath) =>
-      MANAGED_ROOT_FILES.has(path.posix.basename(outputPath)),
-    )
+    MANAGED_SOURCE_FILES.has(sourcePath) ||
+    MANAGED_SOURCE_FILES.has(sourceName)
   ) {
     return true;
   }
-  return MANAGED_ROOTS.some(
+  return MANAGED_SOURCE_ROOTS.some(
     (root) => sourcePath === root || sourcePath.startsWith(`${root}/`),
   );
 }
@@ -705,8 +668,7 @@ async function syncSnapshot(args, sourceRoot, targetRoot, sourceCheckout) {
     if (
       !isManagedSourcePath(sourcePath) ||
       shouldExclude(sourcePath) ||
-      (TEMPLATE_ONLY.has(sourcePath) &&
-        !SYNCED_ROOT_GUIDANCE_FILES.has(sourcePath))
+      TEMPLATE_ONLY_SOURCE_PATHS.has(sourcePath)
     ) {
       continue;
     }
@@ -717,7 +679,7 @@ async function syncSnapshot(args, sourceRoot, targetRoot, sourceCheckout) {
     const text = content.toString('utf8');
     const isText = !text.includes('\u0000');
     for (const outputPath of outputPaths(sourcePath)) {
-      if (TEMPLATE_ONLY_TARGETS.has(outputPath)) continue;
+      if (TEMPLATE_ONLY_TARGET_PATHS.has(outputPath)) continue;
       let outputContent = content;
       if (isText)
         outputContent = Buffer.from(
@@ -747,7 +709,7 @@ async function syncSnapshot(args, sourceRoot, targetRoot, sourceCheckout) {
     (relativePath) =>
       isManagedPath(relativePath) &&
       !desired.has(relativePath) &&
-      !TEMPLATE_ONLY_TARGETS.has(relativePath),
+      !TEMPLATE_ONLY_TARGET_PATHS.has(relativePath),
   );
   const updates = [];
   for (const [relativePath, file] of desired) {
