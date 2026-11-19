@@ -67,7 +67,7 @@ CI selects the manager from the generated app directory and supports
 package-lock.json with npm or pnpm-lock.yaml with pnpm. Both lockfiles or no
 supported lockfile fail. The pnpm version used by the template repository's
 workflows is pinned in .mise.ci.toml. The root maintenance package uses its
-separate npm package-lock.json.
+separate pnpm-lock.yaml.
 
 ## Validate a generated app
 

@@ -39,7 +39,7 @@ expo-template/
 ├── eslint.config.js
 ├── jest.config.js
 ├── package.json
-├── package-lock.json
+├── pnpm-lock.yaml
 ├── renovate.json
 └── tsconfig.json
 ```
@@ -99,6 +99,6 @@ The root dotfiles are specific to expo-template: `.gitignore`, `.mise.toml`, `.m
 
 The sync workflow changes files only in `template-sync/`. Root documentation, credentials, CI, and tooling stay specific to expo-template. The Android workflow copies the root `credentials.json` into its generated app for the local EAS build.
 
-Root tooling uses npm. Template CI selects npm or pnpm from the generated app's lockfile and fails if both supported lockfiles or neither is present. The pnpm version used by template CI is pinned in `.mise.ci.toml`.
+Root tooling uses pnpm with `pnpm-lock.yaml`. Template CI selects npm or pnpm from the generated app's lockfile and fails if both supported lockfiles or neither is present. The pnpm version used by template CI is pinned in `.mise.ci.toml`.
 
 See [docs/template-refresh.md](docs/template-refresh.md) for the source sync and review process.

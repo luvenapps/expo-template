@@ -44,18 +44,19 @@ directories remain outside template-sync and are excluded from source sync.
 
 ## Package managers and CI
 
-The root maintenance package uses npm and its own package-lock.json. Generated
+The root maintenance package uses pnpm and its own pnpm-lock.yaml. Generated
 app CI selects the package manager from the generated app directory. It supports
 exactly one of package-lock.json or pnpm-lock.yaml. Both or neither is an error.
-The root .mise.ci.toml pins the pnpm version used by template CI.
+The root .mise.toml pins pnpm for local maintenance; .mise.ci.toml pins the
+pnpm version used by template CI.
 
 Root tooling checks:
 
 ```sh
-npm ci
-npm run lint
-npm run type-check
-npm test -- --runInBand
+pnpm install --frozen-lockfile
+pnpm lint
+pnpm type-check
+pnpm test --runInBand
 ```
 
 The root Jest suite covers sync behavior and CI helpers. Generated-app behavior

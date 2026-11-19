@@ -75,9 +75,9 @@ jobs:
       - name: Check root repository tooling
         working-directory: ${{ github.workspace }}
         run: |
-          npm ci
-          npm run lint
-          npm test -- --runInBand __tests__/scripts
+          pnpm install --frozen-lockfile
+          pnpm lint
+          pnpm test --runInBand __tests__/scripts
 
       - name: Scaffold generated app
         id: scaffold
