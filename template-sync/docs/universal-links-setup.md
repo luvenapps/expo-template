@@ -139,8 +139,8 @@ Universal Links require native code changes:
 
 ```bash
 # Clear and rebuild
-npx expo prebuild --clean
-npm run ios    # or npm run android
+pnpm exec expo prebuild --clean
+pnpm run ios    # or pnpm run android
 ```
 
 ### 7. Test the Flow

@@ -41,7 +41,7 @@ export const FormField = forwardRef<TextInputInstance, FormFieldProps>(function 
   const helperColor = errorText ? 'dangerColor' : 'colorMuted';
 
   return (
-    <YStack gap="$2" width="100%" testID={testID}>
+    <YStack gap="2" width="100%" testID={testID}>
       <LabelText color="color" testID={labelTestID}>
         {label}
         {required ? ' *' : ''}
@@ -54,7 +54,7 @@ export const FormField = forwardRef<TextInputInstance, FormFieldProps>(function 
             borderColor ?? 'border-color hover:border-color-hover focus:border-color-focus'
           }
           backgroundColor="background"
-          borderWidth={1}
+          borderWidth="hairline"
           borderRadius="3"
           placeholderTextColor={
             placeholderTextColor === 'colorMuted' ? theme.colorMuted?.get() : placeholderTextColor
@@ -62,7 +62,7 @@ export const FormField = forwardRef<TextInputInstance, FormFieldProps>(function 
           disabled={editable === false}
           fontSize="2"
           paddingHorizontal="2"
-          height={56}
+          height="control"
           {...inputProps}
           testID={inputTestID}
         />
@@ -70,8 +70,8 @@ export const FormField = forwardRef<TextInputInstance, FormFieldProps>(function 
           <View
             position="absolute"
             right="3"
-            top={0}
-            bottom={0}
+            top="0"
+            bottom="0"
             alignItems="center"
             justifyContent="center"
             style={{ pointerEvents: 'box-none' }}

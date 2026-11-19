@@ -15,8 +15,6 @@ env:
   METRO_CACHE_PATH: ${{ github.workspace }}/.metro-cache-ci
   ANDROID_TARGET: 'google_apis'
   ANDROID_API_LEVEL: 35
-  MAESTRO_VERSION: '2.0.6'
-  FASTLANE_VERSION: '2.228.0'
 
 jobs:
   android-selfhosted:
@@ -65,16 +63,17 @@ jobs:
       - name: Setup mise toolchain
         uses: jdx/mise-action@v5
         with:
-          version: '2026.11.4'
+          version: '2026.11.9'
           install: true
           cache: false
           log_level: ${{ runner.debug == '1' && 'debug' || 'info' }}
         env:
           GNUPGHOME: ${{ runner.temp }}/gnupg
           MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+          MISE_ENV: ci
 
       - name: Install deps
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Map runtime variables and secrets
         shell: bash
@@ -93,36 +92,7 @@ jobs:
           FIREBASE_PROJECT_ID: ${{ secrets[format('{0}_FIREBASE_PROJECT_ID', inputs.env_prefix)] || secrets.FIREBASE_PROJECT_ID || '' }}
           FIREBASE_STORAGE_BUCKET: ${{ secrets[format('{0}_FIREBASE_STORAGE_BUCKET', inputs.env_prefix)] || secrets.FIREBASE_STORAGE_BUCKET || '' }}
           FIREBASE_VAPID_KEY: ${{ secrets[format('{0}_FIREBASE_VAPID_KEY', inputs.env_prefix)] || secrets.FIREBASE_VAPID_KEY || '' }}
-        run: .github/scripts/map_runtime_env.sh
-
-      - name: Validate EAS CLI version variable
-        shell: bash
-        run: |
-          if [ -z "${{ vars.EAS_CLI_VERSION }}" ]; then
-            echo "❌ Missing EAS_CLI_VERSION GitHub variable."
-            exit 1
-          fi
-
-      - name: Check EAS CLI
-        shell: bash
-        run: |
-          if ! command -v eas >/dev/null 2>&1; then
-            echo "❌ EAS CLI not found on this runner."
-            echo "Install it globally: npm i -g eas-cli@${{ vars.EAS_CLI_VERSION }}"
-            exit 1
-          fi
-          eas --version
-
-      - name: Make CI scripts executable
-        run: chmod +x .github/scripts/*.sh
-
-      - name: Setup Fastlane
-        shell: bash
-        run: .github/scripts/setup_fastlane.sh  "${{ env.FASTLANE_VERSION }}"
-
-      - name: Setup Maestro
-        shell: bash
-        run: .github/scripts/setup_maestro.sh "${{ env.MAESTRO_VERSION }}"
+        run: node .github/scripts/map_runtime_env.mjs
 
       - name: Compute Android build fingerprint
         id: android_fingerprint
@@ -130,7 +100,7 @@ jobs:
         env:
           GOOGLE_SERVICE_INFO_PLIST_B64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_B64 }}
           GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
-        run: ./.github/scripts/compute_fingerprint.sh android >> "$GITHUB_OUTPUT"
+        run: node .github/scripts/compute_fingerprint.mjs android >> "$GITHUB_OUTPUT"
 
       - name: Restore cached APK
         id: apk-cache
@@ -139,6 +109,13 @@ jobs:
           path: ./*.apk
           key: ${{ steps.android_fingerprint.outputs.key }}
           use-local-cache: ${{ vars.USE_LOCAL_CACHE == 'true' }}
+
+      - name: Install pinned EAS CLI
+        if: steps.apk-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          test -n "$EAS_CLI_VERSION" || { echo "❌ EAS_CLI_VERSION is missing from .mise.ci.toml." >&2; exit 1; }
+          pnpm dlx "eas-cli@$EAS_CLI_VERSION" --version
 
       - name: Create debug keystore
         if: steps.apk-cache.outputs.cache-hit != 'true'
@@ -196,7 +173,7 @@ jobs:
 
           for attempt in $(seq 1 "$ATTEMPTS"); do
             echo "🏗️ Build attempt $attempt/$ATTEMPTS"
-            if eas build --platform android --profile e2eRelease --local --non-interactive; then
+            if pnpm dlx "eas-cli@$EAS_CLI_VERSION" build --platform android --profile e2eRelease --local --non-interactive; then
               echo "✅ Build succeeded"
               exit 0
             fi
@@ -219,7 +196,7 @@ jobs:
           echo "apk=$APK" >> $GITHUB_OUTPUT
           [ -n "$APK" ] || (echo "No APK found in repo root."; ls -alh .; exit 1)
 
-          PKG=$(node -e "const { execSync } = require('node:child_process'); const config = JSON.parse(execSync('npx expo config --json', { encoding: 'utf8' })); process.stdout.write(config.android?.package ?? '');")
+          PKG=$(node -e "const { execSync } = require('node:child_process'); const config = JSON.parse(execSync('pnpm exec expo config --json', { encoding: 'utf8' })); process.stdout.write(config.android?.package ?? '');")
           echo "PKG=$PKG"
           echo "pkg=$PKG" >> $GITHUB_OUTPUT
           [ -n "$PKG" ] || (echo "No PKG found in repo root."; ls -alh .; exit 1)
@@ -261,7 +238,7 @@ jobs:
           fi
 
           echo "[run-snippet] expo public config (engine/runtime lines)"
-          node -e "const { execSync } = require('node:child_process'); const config = JSON.parse(execSync('npx expo config --json', { encoding: 'utf8' })); const payload = { jsEngine: config.jsEngine ?? null, newArchEnabled: config.newArchEnabled ?? null, runtimeVersion: config.runtimeVersion ?? null, androidPackage: config.android?.package ?? null }; console.log(JSON.stringify(payload, null, 2));"
+          node -e "const { execSync } = require('node:child_process'); const config = JSON.parse(execSync('pnpm exec expo config --json', { encoding: 'utf8' })); const payload = { jsEngine: config.jsEngine ?? null, newArchEnabled: config.newArchEnabled ?? null, runtimeVersion: config.runtimeVersion ?? null, androidPackage: config.android?.package ?? null }; console.log(JSON.stringify(payload, null, 2));"
 
       - name: Repack Android app with latest JS bundle
         if: steps.apk-cache.outputs.cache-hit == 'true'
@@ -300,7 +277,7 @@ jobs:
           echo "📦 Building embedded Android bundle for repack..."
           rm -rf dist
 
-          npx expo export:embed \
+          pnpm exec expo export:embed \
             --platform android \
             --entry-file index.js \
             --bundle-output dist/index.android.bundle \
@@ -325,7 +302,7 @@ jobs:
       - name: Validate Hermes + bundle compatibility before repack
         if: steps.apk-cache.outputs.cache-hit == 'true'
         shell: bash
-        run: .github/scripts/validate_hermes_bundle.sh android
+        run: node .github/scripts/validate_hermes_bundle.mjs android
 
       - name: Repack Android app artifact with embedded bundle
         if: steps.apk-cache.outputs.cache-hit == 'true'
@@ -357,7 +334,7 @@ jobs:
 
           TEMP_OUTPUT="repacked_output"
           rm -rf "$TEMP_OUTPUT"
-          npx @expo/repack-app --platform "$PLATFORM" --source-app "$SOURCE_APP" --output "$TEMP_OUTPUT"
+          pnpm dlx @expo/repack-app --platform "$PLATFORM" --source-app "$SOURCE_APP" --output "$TEMP_OUTPUT"
           echo "Replacing $SOURCE_APP with repacked version..."
           rm -rf "$SOURCE_APP"
           mv "$TEMP_OUTPUT" "$SOURCE_APP"
@@ -384,6 +361,10 @@ jobs:
           use-local-cache: ${{ vars.USE_LOCAL_CACHE == 'true' }}
 
       # Self-hosted macOS (Apple Silicon) runner must have Android SDK & emulator installed; hardware accel uses Hypervisor.framework (no KVM).
+      - name: Setup Maestro
+        shell: bash
+        run: node .github/scripts/setup_maestro.mjs "$MAESTRO_VERSION"
+
       - name: Run E2E tests
         id: e2e_android
         uses: reactivecircus/android-emulator-runner@v2
@@ -396,7 +377,7 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-window -gpu swiftshader_indirect -no-audio -no-boot-anim
           disable-animations: true
-          script: .github/scripts/android_run_e2e.sh ${{ steps.find_apk.outputs.apk }} ${{ steps.find_apk.outputs.pkg }}
+          script: node .github/scripts/android_run_e2e.mjs "${{ steps.find_apk.outputs.apk }}" "${{ steps.find_apk.outputs.pkg }}"
 
       - name: Upload E2E artifacts on failure
         if: failure()
@@ -411,4 +392,4 @@ jobs:
       - name: Clean self-hosted workspace
         if: always()
         shell: bash
-        run: .github/scripts/clean_selfhosted_workspace.sh
+        run: node .github/scripts/clean_selfhosted_workspace.mjs

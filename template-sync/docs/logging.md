@@ -265,7 +265,7 @@ _With Firebase enabled (`EXPO_PUBLIC_TURN_ON_FIREBASE=true`):_
 _With Supabase enabled:_
 
 - ✅ **Logger methods log to console** (full visibility)
-- ✅ **Supabase active** (sends to local Supabase instance via `npm run supabase:dev`)
+- ✅ **Supabase active** (sends to local Supabase instance via `pnpm run supabase:dev`)
 - ❌ **Firebase disabled** (unless `EXPO_PUBLIC_TURN_ON_FIREBASE=true`)
 - **Purpose**: Test Supabase app logs, query logs locally via Supabase Studio
 - **Note**: Uses `.env.local` credentials (local Docker), not production
@@ -932,7 +932,7 @@ analytics.trackEvent('feature_used', { feature: featureName });
 
 1. Verify Firebase is enabled: `EXPO_PUBLIC_TURN_ON_FIREBASE=true`
 2. Verify Firebase credentials configured correctly
-3. Rebuild app with `npx expo prebuild --clean`
+3. Rebuild app with `pnpm exec expo prebuild --clean`
 4. Check Crashlytics dashboard (may take 5-10 minutes to appear)
 5. Verify error is thrown in production build (not dev)
 
@@ -951,7 +951,7 @@ analytics.trackEvent('feature_used', { feature: featureName });
 **Checklist**:
 
 1. Verify Firebase Performance enabled in Firebase Console
-2. Rebuild app with `npx expo prebuild --clean`
+2. Rebuild app with `pnpm exec expo prebuild --clean`
 3. Check 5% sampling may skip most traces (expected)
 4. Verify running on native platform (iOS/Android, not web)
 5. Check Firebase Performance dashboard (may take 5-10 minutes)

@@ -104,7 +104,7 @@ This test:
 Run it with:
 
 ```bash
-npm test -- __tests__/db/schema-sync.test.ts
+pnpm test -- __tests__/db/schema-sync.test.ts
 ```
 
 #### 3. Documentation
@@ -113,8 +113,8 @@ When you change one schema, you **must** change the other. The workflow ensures 
 
 1. Update DOMAIN config (if needed)
 2. Update **both** `src/db/sqlite/schema.ts` and `src/db/postgres/schema.ts`
-3. Run `npm run db:generate` for SQLite
-4. Run `npm run db:generate:postgres` for Postgres
+3. Run `pnpm run db:generate` for SQLite
+4. Run `pnpm run db:generate:postgres` for Postgres
 5. Tests will fail if schemas drift
 
 ---
@@ -209,19 +209,19 @@ vim src/db/sqlite/schema.ts
 vim src/db/postgres/schema.ts
 
 # 3. Generate migrations
-npm run db:generate           # SQLite
-npm run db:generate:postgres  # Postgres
+pnpm run db:generate           # SQLite
+pnpm run db:generate:postgres  # Postgres
 
 # 4. Verify sync
-npm test -- __tests__/db/schema-sync.test.ts
+pnpm test -- __tests__/db/schema-sync.test.ts
 
 # 5. Review generated SQL
 cat src/db/sqlite/migrations/*.sql
 cat supabase/migrations/*.sql
 
 # 6. Test locally
-npm run supabase:dev
-npm start
+pnpm run supabase:dev
+pnpm start
 ```
 
 ---

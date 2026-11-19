@@ -1,4 +1,4 @@
-jest.mock('@expo/config-plugins', () => ({
+jest.mock('expo/config-plugins', () => ({
   withGradleProperties: jest.fn((config, action) => action(config)),
 }));
 

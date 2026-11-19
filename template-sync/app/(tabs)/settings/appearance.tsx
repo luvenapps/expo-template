@@ -1,23 +1,16 @@
 import { ScreenContainer, SettingsSection } from '@/ui';
-import { useThemeContext, type ThemeName } from '@/ui/theme/ThemeProvider';
+import { useThemeContext, type ThemePreference } from '@/ui/theme/ThemeProvider';
 import { Monitor, Moon, Sun } from '@/ui/icons';
 import type { ComponentType } from 'react';
-import { Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Button, Text, YStack } from 'tamagui';
 
-const THEME_OPTION_WEB_TEXT_STYLE = {
-  fontFamily: 'Arial',
-  fontSize: 16,
-  fontWeight: '300',
-} as const;
-
 export default function AppearanceSettingsScreen() {
   const { t } = useTranslation();
-  const { theme: themePreference, setTheme } = useThemeContext();
+  const { preference: themePreference, setPreference } = useThemeContext();
 
   const THEME_OPTIONS: {
-    value: ThemeName;
+    value: ThemePreference;
     label: string;
     Icon: ComponentType<{ size?: number; color?: string }>;
   }[] = [
@@ -26,8 +19,8 @@ export default function AppearanceSettingsScreen() {
     { value: 'dark', label: t('settings.themeDark'), Icon: Moon },
   ];
 
-  const handleThemeSelection = (value: ThemeName) => {
-    setTheme(value);
+  const handleThemeSelection = (value: ThemePreference) => {
+    setPreference(value);
   };
 
   return (
@@ -39,15 +32,19 @@ export default function AppearanceSettingsScreen() {
             return (
               <Button
                 key={value}
-                size="legacy5"
-                height={48}
-                gap={Platform.OS === 'web' ? '10.555px' : '2'}
+                size="lg"
+                height="8"
+                gap="3"
                 borderRadius="3"
                 borderStyle="solid"
                 borderColor="border-color"
-                backgroundColor={`${isActive ? 'accent-color' : 'background'} hover:${isActive ? 'accent-color' : 'background-hover'} press:${isActive ? 'accent-color' : 'background-press'}`}
+                backgroundColor={{
+                  default: isActive ? 'accent-color' : 'background',
+                  hover: isActive ? 'accent-color' : 'background-hover',
+                  press: isActive ? 'accent-color' : 'background-press',
+                }}
                 color="color"
-                fontWeight="300"
+                fontWeight="1"
                 testID={`theme-option-${value}`}
                 opacity={1}
                 disabled={isActive}
@@ -57,9 +54,9 @@ export default function AppearanceSettingsScreen() {
                 <Icon size={20} color={isActive ? 'white' : 'color'} />
                 <Text
                   testID={`theme-option-label-${value}`}
-                  fontSize="4"
-                  color={`${isActive ? 'white' : 'color'}`}
-                  style={Platform.OS === 'web' ? THEME_OPTION_WEB_TEXT_STYLE : undefined}
+                  fontSize="3"
+                  fontWeight="1"
+                  color={isActive ? 'white' : 'color'}
                 >
                   {label}
                 </Text>

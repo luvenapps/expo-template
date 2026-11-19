@@ -3,10 +3,10 @@
 ## Repository conventions
 
 - Use TypeScript, existing patterns, and `@/…` imports where configured.
-- Use npm and the Node/Java versions in `.mise.toml`; prefer `mise` for runtimes.
-  Use `npm ci` for existing dependencies and keep `package-lock.json` in sync when
+- Use pnpm 12 and the Node/Java versions in `.mise.toml`; prefer `mise` for runtimes.
+  Use `pnpm install --frozen-lockfile` for existing dependencies and keep `pnpm-lock.yaml` in sync when
   changing dependencies. Read `package.json` for current versions and commands.
-- Tamagui compiler options live in `tamagui.build.ts`; restart Metro with `npm start -- --clear` after config changes. Generate icons with `mise exec -- ./node_modules/.bin/tamagui icons add IconName --out src/ui/icons` and import from `@/ui/icons`.
+- Tamagui compiler options live in `tamagui.build.ts`; restart Metro with `pnpm start -- --clear` after config changes. Generate icons with `mise exec -- ./node_modules/.bin/tamagui icons add IconName --out src/ui/icons` and import from `@/ui/icons`.
 - Expo generates `ios/` and `android/`. Make native configuration changes through
   Expo config/plugins unless custom native code is explicitly required.
 - Keep running development servers available for manual testing. Do not kill
@@ -22,12 +22,12 @@
 
 ## Completion and commits
 
-1. Always run `npm run format` before committing or opening a PR. Review its diff
+1. Always run `pnpm run format` before committing or opening a PR. Review its diff
    and keep the commit scoped to the request; report unrelated formatting changes.
-2. When `.js`, `.jsx`, `.ts`, or `.tsx` files change, run `npm run lint`. For every
+2. When `.js`, `.jsx`, `.ts`, or `.tsx` files change, run `pnpm run lint`. For every
    modified or new source file, run relevant Jest tests with `--coverage` and
    `--collectCoverageFrom='<file>'`; statements, branches, functions, and lines must
-   each reach 80%. After scoped coverage passes, run full `npm test`.
+   each reach 80%. After scoped coverage passes, run full `pnpm test`.
    Documentation-only changes do not require lint or Jest.
 3. If a check fails, fix only the reported issues and rerun that check. ENOSPC
    watcher warnings alone are expected; confirm whether the command actually failed.

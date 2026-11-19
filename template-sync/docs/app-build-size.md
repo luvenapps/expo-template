@@ -34,14 +34,14 @@ Generate bundle + assets for each platform:
 
 ```bash
 mkdir -p build/bundles
-npx react-native bundle \
+pnpm exec react-native bundle \
   --entry-file index.js \
   --platform ios \
   --dev false \
   --bundle-output build/bundles/index.ios.bundle \
   --assets-dest build/bundles
 
-npx react-native bundle \
+pnpm exec react-native bundle \
   --entry-file index.js \
   --platform android \
   --dev false \

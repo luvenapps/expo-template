@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { Platform, useWindowDimensions } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { Dialog, Paragraph, XStack, YStack, useTheme } from 'tamagui';
+import { themeColorSets } from '@/ui/theme/palette';
 import { PrimaryButton } from '../components/PrimaryButton';
 
 type SoftPromptModalProps = {
@@ -26,7 +27,7 @@ export function SoftPromptModal({
   onOpenChange,
 }: SoftPromptModalProps) {
   const theme = useTheme();
-  const strokeColor = theme.color?.get() ?? '#111';
+  const strokeColor = theme.color?.get() ?? themeColorSets.light.color;
   const resolvedAllowLabel = allowLabel ?? '';
   const resolvedNotNowLabel = notNowLabel ?? '';
   // Require the user to press one of the actions before the modal can close.
@@ -65,16 +66,16 @@ export function SoftPromptModal({
           padding="4"
           alignSelf="center"
           width="100%"
-          maxWidth={480}
+          maxWidth="modalContent"
           height={dialogHeight}
         >
-          <YStack gap="$4" flex={isWeb ? undefined : 1} justifyContent="space-between">
-            <YStack gap="$2">
+          <YStack gap="4" flex={isWeb ? undefined : 1} justifyContent="space-between">
+            <YStack gap="2">
               <Dialog.Title asChild>
                 <Paragraph
                   fontSize="5"
-                  fontWeight="700"
-                  lineHeight="60px"
+                  fontWeight="5"
+                  lineHeight="display"
                   textTransform="capitalize"
                 >
                   {title}
@@ -85,7 +86,7 @@ export function SoftPromptModal({
               </Dialog.Description>
             </YStack>
             <XStack
-              marginTop={isWeb ? 0 : -50}
+              marginTop={isWeb ? '0' : 'modalOverlap'}
               justifyContent="center"
               flex={1}
               alignItems="center"
@@ -106,7 +107,7 @@ export function SoftPromptModal({
                 />
               </Svg>
             </XStack>
-            <YStack gap="$2" justifyContent="center">
+            <YStack gap="2" justifyContent="center">
               <PrimaryButton
                 width="auto"
                 onPress={handleAllow}

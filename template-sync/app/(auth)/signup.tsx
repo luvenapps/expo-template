@@ -14,6 +14,8 @@ import {
   TitleText,
   useToast,
 } from '@/ui';
+import { shadows } from '@/ui/theme/shadows';
+import { spaceTokenValues } from '@/ui/theme/tokenValues';
 import type { NavigationProp, ParamListBase } from '@react-navigation/native';
 import { Eye, EyeOff } from '@/ui/icons';
 import { useNavigation, useRouter } from 'expo-router';
@@ -158,9 +160,8 @@ export default function SignUpScreen() {
         { surface: 'auth.signup.oauth' },
       );
       const friendlyMessage =
-        friendly?.description ??
         (friendly?.descriptionKey ? t(friendly.descriptionKey) : undefined) ??
-        friendly?.title ??
+        friendly?.originalMessage ??
         (friendly?.titleKey ? t(friendly.titleKey) : undefined) ??
         result.error?.toString() ??
         t('auth.signup.errorUnknown');
@@ -184,14 +185,14 @@ export default function SignUpScreen() {
       hoverBackgroundColor?: string;
       hoverBorderColor?: string;
       hoverTextColor?: string;
-      buttonHeight?: number;
-      fontSize?: number;
-      iconSize?: number;
-      minWidth?: number;
-      horizontalPadding?: number;
-      titlePaddingEnd?: number;
-      iconPaddingTop?: number;
-      iconPaddingBottom?: number;
+      buttonHeight?: string;
+      fontSize?: string;
+      iconSize?: string;
+      minWidth?: string;
+      horizontalPadding?: string;
+      titlePaddingEnd?: string;
+      iconPaddingTop?: string;
+      iconPaddingBottom?: string;
     };
 
     const buttons: OAuthButton[] = [];
@@ -232,14 +233,14 @@ export default function SignUpScreen() {
         ),
         variant: 'apple',
         ...(isDarkMode ? appleDark : appleLight),
-        buttonHeight: 40,
-        fontSize: 16,
-        iconSize: 18,
-        minWidth: 140,
-        horizontalPadding: 12,
-        titlePaddingEnd: 16,
-        iconPaddingTop: 2,
-        iconPaddingBottom: 4,
+        buttonHeight: '7',
+        fontSize: '3',
+        iconSize: 'oauthIcon',
+        minWidth: 'oauthMinWidth',
+        horizontalPadding: '3',
+        titlePaddingEnd: '4',
+        iconPaddingTop: 'oauthIconInset',
+        iconPaddingBottom: '1',
       });
     }
 
@@ -287,14 +288,14 @@ export default function SignUpScreen() {
       variant: 'google',
       disabled: false,
       ...googleStyles,
-      buttonHeight: 40,
-      fontSize: 16,
-      iconSize: 18,
-      minWidth: 140,
-      horizontalPadding: 12,
-      titlePaddingEnd: 16,
-      iconPaddingTop: 0,
-      iconPaddingBottom: 0,
+      buttonHeight: '7',
+      fontSize: '3',
+      iconSize: 'oauthIcon',
+      minWidth: 'oauthMinWidth',
+      horizontalPadding: '3',
+      titlePaddingEnd: '4',
+      iconPaddingTop: '0',
+      iconPaddingBottom: '0',
     });
 
     return buttons;
@@ -364,9 +365,8 @@ export default function SignUpScreen() {
         { surface: 'auth.signup.email' },
       );
       const friendlyMessage =
-        friendly?.description ??
         (friendly?.descriptionKey ? t(friendly.descriptionKey) : undefined) ??
-        friendly?.title ??
+        friendly?.originalMessage ??
         (friendly?.titleKey ? t(friendly.titleKey) : undefined) ??
         result.error?.toString() ??
         t('auth.signup.errorUnknown');
@@ -384,20 +384,20 @@ export default function SignUpScreen() {
         }}
       >
         <Card
-          borderWidth={1}
+          borderWidth="hairline"
           borderColor="border-color"
-          borderRadius={12}
+          borderRadius="3"
           shadowColor="shadowColor"
-          shadowOffset={{ width: 0, height: 2 }}
+          shadowOffset={{ width: 0, height: spaceTokenValues.shadowOffset }}
           shadowOpacity={0.15}
-          shadowRadius={4}
+          shadowRadius="1"
           padding="6"
           width="100%"
-          maxWidth={440}
+          maxWidth="authContent"
           backgroundColor="backgroundStrong"
         >
           <YStack gap="5" width="100%">
-            <YStack gap="$2" alignItems="center">
+            <YStack gap="2" alignItems="center">
               <TitleText textAlign="center">{t('auth.signupTitle')}</TitleText>
               <SubtitleText textAlign="center">{t('auth.signupSubtitle')}</SubtitleText>
             </YStack>
@@ -429,16 +429,16 @@ export default function SignUpScreen() {
                     testID={`oauth-${provider}-button`}
                     width="100%"
                     minWidth={minWidth}
-                    height={buttonHeight ?? 40}
+                    height={buttonHeight ?? '7'}
                     alignItems="center"
                     justifyContent="center"
-                    paddingHorizontal={horizontalPadding ?? 12}
+                    paddingHorizontal={horizontalPadding ?? '3'}
                     backgroundColor={{
                       default: backgroundColor ?? 'surface',
                       hover: hoverBackgroundColor ?? backgroundColor ?? 'surface',
                     }}
                     borderRadius="2"
-                    borderWidth={1}
+                    borderWidth="hairline"
                     borderColor={{
                       default: borderColor ?? 'border-color',
                       hover: hoverBorderColor ?? borderColor ?? '#1F1F1F',
@@ -447,7 +447,7 @@ export default function SignUpScreen() {
                       default: textColor ?? 'color',
                       hover: hoverTextColor ?? textColor ?? 'color',
                     }}
-                    boxShadow={{ hover: '0 1px 3px rgba(60,64,67,0.3)' }}
+                    boxShadow={{ hover: shadows.oauthButtonHover }}
                     opacity="press:0.9 disabled:0.5"
                     disabled={disabled || isSubmitting}
                     aria-label={`oauth-${provider}`}
@@ -458,17 +458,17 @@ export default function SignUpScreen() {
                     <XStack
                       alignItems="center"
                       justifyContent="center"
-                      gap="$2"
+                      gap="2"
                       width="100%"
-                      height={buttonHeight ?? 40}
+                      height={buttonHeight ?? '7'}
                     >
                       <View
-                        width={iconSize ?? 20}
-                        height={buttonHeight ?? 40}
+                        width={iconSize ?? 'oauthIcon'}
+                        height={buttonHeight ?? '7'}
                         alignItems="center"
                         justifyContent="center"
-                        paddingTop={iconPaddingTop ?? 0}
-                        paddingBottom={iconPaddingBottom ?? 0}
+                        paddingTop={iconPaddingTop ?? '0'}
+                        paddingBottom={iconPaddingBottom ?? '0'}
                       >
                         {icon}
                       </View>
@@ -478,11 +478,11 @@ export default function SignUpScreen() {
                           default: textColor ?? 'color',
                           hover: hoverTextColor ?? textColor ?? 'color',
                         }}
-                        fontWeight="600"
-                        fontSize={fontSize ?? 16}
-                        lineHeight="20px"
+                        fontWeight="4"
+                        fontSize={fontSize ?? '3'}
+                        lineHeight="2"
                         flexShrink={1}
-                        paddingRight={titlePaddingEnd ?? 16}
+                        paddingRight={titlePaddingEnd ?? '4'}
                       >
                         {label}
                       </BodyText>
@@ -492,7 +492,7 @@ export default function SignUpScreen() {
               )}
 
               <XStack
-                marginTop={Platform.OS === 'web' ? 0 : 10}
+                marginTop={Platform.OS === 'web' ? '0' : 'authNativeGap'}
                 alignItems="center"
                 gap="3"
                 accessible
@@ -500,7 +500,7 @@ export default function SignUpScreen() {
               >
                 <View
                   flex={1}
-                  height={1}
+                  height="hairline"
                   backgroundColor="colorMuted"
                   aria-hidden
                   accessibilityElementsHidden
@@ -509,7 +509,7 @@ export default function SignUpScreen() {
                 <CaptionText color="colorMuted">{t('auth.oauthDivider')}</CaptionText>
                 <View
                   flex={1}
-                  height={1}
+                  height="hairline"
                   backgroundColor="colorMuted"
                   aria-hidden
                   accessibilityElementsHidden
@@ -524,7 +524,7 @@ export default function SignUpScreen() {
               </CaptionText>
             ) : null}
 
-            <Form width="100%" gap="$4">
+            <Form width="100%" gap="4">
               <FormField
                 ref={nameInputRef}
                 testID="name-field"
@@ -692,13 +692,13 @@ export default function SignUpScreen() {
               </Form.Trigger>
             </Form>
 
-            <Separator marginTop={`${Platform.OS === 'web' ? '0' : '4'}`}></Separator>
+            <Separator marginTop={Platform.OS === 'web' ? '0' : '4'}></Separator>
 
             <YStack
               width="100%"
               alignItems="center"
-              gap="$2"
-              marginBottom={Platform.OS === 'web' ? -10 : '4'}
+              gap="2"
+              marginBottom={Platform.OS === 'web' ? 'authFormOverlap' : '4'}
             >
               <CaptionText color="colorMuted">{t('auth.signup.hasAccountPrompt')}</CaptionText>
               <PrimaryButton
@@ -716,13 +716,13 @@ export default function SignUpScreen() {
       {showRedirectSpinner ? (
         <View
           position="absolute"
-          top={0}
-          right={0}
-          bottom={0}
-          left={0}
+          top="0"
+          right="0"
+          bottom="0"
+          left="0"
           alignItems="center"
           justifyContent="center"
-          backgroundColor="rgba(0,0,0,0.2)"
+          backgroundColor="overlayScrim"
         >
           <Spinner size="large" color="accent-color" />
         </View>

@@ -9,7 +9,9 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-const mockHandleError = jest.fn(() => ({ friendly: { title: 'Error', type: 'error' } }));
+const mockHandleError = jest.fn(() => ({
+  friendly: { titleKey: 'errors.unknown.title', type: 'error' },
+}));
 
 jest.mock('@/errors/useFriendlyErrorHandler', () => ({
   useFriendlyErrorHandler: () => mockHandleError,
@@ -516,7 +518,7 @@ describe('ForceUpgradeModal', () => {
   it('handles error with descriptionKey fallback', async () => {
     mockHandleError.mockReturnValueOnce({
       friendly: {
-        title: 'Error',
+        titleKey: 'errors.unknown.title',
         descriptionKey: 'errors.network.description',
         type: 'error',
       } as any,
@@ -544,7 +546,7 @@ describe('ForceUpgradeModal', () => {
   it('handles error with originalMessage fallback', async () => {
     mockHandleError.mockReturnValueOnce({
       friendly: {
-        title: 'Error',
+        titleKey: 'errors.unknown.title',
         originalMessage: 'Original error message',
         type: 'error',
       } as any,
@@ -573,7 +575,7 @@ describe('ForceUpgradeModal', () => {
   it('uses titleText when descriptionText is empty', async () => {
     mockHandleError.mockReturnValueOnce({
       friendly: {
-        title: 'Unable to open store',
+        titleKey: 'errors.unknown.title',
         type: 'error',
       },
     });

@@ -89,7 +89,7 @@ describe('crashlyticsBackend', () => {
     });
     expect(backend).toBeNull();
     expect(mockLogger.warn).toHaveBeenCalledWith(
-      'Native Crashlytics module not available. Rebuild the app after running: npx expo prebuild --clean',
+      'Native Crashlytics module not available. Rebuild the app after running: pnpm exec expo prebuild --clean',
     );
   });
 
@@ -120,7 +120,7 @@ describe('crashlyticsBackend', () => {
 
     expect(backend).toBeNull();
     expect(mockLogger.warn).toHaveBeenCalledWith(
-      'Failed to initialize Crashlytics. You may need to rebuild: npx expo prebuild --clean',
+      'Failed to initialize Crashlytics. You may need to rebuild: pnpm exec expo prebuild --clean',
     );
   });
 

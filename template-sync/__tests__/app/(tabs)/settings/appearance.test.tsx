@@ -1,7 +1,7 @@
 import { fireEvent, render } from '@testing-library/react-native';
 import { Platform } from 'react-native';
 
-const mockSetTheme = jest.fn();
+const mockSetPreference = jest.fn();
 
 jest.mock('@/ui', () => {
   const React = require('react');
@@ -23,12 +23,14 @@ jest.mock('@/ui', () => {
 
 jest.mock('@/ui/theme/ThemeProvider', () => ({
   useThemeContext: () => ({
-    theme: 'system',
-    setTheme: mockSetTheme,
+    preference: 'system',
+    resolvedTheme: 'light',
+    setPreference: mockSetPreference,
   }),
   useOptionalThemeContext: () => ({
-    theme: 'system',
-    setTheme: mockSetTheme,
+    preference: 'system',
+    resolvedTheme: 'light',
+    setPreference: mockSetPreference,
   }),
 }));
 
@@ -90,7 +92,7 @@ const themeOptions = [
 
 describe('AppearanceSettingsScreen', () => {
   beforeEach(() => {
-    mockSetTheme.mockReset();
+    mockSetPreference.mockReset();
   });
 
   it.each(themeOptions)(
@@ -102,7 +104,7 @@ describe('AppearanceSettingsScreen', () => {
     },
   );
 
-  it('matches Production theme option typography on web', async () => {
+  it('uses the shared typography and spacing tokens on web', async () => {
     const originalPlatform = Platform.OS;
     Object.defineProperty(Platform, 'OS', {
       value: 'web',
@@ -113,12 +115,9 @@ describe('AppearanceSettingsScreen', () => {
     try {
       const { getByTestId } = await render(<AppearanceSettingsScreen />);
 
-      expect(getByTestId('theme-option-label-system').props.style).toMatchObject({
-        fontFamily: 'Arial',
-        fontSize: 16,
-        fontWeight: '300',
-      });
-      expect(getByTestId('theme-option-system').props.gap).toBe('10.555px');
+      expect(getByTestId('theme-option-label-system').props.fontSize).toBe('3');
+      expect(getByTestId('theme-option-label-system').props.fontWeight).toBe('1');
+      expect(getByTestId('theme-option-system').props.gap).toBe('3');
     } finally {
       Object.defineProperty(Platform, 'OS', {
         value: originalPlatform,
@@ -132,6 +131,6 @@ describe('AppearanceSettingsScreen', () => {
     const { getByTestId } = await render(<AppearanceSettingsScreen />);
 
     await fireEvent.press(getByTestId('theme-option-light'));
-    expect(mockSetTheme).toHaveBeenCalledWith('light');
+    expect(mockSetPreference).toHaveBeenCalledWith('light');
   });
 });

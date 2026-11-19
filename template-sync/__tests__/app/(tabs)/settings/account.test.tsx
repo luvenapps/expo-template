@@ -350,7 +350,7 @@ describe('AccountSettingsScreen', () => {
     mockSessionState.session = null;
     const error = new Error('reset failed');
     mockClearAllTables.mockRejectedValueOnce(error);
-    mockFriendlyError.mockReturnValue({ friendly: { description: 'Oops' } });
+    mockFriendlyError.mockReturnValue({ friendly: { originalMessage: 'Oops' } });
 
     const { getByText } = await render(<AccountSettingsScreen />);
 
@@ -408,7 +408,7 @@ describe('AccountSettingsScreen', () => {
     mockSessionState.session = { user: { id: 'user-4', email: 'me@example.com' } };
     const error = new Error('remote reset failed');
     mockDeleteRemoteUserData.mockRejectedValueOnce(error);
-    mockFriendlyError.mockReturnValue({ friendly: { description: 'Oops' } });
+    mockFriendlyError.mockReturnValue({ friendly: { originalMessage: 'Oops' } });
 
     const { getByText } = await render(<AccountSettingsScreen />);
 

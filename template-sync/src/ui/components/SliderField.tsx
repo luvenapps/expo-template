@@ -30,7 +30,7 @@ export function SliderField({
   helperTestID,
 }: SliderFieldProps) {
   return (
-    <YStack gap="$2" testID={testID}>
+    <YStack gap="2" testID={testID}>
       <LabelText testID={labelTestID}>
         {label} • {value.map(Math.round).join(' – ')}
       </LabelText>
@@ -44,33 +44,33 @@ export function SliderField({
         alignSelf="stretch"
         {...sliderProps}
       >
-        <Slider.Track backgroundColor="secondaryBackground" height={24} borderRadius="6">
+        <Slider.Track backgroundColor="secondaryBackground" height="5" borderRadius="6">
           <Slider.TrackActive backgroundColor="accent-color" />
         </Slider.Track>
         <Slider.Thumb
           index={0}
           circular
           size={false}
-          width={24}
-          height={24}
-          minWidth={24}
-          minHeight={24}
+          width="5"
+          height="5"
+          minWidth="5"
+          minHeight="5"
           backgroundColor="background"
           borderColor="accent-color"
-          borderWidth={3}
+          borderWidth="controlRing"
         />
         {value.length > 1 ? (
           <Slider.Thumb
             index={1}
             circular
             size={false}
-            width={24}
-            height={24}
-            minWidth={24}
-            minHeight={24}
+            width="5"
+            height="5"
+            minWidth="5"
+            minHeight="5"
             backgroundColor="background"
             borderColor="accent-color"
-            borderWidth={3}
+            borderWidth="controlRing"
           />
         ) : null}
       </Slider>

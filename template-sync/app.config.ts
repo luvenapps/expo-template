@@ -73,6 +73,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         },
       ],
       'expo-system-ui',
+      'expo-status-bar',
       'expo-sqlite',
       'expo-background-task',
       ['expo-notifications', { enableBackgroundRemoteNotifications: true }],

@@ -6,6 +6,7 @@ import { NOTIFICATION_PERMISSION_STATE, NOTIFICATION_STATUS } from '@/notificati
 import { useNotificationSettings } from '@/notifications/useNotificationSettings';
 import { ScreenContainer, useToast } from '@/ui';
 import { useThemeContext } from '@/ui/theme/ThemeProvider';
+import { spaceTokenValues } from '@/ui/theme/tokenValues';
 import {
   Bell,
   ChevronRight,
@@ -39,13 +40,8 @@ const isFirebaseEnabled = () =>
 
 const MARQUEE_PAUSE_MS = 1500;
 const MARQUEE_SPEED_PX_PER_SEC = 30;
-const MARQUEE_EDGE_PADDING = 8; // Extra scroll distance at each end
-const SETTINGS_ROW_TEXT_STYLE = { fontSize: 16 } as const;
+const MARQUEE_EDGE_PADDING = spaceTokenValues.marqueeEdgePadding;
 const SETTINGS_ROW_WEB_TEXT_STYLE = {
-  ...SETTINGS_ROW_TEXT_STYLE,
-  fontSize: 16,
-  fontFamily: 'Arial',
-  minWidth: 0,
   overflow: 'hidden',
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
@@ -61,11 +57,11 @@ function MarqueeText({ text }: MarqueeTextProps) {
     return (
       <Text
         color="colorMuted"
-        fontSize="$4"
+        fontSize="3"
         style={SETTINGS_ROW_WEB_TEXT_STYLE}
         numberOfLines={1}
         flexShrink={1}
-        minWidth={0}
+        minWidth="0"
         ellipsizeMode="tail"
       >
         {text}
@@ -153,11 +149,18 @@ function MarqueeTextNative({ text }: { text: string }) {
       onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
     >
       {/* Hidden measurement text - use onTextLayout to get actual text width */}
-      <RNView style={{ position: 'absolute', top: 0, left: 0, opacity: 0, pointerEvents: 'none' }}>
+      <RNView
+        style={{
+          position: 'absolute',
+          top: spaceTokenValues[0],
+          left: spaceTokenValues[0],
+          opacity: 0,
+          pointerEvents: 'none',
+        }}
+      >
         <Text
           color="colorMuted"
-          fontSize="$4"
-          style={SETTINGS_ROW_TEXT_STYLE}
+          fontSize="3"
           onTextLayout={(e) => {
             const lines = e.nativeEvent.lines;
             if (lines.length > 0) {
@@ -174,7 +177,7 @@ function MarqueeTextNative({ text }: { text: string }) {
       </RNView>
       {/* Visible text - animated if overflowing, static otherwise */}
       <Animated.View style={[{ width: textWidth > 0 ? textWidth : undefined }, animatedStyle]}>
-        <Text color="colorMuted" fontSize="$4" style={SETTINGS_ROW_TEXT_STYLE}>
+        <Text color="colorMuted" fontSize="3">
           {text}
         </Text>
       </Animated.View>
@@ -208,35 +211,19 @@ export function SettingsRow({
       onPress={onPress}
       testID={testID}
       opacity="press:0.8"
-      padding={0}
+      padding="0"
       backgroundColor="transparent"
-      borderWidth={0}
-      borderRadius={0}
+      borderWidth="0"
+      borderRadius="0"
     >
-      <RNView
-        style={{
-          flexDirection: 'row',
-          width: '100%',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: 16,
-          gap: 8,
-        }}
-      >
-        <RNView
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 8,
-            flexShrink: 0,
-          }}
-        >
+      <XStack width="100%" alignItems="center" justifyContent="space-between" padding="4" gap="2">
+        <XStack alignItems="center" gap="2" flexShrink={0}>
           {icon ? (
             <XStack
               flexDirection="row"
-              width={32}
-              height={32}
-              borderRadius={8}
+              width="6"
+              height="6"
+              borderRadius="2"
               alignItems="center"
               justifyContent="center"
               backgroundColor={iconBackground ?? 'background-hover'}
@@ -245,25 +232,23 @@ export function SettingsRow({
             </XStack>
           ) : null}
           <Text
-            fontSize="$4"
-            fontWeight="400"
+            fontSize="3"
+            fontWeight="2"
             color="color"
-            style={Platform.OS === 'web' ? SETTINGS_ROW_WEB_TEXT_STYLE : SETTINGS_ROW_TEXT_STYLE}
+            style={Platform.OS === 'web' ? SETTINGS_ROW_WEB_TEXT_STYLE : undefined}
+            minWidth={Platform.OS === 'web' ? '0' : undefined}
             numberOfLines={1}
           >
             {title}
           </Text>
-        </RNView>
-        <RNView
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 8,
-            flexShrink: 1,
-            justifyContent: 'flex-end',
-            minWidth: 0,
-            maxWidth: '55%',
-          }}
+        </XStack>
+        <XStack
+          alignItems="center"
+          gap="2"
+          flexShrink={1}
+          justifyContent="flex-end"
+          minWidth="0"
+          maxWidth="55%"
         >
           {value ? (
             valueMarquee ? (
@@ -271,13 +256,11 @@ export function SettingsRow({
             ) : (
               <Text
                 color="colorMuted"
-                fontSize="$4"
-                style={
-                  Platform.OS === 'web' ? SETTINGS_ROW_WEB_TEXT_STYLE : SETTINGS_ROW_TEXT_STYLE
-                }
+                fontSize="3"
+                style={Platform.OS === 'web' ? SETTINGS_ROW_WEB_TEXT_STYLE : undefined}
                 numberOfLines={1}
                 flexShrink={1}
-                minWidth={Platform.OS === 'web' ? 0 : undefined}
+                minWidth={Platform.OS === 'web' ? '0' : undefined}
                 ellipsizeMode="tail"
               >
                 {value}
@@ -287,8 +270,8 @@ export function SettingsRow({
           <XStack flexDirection="row" flexShrink={0}>
             <ChevronRight size={18} color="colorMuted" />
           </XStack>
-        </RNView>
-      </RNView>
+        </XStack>
+      </XStack>
     </Button>
   );
 }
@@ -296,13 +279,13 @@ export function SettingsRow({
 function SettingsGroup({ children }: { children: ReactNode }) {
   return (
     <Card
-      borderWidth={1}
+      borderWidth="hairline"
       borderColor="border-color"
       shadowColor="shadowColor"
-      shadowOffset={{ width: 0, height: 2 }}
+      shadowOffset={{ width: 0, height: spaceTokenValues.shadowOffset }}
       shadowOpacity={0.15}
-      shadowRadius={4}
-      padding={0}
+      shadowRadius="1"
+      padding="0"
       backgroundColor="backgroundStrong"
       borderRadius="5"
     >
@@ -314,7 +297,7 @@ function SettingsGroup({ children }: { children: ReactNode }) {
 export default function SettingsScreen() {
   const router = useRouter();
   const { t, i18n } = useTranslation();
-  const { theme: themePreference, resolvedTheme } = useThemeContext();
+  const { preference: themePreference, resolvedTheme } = useThemeContext();
   const toast = useToast();
   const showFriendlyError = useFriendlyErrorHandler(toast);
   const status = useSessionStore((state) => state.status);
@@ -372,14 +355,14 @@ export default function SettingsScreen() {
       ? (session?.user?.email ?? t('settings.accountSignedIn'))
       : t('settings.signIn');
 
-  const themeIcon = getIconStyles('#5E5CE6');
-  const languageIcon = getIconStyles('#FF9500');
-  const notificationsIcon = getIconStyles('#FF3B30');
-  const accountIcon = getIconStyles('#007AFF');
-  const developerIcon = getIconStyles('#8E8E93');
-  const helpIcon = getIconStyles('#34C759');
-  const termsIcon = getIconStyles('#AF52DE');
-  const privacyIcon = getIconStyles('#30B0C7');
+  const themeIcon = getIconStyles('settingsTheme');
+  const languageIcon = getIconStyles('settingsLanguage');
+  const notificationsIcon = getIconStyles('settingsNotifications');
+  const accountIcon = getIconStyles('settingsAccount');
+  const developerIcon = getIconStyles('settingsDeveloper');
+  const helpIcon = getIconStyles('settingsHelp');
+  const termsIcon = getIconStyles('settingsTerms');
+  const privacyIcon = getIconStyles('settingsPrivacy');
   const showDevTools =
     (globalThis as typeof globalThis & { __DEV__?: boolean }).__DEV__ ??
     process.env.NODE_ENV !== 'production';
@@ -394,10 +377,13 @@ export default function SettingsScreen() {
 
   return (
     <ScreenContainer
-      gap="$4"
+      gap="4"
       paddingHorizontal="4"
       backgroundColor="background"
-      contentContainerStyle={{ flexGrow: 1, paddingBottom: 48 }}
+      contentContainerStyle={{
+        flexGrow: 1,
+        paddingBottom: spaceTokenValues.settingsContentBottom,
+      }}
     >
       <SettingsGroup>
         <SettingsRow
@@ -486,11 +472,11 @@ export default function SettingsScreen() {
         />
       </SettingsGroup>
 
-      <YStack alignItems="center" paddingVertical="4" gap="$2">
+      <YStack alignItems="center" paddingVertical="4" gap="2">
         <Text
-          fontSize="$4"
+          fontSize="3"
           color="colorMuted"
-          style={Platform.OS === 'web' ? SETTINGS_ROW_WEB_TEXT_STYLE : SETTINGS_ROW_TEXT_STYLE}
+          style={Platform.OS === 'web' ? SETTINGS_ROW_WEB_TEXT_STYLE : undefined}
           testID="app-version"
         >
           {'v'}

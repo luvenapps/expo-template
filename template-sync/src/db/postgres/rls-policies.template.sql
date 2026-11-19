@@ -3,7 +3,7 @@
 -- This is a TEMPLATE showing the RLS policy pattern used in this project.
 -- The actual rls-policies.sql file is auto-generated from DOMAIN config.
 --
--- To generate actual policies: npm run db:generate-rls
+-- To generate actual policies: pnpm run db:generate-rls
 -- The generator reads from src/config/domain.config.ts
 --
 -- Pattern for each table:

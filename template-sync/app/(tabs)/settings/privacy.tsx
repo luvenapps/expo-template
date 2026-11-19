@@ -43,18 +43,18 @@ export default function PrivacyScreen() {
     <ScreenContainer gap="5">
       <SettingsSection title={t('settings.privacyTitle')}>
         {privacyUrl ? (
-          <PrimaryButton fontSize="$4" onPress={openPrivacy}>
+          <PrimaryButton fontSize="4" onPress={openPrivacy}>
             {t('settings.openPrivacy')}
           </PrimaryButton>
         ) : (
           <YStack gap="3" width="100%">
-            <Paragraph fontSize="$2" flexShrink={0} flexWrap="wrap">
+            <Paragraph fontSize="2" flexShrink={0} flexWrap="wrap">
               {privacyContent.lastUpdated}
             </Paragraph>
             <Paragraph
               color="colorMuted"
-              fontSize="$3"
-              fontWeight="300"
+              fontSize="3"
+              fontWeight="1"
               flexShrink={0}
               flexWrap="wrap"
               marginBottom="5"
@@ -63,19 +63,13 @@ export default function PrivacyScreen() {
             </Paragraph>
             {privacyContent.sections.map((section, index) => (
               <Fragment key={section.id}>
-                <Paragraph
-                  color="color"
-                  fontWeight="400"
-                  fontSize="$4"
-                  flexShrink={0}
-                  flexWrap="wrap"
-                >
+                <Paragraph color="color" fontWeight="2" fontSize="4" flexShrink={0} flexWrap="wrap">
                   {section.heading}
                 </Paragraph>
                 <Paragraph
                   color="colorMuted"
-                  fontSize="$3"
-                  fontWeight="300"
+                  fontSize="3"
+                  fontWeight="1"
                   flexShrink={0}
                   flexWrap="wrap"
                   marginBottom={index < privacyContent.sections.length - 1 ? '5' : undefined}

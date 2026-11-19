@@ -44,12 +44,12 @@ export default function GetHelpScreen() {
           </YStack>
         }
       >
-        <YStack gap="5" width="100%" marginBottom={`${Platform.OS === 'web' ? '1' : '5'}`}>
-          <YStack gap="$2">
+        <YStack gap="5" width="100%" marginBottom={Platform.OS === 'web' ? '1' : '5'}>
+          <YStack gap="2">
             <Text
               fontFamily={supportTextFont}
               fontSize="5"
-              fontWeight="600"
+              fontWeight="4"
               color="color"
               lineHeight="5"
             >
@@ -63,42 +63,56 @@ export default function GetHelpScreen() {
             >
               <YStack gap="3">
                 <XStack
+                  testID="support-topic-feedback-card"
+                  onPress={() => setTopic('feedback')}
                   flexDirection="row"
                   gap="3"
                   alignItems="center"
                   padding="3"
                   borderRadius="3"
-                  backgroundColor={`${topic === 'feedback' ? 'background-hover' : 'transparent'} press:background-hover`}
-                  borderWidth={1}
-                  borderColor={`${topic === 'feedback' ? 'accent-color' : 'border-color'}`}
+                  backgroundColor={{
+                    default: topic === 'feedback' ? 'background-hover' : 'transparent',
+                    hover: 'background-hover',
+                    press: 'background-hover',
+                  }}
+                  borderWidth="hairline"
+                  borderColor={topic === 'feedback' ? 'accent-color' : 'border-color'}
+                  cursor="pointer"
                 >
                   <RadioGroup.Item
+                    testID="support-topic-feedback-radio"
                     value="feedback"
                     id={`${topicId}-feedback`}
-                    size="legacy5"
-                    width={Platform.OS === 'web' ? '12px' : undefined}
-                    height={Platform.OS === 'web' ? '12px' : undefined}
-                    paddingHorizontal={Platform.OS === 'web' ? 0 : undefined}
+                    onPress={() => setTopic('feedback')}
+                    size="lg"
+                    width={Platform.OS === 'web' ? '3' : undefined}
+                    height={Platform.OS === 'web' ? '3' : undefined}
+                    paddingHorizontal={Platform.OS === 'web' ? '0' : undefined}
+                    hitSlop={16}
                     cursor="pointer"
                   >
                     {Platform.OS === 'web' ? (
                       <RadioGroup.Indicator
-                        width={3}
-                        height={3}
+                        width="radioDot"
+                        height="radioDot"
                         backgroundColor={radioIndicatorColor}
                       />
                     ) : (
-                      <RadioGroup.Indicator width={4} height={4} backgroundColor="color" />
+                      <RadioGroup.Indicator
+                        width="radioIndicator"
+                        height="radioIndicator"
+                        backgroundColor="color"
+                      />
                     )}
                   </RadioGroup.Item>
                   <YStack flex={1} gap="1">
                     <Label
                       htmlFor={`${topicId}-feedback`}
                       cursor="pointer"
-                      fontWeight="600"
-                      fontSize="$4"
+                      fontWeight="4"
+                      fontSize="4"
                       color="color"
-                      lineHeight="$5"
+                      lineHeight="5"
                     >
                       {t('settings.getHelpFeedback')}
                     </Label>
@@ -109,42 +123,56 @@ export default function GetHelpScreen() {
                 </XStack>
 
                 <XStack
+                  testID="support-topic-bug-card"
+                  onPress={() => setTopic('bug')}
                   flexDirection="row"
                   gap="3"
                   alignItems="center"
                   padding="3"
                   borderRadius="3"
-                  backgroundColor={`${topic === 'bug' ? 'background-hover' : 'transparent'} press:background-hover`}
-                  borderWidth={1}
-                  borderColor={`${topic === 'bug' ? 'accent-color' : 'border-color'}`}
+                  backgroundColor={{
+                    default: topic === 'bug' ? 'background-hover' : 'transparent',
+                    hover: 'background-hover',
+                    press: 'background-hover',
+                  }}
+                  borderWidth="hairline"
+                  borderColor={topic === 'bug' ? 'accent-color' : 'border-color'}
+                  cursor="pointer"
                 >
                   <RadioGroup.Item
+                    testID="support-topic-bug-radio"
                     value="bug"
                     id={`${topicId}-bug`}
-                    size="legacy5"
-                    width={Platform.OS === 'web' ? '12px' : undefined}
-                    height={Platform.OS === 'web' ? '12px' : undefined}
-                    paddingHorizontal={Platform.OS === 'web' ? 0 : undefined}
+                    onPress={() => setTopic('bug')}
+                    size="lg"
+                    width={Platform.OS === 'web' ? '3' : undefined}
+                    height={Platform.OS === 'web' ? '3' : undefined}
+                    paddingHorizontal={Platform.OS === 'web' ? '0' : undefined}
+                    hitSlop={16}
                     cursor="pointer"
                   >
                     {Platform.OS === 'web' ? (
                       <RadioGroup.Indicator
-                        width={3}
-                        height={3}
+                        width="radioDot"
+                        height="radioDot"
                         backgroundColor={radioIndicatorColor}
                       />
                     ) : (
-                      <RadioGroup.Indicator width={4} height={4} backgroundColor="color" />
+                      <RadioGroup.Indicator
+                        width="radioIndicator"
+                        height="radioIndicator"
+                        backgroundColor="color"
+                      />
                     )}
                   </RadioGroup.Item>
                   <YStack flex={1} gap="1">
                     <Label
                       htmlFor={`${topicId}-bug`}
                       cursor="pointer"
-                      fontWeight="600"
-                      fontSize="$4"
+                      fontWeight="4"
+                      fontSize="4"
                       color="color"
-                      lineHeight="$5"
+                      lineHeight="5"
                     >
                       {t('settings.getHelpReportBug')}
                     </Label>
@@ -157,20 +185,20 @@ export default function GetHelpScreen() {
             </RadioGroup>
           </YStack>
 
-          <YStack gap="$2" marginBottom={-10}>
+          <YStack gap="2" marginBottom="helpTextOverlap">
             <Text
               fontFamily={supportTextFont}
               fontSize="5"
-              fontWeight="600"
+              fontWeight="4"
               color="color"
               lineHeight="5"
             >
               {t('settings.getHelpMessageLabel')}
             </Text>
             <TextArea
-              size="legacy4"
+              size="md"
               fontFamily="body"
-              fontSize={16}
+              fontSize="3"
               borderRadius="3"
               paddingHorizontal="3"
               paddingVertical="2"
@@ -178,9 +206,9 @@ export default function GetHelpScreen() {
               onChangeText={setMessage}
               placeholder={t('settings.getHelpMessagePlaceholder')}
               placeholderTextColor="colorMuted"
-              minHeight={160}
+              minHeight="textArea"
               verticalAlign="top"
-              borderWidth="1px focus:2px"
+              borderWidth="hairline focus:focusRing"
               borderColor="border-color focus:accent-color"
             />
             <Text fontFamily={supportTextFont} fontSize="3" color="colorMuted">
@@ -192,8 +220,8 @@ export default function GetHelpScreen() {
             textProps={{ textTransform: 'capitalize' }}
             onPress={handleSubmit}
             disabled={!message.trim()}
-            gap={Platform.OS === 'web' ? '6px' : '$2'}
-            icon={<Mail size={20} />}
+            gap="2"
+            icon={<Mail size={20} color="white" />}
           >
             {t('settings.getHelpSendEmail')}
           </PrimaryButton>

@@ -36,7 +36,7 @@ describe('SecondaryButton', () => {
 
   it('allows textProps to override defaults', async () => {
     const { getByTestId } = await render(
-      <SecondaryButton testID="secondary" textProps={{ textTransform: 'none', fontSize: '$3' }}>
+      <SecondaryButton testID="secondary" textProps={{ textTransform: 'none', fontSize: '3' }}>
         Label
       </SecondaryButton>,
     );
@@ -45,7 +45,7 @@ describe('SecondaryButton', () => {
     expect(button.props.textProps).toEqual(
       expect.objectContaining({
         textTransform: 'none',
-        fontSize: '$3',
+        fontSize: '3',
       }),
     );
   });

@@ -19,7 +19,7 @@ function isFriendlyError(error: unknown): error is FriendlyError {
     typeof error === 'object' &&
     'code' in error &&
     'type' in error &&
-    ('titleKey' in error || 'title' in error),
+    ('titleKey' in error || 'descriptionKey' in error || 'originalMessage' in error),
   );
 }
 
@@ -37,12 +37,11 @@ export function useFriendlyErrorHandler(toast?: ToastController) {
       ? (error as FriendlyError)
       : resolveFriendlyError(error);
 
-    // Translate the title and description (support legacy string fields)
-    const title =
-      friendly.title ?? (friendly.titleKey ? t(friendly.titleKey) : t('errors.unknown.title'));
+    const title = friendly.titleKey ? t(friendly.titleKey) : t('errors.unknown.title');
     const description =
-      friendly.description ??
-      (friendly.descriptionKey ? t(friendly.descriptionKey) : (friendly.originalMessage ?? ''));
+      (friendly.descriptionKey ? t(friendly.descriptionKey) : undefined) ??
+      friendly.originalMessage ??
+      '';
 
     analytics.trackError?.(title, {
       surface: options.surface,

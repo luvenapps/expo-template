@@ -66,7 +66,7 @@ function createNativeBackendIfAvailable(): AnalyticsBackend | null {
       require('@react-native-firebase/analytics') as typeof import('@react-native-firebase/analytics');
     if (!analyticsModule.getAnalytics) {
       logger.warn(
-        'Native analytics module not available. Rebuild the app after running: npx expo prebuild --clean',
+        'Native analytics module not available. Rebuild the app after running: pnpm exec expo prebuild --clean',
       );
       return null;
     }
@@ -118,7 +118,7 @@ function createNativeBackendIfAvailable(): AnalyticsBackend | null {
     };
   } catch {
     logger.warn(
-      'Failed to initialize native analytics. You may need to rebuild: npx expo prebuild --clean',
+      'Failed to initialize native analytics. You may need to rebuild: pnpm exec expo prebuild --clean',
     );
     return null;
   }

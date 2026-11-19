@@ -19,7 +19,7 @@ export function getCrashlyticsBackend(): ErrorReporterBackend | null {
       require('@react-native-firebase/crashlytics') as typeof import('@react-native-firebase/crashlytics');
     if (typeof crashlyticsModule.getCrashlytics !== 'function') {
       logger.warn(
-        'Native Crashlytics module not available. Rebuild the app after running: npx expo prebuild --clean',
+        'Native Crashlytics module not available. Rebuild the app after running: pnpm exec expo prebuild --clean',
       );
       return null;
     }
@@ -56,7 +56,7 @@ export function getCrashlyticsBackend(): ErrorReporterBackend | null {
     };
   } catch {
     logger.warn(
-      'Failed to initialize Crashlytics. You may need to rebuild: npx expo prebuild --clean',
+      'Failed to initialize Crashlytics. You may need to rebuild: pnpm exec expo prebuild --clean',
     );
     return null;
   }

@@ -10,6 +10,7 @@ import {
   SubtitleText,
   TitleText,
 } from '@/ui';
+import { spaceTokenValues } from '@/ui/theme/tokenValues';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -49,9 +50,8 @@ export default function ForgotPasswordScreen() {
         { surface: 'auth.password.reset' },
       );
       const friendlyMessage =
-        friendly?.description ??
         (friendly?.descriptionKey ? t(friendly.descriptionKey) : undefined) ??
-        friendly?.title ??
+        friendly?.originalMessage ??
         (friendly?.titleKey ? t(friendly.titleKey) : undefined) ??
         result.error?.toString() ??
         t('auth.reset.errorUnknown');
@@ -69,20 +69,20 @@ export default function ForgotPasswordScreen() {
         }}
       >
         <Card
-          borderWidth={1}
+          borderWidth="hairline"
           borderColor="border-color"
-          borderRadius={12}
+          borderRadius="3"
           shadowColor="shadowColor"
-          shadowOffset={{ width: 0, height: 2 }}
+          shadowOffset={{ width: 0, height: spaceTokenValues.shadowOffset }}
           shadowOpacity={0.15}
-          shadowRadius={4}
+          shadowRadius="1"
           padding="6"
           width="100%"
-          maxWidth={440}
+          maxWidth="authContent"
           backgroundColor="backgroundStrong"
         >
           <YStack gap="5" width="100%">
-            <YStack gap="$2" alignItems="center">
+            <YStack gap="2" alignItems="center">
               <TitleText textAlign="center">{t('auth.resetTitle')}</TitleText>
               <SubtitleText textAlign="center">{t('auth.resetSubtitle')}</SubtitleText>
             </YStack>
@@ -94,7 +94,7 @@ export default function ForgotPasswordScreen() {
             ) : null}
             <InlineError message={errorMessage} testID="reset-error" />
 
-            <Form onSubmit={handleSubmit} width="100%" gap="$4">
+            <Form onSubmit={handleSubmit} width="100%" gap="4">
               <FormField
                 testID="email-field"
                 inputTestID="email-input"
@@ -120,13 +120,13 @@ export default function ForgotPasswordScreen() {
               </Form.Trigger>
             </Form>
 
-            <Separator marginTop={`${Platform.OS === 'web' ? '0' : '4'}`}></Separator>
+            <Separator marginTop={Platform.OS === 'web' ? '0' : '4'}></Separator>
 
             <YStack
               width="100%"
               alignItems="center"
-              gap="$2"
-              marginBottom={Platform.OS === 'web' ? -10 : '4'}
+              gap="2"
+              marginBottom={Platform.OS === 'web' ? 'authFormOverlap' : '4'}
             >
               <CaptionText color="colorMuted">{t('auth.reset.remembered')}</CaptionText>
               <PrimaryButton

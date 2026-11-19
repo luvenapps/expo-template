@@ -57,12 +57,7 @@ export async function signInWithEmail(email: string, password: string): Promise<
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
     const friendly = resolveFriendlyError(error);
-    const errorMessage =
-      friendly.originalMessage ??
-      friendly.description ??
-      friendly.title ??
-      friendly.descriptionKey ??
-      friendly.titleKey;
+    const errorMessage = friendly.originalMessage ?? friendly.descriptionKey ?? friendly.titleKey;
     trackAuthEvent('auth:sign_in', 'email', 'error', friendly.code);
     return {
       success: false,
@@ -101,12 +96,7 @@ async function resolveOAuthSession(url: string, provider: Provider): Promise<Aut
       trackAuthEvent('auth:sign_in', method, 'error', friendly.code);
       return {
         success: false,
-        error:
-          friendly.originalMessage ??
-          friendly.description ??
-          friendly.title ??
-          friendly.descriptionKey ??
-          friendly.titleKey,
+        error: friendly.originalMessage ?? friendly.descriptionKey ?? friendly.titleKey,
         code: friendly.code,
         friendlyError: friendly,
       };
@@ -126,12 +116,7 @@ async function resolveOAuthSession(url: string, provider: Provider): Promise<Aut
       trackAuthEvent('auth:sign_in', method, 'error', friendly.code);
       return {
         success: false,
-        error:
-          friendly.originalMessage ??
-          friendly.description ??
-          friendly.title ??
-          friendly.descriptionKey ??
-          friendly.titleKey,
+        error: friendly.originalMessage ?? friendly.descriptionKey ?? friendly.titleKey,
         code: friendly.code,
         friendlyError: friendly,
       };
@@ -145,12 +130,7 @@ async function resolveOAuthSession(url: string, provider: Provider): Promise<Aut
   trackAuthEvent('auth:sign_in', method, 'error', friendly.code);
   return {
     success: false,
-    error:
-      friendly.originalMessage ??
-      friendly.description ??
-      friendly.title ??
-      friendly.descriptionKey ??
-      friendly.titleKey,
+    error: friendly.originalMessage ?? friendly.descriptionKey ?? friendly.titleKey,
     code: friendly.code,
     friendlyError: friendly,
   };
@@ -187,12 +167,7 @@ async function signInWithAppleNative(): Promise<AuthResult> {
       trackAuthEvent('auth:sign_in', 'apple', 'error', friendly.code);
       return {
         success: false,
-        error:
-          friendly.originalMessage ??
-          friendly.description ??
-          friendly.title ??
-          friendly.descriptionKey ??
-          friendly.titleKey,
+        error: friendly.originalMessage ?? friendly.descriptionKey ?? friendly.titleKey,
         code: friendly.code,
         friendlyError: friendly,
       };
@@ -216,12 +191,7 @@ async function signInWithAppleNative(): Promise<AuthResult> {
       trackAuthEvent('auth:sign_in', 'apple', 'error', friendly.code);
       return {
         success: false,
-        error:
-          friendly.originalMessage ??
-          friendly.description ??
-          friendly.title ??
-          friendly.descriptionKey ??
-          friendly.titleKey,
+        error: friendly.originalMessage ?? friendly.descriptionKey ?? friendly.titleKey,
         code: friendly.code,
         friendlyError: friendly,
       };
@@ -249,12 +219,7 @@ async function signInWithAppleNative(): Promise<AuthResult> {
     trackAuthEvent('auth:sign_in', 'apple', 'error', friendly.code);
     return {
       success: false,
-      error:
-        friendly.originalMessage ??
-        friendly.description ??
-        friendly.title ??
-        friendly.descriptionKey ??
-        friendly.titleKey,
+      error: friendly.originalMessage ?? friendly.descriptionKey ?? friendly.titleKey,
       code: friendly.code,
       friendlyError: friendly,
     };
@@ -295,12 +260,7 @@ export async function signInWithOAuth(provider: Provider): Promise<AuthResult> {
     trackAuthEvent('auth:sign_in', method, 'error', friendly.code);
     return {
       success: false,
-      error:
-        friendly.originalMessage ??
-        friendly.description ??
-        friendly.title ??
-        friendly.descriptionKey ??
-        friendly.titleKey,
+      error: friendly.originalMessage ?? friendly.descriptionKey ?? friendly.titleKey,
       code: friendly.code,
       friendlyError: friendly,
     };
@@ -343,12 +303,7 @@ export async function signInWithOAuth(provider: Provider): Promise<AuthResult> {
       trackAuthEvent('auth:sign_in', method, 'error', friendly.code);
       return {
         success: false,
-        error:
-          friendly.originalMessage ??
-          friendly.description ??
-          friendly.title ??
-          friendly.descriptionKey ??
-          friendly.titleKey,
+        error: friendly.originalMessage ?? friendly.descriptionKey ?? friendly.titleKey,
         code: friendly.code,
         friendlyError: friendly,
       };
@@ -364,8 +319,8 @@ export async function signInWithOAuth(provider: Provider): Promise<AuthResult> {
       error: message,
       code: 'auth.oauth.browser',
       friendlyError: {
-        title: 'Unable to open sign-in window',
-        description: message,
+        titleKey: 'errors.auth.oauthBrowser.title',
+        originalMessage: message,
         code: 'auth.oauth.browser',
         type: 'error',
       },
@@ -382,12 +337,7 @@ export async function signOut(): Promise<AuthResult> {
   }
   if (error) {
     const friendly = resolveFriendlyError(error);
-    const errorMessage =
-      friendly.originalMessage ??
-      friendly.description ??
-      friendly.title ??
-      friendly.descriptionKey ??
-      friendly.titleKey;
+    const errorMessage = friendly.originalMessage ?? friendly.descriptionKey ?? friendly.titleKey;
     trackAuthEvent('auth:sign_out', 'session', 'error', friendly.code);
     return {
       success: false,
@@ -466,12 +416,7 @@ export async function signUpWithEmail(
   });
   if (error) {
     const friendly = resolveFriendlyError(error);
-    const errorMessage =
-      friendly.originalMessage ??
-      friendly.description ??
-      friendly.title ??
-      friendly.descriptionKey ??
-      friendly.titleKey;
+    const errorMessage = friendly.originalMessage ?? friendly.descriptionKey ?? friendly.titleKey;
     trackAuthEvent('auth:sign_up', 'email', 'error', friendly.code);
     return {
       success: false,
@@ -489,12 +434,7 @@ export async function sendPasswordReset(email: string): Promise<AuthResult> {
   const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
   if (error) {
     const friendly = resolveFriendlyError(error);
-    const errorMessage =
-      friendly.originalMessage ??
-      friendly.description ??
-      friendly.title ??
-      friendly.descriptionKey ??
-      friendly.titleKey;
+    const errorMessage = friendly.originalMessage ?? friendly.descriptionKey ?? friendly.titleKey;
     trackAuthEvent('auth:forgot_password', 'email', 'error', friendly.code);
     return {
       success: false,

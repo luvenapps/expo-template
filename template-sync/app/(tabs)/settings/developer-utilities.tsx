@@ -43,6 +43,7 @@ import {
   useToast,
 } from '@/ui';
 import { useThemeContext } from '@/ui/theme/ThemeProvider';
+import { spaceTokenValues } from '@/ui/theme/tokenValues';
 import { Calendar, Flame, RefreshCw } from '@/ui/icons';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
@@ -232,7 +233,6 @@ export default function SettingsScreen() {
       settingsLogger.error('manual sync failed', syncError);
       const { friendly } = showFriendlyError(syncError, { surface: 'settings.sync' });
       const message =
-        friendly.description ??
         (friendly.descriptionKey ? t(friendly.descriptionKey) : friendly.originalMessage) ??
         (friendly.titleKey ? t(friendly.titleKey) : t('errors.unknown.title'));
       setDevStatus(message);
@@ -263,7 +263,6 @@ export default function SettingsScreen() {
       settingsLogger.error('archive entries failed', error);
       const { friendly } = showFriendlyError(error, { surface: 'settings.archive' });
       const message =
-        friendly.description ??
         (friendly.descriptionKey ? t(friendly.descriptionKey) : friendly.originalMessage) ??
         (friendly.titleKey ? t(friendly.titleKey) : t('errors.unknown.title'));
       setDevStatus(message);
@@ -339,7 +338,6 @@ export default function SettingsScreen() {
       settingsLogger.error('Seed sample data failed:', error);
       const { friendly } = showFriendlyError(error, { surface: 'settings.seed' });
       const message =
-        friendly.description ??
         (friendly.descriptionKey ? t(friendly.descriptionKey) : friendly.originalMessage) ??
         (friendly.titleKey ? t(friendly.titleKey) : t('errors.unknown.title'));
       setDevStatus(`Error: ${message}`);
@@ -363,7 +361,6 @@ export default function SettingsScreen() {
     } catch (error) {
       const { friendly } = showFriendlyError(error, { surface: 'settings.clear-outbox' });
       const message =
-        friendly.description ??
         (friendly.descriptionKey ? t(friendly.descriptionKey) : friendly.originalMessage) ??
         (friendly.titleKey ? t(friendly.titleKey) : t('errors.unknown.title'));
       setDevStatus(message);
@@ -403,7 +400,6 @@ export default function SettingsScreen() {
         suppressToast: true,
       });
       const message =
-        friendly.description ??
         (friendly.descriptionKey ? t(friendly.descriptionKey) : friendly.originalMessage) ??
         (friendly.titleKey ? t(friendly.titleKey) : t('errors.unknown.title'));
       setDevStatus(`Error: ${message}`);
@@ -445,7 +441,6 @@ export default function SettingsScreen() {
         suppressToast: true,
       });
       const message =
-        friendly.description ??
         (friendly.descriptionKey ? t(friendly.descriptionKey) : friendly.originalMessage) ??
         (friendly.titleKey ? t(friendly.titleKey) : t('errors.unknown.title'));
       setDevStatus(message);
@@ -480,7 +475,6 @@ export default function SettingsScreen() {
         suppressToast: true,
       });
       const message =
-        friendly.description ??
         (friendly.descriptionKey ? t(friendly.descriptionKey) : friendly.originalMessage) ??
         (friendly.titleKey ? t(friendly.titleKey) : t('errors.unknown.title'));
       setDevStatus(message);
@@ -504,7 +498,7 @@ export default function SettingsScreen() {
             userId: session.user.id,
             name: 'Dev habit',
             cadence: 'daily',
-            color: '#4C7CF3',
+            color: palette.accent,
           });
           primaryId = primary.id;
           setDevPrimaryId(primary.id);
@@ -567,7 +561,6 @@ export default function SettingsScreen() {
         suppressToast: true,
       });
       const message =
-        friendly.description ??
         (friendly.descriptionKey ? t(friendly.descriptionKey) : friendly.originalMessage) ??
         (friendly.titleKey ? t(friendly.titleKey) : t('errors.unknown.title'));
       setDevStatus(message);
@@ -708,7 +701,6 @@ export default function SettingsScreen() {
       settingsLogger.error('Clear local database failed:', error);
       const { friendly } = showFriendlyError(error, { surface: 'settings.clear-db' });
       const message =
-        friendly.description ??
         (friendly.descriptionKey ? t(friendly.descriptionKey) : friendly.originalMessage) ??
         (friendly.titleKey ? t(friendly.titleKey) : t('errors.unknown.title'));
       setDevStatus(`Error: ${message}`);
@@ -735,7 +727,6 @@ export default function SettingsScreen() {
       settingsLogger.error('Optimize database failed:', error);
       const { friendly } = showFriendlyError(error, { surface: 'settings.optimize-db' });
       const message =
-        friendly.description ??
         (friendly.descriptionKey ? t(friendly.descriptionKey) : friendly.originalMessage) ??
         (friendly.titleKey ? t(friendly.titleKey) : t('errors.unknown.title'));
       setDevStatus(`Error: ${message}`);
@@ -772,8 +763,10 @@ export default function SettingsScreen() {
   ];
 
   const content = (
-    <ScreenContainer contentContainerStyle={{ flexGrow: 1, marginBottom: 96 }}>
-      <YStack gap="$4">
+    <ScreenContainer
+      contentContainerStyle={{ flexGrow: 1, marginBottom: spaceTokenValues.tabBarClearance }}
+    >
+      <YStack gap="4">
         <SettingsSection
           title={t('settings.streakPreviewTitle')}
           description={t('settings.streakPreviewDescription')}
@@ -801,7 +794,7 @@ export default function SettingsScreen() {
               testID="settings-sync-section"
               footerTestID={syncDisabledMessage ? 'settings-sync-disabled' : undefined}
             >
-              <XStack flexDirection="row" gap="$2" flexWrap="wrap">
+              <XStack flexDirection="row" gap="2" flexWrap="wrap">
                 <StatCard
                   label={t('settings.queueSize')}
                   value={queueSize}
@@ -829,17 +822,17 @@ export default function SettingsScreen() {
                   { status: syncStatus.toUpperCase() },
                 )}
               </Paragraph>
-              <YStack gap="$2">
-                <Paragraph fontWeight="600">
+              <YStack gap="2">
+                <Paragraph fontWeight="4">
                   {(t as unknown as (k: string, opts?: Record<string, any>) => string)(
                     'settings.outboxQueueLabel',
                     { percent: Math.round(queuePercent * 100) },
                   )}
                 </Paragraph>
-                <Progress value={queuePercent * 100} size="3" height={18}>
+                <Progress value={queuePercent * 100} size="3" height="progress">
                   <Progress.Indicator backgroundColor="accent-color" />
                 </Progress>
-                <Paragraph color="colorMuted" fontSize="$3">
+                <Paragraph color="colorMuted" fontSize="3">
                   {(t as unknown as (k: string, opts?: Record<string, any>) => string)(
                     'settings.pendingItems',
                     {
@@ -863,7 +856,7 @@ export default function SettingsScreen() {
               ) : null}
               <XStack flexDirection="row">
                 <PrimaryButton
-                  size="legacy5"
+                  size="lg"
                   disabled={!canSync || isSyncing}
                   onPress={handleManualSync}
                   testID="settings-sync-now"
@@ -928,7 +921,7 @@ export default function SettingsScreen() {
                     testID="dev-log-push-status-button"
                     disabled={!isNative}
                     onPress={handleLogPushRegistrationStatus}
-                    fontSize="$3"
+                    fontSize="3"
                   >
                     Log push registration status
                   </SecondaryButton>
@@ -936,7 +929,7 @@ export default function SettingsScreen() {
                     testID="dev-schedule-reminder-once-button"
                     disabled={!isNative}
                     onPress={handleScheduleOneTimeReminder}
-                    fontSize="$3"
+                    fontSize="3"
                   >
                     Schedule one-time reminder
                   </SecondaryButton>
@@ -946,7 +939,7 @@ export default function SettingsScreen() {
                         testID="dev-schedule-reminder-button"
                         disabled={!isNative}
                         onPress={handleScheduleRepeatTestReminder}
-                        fontSize="$3"
+                        fontSize="3"
                       >
                         Schedule R.
                       </SecondaryButton>
@@ -956,14 +949,10 @@ export default function SettingsScreen() {
                         value={testReminderCadence}
                         onValueChange={(value) => setTestReminderCadence(value as '10s' | 'daily')}
                         aria-label="Test reminder cadence"
-                        gap="$2"
+                        gap="2"
                       >
-                        <XStack flexDirection="row" gap="$2" alignItems="center">
-                          <RadioGroup.Item
-                            value="10s"
-                            id={`${reminderCadenceId}-10s`}
-                            size="legacy6"
-                          >
+                        <XStack flexDirection="row" gap="2" alignItems="center">
+                          <RadioGroup.Item value="10s" id={`${reminderCadenceId}-10s`} size="xl">
                             <RadioGroup.Indicator width="33%" height="33%" />
                           </RadioGroup.Item>
                           <Label htmlFor={`${reminderCadenceId}-10s`}>10s</Label>
@@ -971,7 +960,7 @@ export default function SettingsScreen() {
                           <RadioGroup.Item
                             value="daily"
                             id={`${reminderCadenceId}-daily`}
-                            size="legacy6"
+                            size="xl"
                           >
                             <RadioGroup.Indicator width="33%" height="33%" />
                           </RadioGroup.Item>
@@ -985,7 +974,7 @@ export default function SettingsScreen() {
                       testID="dev-reset-reminders-button"
                       disabled={!isNative}
                       onPress={handleResetScheduledReminders}
-                      fontSize="$4"
+                      fontSize="4"
                     >
                       Reset scheduled reminders
                     </SecondaryButton>
@@ -996,7 +985,7 @@ export default function SettingsScreen() {
                         testID="dev-run-reminder-action-button"
                         disabled={!isNative || !hasSession}
                         onPress={handleRunReminderAction}
-                        fontSize="$3"
+                        fontSize="3"
                       >
                         R
                       </SecondaryButton>
@@ -1008,13 +997,13 @@ export default function SettingsScreen() {
                           setDevReminderAction(value as 'create' | 'update' | 'disable' | 'delete')
                         }
                         aria-label="Reminder action"
-                        gap="$2"
+                        gap="2"
                       >
-                        <XStack flexDirection="row" gap="$2" alignItems="center">
+                        <XStack flexDirection="row" gap="2" alignItems="center">
                           <RadioGroup.Item
                             value="create"
                             id={`${reminderActionId}-create`}
-                            size="legacy6"
+                            size="xl"
                           >
                             <RadioGroup.Indicator width="33%" height="33%" />
                           </RadioGroup.Item>
@@ -1023,7 +1012,7 @@ export default function SettingsScreen() {
                           <RadioGroup.Item
                             value="disable"
                             id={`${reminderActionId}-disable`}
-                            size="legacy6"
+                            size="xl"
                           >
                             <RadioGroup.Indicator width="33%" height="33%" />
                           </RadioGroup.Item>
@@ -1032,7 +1021,7 @@ export default function SettingsScreen() {
                           <RadioGroup.Item
                             value="update"
                             id={`${reminderActionId}-update`}
-                            size="legacy6"
+                            size="xl"
                           >
                             <RadioGroup.Indicator width="33%" height="33%" />
                           </RadioGroup.Item>
@@ -1041,7 +1030,7 @@ export default function SettingsScreen() {
                           <RadioGroup.Item
                             value="delete"
                             id={`${reminderActionId}-delete`}
-                            size="legacy6"
+                            size="xl"
                           >
                             <RadioGroup.Indicator width="33%" height="33%" />
                           </RadioGroup.Item>
@@ -1054,7 +1043,7 @@ export default function SettingsScreen() {
                     <SecondaryButton
                       testID="dev-log-notification-store-button"
                       onPress={handleLogNotificationStore}
-                      fontSize="$4"
+                      fontSize="4"
                     >
                       Log notification MMKV
                     </SecondaryButton>
@@ -1063,7 +1052,7 @@ export default function SettingsScreen() {
                     <SecondaryButton
                       testID="dev-log-mmkv-stores-button"
                       onPress={handleLogAllMmkvStores}
-                      fontSize="$4"
+                      fontSize="4"
                     >
                       Log all MMKV stores
                     </SecondaryButton>
@@ -1073,15 +1062,15 @@ export default function SettingsScreen() {
                       testID="dev-crashlytics-crash-button"
                       disabled={!isNative}
                       onPress={handleTestCrashlytics}
-                      fontSize="$4"
+                      fontSize="4"
                     >
                       Test Crashlytics (crash app)
                     </SecondaryButton>
                   </XStack>
-                  <YStack gap="$2">
+                  <YStack gap="2">
                     <XStack
                       flexDirection="row"
-                      gap="$2"
+                      gap="2"
                       alignItems="center"
                       justifyContent="space-between"
                     >
@@ -1092,12 +1081,12 @@ export default function SettingsScreen() {
                       >
                         {isArchiving ? 'Archiving…' : 'Archive'}
                       </SecondaryButton>
-                      <YStack gap="$2" alignItems="center">
+                      <YStack gap="2" alignItems="center">
                         <Switch
                           testID="dev-archive-toggle"
-                          size="legacy7"
+                          size="xxl"
                           borderColor={Platform.OS === 'web' ? 'border-color' : undefined}
-                          borderWidth={Platform.OS === 'web' ? 1 : undefined}
+                          borderWidth={Platform.OS === 'web' ? 'hairline' : undefined}
                           backgroundColor={
                             archiveOffsetDays === -1 ? palette.accent : palette.secondaryBackground
                           }
@@ -1106,14 +1095,14 @@ export default function SettingsScreen() {
                           checked={archiveOffsetDays === -1}
                           onCheckedChange={(val) => setArchiveOffsetDays(val ? -1 : 0)}
                         >
-                          <Switch.Thumb borderWidth={1} borderColor="border-color" />
+                          <Switch.Thumb borderWidth="hairline" borderColor="border-color" />
                         </Switch>
-                        <Text fontSize="$3" color="colorMuted">
+                        <Text fontSize="3" color="colorMuted">
                           {t('settings.archiveIncludeToday')}
                         </Text>
                       </YStack>
                     </XStack>
-                    <Paragraph textAlign="center" color="colorMuted" fontSize="$3">
+                    <Paragraph textAlign="center" color="colorMuted" fontSize="3">
                       {archiveOptionHelper}
                     </Paragraph>
                   </YStack>
@@ -1122,96 +1111,92 @@ export default function SettingsScreen() {
 
               <YStack
                 key="notification-debug"
-                gap="$2"
+                gap="2"
                 marginTop="4"
                 paddingTop="4"
-                borderTopWidth={1}
+                borderTopWidth="hairline"
                 borderTopColor="border-color"
                 width="100%"
               >
-                <Text
-                  fontWeight="600"
-                  fontSize={`${Platform.OS === 'web' ? '$5' : '$4'}`}
-                  marginBottom="2"
-                >
+                <Text fontWeight="4" fontSize={Platform.OS === 'web' ? '5' : '4'} marginBottom="2">
                   Notification Debug
                 </Text>
                 <XStack flexDirection="row" alignItems="center">
                   <Text
-                    fontSize={`${Platform.OS === 'web' ? '$4' : '$3'}`}
+                    fontSize={Platform.OS === 'web' ? '4' : '3'}
                     color="colorMuted"
                     marginRight="2"
                   >
                     permissionStatus:
                   </Text>
                   <Text
-                    fontSize={`${Platform.OS === 'web' ? '$4' : '$3'}`}
+                    fontSize={Platform.OS === 'web' ? '4' : '3'}
                     color="accent-color"
-                    fontWeight="600"
+                    fontWeight="4"
                   >
                     {permissionStatus}
                   </Text>
                 </XStack>
                 <XStack flexDirection="row" alignItems="center">
                   <Text
-                    fontSize={`${Platform.OS === 'web' ? '$4' : '$3'}`}
+                    fontSize={Platform.OS === 'web' ? '4' : '3'}
                     color="colorMuted"
                     marginRight="2"
                   >
                     notificationStatus:
                   </Text>
                   <Text
-                    fontSize={`${Platform.OS === 'web' ? '$4' : '$3'}`}
+                    fontSize={Platform.OS === 'web' ? '4' : '3'}
                     color="accent-color"
-                    fontWeight="600"
+                    fontWeight="4"
                   >
                     {notificationStatus}
                   </Text>
                 </XStack>
                 <XStack flexDirection="row" alignItems="center">
                   <Text
-                    fontSize={`${Platform.OS === 'web' ? '$4' : '$3'}`}
+                    fontSize={Platform.OS === 'web' ? '4' : '3'}
                     color="colorMuted"
                     marginRight="2"
                   >
                     permission.rawStatus:
                   </Text>
                   <Text
-                    fontSize={`${Platform.OS === 'web' ? '$4' : '$3'}`}
+                    fontSize={Platform.OS === 'web' ? '4' : '3'}
                     color="accent-color"
-                    fontWeight="600"
+                    fontWeight="4"
                   >
                     {rawPermissionStatus}
                   </Text>
                 </XStack>
                 <XStack flexDirection="row" alignItems="center">
                   <Text
-                    fontSize={`${Platform.OS === 'web' ? '$4' : '$3'}`}
+                    fontSize={Platform.OS === 'web' ? '4' : '3'}
                     color="colorMuted"
                     marginRight="2"
                   >
                     permission.canAskAgain:
                   </Text>
                   <Text
-                    fontSize={`${Platform.OS === 'web' ? '$4' : '$3'}`}
+                    fontSize={Platform.OS === 'web' ? '4' : '3'}
                     color="accent-color"
-                    fontWeight="600"
+                    fontWeight="4"
                   >
                     {canAskAgain}
                   </Text>
                 </XStack>
                 <XStack flexDirection="row" alignItems="center">
                   <Text
-                    fontSize={`${Platform.OS === 'web' ? '$4' : '$3'}`}
+                    fontSize={Platform.OS === 'web' ? '4' : '3'}
                     color="colorMuted"
                     marginRight="2"
                   >
                     softPrompt.timeLeft:
                   </Text>
                   <Text
-                    fontSize={`${Platform.OS === 'web' ? '$4' : '$3'}`}
+                    fontSize={Platform.OS === 'web' ? '4' : '3'}
                     color="accent-color"
-                    fontWeight="600"
+                    fontWeight="4"
                   >
                     {softPromptCooldownLabel}
                   </Text>
@@ -1220,12 +1205,8 @@ export default function SettingsScreen() {
 
               <Separator borderColor="border-color" marginTop="4" />
 
-              <YStack key="feature-flags-debug" gap="$2" width="100%">
-                <Text
-                  fontWeight="600"
-                  fontSize={`${Platform.OS === 'web' ? '$5' : '$4'}`}
-                  marginBottom="2"
-                >
+              <YStack key="feature-flags-debug" gap="2" width="100%">
+                <Text fontWeight="4" fontSize={Platform.OS === 'web' ? '5' : '4'} marginBottom="2">
                   Feature Flags
                 </Text>
                 {Object.keys(DEFAULT_FLAGS).map((flagKey) => {
@@ -1241,10 +1222,10 @@ export default function SettingsScreen() {
                       justifyContent="space-between"
                       alignItems="center"
                       flexWrap="wrap"
-                      gap="$2"
+                      gap="2"
                     >
                       <Text
-                        fontSize={`${Platform.OS === 'web' ? '$4' : '$3'}`}
+                        fontSize={Platform.OS === 'web' ? '4' : '3'}
                         color="colorMuted"
                         marginRight="2"
                         flexShrink={0}
@@ -1252,9 +1233,9 @@ export default function SettingsScreen() {
                         {flagKey}:
                       </Text>
                       <Text
-                        fontSize={`${Platform.OS === 'web' ? '$4' : '$3'}`}
+                        fontSize={Platform.OS === 'web' ? '4' : '3'}
                         color="accent-color"
-                        fontWeight="600"
+                        fontWeight="4"
                         flexShrink={1}
                         textAlign="right"
                       >
@@ -1267,18 +1248,14 @@ export default function SettingsScreen() {
 
               <YStack
                 key="feature-flag-example"
-                gap="$2"
+                gap="2"
                 marginTop="4"
                 paddingTop="4"
-                borderTopWidth={1}
+                borderTopWidth="hairline"
                 borderTopColor="border-color"
                 width="100%"
               >
-                <Text
-                  fontWeight="600"
-                  fontSize={`${Platform.OS === 'web' ? '$5' : '$4'}`}
-                  marginBottom="2"
-                >
+                <Text fontWeight="4" fontSize={Platform.OS === 'web' ? '5' : '4'} marginBottom="2">
                   Feature Flags example
                 </Text>
                 <Text>

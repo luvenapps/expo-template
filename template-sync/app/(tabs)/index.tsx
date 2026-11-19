@@ -29,11 +29,11 @@ export default function HomeScreen() {
 
   return (
     <>
-      <ScreenContainer gap="$4" alignItems="center">
+      <ScreenContainer gap="4" alignItems="center">
         <H2
           fontFamily={Platform.OS === 'web' ? 'serif' : undefined}
-          fontWeight="700"
-          fontSize={40}
+          fontWeight="5"
+          fontSize="hero"
           testID="welcome-title"
           textAlign="center"
         >

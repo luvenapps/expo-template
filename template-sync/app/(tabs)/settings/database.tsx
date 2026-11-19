@@ -10,6 +10,7 @@ import {
 } from '@/db/sqlite/schema';
 import { createLogger } from '@/observability/logger';
 import { ScreenContainer, SecondaryButton } from '@/ui';
+import { spaceTokenValues } from '@/ui/theme/tokenValues';
 import { pluralize } from '@/utils';
 import { ChevronLeft, ChevronRight, Database } from '@/ui/icons';
 import { useRouter } from 'expo-router';
@@ -121,8 +122,13 @@ export default function DatabaseViewerScreen() {
   const renderTableData = () => {
     if (!data.length) {
       return (
-        <Card borderWidth={1} borderColor="border-color" backgroundColor="surface" padding="4">
-          <Paragraph textAlign="center" color="colorMuted" fontSize="$4">
+        <Card
+          borderWidth="hairline"
+          borderColor="border-color"
+          backgroundColor="surface"
+          padding="4"
+        >
+          <Paragraph textAlign="center" color="colorMuted" fontSize="4">
             No data found
           </Paragraph>
         </Card>
@@ -133,18 +139,18 @@ export default function DatabaseViewerScreen() {
 
     return (
       <ScrollView horizontal>
-        <YStack gap="$2" minWidth="100%">
+        <YStack gap="2" minWidth="100%">
           {/* Header Row */}
           <XStack
             flexDirection="row"
-            gap="$2"
+            gap="2"
             backgroundColor="accent-color"
             padding="2"
             borderRadius="2"
           >
             {columns.map((column) => (
-              <YStack key={column} width={150} paddingHorizontal="2">
-                <Paragraph fontWeight="700" color="white" fontSize="$2">
+              <YStack key={column} width="tableColumn" paddingHorizontal="2">
+                <Paragraph fontWeight="5" color="white" fontSize="2">
                   {column}
                 </Paragraph>
               </YStack>
@@ -156,14 +162,14 @@ export default function DatabaseViewerScreen() {
             <XStack
               flexDirection="row"
               key={rowIndex}
-              gap="$2"
-              backgroundColor={`${rowIndex % 2 === 0 ? 'surface' : 'background'}`}
+              gap="2"
+              backgroundColor={rowIndex % 2 === 0 ? 'surface' : 'background'}
               padding="2"
               borderRadius="2"
             >
               {columns.map((column) => (
-                <YStack key={column} width={150} paddingHorizontal="2">
-                  <Paragraph fontSize="$2" color="color" numberOfLines={2}>
+                <YStack key={column} width="tableColumn" paddingHorizontal="2">
+                  <Paragraph fontSize="2" color="color" numberOfLines={2}>
                     {row[column] === null
                       ? 'null'
                       : typeof row[column] === 'object'
@@ -184,7 +190,7 @@ export default function DatabaseViewerScreen() {
       <ScreenContainer>
         <YStack flex={1} justifyContent="center" alignItems="center" padding="4">
           <Database size={64} color="colorMuted" />
-          <Paragraph fontSize="$5" fontWeight="700" marginTop="4">
+          <Paragraph fontSize="5" fontWeight="5" marginTop="4">
             Not Available on Web
           </Paragraph>
           <Paragraph color="colorMuted" textAlign="center" marginTop="2">
@@ -199,31 +205,38 @@ export default function DatabaseViewerScreen() {
   }
 
   return (
-    <ScreenContainer contentContainerStyle={{ flexGrow: 1, paddingBottom: 96 }}>
-      <YStack gap="$4">
+    <ScreenContainer
+      contentContainerStyle={{ flexGrow: 1, paddingBottom: spaceTokenValues.tabBarClearance }}
+    >
+      <YStack gap="4">
         {/* Table Selector & Page Size */}
-        <Card borderWidth={1} borderColor="border-color" backgroundColor="surface" padding="4">
-          <YStack gap="$2">
-            <YStack gap="$2">
-              <Paragraph fontWeight="600" fontSize="$4">
+        <Card
+          borderWidth="hairline"
+          borderColor="border-color"
+          backgroundColor="surface"
+          padding="4"
+        >
+          <YStack gap="2">
+            <YStack gap="2">
+              <Paragraph fontWeight="4" fontSize="4">
                 Select Table
               </Paragraph>
-              <YStack gap="$2">
+              <YStack gap="2">
                 {(Object.keys(TABLE_CONFIGS) as TableName[]).map((tableName) => {
                   const config = TABLE_CONFIGS[tableName];
                   const isSelected = selectedTable === tableName;
                   return (
                     <Button
                       key={tableName}
-                      size="legacy6"
-                      height={56}
-                      backgroundColor={`${isSelected ? 'accent-color' : 'surface'}`}
-                      borderWidth={1}
+                      size="xl"
+                      height="control"
+                      backgroundColor={isSelected ? 'accent-color' : 'surface'}
+                      borderWidth="hairline"
                       borderColor="border-color"
                       justifyContent="flex-start"
                       onPress={() => setSelectedTable(tableName)}
                     >
-                      <Text color={`${isSelected ? 'white' : 'color'}`} fontSize="$5">
+                      <Text color={isSelected ? 'white' : 'color'} fontSize="5">
                         {config.icon} {config.label}
                       </Text>
                     </Button>
@@ -232,24 +245,24 @@ export default function DatabaseViewerScreen() {
               </YStack>
             </YStack>
 
-            <YStack gap="$2">
-              <Paragraph fontWeight="600" fontSize="$4">
+            <YStack gap="2">
+              <Paragraph fontWeight="4" fontSize="4">
                 Items per page
               </Paragraph>
-              <XStack flexDirection="row" gap="$2" flexWrap="wrap">
+              <XStack flexDirection="row" gap="2" flexWrap="wrap">
                 {PAGE_SIZE_OPTIONS.map((size) => (
                   <Button
                     key={size}
-                    size="legacy4"
-                    height={48}
+                    size="md"
+                    height="8"
                     flex={1}
-                    minWidth={70}
-                    backgroundColor={`${pageSize === size ? 'accent-color' : 'surface'}`}
-                    borderWidth={1}
+                    minWidth="tableControlMin"
+                    backgroundColor={pageSize === size ? 'accent-color' : 'surface'}
+                    borderWidth="hairline"
                     borderColor="border-color"
                     onPress={() => setPageSize(size)}
                   >
-                    <Text color={`${pageSize === size ? 'white' : 'color'}`} fontSize="$4">
+                    <Text color={pageSize === size ? 'white' : 'color'} fontSize="4">
                       {size}
                     </Text>
                   </Button>
@@ -260,21 +273,26 @@ export default function DatabaseViewerScreen() {
         </Card>
 
         {/* Stats */}
-        <Card borderWidth={1} borderColor="border-color" backgroundColor="surface" padding="4">
+        <Card
+          borderWidth="hairline"
+          borderColor="border-color"
+          backgroundColor="surface"
+          padding="4"
+        >
           <XStack flexDirection="row" justifyContent="space-between" alignItems="center">
             <YStack>
-              <Paragraph color="colorMuted" fontSize="$2">
+              <Paragraph color="colorMuted" fontSize="2">
                 Total Records
               </Paragraph>
-              <Paragraph fontSize="$5" fontWeight="700">
+              <Paragraph fontSize="5" fontWeight="5">
                 {totalCount}
               </Paragraph>
             </YStack>
             <YStack alignItems="flex-end">
-              <Paragraph color="colorMuted" fontSize="$2">
+              <Paragraph color="colorMuted" fontSize="2">
                 Current Page
               </Paragraph>
-              <Paragraph fontSize="$5" fontWeight="700">
+              <Paragraph fontSize="5" fontWeight="5">
                 {currentPage} / {totalPages || 1}
               </Paragraph>
             </YStack>
@@ -284,7 +302,7 @@ export default function DatabaseViewerScreen() {
         {/* Error */}
         {error && (
           <Card
-            borderWidth={1}
+            borderWidth="hairline"
             borderColor="border-color"
             backgroundColor="dangerBackground"
             padding="4"
@@ -294,7 +312,12 @@ export default function DatabaseViewerScreen() {
         )}
 
         {/* Table Data */}
-        <Card borderWidth={1} borderColor="border-color" backgroundColor="background" padding="4">
+        <Card
+          borderWidth="hairline"
+          borderColor="border-color"
+          backgroundColor="background"
+          padding="4"
+        >
           {isLoading ? (
             <Paragraph textAlign="center" color="colorMuted">
               Loading...
@@ -305,42 +328,47 @@ export default function DatabaseViewerScreen() {
         </Card>
 
         {/* Pagination Controls */}
-        <Card borderWidth={1} borderColor="border-color" backgroundColor="surface" padding="4">
-          <XStack flexDirection="row" gap="$2" alignItems="center">
+        <Card
+          borderWidth="hairline"
+          borderColor="border-color"
+          backgroundColor="surface"
+          padding="4"
+        >
+          <XStack flexDirection="row" gap="2" alignItems="center">
             <Button
-              size="legacy5"
-              backgroundColor={`${currentPage > 1 ? 'accent-color' : 'surface'}`}
-              borderWidth={1}
+              size="lg"
+              backgroundColor={currentPage > 1 ? 'accent-color' : 'surface'}
+              borderWidth="hairline"
               borderColor="border-color"
               circular
               disabled={currentPage === 1 || isLoading}
               onPress={handlePreviousPage}
             >
-              <ChevronLeft size={20} color={`${currentPage > 1 ? 'white' : 'color'}`} />
+              <ChevronLeft size={20} color={currentPage > 1 ? 'white' : 'color'} />
             </Button>
 
             <XStack flexDirection="row" flex={1} justifyContent="center">
-              <Paragraph fontSize="$5" fontWeight="600">
+              <Paragraph fontSize="5" fontWeight="4">
                 Page {currentPage} of {totalPages || 1}
               </Paragraph>
             </XStack>
 
             <Button
-              size="legacy5"
-              backgroundColor={`${currentPage < totalPages ? 'accent-color' : 'surface'}`}
-              borderWidth={1}
+              size="lg"
+              backgroundColor={currentPage < totalPages ? 'accent-color' : 'surface'}
+              borderWidth="hairline"
               borderColor="border-color"
               circular
               disabled={currentPage >= totalPages || isLoading || totalPages === 0}
               onPress={handleNextPage}
             >
-              <ChevronRight size={20} color={`${currentPage < totalPages ? 'white' : 'color'}`} />
+              <ChevronRight size={20} color={currentPage < totalPages ? 'white' : 'color'} />
             </Button>
           </XStack>
         </Card>
 
         {/* Info */}
-        <Paragraph textAlign="center" color="colorMuted" fontSize="$2" marginTop="2">
+        <Paragraph textAlign="center" color="colorMuted" fontSize="2" marginTop="2">
           Showing {data.length > 0 ? (currentPage - 1) * pageSize + 1 : 0} to{' '}
           {Math.min(currentPage * pageSize, totalCount)} of {totalCount} records
         </Paragraph>

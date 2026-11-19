@@ -334,7 +334,7 @@ describe('AuthCallbackScreen - Native', () => {
         code: 'auth.oauth.redirect' as const,
         type: 'error' as const,
         titleKey: 'errors.auth.invalidCode.title',
-        description: 'The authorization code is invalid or has expired',
+        originalMessage: 'The authorization code is invalid or has expired',
       },
     }));
     mockedFriendlyError.mockReturnValue(handleError);
@@ -545,7 +545,7 @@ describe('AuthCallbackScreen - Native', () => {
       friendly: {
         code: 'auth.invalid-credentials' as const,
         type: 'error' as const,
-        description: 'Invalid authentication tokens',
+        originalMessage: 'Invalid authentication tokens',
       },
     }));
     mockedFriendlyError.mockReturnValue(handleError);
@@ -684,7 +684,7 @@ describe('AuthCallbackScreen - Native', () => {
       friendly: {
         code: 'auth.oauth.redirect' as const,
         type: 'error' as const,
-        description: 'Authorization code has expired',
+        originalMessage: 'Authorization code has expired',
       },
     }));
     mockedFriendlyError.mockReturnValue(handleError);
@@ -946,7 +946,7 @@ describe('AuthCallbackScreen - Web', () => {
       friendly: {
         code: 'auth.invalid-credentials' as const,
         type: 'error' as const,
-        description: 'Failed to create session',
+        originalMessage: 'Failed to create session',
       },
     }));
     mockedFriendlyError.mockReturnValue(handleError);
@@ -1007,7 +1007,7 @@ describe('AuthCallbackScreen - Error Message Display', () => {
       friendly: {
         code: 'auth.oauth.browser' as const,
         type: 'error' as const,
-        description: 'Custom error description',
+        originalMessage: 'Custom error description',
       },
     }));
     mockedFriendlyError.mockReturnValue(handleError);
@@ -1051,7 +1051,7 @@ describe('AuthCallbackScreen - Error Message Display', () => {
       friendly: {
         code: 'auth.oauth.browser' as const,
         type: 'error' as const,
-        title: 'Authentication Error',
+        titleKey: 'errors.auth.failed',
       },
     }));
     mockedFriendlyError.mockReturnValue(handleError);

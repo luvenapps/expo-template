@@ -119,11 +119,10 @@ describe('useFriendlyErrorHandler', () => {
     });
 
     it('handles objects without required FriendlyError fields', async () => {
-      const incompleteError = { code: 'test', title: 'Test' }; // missing 'type' field
+      const incompleteError = { code: 'test', titleKey: 'errors.test.title' }; // missing 'type' field
       const resolvedError: FriendlyError = {
         code: 'unknown',
-        title: 'Resolved error',
-        description: undefined,
+        titleKey: 'errors.test.resolved',
         type: 'error',
       };
 
@@ -158,8 +157,8 @@ describe('useFriendlyErrorHandler', () => {
     it('shows toast by default', async () => {
       const friendlyError: FriendlyError = {
         code: 'unknown',
-        title: 'Test Error',
-        description: 'Test description',
+        titleKey: 'errors.test.title',
+        originalMessage: 'Test description',
         type: 'error',
       };
 
@@ -171,7 +170,7 @@ describe('useFriendlyErrorHandler', () => {
       expect(mockToast.show).toHaveBeenCalledWith({
         id: undefined,
         type: 'error',
-        title: 'Test Error',
+        title: 'errors.test.title',
         description: 'Test description',
         actionLabel: undefined,
         onAction: undefined,
@@ -181,8 +180,8 @@ describe('useFriendlyErrorHandler', () => {
     it('suppresses toast when suppressToast is true', async () => {
       const friendlyError: FriendlyError = {
         code: 'unknown',
-        title: 'Test Error',
-        description: 'Test description',
+        titleKey: 'errors.test.title',
+        originalMessage: 'Test description',
         type: 'error',
       };
 
@@ -197,8 +196,8 @@ describe('useFriendlyErrorHandler', () => {
     it('shows toast when suppressToast is false', async () => {
       const friendlyError: FriendlyError = {
         code: 'unknown',
-        title: 'Test Error',
-        description: 'Test description',
+        titleKey: 'errors.test.title',
+        originalMessage: 'Test description',
         type: 'error',
       };
 
@@ -213,8 +212,8 @@ describe('useFriendlyErrorHandler', () => {
     it('dismisses existing toast when id is provided', async () => {
       const friendlyError: FriendlyError = {
         code: 'unknown',
-        title: 'Test Error',
-        description: 'Test description',
+        titleKey: 'errors.test.title',
+        originalMessage: 'Test description',
         type: 'error',
       };
 
@@ -234,8 +233,8 @@ describe('useFriendlyErrorHandler', () => {
     it('does not dismiss when no id is provided', async () => {
       const friendlyError: FriendlyError = {
         code: 'unknown',
-        title: 'Test Error',
-        description: 'Test description',
+        titleKey: 'errors.test.title',
+        originalMessage: 'Test description',
         type: 'error',
       };
 
@@ -252,8 +251,8 @@ describe('useFriendlyErrorHandler', () => {
     it('uses custom retryLabel when provided', async () => {
       const friendlyError: FriendlyError = {
         code: 'unknown',
-        title: 'Test Error',
-        description: 'Test description',
+        titleKey: 'errors.test.title',
+        originalMessage: 'Test description',
         type: 'error',
       };
 
@@ -273,7 +272,7 @@ describe('useFriendlyErrorHandler', () => {
       expect(mockToast.show).toHaveBeenCalledWith({
         id: undefined,
         type: 'error',
-        title: 'Test Error',
+        title: 'errors.test.title',
         description: 'Test description',
         actionLabel: 'Try Again',
         onAction: onRetry,
@@ -283,8 +282,8 @@ describe('useFriendlyErrorHandler', () => {
     it('defaults to "Retry" when onRetry is provided but no retryLabel', async () => {
       const friendlyError: FriendlyError = {
         code: 'unknown',
-        title: 'Test Error',
-        description: 'Test description',
+        titleKey: 'errors.test.title',
+        originalMessage: 'Test description',
         type: 'error',
       };
 
@@ -303,7 +302,7 @@ describe('useFriendlyErrorHandler', () => {
       expect(mockToast.show).toHaveBeenCalledWith({
         id: undefined,
         type: 'error',
-        title: 'Test Error',
+        title: 'errors.test.title',
         description: 'Test description',
         actionLabel: 'Retry',
         onAction: onRetry,
@@ -313,8 +312,8 @@ describe('useFriendlyErrorHandler', () => {
     it('has no actionLabel when neither retryLabel nor onRetry is provided', async () => {
       const friendlyError: FriendlyError = {
         code: 'unknown',
-        title: 'Test Error',
-        description: 'Test description',
+        titleKey: 'errors.test.title',
+        originalMessage: 'Test description',
         type: 'error',
       };
 
@@ -326,7 +325,7 @@ describe('useFriendlyErrorHandler', () => {
       expect(mockToast.show).toHaveBeenCalledWith({
         id: undefined,
         type: 'error',
-        title: 'Test Error',
+        title: 'errors.test.title',
         description: 'Test description',
         actionLabel: undefined,
         onAction: undefined,
@@ -336,8 +335,8 @@ describe('useFriendlyErrorHandler', () => {
     it('has no actionLabel when toast config is not provided', async () => {
       const friendlyError: FriendlyError = {
         code: 'unknown',
-        title: 'Test Error',
-        description: 'Test description',
+        titleKey: 'errors.test.title',
+        originalMessage: 'Test description',
         type: 'error',
       };
 
@@ -349,7 +348,7 @@ describe('useFriendlyErrorHandler', () => {
       expect(mockToast.show).toHaveBeenCalledWith({
         id: undefined,
         type: 'error',
-        title: 'Test Error',
+        title: 'errors.test.title',
         description: 'Test description',
         actionLabel: undefined,
         onAction: undefined,
@@ -359,8 +358,8 @@ describe('useFriendlyErrorHandler', () => {
     it('uses custom retryLabel even when onRetry is not provided', async () => {
       const friendlyError: FriendlyError = {
         code: 'unknown',
-        title: 'Test Error',
-        description: 'Test description',
+        titleKey: 'errors.test.title',
+        originalMessage: 'Test description',
         type: 'error',
       };
 
@@ -377,7 +376,7 @@ describe('useFriendlyErrorHandler', () => {
       expect(mockToast.show).toHaveBeenCalledWith({
         id: undefined,
         type: 'error',
-        title: 'Test Error',
+        title: 'errors.test.title',
         description: 'Test description',
         actionLabel: 'Custom Label',
         onAction: undefined,
@@ -389,8 +388,7 @@ describe('useFriendlyErrorHandler', () => {
     it('tracks error with originalMessage when present', async () => {
       const friendlyError: FriendlyError = {
         code: 'unknown',
-        title: 'Test Error',
-        description: 'Test description',
+        titleKey: 'errors.test.title',
         type: 'error',
         originalMessage: 'Original error message',
       };
@@ -400,7 +398,7 @@ describe('useFriendlyErrorHandler', () => {
 
       handler(friendlyError, { surface: 'test-surface' });
 
-      expect(mockTrackError).toHaveBeenCalledWith('Test Error', {
+      expect(mockTrackError).toHaveBeenCalledWith('errors.test.title', {
         surface: 'test-surface',
         code: 'unknown',
         originalMessage: 'Original error message',
@@ -410,8 +408,8 @@ describe('useFriendlyErrorHandler', () => {
     it('tracks error without originalMessage', async () => {
       const friendlyError: FriendlyError = {
         code: 'unknown',
-        title: 'Test Error',
-        description: 'Test description',
+        titleKey: 'errors.test.title',
+        descriptionKey: 'errors.test.description',
         type: 'error',
       };
 
@@ -420,7 +418,7 @@ describe('useFriendlyErrorHandler', () => {
 
       handler(friendlyError, { surface: 'test-surface' });
 
-      expect(mockTrackError).toHaveBeenCalledWith('Test Error', {
+      expect(mockTrackError).toHaveBeenCalledWith('errors.test.title', {
         surface: 'test-surface',
         code: 'unknown',
         originalMessage: undefined,
@@ -432,8 +430,8 @@ describe('useFriendlyErrorHandler', () => {
     it('returns the friendly error with toastId', async () => {
       const friendlyError: FriendlyError = {
         code: 'unknown',
-        title: 'Test Error',
-        description: 'Test description',
+        titleKey: 'errors.test.title',
+        originalMessage: 'Test description',
         type: 'error',
       };
 
@@ -452,8 +450,8 @@ describe('useFriendlyErrorHandler', () => {
       const genericError = new Error('Generic error');
       const resolvedError: FriendlyError = {
         code: 'unknown',
-        title: 'Something went wrong',
-        description: 'Generic error',
+        titleKey: 'errors.unknown.title',
+        originalMessage: 'Generic error',
         type: 'error',
       };
 
@@ -472,8 +470,8 @@ describe('useFriendlyErrorHandler', () => {
     it('returns undefined toastId when toast is suppressed', async () => {
       const friendlyError: FriendlyError = {
         code: 'unknown',
-        title: 'Test Error',
-        description: 'Test description',
+        titleKey: 'errors.test.title',
+        originalMessage: 'Test description',
         type: 'error',
       };
 

@@ -71,10 +71,10 @@ async function checkAuthentication() {
 
   console.log('🔑 [supabase-deploy] Checking authentication status…');
   try {
-    await run('npx', ['supabase', 'projects', 'list']);
+    await run('pnpm', ['exec', 'supabase', 'projects', 'list']);
   } catch {
     throw new Error(
-      '[supabase-deploy] Not authenticated. Please run "npx supabase login" first, or set SUPABASE_ACCESS_TOKEN environment variable.',
+      '[supabase-deploy] Not authenticated. Please run "pnpm exec supabase login" first, or set SUPABASE_ACCESS_TOKEN environment variable.',
     );
   }
 }
@@ -88,14 +88,15 @@ async function main() {
   console.log(`🚀 [supabase-deploy] Deploying to project: ${projectRef}`);
 
   console.log('🚀 [supabase-deploy] Linking project…');
-  await run('npx', ['supabase', 'link', '--project-ref', projectRef]);
+  await run('pnpm', ['exec', 'supabase', 'link', '--project-ref', projectRef]);
 
   console.log('🚀 [supabase-deploy] Applying database migrations…');
-  await run('npx', ['supabase', 'db', 'push', '--linked']);
+  await run('pnpm', ['exec', 'supabase', 'db', 'push', '--linked']);
 
   for (const fn of functions) {
     console.log(`🚀 [supabase-deploy] Deploying edge function "${fn}"…`);
-    await run('npx', [
+    await run('pnpm', [
+      'exec',
       'supabase',
       'functions',
       'deploy',

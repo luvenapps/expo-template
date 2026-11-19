@@ -34,7 +34,7 @@ All database schemas are defined using the `DOMAIN` config in [src/config/domain
 Generate migrations for **both** SQLite and Postgres in one command:
 
 ```bash
-npm run db:migrate
+pnpm run db:migrate
 ```
 
 This single command:
@@ -52,26 +52,26 @@ For rare cases where you need fine-grained control:
 
 ```bash
 # Generate only SQLite migration
-npm run db:generate
+pnpm run db:generate
 
 # Generate only Postgres migration (with RLS)
-npm run db:generate:postgres
+pnpm run db:generate:postgres
 
 # Generate only RLS policies
-npm run db:generate-rls
+pnpm run db:generate-rls
 
 # Push SQLite schema directly (without migration files)
-npm run db:push
+pnpm run db:push
 ```
 
 ### Deployment Commands
 
 ```bash
 # Push to Supabase (local development)
-npm run supabase:dev
+pnpm run supabase:dev
 
 # Deploy to Supabase (production)
-npm run supabase:deploy
+pnpm run supabase:deploy
 ```
 
 ## How It Works
@@ -85,7 +85,7 @@ npm run supabase:deploy
 2. Run one command:
 
    ```bash
-   npm run db:migrate
+   pnpm run db:migrate
    ```
 
 3. Review generated migrations:
@@ -94,28 +94,28 @@ npm run supabase:deploy
 
 4. Test and deploy:
    ```bash
-   npm start              # SQLite auto-applies
-   npm run supabase:dev   # Test Postgres locally
-   npm run supabase:deploy # Deploy to production
+   pnpm start              # SQLite auto-applies
+   pnpm run supabase:dev   # Test Postgres locally
+   pnpm run supabase:deploy # Deploy to production
    ```
 
 ### Detailed: SQLite Migrations
 
 1. Edit [src/db/sqlite/schema.ts](../src/db/sqlite/schema.ts)
-2. Run `npm run db:generate` (or use `npm run db:migrate` for both)
+2. Run `pnpm run db:generate` (or use `pnpm run db:migrate` for both)
 3. Drizzle generates migration in `src/db/sqlite/migrations/`
-4. Migrations auto-apply when app starts (or run `npm run db:push` to apply immediately)
+4. Migrations auto-apply when app starts (or run `pnpm run db:push` to apply immediately)
 
 ### Detailed: Postgres Migrations
 
 1. Edit [src/db/postgres/schema.ts](../src/db/postgres/schema.ts)
-2. Run `npm run db:generate:postgres` (or use `npm run db:migrate` for both)
+2. Run `pnpm run db:generate:postgres` (or use `pnpm run db:migrate` for both)
 3. This automatically:
    - Generates Drizzle migration in `supabase/migrations/`
    - Generates RLS policies from DOMAIN config
    - Appends RLS policies to the migration
-4. Run `npm run supabase:dev` to test locally
-5. Run `npm run supabase:deploy` to deploy to production
+4. Run `pnpm run supabase:dev` to test locally
+5. Run `pnpm run supabase:deploy` to deploy to production
 
 ## Row Level Security (RLS)
 
@@ -126,7 +126,7 @@ Since Drizzle doesn't support RLS policy generation, we have a separate system:
 - **Generated SQL**: `src/db/postgres/rls-policies.sql` (auto-generated, NOT committed to Git)
 - **Auto-generated**: RLS policies are derived from DOMAIN config
 
-**Note**: The generated `rls-policies.sql` file is in `.gitignore` because it contains project-specific table names. Run `npm run db:generate-rls` to regenerate it from your DOMAIN config.
+**Note**: The generated `rls-policies.sql` file is in `.gitignore` because it contains project-specific table names. Run `pnpm run db:generate-rls` to regenerate it from your DOMAIN config.
 
 ### RLS Policy Rules
 
@@ -150,19 +150,19 @@ When you update [src/config/domain.config.ts](../src/config/domain.config.ts):
 2. **Generate migrations**:
 
    ```bash
-   npm run db:migrate  # Generates both SQLite and Postgres migrations
+   pnpm run db:migrate  # Generates both SQLite and Postgres migrations
    ```
 
 3. **Test locally**:
 
    ```bash
-   npm start              # Test SQLite changes
-   npm run supabase:dev   # Test Postgres changes
+   pnpm start              # Test SQLite changes
+   pnpm run supabase:dev   # Test Postgres changes
    ```
 
 4. **Deploy**:
    ```bash
-   npm run supabase:deploy
+   pnpm run supabase:deploy
    ```
 
 ## Example: Renaming a Table
@@ -186,15 +186,15 @@ Let's say you want to rename your table to `goals`:
 3. Generate migrations:
 
    ```bash
-   npm run db:migrate  # Generates both migrations
+   pnpm run db:migrate  # Generates both migrations
    ```
 
 4. The RLS policies will automatically update to use "goals"
 
 5. Review and deploy:
    ```bash
-   npm start              # Test locally
-   npm run supabase:deploy # Deploy to production
+   pnpm start              # Test locally
+   pnpm run supabase:deploy # Deploy to production
    ```
 
 ## Benefits
@@ -229,13 +229,13 @@ Let's say you want to rename your table to `goals`:
 
 - Check that both schema files use DOMAIN config correctly
 - Verify table names match in DOMAIN config
-- Run `npm run type-check` to catch TypeScript errors
+- Run `pnpm run type-check` to catch TypeScript errors
 
 ### RLS policies not applied
 
-- Ensure you ran `npm run db:generate:postgres` (not just drizzle-kit)
+- Ensure you ran `pnpm run db:generate:postgres` (not just drizzle-kit)
 - Check that RLS policies are in the migration file
-- Manually apply: `npx supabase db execute -f src/db/postgres/rls-policies.sql`
+- Manually apply: `pnpm exec supabase db execute -f src/db/postgres/rls-policies.sql`
 
 ### Schema out of sync
 

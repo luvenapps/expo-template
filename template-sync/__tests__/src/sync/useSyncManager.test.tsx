@@ -165,31 +165,23 @@ describe('useSyncManager', () => {
     expect(listeners.length).toBe(0);
   });
 
-  test('handles legacy addEventListener API', async () => {
-    addEventListenerSpy.mockRestore();
-
-    const legacyListeners: ((state: AppStateStatus) => void)[] = [];
-    const legacyAddEventListener = jest.fn(
+  test('handles an AppState listener without a subscription return', async () => {
+    addEventListenerSpy.mockImplementation(
       (_type: string, handler: (state: AppStateStatus) => void) => {
-        legacyListeners.push(handler);
+        listeners.push(handler);
+        return undefined as any;
       },
     );
 
-    // Mock legacy API (no return value)
-    Object.defineProperty(AppState, 'addEventListener', {
-      value: undefined,
-      configurable: true,
-    });
-    (AppState as any).addEventListener = legacyAddEventListener;
-
-    await render(<TestComponent enabled />);
+    const { unmount } = await render(<TestComponent enabled />);
     await Promise.resolve();
 
-    expect(legacyAddEventListener).toHaveBeenCalledWith('change', expect.any(Function));
+    expect(addEventListenerSpy).toHaveBeenCalledWith('change', expect.any(Function));
 
-    // Trigger the legacy listener
-    legacyListeners.forEach((listener) => listener('active'));
+    listeners.forEach((listener) => listener('active'));
     await Promise.resolve();
     expect(engine.runSync).toHaveBeenCalledTimes(2); // mount + active
+
+    await unmount();
   });
 });

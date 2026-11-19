@@ -62,7 +62,7 @@ async function main() {
   // Step 1: Generate Drizzle migration
   console.log('Step 1: Generating Drizzle schema migration...');
   try {
-    await run('npx', ['drizzle-kit', 'generate', '--config=drizzle.config.postgres.ts']);
+    await run('pnpm', ['exec', 'drizzle-kit', 'generate', '--config=drizzle.config.postgres.ts']);
     console.log('✅ Drizzle migration generated\n');
   } catch (error) {
     console.error('❌ Failed to generate Drizzle migration:', error.message);
@@ -135,8 +135,8 @@ async function main() {
   console.log('✅ Migration generation complete!\n');
   console.log('Next steps:');
   console.log('  1. Review the generated migration in supabase/migrations/');
-  console.log('  2. Test locally: npm run supabase:dev');
-  console.log('  3. Apply to production: npm run supabase:deploy');
+  console.log('  2. Test locally: pnpm run supabase:dev');
+  console.log('  3. Apply to production: pnpm run supabase:deploy');
   console.log('━'.repeat(70));
 }
 

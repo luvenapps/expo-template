@@ -40,7 +40,6 @@ jobs:
       contents: read
       pull-requests: write
     env:
-      EAS_CLI_VERSION: ${{ vars.EAS_CLI_VERSION || '' }}
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN || '' }}
 
     steps:
@@ -82,30 +81,23 @@ jobs:
       - name: Setup mise toolchain
         uses: jdx/mise-action@v5
         with:
-          version: '2026.11.4'
+          version: '2026.11.9'
           install: true
           cache: ${{ inputs.runner_target != 'selfhosted' }}
           log_level: ${{ runner.debug == '1' && 'debug' || 'info' }}
         env:
           GNUPGHOME: ${{ runner.temp }}/gnupg
           MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+          MISE_ENV: ci
 
       - name: Install dependencies
-        run: npm ci
-
-      - name: Validate EAS CLI version variable
-        shell: bash
-        run: |
-          if [ -z "$EAS_CLI_VERSION" ]; then
-            echo "❌ Missing EAS_CLI_VERSION GitHub variable."
-            exit 1
-          fi
+        run: pnpm install --frozen-lockfile
 
       - name: Sanity check versions
         run: |
           node -v
-          npm -v
-          npx expo --version
+          pnpm --version
+          pnpm exec expo --version
 
       - name: Map runtime variables and secrets
         shell: bash
@@ -124,7 +116,7 @@ jobs:
           FIREBASE_PROJECT_ID: ${{ secrets[format('{0}_FIREBASE_PROJECT_ID', inputs.env_prefix)] || secrets.FIREBASE_PROJECT_ID || '' }}
           FIREBASE_STORAGE_BUCKET: ${{ secrets[format('{0}_FIREBASE_STORAGE_BUCKET', inputs.env_prefix)] || secrets.FIREBASE_STORAGE_BUCKET || '' }}
           FIREBASE_VAPID_KEY: ${{ secrets[format('{0}_FIREBASE_VAPID_KEY', inputs.env_prefix)] || secrets.FIREBASE_VAPID_KEY || '' }}
-        run: .github/scripts/map_runtime_env.sh
+        run: node .github/scripts/map_runtime_env.mjs
 
       - name: Export and deploy web
         id: deploy_web
@@ -140,7 +132,7 @@ jobs:
             PR_NUMBER='${{ inputs.pr_number }}'
           fi
 
-          DEPLOY_OUTPUT=$(.github/scripts/export_and_deploy_web.sh "$EVENT_NAME" "$PR_NUMBER")
+          DEPLOY_OUTPUT=$(node .github/scripts/export_and_deploy_web.mjs "$EVENT_NAME" "$PR_NUMBER")
           DEPLOY_URL=$(printf '%s\n' "$DEPLOY_OUTPUT" | sed -n '1p')
           DEPLOYMENT_URL=$(printf '%s\n' "$DEPLOY_OUTPUT" | sed -n '2p')
 
@@ -221,4 +213,4 @@ jobs:
       - name: Clean self-hosted workspace
         if: ${{ always() && inputs.runner_target == 'selfhosted' }}
         shell: bash
-        run: .github/scripts/clean_selfhosted_workspace.sh
+        run: node .github/scripts/clean_selfhosted_workspace.mjs

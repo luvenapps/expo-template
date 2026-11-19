@@ -109,7 +109,7 @@ describe('ProfileScreen', () => {
     (useRouter as jest.Mock).mockReturnValue(mockRouter);
     (useFriendlyErrorHandler as jest.Mock).mockReturnValue(mockHandleError);
     mockHandleError.mockReturnValue({
-      friendly: { description: 'Test error', descriptionKey: 'errors.test' },
+      friendly: { originalMessage: 'Test error' },
     });
 
     // Mock supabase.auth.getUser to prevent hydration calls during tests

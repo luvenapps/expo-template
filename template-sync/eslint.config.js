@@ -3,6 +3,7 @@ const { defineConfig } = require('eslint/config');
 const expoConfig = require('eslint-config-expo/flat');
 const fs = require('fs');
 const requireFriendlyErrorHandler = require('./eslint-rules/require-friendly-error-handler');
+const requireTamaguiTokens = require('./eslint-rules/require-tamagui-tokens');
 
 // Dynamically load .gitignore patterns
 const gitignorePatterns = fs
@@ -62,11 +63,13 @@ module.exports = defineConfig([
       currentapp: {
         rules: {
           'require-friendly-error-handler': requireFriendlyErrorHandler,
+          'require-tamagui-tokens': requireTamaguiTokens,
         },
       },
     },
     rules: {
       'currentapp/require-friendly-error-handler': 'warn',
+      'currentapp/require-tamagui-tokens': 'error',
     },
   },
   // Jest globals for test files

@@ -1,4 +1,4 @@
-const { withGradleProperties } = require('@expo/config-plugins');
+const { withGradleProperties } = require('expo/config-plugins');
 
 const MAX_METASPACE_ARGUMENT = '-XX:MaxMetaspaceSize=1024m';
 

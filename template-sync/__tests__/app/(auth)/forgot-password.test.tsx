@@ -336,10 +336,14 @@ describe('ForgotPasswordScreen', () => {
     });
   });
 
-  it('prefers friendly.description when available', async () => {
+  it('uses friendly.originalMessage when available', async () => {
     const friendly = jest.fn(() => ({
       toastId: 'friendly-description',
-      friendly: { code: 'unknown' as const, type: 'error' as const, description: 'friendly-text' },
+      friendly: {
+        code: 'unknown' as const,
+        type: 'error' as const,
+        originalMessage: 'friendly-text',
+      },
     }));
     mockedFriendlyError.mockReturnValue(friendly);
     mockedSendPasswordReset.mockResolvedValue({ success: false, error: 'Reset failed' });
@@ -374,10 +378,14 @@ describe('ForgotPasswordScreen', () => {
     });
   });
 
-  it('uses friendly.title when description fields are missing', async () => {
+  it('uses friendly.titleKey when message fields are missing', async () => {
     const friendly = jest.fn(() => ({
       toastId: 'friendly-title',
-      friendly: { code: 'unknown' as const, type: 'error' as const, title: 'Friendly title' },
+      friendly: {
+        code: 'unknown' as const,
+        type: 'error' as const,
+        titleKey: 'errors.auth.failed',
+      },
     }));
     mockedFriendlyError.mockReturnValue(friendly);
     mockedSendPasswordReset.mockResolvedValue({ success: false, error: 'Reset failed' });
@@ -387,7 +395,7 @@ describe('ForgotPasswordScreen', () => {
     await fireEvent.press(getByTestId('send-reset-link-button'));
 
     await waitFor(() => {
-      expect(getByText('Friendly title')).toBeTruthy();
+      expect(getByText('errors.auth.failed')).toBeTruthy();
     });
   });
 

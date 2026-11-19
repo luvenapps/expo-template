@@ -3,10 +3,10 @@
 [![CI Coordinator - Self-hosted](https://github.com/luvenapps/{{APP_SLUG}}/actions/workflows/ci-selfhosted-coordinator.yml/badge.svg)](https://github.com/luvenapps/{{APP_SLUG}}/actions/workflows/ci-selfhosted-coordinator.yml)
 [![codecov](https://codecov.io/github/luvenapps/{{APP_SLUG}}/graph/badge.svg)](https://codecov.io/github/luvenapps/{{APP_SLUG}})
 
-![React Native](https://img.shields.io/badge/React%20Native-0.81.x-blue?logo=react)
-![Expo](https://img.shields.io/badge/Expo-54.x-000020?logo=expo)
-![Node](https://img.shields.io/badge/node-24.x-green?logo=node.js)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue?logo=typescript)
+![React Native](https://img.shields.io/badge/React_Native-0.88-61DAFB?logo=react&logoColor=white)
+![Expo](https://img.shields.io/badge/Expo-58-000020?logo=expo&logoColor=white)
+![Node.js](https://img.shields.io/badge/Node.js-26-339933?logo=node.js&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white)
 ![Prettier](https://img.shields.io/badge/code_style-Prettier-ff69b4.svg?logo=prettier)
 ![ESLint](https://img.shields.io/badge/linted_with-ESLint-4B32C3?logo=eslint)
 ![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF?logo=githubactions)
@@ -77,12 +77,12 @@ brew upgrade
 Use `mise` as the default local setup path for this repository.
 
 ```bash
-./scripts/setup-local-deps.sh
+node scripts/setup-local-deps.mjs
 ```
 
 That script installs missing Homebrew core dependencies (`mise`, `fastlane`, `watchman`), trusts `.mise.toml`, installs pinned runtimes, and skips anything already installed.
 
-> This repository's canonical package manager for app workflows is `npm` with `package-lock.json`.
+> This repository's canonical package manager for app workflows is `pnpm` 12 with `pnpm-lock.yaml`.
 
 With `mise` shell activation enabled, you generally do not need to manually export `JAVA_HOME` in your shell profile—the Java runtime from `.mise.toml` is used in your activated environment.
 
@@ -90,18 +90,12 @@ See [docs/mise.md](docs/mise.md) for more details and caveats.
 
 For Java pinning, this repo uses a vendor-pinned Java entry in `.mise.toml` for reproducibility.
 
-### 🧭 4. Expo CLI (optional but recommended globally)
+### 🧭 4. Expo CLI
 
-You can run Expo commands with `npx`, but installing globally is convenient:
-
-```bash
-npm install -g expo-cli
-```
-
-Check:
+The Expo CLI is provided by the project dependency. Use `pnpm exec` to run the version pinned for this repository:
 
 ```bash
-expo --version
+pnpm exec expo --version
 ```
 
 ### 🐋 5. Container Runtime (Supabase Local DB)
@@ -114,7 +108,7 @@ Supabase’s local stack runs inside Docker. Install a container engine and keep
 Once installed, launch the runtime (containerd or dockerd), then bootstrap Supabase locally:
 
 ```bash
-npx supabase start
+pnpm exec supabase start
 ```
 
 The CLI spins up Postgres/Auth/Storage via Docker Compose and prints local API credentials—copy them into `.env.local`.
@@ -123,7 +117,8 @@ The CLI spins up Postgres/Auth/Storage via Docker Compose and prints local API c
 
 Maestro is used for cross-platform end-to-end (E2E) testing on iOS and Android.
 
-Follow the official [Maestro installation guide for macOS](https://docs.maestro.dev/getting-started/installing-maestro/macos).
+Follow the official installation guide for macOS here:  
+🔗 **[Maestro Installation Docs](https://docs.maestro.dev/getting-started/installing-maestro/macos)**
 
 After installing, verify it’s working:
 
@@ -137,28 +132,28 @@ If you see a message about Java missing, run `mise install` and ensure your shel
 
 ## 🧩 Common Commands
 
-| Action                        | Command                   |
-| ----------------------------- | ------------------------- |
-| Start Expo dev server         | `npm start`               |
-| Run on iOS simulator          | `npm run ios`             |
-| Run on Android emulator       | `npm run android`         |
-| Run web preview               | `npm run web`             |
-| Run Jest tests                | `npm test`                |
-| Run Maestro tests (iOS)       | `npm run e2e:ios`         |
-| Run Maestro tests (Android)   | `npm run e2e:android`     |
-| Lint code                     | `npm run lint`            |
-| Format code                   | `npm run format`          |
-| Generate database migrations  | `npm run db:migrate`      |
-| Start local Supabase          | `npm run supabase:dev`    |
-| Deploy to production Supabase | `npm run supabase:deploy` |
+| Action                        | Command                    |
+| ----------------------------- | -------------------------- |
+| Start Expo dev server         | `pnpm start`               |
+| Run on iOS simulator          | `pnpm run ios`             |
+| Run on Android emulator       | `pnpm run android`         |
+| Run web preview               | `pnpm run web`             |
+| Run Jest tests                | `pnpm test`                |
+| Run Maestro tests (iOS)       | `pnpm run e2e:ios`         |
+| Run Maestro tests (Android)   | `pnpm run e2e:android`     |
+| Lint code                     | `pnpm run lint`            |
+| Format code                   | `pnpm run format`          |
+| Generate database migrations  | `pnpm run db:migrate`      |
+| Start local Supabase          | `pnpm run supabase:dev`    |
+| Deploy to production Supabase | `pnpm run supabase:deploy` |
 
 ### Native development from Git worktrees
 
-Run `npm start` in one terminal, then run `npm run ios` or `npm run android` in another. The native commands use Expo's `--no-bundler` option, build and install the app, and connect it to the Metro server you started. Expo handles native project generation and dependency installation. They are the first-run commands when the app is not installed, and the rebuild commands after changing native dependencies or app configuration. A new Git worktree alone does not require a rebuild if a compatible development app is already installed.
+Run `pnpm start` in one terminal, then run `pnpm run ios` or `pnpm run android` in another. The native commands use Expo's `--no-bundler` option, build and install the app, and connect it to the Metro server you started. Expo handles native project generation and dependency installation. They are the first-run commands when the app is not installed, and the rebuild commands after changing native dependencies or app configuration. A new Git worktree alone does not require a rebuild if a compatible development app is already installed.
 
-For JavaScript-only changes, run `npm start` and press `i` or `a` to open the installed iOS or Android app. Each Metro server serves the worktree where it was started. When running multiple worktrees, use a different port for each server and open the app against the intended server. Xcode is optional for native debugging.
+For JavaScript-only changes, run `pnpm start` and press `i` or `a` to open the installed iOS or Android app. Each Metro server serves the worktree where it was started. When running multiple worktrees, use a different port for each server and open the app against the intended server. Xcode is optional for native debugging.
 
-Before `npm start`, `npm run ios`, or `npm run android`, the setup helper copies a missing `.env.local` from the primary Git checkout. On `npm start`, it also copies any available missing iOS and Android Firebase files so Expo can resolve its config while you use an already-installed development app. Before a native platform command, it copies that platform's missing Firebase file. Existing worktree files are kept. If a file is unavailable, configure the documented environment variables; do not commit local config or generated native folders.
+Before `pnpm start`, `pnpm run ios`, or `pnpm run android`, the setup helper copies a missing `.env.local` from the primary Git checkout. On `pnpm start`, it also copies any available missing iOS and Android Firebase files so Expo can resolve its config while you use an already-installed development app. Before a native platform command, it copies that platform's missing Firebase file. Existing worktree files are kept. If a file is unavailable, configure the documented environment variables; do not commit local config or generated native folders.
 
 ---
 
@@ -233,13 +228,13 @@ The sync contract now has a Supabase implementation that mirrors the SQLite sche
 
 ### Local vs Hosted Supabase (choose an environment first)
 
-- **Local development**: Run `npm run supabase:dev`. The script:
+- **Local development**: Run `pnpm run supabase:dev`. The script:
   - boots the Supabase Docker stack (`supabase start`)
   - shows connection details (`supabase status --env`)
   - applies migrations using `.env.local`
   - serves edge functions with auto-reload (`supabase functions serve`)
     Keep the terminal open; press Ctrl+C to stop everything (it calls `supabase stop` for you).
-- **Hosted Supabase**: Populate `.env.prod` (or CI secrets) with your hosted credentials and run `npm run supabase:deploy` locally or in CI. The script pushes migrations and deploys all edge functions with the provided credentials.
+- **Hosted Supabase**: Populate `.env.prod` (or CI secrets) with your hosted credentials and run `pnpm run supabase:deploy` locally or in CI. The script pushes migrations and deploys all edge functions with the provided credentials.
 - Keep credentials per environment; never mix local Docker keys with production.
 
 ### Schema Migrations (Drizzle ORM)
@@ -249,7 +244,7 @@ This project uses **Drizzle ORM** to generate Postgres migrations from TypeScrip
 **Generate migrations:**
 
 ```bash
-npm run db:generate:postgres
+pnpm run db:generate:postgres
 ```
 
 This command:
@@ -263,21 +258,21 @@ This command:
 
 ```bash
 # Local development
-npm run supabase:dev  # Auto-applies migrations via .env.local
+pnpm run supabase:dev  # Auto-applies migrations via .env.local
 
 # Production deployment
-npm run supabase:deploy  # Applies to hosted Supabase via .env.prod
+pnpm run supabase:deploy  # Applies to hosted Supabase via .env.prod
 
 # Or apply directly
-npm run supabase:push  # Uses current Supabase CLI config
+pnpm run supabase:push  # Uses current Supabase CLI config
 ```
 
 **Important**: When changing DOMAIN config (renaming tables/entities):
 
 1. Update `src/config/domain.config.ts`
 2. Update both `src/db/sqlite/schema.ts` and `src/db/postgres/schema.ts`
-3. Run `npm run db:generate` for SQLite
-4. Run `npm run db:generate:postgres` for Postgres
+3. Run `pnpm run db:generate` for SQLite
+4. Run `pnpm run db:generate:postgres` for Postgres
 5. The edge functions will automatically use the new names (they import DOMAIN)
 
 See [docs/database-migrations.md](docs/database-migrations.md) for detailed migration workflows.
@@ -285,16 +280,16 @@ See [docs/database-migrations.md](docs/database-migrations.md) for detailed migr
 ### Edge Functions
 
 - **Edge Functions** (`sync-push`, `sync-pull`, `export`) reside in `supabase/functions`.
-- The Supabase CLI ships with the repo (dev dependency). Use `npm exec supabase -- --version` to confirm it's available without a global install.
+- The Supabase CLI ships with the repo (dev dependency). Use `pnpm exec supabase --version` to confirm it's available without a global install.
 - Deploy them individually:
   ```bash
-  npx supabase functions deploy sync-push
-  npx supabase functions deploy sync-pull
-  npx supabase functions deploy export
+  pnpm exec supabase functions deploy sync-push
+  pnpm exec supabase functions deploy sync-pull
+  pnpm exec supabase functions deploy export
   ```
 - The functions import shared DOMAIN types from `supabase/functions/_shared/domain.ts`, so table names stay aligned with the template.
 - Use `supabase functions serve <name>` for local iteration—the CLI hot-reloads the Deno runtime.
-- The helper scripts `npm run supabase:dev` and `npm run supabase:deploy` wrap these commands for local and hosted workflows respectively.
+- The helper scripts `pnpm run supabase:dev` and `pnpm run supabase:deploy` wrap these commands for local and hosted workflows respectively.
 
 ---
 
@@ -307,7 +302,7 @@ Create an Expo project for your new app, run `eas init --id <PROJECT_ID>`, and s
 ## 📊 Analytics & Messaging
 
 - Firebase Analytics + Firebase In-App Messaging (IAM) power observability; Supabase remains the backend for auth/sync and `expo-notifications` handles local reminders.
-- Native builds include Firebase only when `TURN_ON_FIREBASE=true` (see `plugins/withFirebaseConfig.js`); provide `credentials/GoogleService-Info.plist` and `credentials/google-services.json` (or base64 secrets in CI) when enabled.
+- `EXPO_PUBLIC_TURN_ON_FIREBASE` controls Firebase behavior at runtime. `app.config.ts` always configures the native Firebase plugins and platform file paths, so native builds require the Firebase credential files even when the runtime flag is off. See [`docs/firebase-setup.md`](docs/firebase-setup.md) for credential instructions.
 - Web requires the Firebase web keys in `.env.local` (`EXPO_PUBLIC_FIREBASE_*`).
 - Details and steps: see [`docs/firebase-setup.md`](docs/firebase-setup.md).
 
@@ -329,11 +324,11 @@ Logging and analytics conventions (logger usage, analytics helpers, and backend 
 
 This project includes a comprehensive GitHub Actions workflow to automate testing, linting, and building for multiple platforms. The CI pipeline runs unit tests with Jest, linting checks with ESLint, and end-to-end tests using Maestro on both iOS and Android environments. It also supports building the app for production to ensure the build process remains stable.
 
-For teams using self-hosted runners, detailed setup instructions are provided to configure macOS and Linux runners with all necessary dependencies installed, including Node.js, Expo CLI, Java (for Maestro), and Android/iOS build tools. Environment variables and secrets are managed securely via GitHub repository settings.
+Self-hosted workflow jobs target macOS/ARM64 runners. Register the runner and install or manage its service on the runner machine; this repository contains the workflow configuration, while runner setup and service-management tooling is maintained under `~/.github` on that machine. Manage Actions variables and secrets in GitHub repository settings.
 
 The workflows are designed to trigger on pull requests and pushes to main branches, providing fast feedback on code quality and preventing regressions before merging. This setup enables a smooth and reliable continuous integration process tailored for React Native projects using Expo and Maestro.
 
-For full detailed instructions on configuring the GitHub Actions workflows and setting up self-hosted runners, please see the [Github Actions document](docs/GITHUBACTIONS.md).
+See the [GitHub Actions guide](docs/GITHUBACTIONS.md) for the workflow graph and self-hosted runner baseline.
 
 ---
 
@@ -344,16 +339,15 @@ For full detailed instructions on configuring the GitHub Actions workflows and s
 Follow these steps in order when setting up the project for the first time:
 
 1. **Install prerequisites**
-   - Node 24.x
-   - Expo toolchain
+   - Node and Java versions pinned in [`.mise.toml`](.mise.toml) and managed by `mise`
+   - Project-local Expo CLI (`pnpm exec expo --version`)
    - Container runtime (Rancher Desktop or Docker Desktop)
-   - Java (for Android/Maestro)
    - Xcode (macOS only, for iOS)
 
 2. **Install dependencies**:
 
    ```bash
-   npm install
+   pnpm install --frozen-lockfile
    ```
 
 3. **Create `.env.local` file**:
@@ -365,7 +359,7 @@ Follow these steps in order when setting up the project for the first time:
 4. **Generate database migrations** (IMPORTANT - Do this before starting!):
 
    ```bash
-   npm run db:migrate
+   pnpm run db:migrate
    ```
 
    This creates migration files for both SQLite (mobile) and Postgres (Supabase).
@@ -375,7 +369,7 @@ Follow these steps in order when setting up the project for the first time:
 5. **Start local Supabase** (Terminal 1):
 
    ```bash
-   npm run supabase:dev
+   pnpm run supabase:dev
    ```
 
    - Starts Docker containers
@@ -387,7 +381,7 @@ Follow these steps in order when setting up the project for the first time:
 6. **Start Expo development server** (Terminal 2):
 
    ```bash
-   npm start
+   pnpm start
    ```
 
    - Automatically runs system checks (including migration validation)
@@ -416,16 +410,16 @@ Follow these steps in order when setting up the project for the first time:
 
    ```
    # First time only - build the app
-   npx expo prebuild           # Generate native projects
+   pnpm exec expo prebuild           # Generate native projects
 
    # iOS Simulator (default)
-   npx expo run:ios            # Builds to iOS simulator
+   pnpm exec expo run:ios            # Builds to iOS simulator
 
    # iOS Physical Device (if connected)
-   npx expo run:ios --device   # Prompts to select your device
+   pnpm exec expo run:ios --device   # Prompts to select your device
 
    # Android (auto-detects connected device, then emulator)
-   npx expo run:android        # Prefers physical device if connected
+   pnpm exec expo run:android        # Prefers physical device if connected
 
    # After first build, just press:
    Press 'i' (iOS) or 'a' (Android) to launch
@@ -442,18 +436,18 @@ Follow these steps in order when setting up the project for the first time:
 
 ### Build size checklist
 
-Before shipping preview/production builds, follow [`docs/build-size.md`](docs/build-size.md):
+Before shipping preview/production builds, follow [`docs/app-build-size.md`](docs/app-build-size.md):
 
 - Measure IPA/AAB artifacts via `node scripts/report-build-size.mjs <path>`.
-- Generate bundle reports with the commands in the doc (based on `npx react-native bundle`).
+- Generate bundle reports with the commands in the doc (based on `pnpm exec react-native bundle`).
 - Keep Android artifacts ≤ 25 MB and iOS artifacts ≤ 30 MB; investigate any regressions before submitting to the stores.
 
 ### Deployment scripts
 
-- `npm run build:preview:ios` / `npm run build:preview:android` – internal preview builds (staging Supabase).
-- `npm run build:prod:ios` / `npm run build:prod:android` – production builds with auto-incremented versions.
-- `npm run submit:prod:ios` / `npm run submit:prod:android` – upload the latest artifacts to TestFlight / Google Play Internal Testing (requires `eas submit` credentials configured in `eas.json`).
-- `npm run version:bump -- --type patch|minor|major` – bumps `package.json`/`app.json` versions and increments iOS/Android build numbers automatically.
+- `pnpm run build:preview:ios` / `pnpm run build:preview:android` – internal preview builds (staging Supabase).
+- `pnpm run build:prod:ios` / `pnpm run build:prod:android` – production builds with auto-incremented versions.
+- `pnpm run submit:prod:ios` / `pnpm run submit:prod:android` – upload the latest artifacts to TestFlight / Google Play Internal Testing (requires `eas submit` credentials configured in `eas.json`).
+- `pnpm run version:bump -- --type patch|minor|major` – updates the version in `package.json` and `app.config.ts`, and increments the iOS build number and Android version code. Use `--set <version>` to set an explicit semantic version.
 
 ### Social authentication setup
 
@@ -461,14 +455,14 @@ We implement Supabase’s [Expo React Native social auth quickstart](https://sup
 
 1. **Register callback URLs**
    - In Supabase Studio’s _Authentication → URL Configuration_, add both `{{APP_SLUG}}://auth-callback` and your deployed web URL (e.g., `https://yourdomain.com/auth-callback`).
-   - The native scheme `{{APP_SLUG}}` is already declared in `app.json`; don’t change it unless you update every OAuth redirect.
+   - The native scheme `{{APP_SLUG}}` is already declared in `app.config.ts`; don’t change it unless you update every OAuth redirect.
 2. **Enable providers (Studio)**
    - Go to _Authentication → Providers_ and toggle Apple + Google on.
    - Paste the client IDs/secrets from Apple Developer/Google Cloud. Supabase stores them securely and the Expo app reuses the same anon key.
    - The quickstart doc shows the exact Apple Services ID + Google OAuth settings for Expo.
 3. **Restart local services**
-   - If you run Supabase locally (`npm run supabase:dev`), restart it so the provider config takes effect.
-   - Restart Metro (`npm start`) and rebuild native dev clients after flipping providers on/off.
+   - If you run Supabase locally (`pnpm run supabase:dev`), restart it so the provider config takes effect.
+   - Restart Metro (`pnpm start`) and rebuild native dev clients after flipping providers on/off.
 4. **Test the flows**
    - Native: tapping “Continue with …” opens the system browser overlay (Chrome Custom Tabs or ASWebAuthenticationSession). Once the Supabase redirect hits `{{APP_SLUG}}://auth-callback`, the session listener updates Zustand.
    - Web: the login page redirects in the same tab; after sign-in, Supabase sends the browser back to `https://<project>.supabase.co/auth/v1/callback` which returns to your app.
@@ -497,19 +491,19 @@ After following the quickstart, the “Continue with Apple/Google” buttons in 
 1. **Start Supabase** (Terminal 1):
 
    ```bash
-   npm run supabase:dev
+   pnpm run supabase:dev
    ```
 
 2. **Start Expo** (Terminal 2):
 
    ```bash
-   npm start
+   pnpm start
    ```
 
 3. **Code and iterate**:
    - Save code → Metro hot reloads the UI automatically
    - Edit Edge Functions → Supabase CLI auto-reloads them
-   - Run tests: `npm test -- --coverage`
+   - Run tests: `pnpm test -- --coverage`
    - On native dev builds, use **Settings → Developer Tools** to seed sample records, clear the outbox, and manually trigger sync checks before testing on device.
 
 4. **Shut down**:
@@ -568,7 +562,7 @@ When testing on a **physical phone or tablet**, the device needs to connect to S
 
    ```bash
    # Stop Expo (Ctrl+C in Terminal 2)
-   npm start
+   pnpm start
    ```
 
    **Note**: You don't need to restart Supabase - it's already accessible on your network
@@ -591,13 +585,13 @@ Use release builds when you need production‑like behavior (Crashlytics, push h
 **Android (local release on device):**
 
 ```bash
-npx expo run:android --device --variant release
+pnpm exec expo run:android --device --variant release
 ```
 
 **iOS (local release on device):**
 
 ```bash
-npx expo run:ios --device --configuration Release
+pnpm exec expo run:ios --device --configuration Release
 ```
 
 ### Making Schema Changes
@@ -613,7 +607,7 @@ This project uses **Drizzle ORM** for both SQLite (local) and Postgres (Supabase
 2. **Generate migrations IMMEDIATELY**:
 
    ```bash
-   npm run db:migrate
+   pnpm run db:migrate
    ```
 
    - ✅ Generates SQLite migration files → `src/db/sqlite/migrations/`
@@ -624,16 +618,16 @@ This project uses **Drizzle ORM** for both SQLite (local) and Postgres (Supabase
 3. **Review the generated files**:
    - Check migration SQL for correctness
    - Verify RLS policies match your security requirements
-   - Run automated validation: `npm test -- --coverage`
+   - Run automated validation: `pnpm test -- --coverage`
 
 4. **Test locally**:
 
    ```bash
    # Restart Supabase to apply Postgres migrations
-   npm run supabase:dev   # Applies new Postgres migrations
+   pnpm run supabase:dev   # Applies new Postgres migrations
 
    # Restart the app to apply SQLite migrations
-   npm start              # Press 'r' to reload app on device
+   pnpm start              # Press 'r' to reload app on device
    ```
 
 5. **Commit everything together**:
@@ -645,34 +639,34 @@ This project uses **Drizzle ORM** for both SQLite (local) and Postgres (Supabase
 
 6. **Deploy to production** (when ready):
    ```bash
-   npm run supabase:deploy
+   pnpm run supabase:deploy
    ```
 
 **Troubleshooting Migration Issues:**
 
-If you see **"❌ No SQLite migrations found!"** when running `npm start`:
+If you see **"❌ No SQLite migrations found!"** when running `pnpm start`:
 
 ```bash
 # Option 1: Force regenerate SQLite migrations only (for SQLite-specific issues)
 rm -rf src/db/sqlite/migrations/meta
-npm run db:generate  # Low-level: only generates SQLite migrations
+pnpm run db:generate  # Low-level: only generates SQLite migrations
 
 # Option 2: Clean and regenerate ALL migrations (recommended)
-npm run db:clean
-npm run db:migrate  # High-level: generates SQLite + Postgres + RLS
+pnpm run db:clean
+pnpm run db:migrate  # High-level: generates SQLite + Postgres + RLS
 ```
 
 This happens when migration metadata exists but SQL files are missing (common after cloning or git operations).
 
 **Command Reference:**
 
-- ✅ **Use `npm run db:migrate`** - Normal workflow (generates both databases + RLS policies)
-- 🔧 **Use `npm run db:generate`** - Only for troubleshooting SQLite-specific issues
+- ✅ **Use `pnpm run db:migrate`** - Normal workflow (generates both databases + RLS policies)
+- 🔧 **Use `pnpm run db:generate`** - Only for troubleshooting SQLite-specific issues
 
 **Important Notes:**
 
-- ⚠️ Always run `npm run db:migrate` immediately after editing schemas
-- ✅ The `npm start` command automatically checks if migrations are missing
+- ⚠️ Always run `pnpm run db:migrate` immediately after editing schemas
+- ✅ The `pnpm start` command automatically checks if migrations are missing
 - 📝 Both schema files must stay in sync - edit them together
 - 🔒 RLS policies are auto-generated from DOMAIN config
 
@@ -702,10 +696,10 @@ adb shell run-as {{APP_ID}} rm /data/data/{{APP_ID}}/databases/{{APP_DOMAIN_NAME
 
 ```bash
 # Ensure Supabase is running first
-npm run supabase:dev  # Or check if already running
+pnpm run supabase:dev  # Or check if already running
 
 # In another terminal, reset database and reapply migrations
-npx supabase db reset
+pnpm exec supabase db reset
 
 # The reset command will:
 # - Drop and recreate the Postgres database
@@ -716,7 +710,7 @@ npx supabase db reset
 # Continue with Supabase still running, or restart if needed
 ```
 
-**Important**: Supabase containers must be running when you execute `npx supabase db reset` - the command needs an active database connection to perform the reset.
+**Important**: Supabase containers must be running when you execute `pnpm exec supabase db reset` - the command needs an active database connection to perform the reset.
 
 #### Clearing Production Supabase (Use with extreme caution)
 
@@ -733,13 +727,13 @@ If you need to reset your **hosted Supabase** (not recommended):
 
 #### When to Use Each Reset
 
-| Scenario                          | Solution                                       |
-| --------------------------------- | ---------------------------------------------- |
-| Testing fresh install flow        | Clear SQLite (Developer Tools button)          |
-| Sync conflicts during development | Clear SQLite + Clear outbox                    |
-| Schema migration gone wrong       | Reset local Supabase (`npx supabase db reset`) |
-| Starting a new feature branch     | Clear both databases                           |
-| Production issues                 | **Never reset** - debug and fix data instead   |
+| Scenario                          | Solution                                             |
+| --------------------------------- | ---------------------------------------------------- |
+| Testing fresh install flow        | Clear SQLite (Developer Tools button)                |
+| Sync conflicts during development | Clear SQLite + Clear outbox                          |
+| Schema migration gone wrong       | Reset local Supabase (`pnpm exec supabase db reset`) |
+| Starting a new feature branch     | Clear both databases                                 |
+| Production issues                 | **Never reset** - debug and fix data instead         |
 
 #### Reset Checklist
 

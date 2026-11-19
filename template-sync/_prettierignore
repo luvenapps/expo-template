@@ -1,10 +1,30 @@
 node_modules
 dist
 build
+build-*
+web-build
 .expo
 android
 ios
 .tamagui
 package-lock.json
+pnpm-lock.yaml
 .claude
 .codex
+
+# Generated files and reports
+expo-env.d.ts
+*.orig.*
+coverage
+junit.xml
+e2e-artifacts
+.builds
+supabase/.temp
+supabase/.branches
+**/migrations/meta
+src/db/postgres/rls-policies.sql
+
+# Local-only files
+.vscode/settings.json
+credentials
+codecov*

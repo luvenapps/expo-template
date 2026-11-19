@@ -8,5 +8,5 @@
   follow the existing translation mocks and assert translation keys where appropriate.
 - Native modules must remain usable in the Node test environment through mocks.
 - Run scoped coverage for the source file under test, not just its test file:
-  `npx jest --runInBand --coverage --collectCoverageFrom='<source-file>' --runTestsByPath <test-file>`.
-- After per-file coverage passes, run full `npm test`; its pretest runs type checking.
+  `pnpm exec jest --runInBand --coverage --collectCoverageFrom='<source-file>' --runTestsByPath <test-file>`.
+- After per-file coverage passes, run full `pnpm test`; its pretest runs type checking.

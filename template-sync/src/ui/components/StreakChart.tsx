@@ -25,21 +25,21 @@ export function StreakChart({
   formatPercentLabel = (percent) => `${Math.round(percent * 100)}% complete`,
 }: StreakChartProps) {
   return (
-    <YStack gap="$2" testID={testID}>
+    <YStack gap="2" testID={testID}>
       {data.map(({ label, value, max = 1, icon }, index) => {
         const percent = Math.min(1, Math.max(0, value / max));
         const itemTestID = getItemTestID?.(label, index);
         return (
-          <YStack key={label} gap="$2" testID={itemTestID}>
-            <XStack alignItems="center" gap="$2">
+          <YStack key={label} gap="2" testID={itemTestID}>
+            <XStack alignItems="center" gap="2">
               {icon}
               <LabelText testID={itemTestID ? `${itemTestID}-label` : undefined}>
                 {label} • {formatDayLabel(value)}
               </LabelText>
             </XStack>
             <XStack
-              height={12}
-              borderRadius={999}
+              height="3"
+              borderRadius="full"
               backgroundColor="background-press"
               overflow="hidden"
             >

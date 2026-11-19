@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { XStack, YStack, Paragraph } from 'tamagui';
 import { NOTIFICATIONS } from '@/config/constants';
+import { spaceTokenValues } from '@/ui/theme/tokenValues';
 
 export type ToastType = 'success' | 'error' | 'info';
 
@@ -72,10 +73,10 @@ export function ToastContainer({ messages, dismiss, testID }: ToastContainerProp
       position="absolute"
       top="4"
       width="90%"
-      maxWidth={480}
+      maxWidth="modalContent"
       alignSelf="center"
-      gap="$2"
-      zIndex={1000}
+      gap="2"
+      zIndex="toast"
       style={{ pointerEvents: 'box-none' }}
       testID={testID}
     >
@@ -112,16 +113,16 @@ function ToastItem({ message, onDismiss }: ToastItemProps) {
       justifyContent="space-between"
       alignItems="center"
       shadowColor="shadowColor"
-      shadowOffset={{ width: 0, height: 2 }}
+      shadowOffset={{ width: 0, height: spaceTokenValues.shadowOffset }}
       shadowOpacity={0.15}
-      shadowRadius={4}
-      borderWidth={1}
+      shadowRadius="1"
+      borderWidth="hairline"
       borderColor="border-color"
       testID={id ? `toast-${id}` : undefined}
     >
-      <YStack flex={1} paddingRight="3" gap="$2">
+      <YStack flex={1} paddingRight="3" gap="2">
         <Paragraph
-          fontWeight="600"
+          fontWeight="4"
           color={colors[type].text}
           testID={id ? `toast-${id}-title` : undefined}
         >
@@ -139,7 +140,7 @@ function ToastItem({ message, onDismiss }: ToastItemProps) {
         {actionLabel && onAction ? (
           <Paragraph
             fontSize="3"
-            fontWeight="600"
+            fontWeight="4"
             color="accent-color"
             opacity="hover:0.8"
             cursor="hover:pointer"

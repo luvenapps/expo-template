@@ -27,7 +27,7 @@ export default function RootRedirect() {
 
   if (Platform.OS === 'web' && !isAuthenticated) {
     return (
-      <ScreenContainer gap="$4" alignItems="center">
+      <ScreenContainer gap="4" alignItems="center">
         <TitleText textAlign="center">
           {(t as unknown as (key: string, options?: Record<string, unknown>) => string)(
             'landing.title',

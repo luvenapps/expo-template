@@ -187,37 +187,37 @@ describe('ScreenContainer', () => {
       expect(container.props.paddingHorizontal).toBe('4');
     });
 
-    it('should accept custom paddingHorizontal as number', async () => {
+    it('should accept a named paddingHorizontal token', async () => {
       const { getByTestId } = await render(
-        <ScreenContainer paddingHorizontal={20}>
+        <ScreenContainer paddingHorizontal="5">
           <Text>Content</Text>
         </ScreenContainer>,
       );
 
       const container = getByTestId('screen-container');
-      expect(container.props.paddingHorizontal).toBe(20);
+      expect(container.props.paddingHorizontal).toBe('5');
     });
 
     it('should accept custom gap as string', async () => {
       const { getByTestId } = await render(
-        <ScreenContainer gap="$3">
+        <ScreenContainer gap="3">
           <Text>Content</Text>
         </ScreenContainer>,
       );
 
       const container = getByTestId('screen-container');
-      expect(container.props.gap).toBe('$3');
+      expect(container.props.gap).toBe('3');
     });
 
-    it('should accept custom gap as number', async () => {
+    it('should accept a named gap token', async () => {
       const { getByTestId } = await render(
-        <ScreenContainer gap={16}>
+        <ScreenContainer gap="4">
           <Text>Content</Text>
         </ScreenContainer>,
       );
 
       const container = getByTestId('screen-container');
-      expect(container.props.gap).toBe(16);
+      expect(container.props.gap).toBe('4');
     });
 
     it('should accept custom backgroundColor', async () => {
@@ -229,17 +229,6 @@ describe('ScreenContainer', () => {
 
       const container = getByTestId('screen-container');
       expect(container.props.backgroundColor).toBe('backgroundStrong');
-    });
-
-    it('should accept non-token backgroundColor values', async () => {
-      const { getByTestId } = await render(
-        <ScreenContainer backgroundColor="#123456">
-          <Text>Content</Text>
-        </ScreenContainer>,
-      );
-
-      const container = getByTestId('screen-container');
-      expect(container.props.backgroundColor).toBe('#123456');
     });
   });
 
@@ -333,7 +322,7 @@ describe('ScreenContainer', () => {
           justifyContent="space-between"
           alignItems="stretch"
           paddingHorizontal="8"
-          gap="$5"
+          gap="5"
           backgroundColor="background-hover"
         >
           <Text>Content</Text>
@@ -344,7 +333,7 @@ describe('ScreenContainer', () => {
       expect(container.props.justifyContent).toBe('space-between');
       expect(container.props.alignItems).toBe('stretch');
       expect(container.props.paddingHorizontal).toBe('8');
-      expect(container.props.gap).toBe('$5');
+      expect(container.props.gap).toBe('5');
       expect(container.props.backgroundColor).toBe('background-hover');
       expect(container.props.paddingTop).toBe(28);
       expect(container.props.paddingBottom).toBe(24);

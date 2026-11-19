@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
  * Simple project doctor for Expo RN apps.
- * Run with: npm run troubleshoot
+ * Run with: pnpm run troubleshoot
  *
  * Checks:
- *  - Node & npm versions
+ *  - Node & pnpm versions
  *  - Expo CLI
  *  - Java (JDK 21)
  *  - Android SDK / adb
@@ -80,12 +80,12 @@ function compareVersions(actual, expected) {
 (function main() {
   header('Environment');
 
-  // Node & npm
+  // Node & pnpm
   ok(`node -> ${process.version}`);
-  cmd('npm', '-v');
+  cmd('pnpm', '--version');
 
   // Expo CLI
-  cmd('npx', 'expo --version');
+  cmd('pnpm', 'exec expo --version');
 
   // Java (JDK) - accept formats like:
   // - openjdk version "21.0.10"
@@ -143,7 +143,7 @@ function compareVersions(actual, expected) {
     }
   })();
   if (!expoPkgPath) {
-    err('expo is not installed in node_modules. Run: npx expo install expo');
+    err('expo is not installed in node_modules. Run: pnpm exec expo install expo');
   } else {
     const expoPkg = require(expoPkgPath);
     const peers = expoPkg.peerDependencies || {};
@@ -176,7 +176,7 @@ function compareVersions(actual, expected) {
         ok(`${dep} -> ${installed} (compatible with expected ${expected[dep]})`);
       } else {
         warn(
-          `${dep} -> ${installed} (expected ${expected[dep]}). Run: npx expo install ${dep}@${expected[dep]}`,
+          `${dep} -> ${installed} (expected ${expected[dep]}). Run: pnpm exec expo install ${dep}@${expected[dep]}`,
         );
       }
     }
@@ -220,7 +220,7 @@ function compareVersions(actual, expected) {
         : [];
 
       if (sqliteMigrations.length === 0) {
-        err('No SQLite migrations found! Run: npm run db:migrate');
+        err('No SQLite migrations found! Run: pnpm run db:migrate');
       } else {
         ok(`Found ${sqliteMigrations.length} SQLite migration(s)`);
 
@@ -230,7 +230,7 @@ function compareVersions(actual, expected) {
           .sort((a, b) => b.mtime - a.mtime)[0];
 
         if (sqliteSchemaMtime > latestSqliteMigration.mtime) {
-          warn('⚠️  SQLite schema.ts is newer than migrations! Run: npm run db:migrate');
+          warn('⚠️  SQLite schema.ts is newer than migrations! Run: pnpm run db:migrate');
           console.log(`   Schema modified: ${sqliteSchemaMtime.toLocaleString()}`);
           console.log(`   Latest migration: ${latestSqliteMigration.mtime.toLocaleString()}`);
         } else {
@@ -239,7 +239,7 @@ function compareVersions(actual, expected) {
       }
 
       if (postgresMigrations.length === 0) {
-        err('No Postgres migrations found! Run: npm run db:migrate');
+        err('No Postgres migrations found! Run: pnpm run db:migrate');
       } else {
         ok(`Found ${postgresMigrations.length} Postgres migration(s)`);
 
@@ -249,7 +249,7 @@ function compareVersions(actual, expected) {
           .sort((a, b) => b.mtime - a.mtime)[0];
 
         if (postgresSchemaMtime > latestPostgresMigration.mtime) {
-          warn('⚠️  Postgres schema.ts is newer than migrations! Run: npm run db:migrate');
+          warn('⚠️  Postgres schema.ts is newer than migrations! Run: pnpm run db:migrate');
           console.log(`   Schema modified: ${postgresSchemaMtime.toLocaleString()}`);
           console.log(`   Latest migration: ${latestPostgresMigration.mtime.toLocaleString()}`);
         } else {
@@ -263,12 +263,12 @@ function compareVersions(actual, expected) {
 
   header('Expo Doctor');
   try {
-    const result = spawnSync('npx', ['expo-doctor', '--verbose'], { stdio: 'inherit' });
+    const result = spawnSync('pnpm', ['exec', 'expo-doctor', '--verbose'], { stdio: 'inherit' });
     if (result.error) throw result.error;
   } catch (e) {
-    warn('Expo Doctor failed to run. Try manually with: npx expo-doctor --verbose', e);
+    warn('Expo Doctor failed to run. Try manually with: pnpm exec expo-doctor --verbose', e);
   }
 
   header('Conclusion');
-  console.log('If any ❌/⚠️ were shown above, address them and re-run `npm run troubleshoot`.\n');
+  console.log('If any ❌/⚠️ were shown above, address them and re-run `pnpm run troubleshoot`.\n');
 })();

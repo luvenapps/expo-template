@@ -108,8 +108,8 @@ function usePrimaryEntities(userId: string) {
 **Dependencies**:
 
 ```bash
-npm install @tanstack/query-sync-storage-persister
-npm install idb-keyval
+pnpm add @tanstack/query-sync-storage-persister
+pnpm add idb-keyval
 ```
 
 **Implementation**:

@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { useWindowDimensions } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { Dialog, Paragraph, XStack, YStack, useTheme } from 'tamagui';
+import { themeColorSets } from '@/ui/theme/palette';
 import { FormField } from './FormField';
 import { PrimaryButton } from './PrimaryButton';
 
@@ -34,7 +35,7 @@ export function NamePromptModal({
   const trimmed = value.trim();
   const canSave = trimmed.length > 0;
   const theme = useTheme();
-  const strokeColor = theme.color?.get() ?? '#111';
+  const strokeColor = theme.color?.get() ?? themeColorSets.light.color;
   const { width } = useWindowDimensions();
   const size = [300, 500][Number(width >= 390)];
 
@@ -65,16 +66,16 @@ export function NamePromptModal({
           padding="4"
           alignSelf="center"
           width="100%"
-          maxWidth={480}
+          maxWidth="modalContent"
           height="87%"
         >
-          <YStack gap="$4" flex={1} justifyContent="space-between">
-            <YStack gap="$4">
+          <YStack gap="4" flex={1} justifyContent="space-between">
+            <YStack gap="4">
               <Dialog.Title asChild>
                 <Paragraph
                   fontSize="5"
-                  fontWeight="700"
-                  lineHeight="60px"
+                  fontWeight="5"
+                  lineHeight="display"
                   textTransform="capitalize"
                 >
                   {title}
