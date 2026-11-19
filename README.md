@@ -34,8 +34,6 @@ expo-template/
 ├── CLAUDE.md
 ├── LICENSE
 ├── README.md
-├── _mcp-claude.json
-├── _mcp-vscode.json
 ├── commitlint.config.js          # Repository commit rules
 ├── credentials.json             # Used by Android CI; not part of the app payload
 ├── eslint.config.js
@@ -73,6 +71,8 @@ template-sync/
 ├── _AGENTS.md
 ├── _CLAUDE.md
 ├── _gitignore
+├── _mcp-claude.json              # Restored as .mcp.json by postinstall
+├── _mcp-vscode.json              # Restored as .vscode/mcp.json by postinstall
 ├── _mise.toml
 ├── _prettierignore
 ├── _prettierrc.json
@@ -95,6 +95,8 @@ template-sync/
 ├── tamagui.config.ts
 └── tsconfig.json
 ```
+
+The dotfiles in `template-sync/` are part of the generated app: `.env.example`, `.gitignore`, `.mcp.json`, and `.mise.toml` provide app configuration. Postinstall removes `.template-sync-manifest.json` and materializes underscore-named configuration files as dotfiles.
 
 The sync workflow changes files only in `template-sync/`. Root documentation, credentials, CI, and tooling stay specific to expo-template. The Android workflow copies the root `credentials.json` into its generated app for the local EAS build.
 

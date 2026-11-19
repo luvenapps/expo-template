@@ -46,6 +46,8 @@ const TEMPLATE_ONLY_TARGETS = new Set([
   `${TEMPLATE_SYNC_DIR}/.env.example`,
   `${TEMPLATE_SYNC_DIR}/LICENSE`,
   `${TEMPLATE_SYNC_DIR}/scripts/postinstall.mjs`,
+  `${TEMPLATE_SYNC_DIR}/_mcp-claude.json`,
+  `${TEMPLATE_SYNC_DIR}/_mcp-vscode.json`,
   TEMPLATE_SYNC_MANIFEST,
 ]);
 
