@@ -89,7 +89,6 @@ const MANAGED_ROOT_FILES = new Set([
   '_prettierignore',
   '.prettierrc.json',
   '_prettierrc.json',
-  '.mcp.json',
   'app.config.ts',
   'babel.config.js',
   'commitlint.config.js',
@@ -523,8 +522,8 @@ function outputPaths(sourcePath) {
   const hiddenFileMappings = new Map([
     ['AGENTS.md', ['_AGENTS.md']],
     ['CLAUDE.md', ['_CLAUDE.md']],
-    ['.gitignore', ['.gitignore', '_gitignore']],
-    ['.mise.toml', ['.mise.toml', '_mise.toml']],
+    ['.gitignore', ['_gitignore']],
+    ['.mise.toml', ['_mise.toml']],
     ['renovate.json', ['_renovate.json']],
     ['.prettierignore', ['_prettierignore']],
     ['.prettierrc.json', ['_prettierrc.json']],

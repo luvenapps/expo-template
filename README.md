@@ -64,10 +64,7 @@ template-sync/
 ├── src/
 ├── supabase/
 ├── _env.example                 # Restored as .env.example by postinstall
-├── .gitignore
-├── .mcp.json
-├── .mise.toml
-├── .template-sync-manifest.json
+├── .template-sync-manifest.json # expo-template source sync bookkeeping
 ├── _AGENTS.md
 ├── _CLAUDE.md
 ├── _gitignore
@@ -96,7 +93,7 @@ template-sync/
 └── tsconfig.json
 ```
 
-Create Expo App's GitHub-template filter skips dotfiles by default, so app files that need hidden names use underscore names in `template-sync/` and postinstall restores them: `_env.example` becomes `.env.example`, `_gitignore` becomes `.gitignore`, `_mise.toml` becomes `.mise.toml`, and `_mcp-*` becomes the corresponding MCP config. Unsuffixed dotfiles in `template-sync/` are synchronized source snapshots; Create Expo App skips them. `.template-sync-manifest.json` is bookkeeping for expo-template's sync workflow, stored beside the payload and removed by postinstall if present.
+Create Expo App's GitHub-template filter skips dotfiles by default, so hidden app files in `template-sync/` use underscore names and postinstall restores them: `_env.example` becomes `.env.example`, `_gitignore` becomes `.gitignore`, `_mise.toml` becomes `.mise.toml`, and `_mcp-*` becomes the corresponding MCP config. `.template-sync-manifest.json` is the only direct dotfile in this folder; it is expo-template source-sync bookkeeping and is not part of the generated app.
 
 The root dotfiles are specific to expo-template: `.gitignore`, `.mise.toml`, `.mise.ci.toml`, `.prettierignore`, and `.prettierrc.json` configure this repository's ignore rules, toolchains, and formatting. Root `.github/` contains this repository's CI. Create Expo App uses only `template-sync/`, so these root files stay with expo-template.
 
