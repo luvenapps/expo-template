@@ -139,7 +139,6 @@ describe('sync-template-source', () => {
     );
     writeFile(source, 'README.md', 'Source README\n\n---\n');
     writeFile(source, 'scripts/postinstall.mjs', 'source bootstrap\n');
-    writeFile(source, 'scripts/postinstall.js', 'legacy source bootstrap\n');
     writeFile(source, 'AGENTS.md', 'Source instructions\n');
     writeFile(source, 'CLAUDE.md', '@AGENTS.md\n');
     writeFile(source, '.env.local', 'SECRET=value\n');
@@ -637,9 +636,6 @@ describe('sync-template-source', () => {
         'template CI coverage\n',
       );
     }
-    expect(
-      fs.existsSync(path.join(target, 'template-sync/scripts/postinstall.js')),
-    ).toBe(false);
     expect(fs.existsSync(path.join(target, '.env.local'))).toBe(false);
     expect(
       fs.existsSync(path.join(target, 'template-sync/docs/roadmap.md')),

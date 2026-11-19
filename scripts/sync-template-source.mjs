@@ -15,9 +15,8 @@ import { Buffer } from 'node:buffer';
 
 // Source files intentionally omitted while their parent directories sync.
 const TEMPLATE_ONLY_SOURCE_PATHS = new Set([
+  // Keep the generated app's customized, transfer-safe _env.example.
   '.env.example',
-  'scripts/postinstall.js',
-  'scripts/postinstall.mjs',
   'scripts/sync-template-source.mjs',
   '__tests__/scripts/sync-template-source.test.js',
   '__tests__/scripts/sync-template-source.test.ts',
