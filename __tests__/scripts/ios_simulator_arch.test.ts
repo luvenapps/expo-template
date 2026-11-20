@@ -60,12 +60,12 @@ describe('ios_simulator_arch', () => {
     ).not.toBe(0);
   });
 
-  test('resolves xcode from the workspace when the EAS app is temporary', () => {
+  test('resolves xcode from the temporary EAS app dependencies', () => {
     const appRoot = mkdtempSync(join(tmpdir(), 'temporary-eas-app-'));
-    mkdirSync(join(context.root, 'node_modules/xcode'), { recursive: true });
+    mkdirSync(join(appRoot, 'node_modules/xcode'), { recursive: true });
     writeFileSync(join(appRoot, 'package.json'), '{}');
     writeFileSync(
-      join(context.root, 'node_modules/xcode/index.js'),
+      join(appRoot, 'node_modules/xcode/index.js'),
       `exports.project = () => ({
   parseSync() {},
   updateBuildProperty() {},

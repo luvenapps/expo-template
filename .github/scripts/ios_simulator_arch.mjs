@@ -5,16 +5,7 @@ import { resolve } from 'node:path';
 
 const appRoot = process.env.INIT_CWD || process.env.PWD || process.cwd();
 const requireFromApp = createRequire(resolve(appRoot, 'package.json'));
-let xcode;
-try {
-  xcode = requireFromApp('xcode');
-} catch (error) {
-  if (error?.code !== 'MODULE_NOT_FOUND' || !process.env.GITHUB_WORKSPACE)
-    throw error;
-  xcode = createRequire(resolve(process.env.GITHUB_WORKSPACE, 'package.json'))(
-    'xcode',
-  );
-}
+const xcode = requireFromApp('xcode');
 
 const projects = globSync('ios/*.xcodeproj/project.pbxproj');
 if (projects.length === 0)
