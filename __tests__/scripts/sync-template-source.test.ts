@@ -288,6 +288,16 @@ describe('sync-template-source', () => {
 
   test('syncs pnpm lockfiles into the app payload with template identity', () => {
     fs.unlinkSync(path.join(source, 'package-lock.json'));
+    const workspaceConfig =
+      [
+        'overrides:',
+        '  react-server-dom-webpack: 19.3.1',
+        '  react-dom: 19.3.0',
+        '  react: 19.3.0',
+        '  react-test-renderer: 19.3.0',
+        '  react-native-web: ^0.21.4',
+      ].join('\n') + '\n';
+    writeFile(source, 'pnpm-workspace.yaml', workspaceConfig);
     writeFile(
       source,
       'pnpm-lock.yaml',
@@ -296,6 +306,12 @@ describe('sync-template-source', () => {
         "lockfileVersion: '9.0'",
         'settings:',
         '  autoInstallPeers: true',
+        'overrides:',
+        '  react-server-dom-webpack: 19.3.1',
+        '  react-dom: 19.3.0',
+        '  react: 19.3.0',
+        '  react-test-renderer: 19.3.0',
+        '  react-native-web: ^0.21.4',
         'importers:',
         '  .: {}',
       ].join('\n') + '\n',
@@ -329,6 +345,12 @@ describe('sync-template-source', () => {
         'utf8',
       ),
     ).toContain('name: template-starter');
+    expect(
+      fs.readFileSync(
+        path.join(target, 'template-sync/pnpm-workspace.yaml'),
+        'utf8',
+      ),
+    ).toBe(workspaceConfig);
     expect(
       fs.existsSync(path.join(target, 'template-sync/package-lock.json')),
     ).toBe(false);

@@ -85,6 +85,7 @@ const MANAGED_SOURCE_FILES = new Set([
   'metro.config.js',
   'package-lock.json',
   'package.json',
+  'pnpm-workspace.yaml',
   'pnpm-lock.yaml',
   'tamagui.build.ts',
   'tamagui.config.ts',
