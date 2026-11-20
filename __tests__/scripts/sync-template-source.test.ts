@@ -352,6 +352,15 @@ describe('sync-template-source', () => {
       ),
     ).toBe(workspaceConfig);
     expect(
+      fs.readFileSync(
+        path.join(
+          target,
+          'template-sync/__tests__/helpers/ciScriptTestContext.ts',
+        ),
+        'utf8',
+      ),
+    ).toBe('source replacement\n');
+    expect(
       fs.existsSync(path.join(target, 'template-sync/package-lock.json')),
     ).toBe(false);
     const syncedPaths = git(

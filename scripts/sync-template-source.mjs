@@ -20,7 +20,6 @@ const TEMPLATE_ONLY_SOURCE_PATHS = new Set([
   'scripts/sync-template-source.mjs',
   '__tests__/scripts/sync-template-source.test.js',
   '__tests__/scripts/sync-template-source.test.ts',
-  '__tests__/helpers/ciScriptTestContext.ts',
   '__tests__/scripts/android_run_e2e.test.ts',
   '__tests__/scripts/compute_fingerprint.test.ts',
   '__tests__/scripts/ios_boot_simulator.test.ts',
