@@ -60,16 +60,25 @@ describe('ios_simulator_arch', () => {
     ).not.toBe(0);
   });
 
-  test('resolves xcode from the temporary EAS app dependencies', () => {
+  test('resolves xcode from Expo config plugins in the temporary EAS app', () => {
     const appRoot = mkdtempSync(join(tmpdir(), 'temporary-eas-app-'));
-    mkdirSync(join(appRoot, 'node_modules/xcode'), { recursive: true });
+    const expoCliRoot = join(appRoot, 'node_modules/@expo/cli');
+    const configPluginsRoot = join(
+      expoCliRoot,
+      'node_modules/@expo/config-plugins',
+    );
+    mkdirSync(join(configPluginsRoot, 'node_modules/xcode'), {
+      recursive: true,
+    });
     writeFileSync(join(appRoot, 'package.json'), '{}');
+    writeFileSync(join(expoCliRoot, 'index.js'), 'module.exports = {};');
+    writeFileSync(join(configPluginsRoot, 'index.js'), 'module.exports = {};');
     writeFileSync(
-      join(appRoot, 'node_modules/xcode/index.js'),
+      join(configPluginsRoot, 'node_modules/xcode/index.js'),
       `exports.project = () => ({
   parseSync() {},
   updateBuildProperty() {},
-  writeSync() { return '// workspace xcode'; },
+  writeSync() { return '// nested xcode'; },
 });
 `,
     );
@@ -90,7 +99,7 @@ describe('ios_simulator_arch', () => {
         stderr: '',
       });
       expect(context.read('ios/Example.xcodeproj/project.pbxproj')).toContain(
-        '// workspace xcode',
+        '// nested xcode',
       );
     } finally {
       rmSync(appRoot, { recursive: true, force: true });
