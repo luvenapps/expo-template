@@ -18,6 +18,7 @@
  *  - Rename _prettierignore → .prettierignore if present
  *  - Rename _renovate.json → renovate.json if present
  *  - Copy _mise.toml → .mise.toml (runtime toolchain pins)
+ *  - Copy _mise.ci.toml → .mise.ci.toml (CI environment)
  *  - Copy _mcp-vscode.json → .vscode/mcp.json (creates .vscode if needed)
  *  - Copy _mcp-claude.json → .mcp.json (repo root, Claude MCP config)
  *  - Enable Husky hooks *without* using deprecated `husky install` (set hooksPath + chmod +x)
@@ -402,6 +403,20 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
     console.log('⚠️  No _mise.toml found in template directory — skipping');
   }
 
+  // Copy _mise.ci.toml → .mise.ci.toml if present
+  const miseCiSrc = path.join(CWD, '_mise.ci.toml');
+  const miseCiDst = path.join(CWD, '.mise.ci.toml');
+  if (exists(miseCiSrc)) {
+    try {
+      fs.copyFileSync(miseCiSrc, miseCiDst);
+      console.log('✅ Copied _mise.ci.toml → .mise.ci.toml');
+    } catch (e) {
+      console.log(`⚠️  Failed to copy _mise.ci.toml (${e.message})`);
+    }
+  } else {
+    console.log('⚠️  No _mise.ci.toml found in template directory — skipping');
+  }
+
   // Copy _mcp-vscode.json → .vscode/mcp.json if present
   const mcpVscodeSrc = path.join(CWD, '_mcp-vscode.json');
   const vscodeDst = path.join(CWD, '.vscode');
@@ -551,6 +566,7 @@ let summary = { appName: null, slug: null, appId: null, singular: null };
     ['_env.example', '.env.example'],
     ['_CLAUDE.md', 'CLAUDE.md'],
     ['_mise.toml', '.mise.toml'],
+    ['_mise.ci.toml', '.mise.ci.toml'],
     ['_mcp-vscode.json', '.vscode/mcp.json'],
     ['_mcp-claude.json', '.mcp.json'],
     ['_husky', '.husky'],

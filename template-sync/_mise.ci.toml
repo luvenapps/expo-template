@@ -1,0 +1,7 @@
+[settings.ruby]
+compile = false
+
+[env]
+EAS_CLI_VERSION = "18.13.1"
+FASTLANE_VERSION = "2.228.0"
+MAESTRO_VERSION = "2.0.6"
