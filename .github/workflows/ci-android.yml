@@ -391,6 +391,7 @@ jobs:
       - name: Collect emulator logs on failure
         if: failure() && steps.e2e_android.outcome == 'failure'
         shell: bash
+        timeout-minutes: 2
         run: |
           echo "Collecting emulator diagnostics..."
           mkdir -p e2e-artifacts
