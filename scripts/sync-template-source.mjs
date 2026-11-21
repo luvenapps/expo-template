@@ -26,7 +26,6 @@ const TEMPLATE_ONLY_SOURCE_PATHS = new Set([
   '__tests__/scripts/ios_install_app.test.ts',
   '__tests__/scripts/ios_run_e2e.test.ts',
   '__tests__/scripts/ios_simulator_arch.test.ts',
-  '__tests__/scripts/template-ci-config.test.ts',
   '__tests__/scripts/template-postinstall.test.ts',
   '__tests__/scripts/validate_hermes_bundle.test.ts',
   '__tests__/scripts/with_timeout.test.ts',
