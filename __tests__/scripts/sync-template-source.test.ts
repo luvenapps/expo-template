@@ -9,7 +9,6 @@ const scriptPath = path.resolve(
 );
 
 const templateCiFiles = [
-  '__tests__/helpers/ciScriptTestContext.ts',
   '__tests__/scripts/android_run_e2e.test.ts',
   '__tests__/scripts/compute_fingerprint.test.ts',
   '__tests__/scripts/ios_boot_simulator.test.ts',
@@ -19,6 +18,8 @@ const templateCiFiles = [
   '__tests__/scripts/validate_hermes_bundle.test.ts',
   '__tests__/scripts/with_timeout.test.ts',
 ];
+
+const appTestSupportPath = '__tests__/helpers/test-support.ts';
 
 function writeFile(root: string, relativePath: string, content: string) {
   const fullPath = path.join(root, relativePath);
@@ -65,6 +66,7 @@ describe('sync-template-source', () => {
         packages: { '': { name: 'betterhabits' } },
       }),
     );
+    writeFile(source, appTestSupportPath, 'source app test support\n');
     writeFile(source, 'commitlint.config.js', 'source app commitlint\n');
     writeFile(source, 'drizzle.config.postgres.ts', 'source postgres config\n');
     writeFile(source, 'drizzle.config.sqlite.ts', 'source sqlite config\n');
@@ -352,15 +354,6 @@ describe('sync-template-source', () => {
       ),
     ).toBe(workspaceConfig);
     expect(
-      fs.readFileSync(
-        path.join(
-          target,
-          'template-sync/__tests__/helpers/ciScriptTestContext.ts',
-        ),
-        'utf8',
-      ),
-    ).toBe('source replacement\n');
-    expect(
       fs.existsSync(path.join(target, 'template-sync/package-lock.json')),
     ).toBe(false);
     const syncedPaths = git(
@@ -425,6 +418,12 @@ describe('sync-template-source', () => {
         'utf8',
       ),
     ).toContain('"name": "template-starter"');
+    expect(
+      fs.readFileSync(
+        path.join(target, 'template-sync', appTestSupportPath),
+        'utf8',
+      ),
+    ).toBe('source app test support\n');
     expect(
       fs.readFileSync(
         path.join(target, 'template-sync/commitlint.config.js'),
