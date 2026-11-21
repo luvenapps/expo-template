@@ -15,6 +15,8 @@ const templateCiFiles = [
   '__tests__/scripts/ios_install_app.test.ts',
   '__tests__/scripts/ios_run_e2e.test.ts',
   '__tests__/scripts/ios_simulator_arch.test.ts',
+  '__tests__/scripts/template-ci-config.test.ts',
+  '__tests__/scripts/template-postinstall.test.ts',
   '__tests__/scripts/validate_hermes_bundle.test.ts',
   '__tests__/scripts/with_timeout.test.ts',
 ];
@@ -66,6 +68,7 @@ describe('sync-template-source', () => {
         packages: { '': { name: 'betterhabits' } },
       }),
     );
+    writeFile(source, '.mise.ci.toml', '[env]\nCI_TOOL_VERSION = "1.2.3"\n');
     writeFile(source, appTestSupportPath, 'source app test support\n');
     writeFile(source, 'commitlint.config.js', 'source app commitlint\n');
     writeFile(source, 'drizzle.config.postgres.ts', 'source postgres config\n');
@@ -217,6 +220,7 @@ describe('sync-template-source', () => {
       'Old source Claude instructions\n',
     );
     writeFile(target, 'template-sync/_renovate.json', 'old app renovate\n');
+    writeFile(target, 'template-sync/_mise.ci.toml', 'old app CI config\n');
     writeFile(target, 'template-sync/_env.example', 'template app env\n');
     writeFile(target, 'template-sync/LICENSE', 'Template app license\n');
     writeFile(
@@ -418,6 +422,9 @@ describe('sync-template-source', () => {
         'utf8',
       ),
     ).toContain('"name": "template-starter"');
+    expect(
+      fs.readFileSync(path.join(target, 'template-sync/_mise.ci.toml'), 'utf8'),
+    ).toBe('[env]\nCI_TOOL_VERSION = "1.2.3"\n');
     expect(
       fs.readFileSync(
         path.join(target, 'template-sync', appTestSupportPath),
