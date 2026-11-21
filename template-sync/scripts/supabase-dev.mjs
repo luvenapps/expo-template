@@ -31,7 +31,7 @@ async function ensureEnvFile() {
     await access(envFile);
   } catch {
     throw new Error(
-      `[supabase-dev] Missing ${envFile}. Run "npx supabase status --env" after starting Supabase and copy the credentials into ${envFile} first.`,
+      `[supabase-dev] Missing ${envFile}. Run "pnpm exec supabase status --env" after starting Supabase and copy the credentials into ${envFile} first.`,
     );
   }
 }
@@ -50,7 +50,7 @@ async function cleanup() {
 
   if (supabaseStarted) {
     try {
-      await run('npx', ['supabase', 'stop']);
+      await run('pnpm', ['exec', 'supabase', 'stop']);
     } catch (error) {
       console.warn('[supabase-dev] Failed to stop Supabase cleanly:', error.message);
     }
@@ -61,19 +61,20 @@ async function main() {
   console.log('🟢 [supabase-dev] Starting local Supabase stack…');
   await ensureEnvFile();
 
-  await run('npx', ['supabase', 'start']);
+  await run('pnpm', ['exec', 'supabase', 'start']);
   supabaseStarted = true;
 
   console.log('🟢 [supabase-dev] Fetching environment details…');
-  await run('npx', ['supabase', 'status', '-o', 'env']);
+  await run('pnpm', ['exec', 'supabase', 'status', '-o', 'env']);
 
   console.log('🟢 [supabase-dev] Applying migrations to local stack…');
-  await run('npx', ['supabase', 'db', 'push', '--local']);
+  await run('pnpm', ['exec', 'supabase', 'db', 'push', '--local']);
 
   console.log('🟢 [supabase-dev] Serving edge functions with auto-reload…');
   functionsProcess = spawn(
-    'npx',
+    'pnpm',
     [
+      'exec',
       'supabase',
       'functions',
       'serve',

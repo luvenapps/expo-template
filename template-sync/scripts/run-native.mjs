@@ -7,7 +7,7 @@ const require = createRequire(import.meta.url);
 const [platform, ...inputArgs] = process.argv.slice(2);
 
 if (platform !== 'ios' && platform !== 'android') {
-  console.error('Usage: npm run <ios|android> [-- --debug] [--device <id>]');
+  console.error('Usage: pnpm run <ios|android> [-- --debug] [--device <id>]');
   process.exit(2);
 }
 

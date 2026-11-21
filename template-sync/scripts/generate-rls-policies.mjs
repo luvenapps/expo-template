@@ -38,7 +38,7 @@ const tables = [
 const generateRLSPolicies = () => {
   let sql = `-- Row Level Security (RLS) Policies
 -- This file is auto-generated from DOMAIN config
--- DO NOT EDIT MANUALLY - regenerate with: npm run db:generate-rls
+-- DO NOT EDIT MANUALLY - regenerate with: pnpm run db:generate-rls
 -- Apply this after running the Drizzle migration
 
 `;

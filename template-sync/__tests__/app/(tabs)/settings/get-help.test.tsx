@@ -3,6 +3,7 @@ import { Linking, Platform } from 'react-native';
 
 const mockOpenUrl = jest.fn();
 const mockFriendlyError = jest.fn();
+const mockButtonIconProps = jest.fn();
 const mockToast = { show: jest.fn(), messages: [], dismiss: jest.fn() };
 
 jest.spyOn(Linking, 'openURL').mockImplementation((...args: unknown[]) => mockOpenUrl(...args));
@@ -33,16 +34,20 @@ jest.mock('@/ui', () => {
     children,
     gap,
     onPress,
+    icon,
   }: {
     children: any;
     gap?: string;
     onPress: () => void;
-  }) =>
-    React.createElement(
+    icon?: any;
+  }) => {
+    if (icon) mockButtonIconProps(icon.props);
+    return React.createElement(
       Pressable,
       { onPress, gap, testID: 'send-email-button' },
       React.createElement(Text, null, children),
     );
+  };
   PrimaryButton.displayName = 'PrimaryButton';
 
   return {
@@ -56,13 +61,14 @@ jest.mock('@/ui', () => {
 
 jest.mock('tamagui', () => {
   const React = require('react');
-  const { View, Text, TextInput } = require('react-native');
+  const { View, Text, TextInput, Pressable } = require('react-native');
 
   const RadioGroup = ({ children, ...props }: any) =>
     React.createElement(View, { accessibilityLabel: props['aria-label'], ...props }, children);
   RadioGroup.displayName = 'RadioGroup';
 
-  const RadioGroupItem = ({ children }: any) => React.createElement(View, null, children);
+  const RadioGroupItem = ({ children, onPress, testID }: any) =>
+    React.createElement(Pressable, { onPress, testID }, children);
   RadioGroupItem.displayName = 'RadioGroup.Item';
 
   const RadioGroupIndicator = () => React.createElement(View, null);
@@ -96,7 +102,8 @@ jest.mock('tamagui', () => {
   const TextComponent = ({ children }: any) => React.createElement(Text, null, children);
   TextComponent.displayName = 'Text';
 
-  const XStack = ({ children }: any) => React.createElement(View, null, children);
+  const XStack = ({ children, onPress, testID }: any) =>
+    React.createElement(onPress ? Pressable : View, { onPress, testID }, children);
   XStack.displayName = 'XStack';
 
   const YStack = ({ children }: any) => React.createElement(View, null, children);
@@ -129,6 +136,7 @@ describe('GetHelpScreen', () => {
   beforeEach(() => {
     mockOpenUrl.mockReset();
     mockFriendlyError.mockReset();
+    mockButtonIconProps.mockReset();
   });
 
   it('builds a feedback email by default', async () => {
@@ -151,6 +159,45 @@ describe('GetHelpScreen', () => {
     await fireEvent.press(getByText('settings.getHelpSendEmail'));
 
     expect(mockOpenUrl.mock.calls[0][0]).toContain('subject=settings.getHelpBugSubject');
+  });
+
+  it('selects a topic when its full option card is pressed', async () => {
+    const { getByTestId, getByText } = await render(<GetHelpScreen />);
+
+    await fireEvent.changeText(getByTestId('message-input'), 'I found a bug');
+    await fireEvent.press(getByTestId('support-topic-bug-card'));
+    await fireEvent.press(getByText('settings.getHelpSendEmail'));
+
+    expect(mockOpenUrl.mock.calls[0][0]).toContain('subject=settings.getHelpBugSubject');
+  });
+
+  it('selects a topic when its radio control is pressed', async () => {
+    const { getByTestId, getByText } = await render(<GetHelpScreen />);
+
+    await fireEvent.changeText(getByTestId('message-input'), 'I found a bug');
+    await fireEvent.press(getByTestId('support-topic-bug-radio'));
+    await fireEvent.press(getByText('settings.getHelpSendEmail'));
+
+    expect(mockOpenUrl.mock.calls[0][0]).toContain('subject=settings.getHelpBugSubject');
+  });
+
+  it('selects feedback from both its card and radio control', async () => {
+    const { getByTestId, getByText } = await render(<GetHelpScreen />);
+
+    await fireEvent.changeText(getByTestId('message-input'), 'Some feedback');
+    await fireEvent.press(getByTestId('support-topic-bug-card'));
+    await fireEvent.press(getByTestId('support-topic-feedback-radio'));
+    await fireEvent.press(getByTestId('support-topic-bug-radio'));
+    await fireEvent.press(getByTestId('support-topic-feedback-card'));
+    await fireEvent.press(getByText('settings.getHelpSendEmail'));
+
+    expect(mockOpenUrl.mock.calls[0][0]).toContain('subject=settings.getHelpFeedbackSubject');
+  });
+
+  it('uses a white email icon on the primary button', async () => {
+    await render(<GetHelpScreen />);
+
+    expect(mockButtonIconProps).toHaveBeenCalledWith(expect.objectContaining({ color: 'white' }));
   });
 
   it('reports errors when the mail client fails to open', async () => {
@@ -177,7 +224,7 @@ describe('GetHelpScreen', () => {
       const { getByText, getByTestId } = await render(<GetHelpScreen />);
 
       expect(getByText('settings.getHelpSendEmail')).toBeDefined();
-      expect(getByTestId('send-email-button').props.gap).toBe('6px');
+      expect(getByTestId('send-email-button').props.gap).toBe('2');
     } finally {
       Object.defineProperty(Platform, 'OS', {
         value: originalPlatform,

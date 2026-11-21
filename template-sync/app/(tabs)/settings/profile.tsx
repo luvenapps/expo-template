@@ -10,6 +10,7 @@ import {
   SecondaryButton,
   UserOnly,
 } from '@/ui';
+import { spaceTokenValues } from '@/ui/theme/tokenValues';
 import { Stack, useRouter } from 'expo-router';
 import { AsYouType, parsePhoneNumberFromString } from 'libphonenumber-js/min';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -129,9 +130,9 @@ export default function ProfileScreen() {
   }, [refreshUserProfile]);
 
   const resolveErrorMessage = useCallback(
-    (friendly: { description?: string; descriptionKey?: string }) => {
-      if (friendly.description) return friendly.description;
+    (friendly: { descriptionKey?: string; originalMessage?: string }) => {
       if (friendly.descriptionKey) return t(friendly.descriptionKey);
+      if (friendly.originalMessage) return friendly.originalMessage;
       return t('errors.unknown.description');
     },
     [t],
@@ -275,11 +276,13 @@ export default function ProfileScreen() {
 
   return (
     <UserOnly>
-      <ScreenContainer contentContainerStyle={{ flexGrow: 1, paddingBottom: 96 }}>
+      <ScreenContainer
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: spaceTokenValues.tabBarClearance }}
+      >
         <Stack.Screen options={{ title: t('settings.profileTitle') }} />
-        <YStack gap="$4">
-          <YStack gap="$2">
-            <Paragraph fontSize="$5" fontWeight="700">
+        <YStack gap="4">
+          <YStack gap="2">
+            <Paragraph fontSize="5" fontWeight="5">
               {t('settings.profileTitle')}
             </Paragraph>
             <Paragraph color="colorMuted">{t('settings.profileDescription')}</Paragraph>
@@ -340,7 +343,7 @@ export default function ProfileScreen() {
 
           <XStack flexDirection="row" gap="3" paddingTop="2">
             <SecondaryButton
-              size="legacy4"
+              size="md"
               width="auto"
               flex={1}
               onPress={() => router.back()}
@@ -348,13 +351,7 @@ export default function ProfileScreen() {
             >
               {t('settings.profileCancel')}
             </SecondaryButton>
-            <PrimaryButton
-              size="legacy4"
-              width="auto"
-              flex={1}
-              onPress={handleSave}
-              disabled={isSaving}
-            >
+            <PrimaryButton size="md" width="auto" flex={1} onPress={handleSave} disabled={isSaving}>
               {isSaving ? t('settings.profileSaving') : t('settings.profileSave')}
             </PrimaryButton>
           </XStack>

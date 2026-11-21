@@ -7,7 +7,6 @@ import { Appearance, Platform } from 'react-native';
 import { analytics } from '@/observability/analytics';
 
 export type ThemePreference = 'light' | 'dark' | 'system';
-export type ThemeName = ThemePreference;
 export type ResolvedTheme = 'light' | 'dark';
 
 const PALETTES: Record<ResolvedTheme, ThemePalette> = themePalettes;
@@ -16,11 +15,7 @@ type ThemeContextValue = {
   preference: ThemePreference;
   resolvedTheme: ResolvedTheme;
   setPreference: (theme: ThemePreference) => void;
-  /** @deprecated use setPreference */
-  setTheme: (theme: ThemePreference) => void;
   palette: ThemePalette;
-  /** @deprecated use preference */
-  theme: ThemePreference;
 };
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
@@ -143,9 +138,7 @@ export function ThemeProvider({ children }: PropsWithChildren) {
       preference,
       resolvedTheme,
       setPreference,
-      setTheme: setPreference,
       palette: PALETTES[resolvedTheme],
-      theme: preference,
     };
   }, [preference, systemTheme]);
 
@@ -199,7 +192,7 @@ export function useOptionalThemeContext() {
   return useContext(ThemeContext);
 }
 
-export function getThemePalette(theme: ThemeName) {
+export function getThemePalette(theme: ThemePreference) {
   const resolvedTheme =
     theme === 'system' ? resolveSystemTheme(Appearance.getColorScheme()) : (theme as ResolvedTheme);
   return PALETTES[resolvedTheme];

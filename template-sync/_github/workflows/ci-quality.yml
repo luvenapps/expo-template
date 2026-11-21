@@ -48,32 +48,33 @@ jobs:
       - name: Setup mise toolchain
         uses: jdx/mise-action@v5
         with:
-          version: '2026.11.4'
+          version: '2026.11.9'
           install: true
           cache: ${{ inputs.runner_target != 'selfhosted' }}
           log_level: ${{ runner.debug == '1' && 'debug' || 'info' }}
         env:
           GNUPGHOME: ${{ runner.temp }}/gnupg
           MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+          MISE_ENV: ci
 
       - name: Install deps
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Verify Expo/RN dependency alignment
         id: expo_deps
         shell: bash
-        run: .github/scripts/verify_expo_deps.sh
+        run: node .github/scripts/verify_expo_deps.mjs
         continue-on-error: true
 
       - name: Annotate Expo/RN dependency drift
         if: ${{ steps.expo_deps.outcome == 'failure' }}
         shell: bash
         run: |
-          echo "::error::Expo/RN dependency drift detected. Run 'npx expo install --fix' and commit the lockfile changes."
+          echo "::error::Expo/RN dependency drift detected. Run 'pnpm exec expo install --fix' and commit the lockfile changes."
 
       - name: Doctor
         id: expo_doctor
-        run: npm run doctor
+        run: pnpm run doctor
         continue-on-error: true
 
       - name: Annotate Expo Doctor issues
@@ -116,7 +117,7 @@ jobs:
                   `⚠️ Expo Doctor reported issues for \`${sha}\`.`,
                   `[View the CI run](${runUrl}) and open the Doctor step for details.`,
                   ...(process.env.EXPO_DEPS_OUTCOME === 'failure'
-                    ? ['Expo dependencies are also out of alignment. Run `npx expo install --fix` and commit the changes.']
+                    ? ['Expo dependencies are also out of alignment. Run `pnpm exec expo install --fix` and commit the changes.']
                     : []),
                 ].join('\n');
             if (existing) {
@@ -126,13 +127,13 @@ jobs:
             }
 
       - name: Check formatting
-        run: npm run format:check
+        run: pnpm run format:check
 
       - name: Lint
-        run: npm run lint
+        run: pnpm run lint
 
       - name: Unit tests
-        run: npm run test -- --coverage --runInBand
+        run: pnpm run test --coverage --runInBand
 
       - name: Install GPG
         if: ${{ !cancelled() && inputs.runner_target != 'selfhosted' }}
@@ -143,6 +144,8 @@ jobs:
       - name: Upload coverage to Codecov
         if: ${{ !cancelled() }}
         uses: codecov/codecov-action@v7
+        env:
+          GNUPGHOME: ${{ runner.temp }}/gnupg
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
@@ -153,6 +156,8 @@ jobs:
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
         uses: codecov/codecov-action@v7
+        env:
+          GNUPGHOME: ${{ runner.temp }}/gnupg
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./junit.xml
@@ -164,4 +169,4 @@ jobs:
       - name: Clean self-hosted workspace
         if: ${{ always() && inputs.runner_target == 'selfhosted' }}
         shell: bash
-        run: .github/scripts/clean_selfhosted_workspace.sh
+        run: node .github/scripts/clean_selfhosted_workspace.mjs

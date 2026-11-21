@@ -192,11 +192,11 @@ describe('Database Schema Synchronization', () => {
       '1. Review the failing test output',
       '2. Check which columns are missing or mismatched',
       '3. Update BOTH schema files to match',
-      '4. Run: npm run db:migrate',
+      '4. Run: pnpm run db:migrate',
       '5. Re-run tests to verify sync',
     ];
 
     expect(instructions).toHaveLength(5);
-    expect(instructions[3]).toBe('4. Run: npm run db:migrate');
+    expect(instructions[3]).toBe('4. Run: pnpm run db:migrate');
   });
 });

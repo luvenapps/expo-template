@@ -161,6 +161,8 @@ describe('ThemeProvider', () => {
         palette: expect.any(Object),
         resolvedTheme: expect.any(String),
       });
+      expect(result.current).not.toHaveProperty('theme');
+      expect(result.current).not.toHaveProperty('setTheme');
     });
   });
 
@@ -181,6 +183,8 @@ describe('ThemeProvider', () => {
         palette: expect.any(Object),
         resolvedTheme: expect.any(String),
       });
+      expect(result.current).not.toHaveProperty('theme');
+      expect(result.current).not.toHaveProperty('setTheme');
     });
   });
 

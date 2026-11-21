@@ -140,15 +140,7 @@ export function useSyncTask({
       }
     };
 
-    if (typeof AppState.addEventListener === 'function') {
-      appStateListenerRef.current = AppState.addEventListener('change', handleAppStateChange);
-    } else {
-      (
-        AppState as unknown as {
-          addEventListener?: (type: string, handler: (state: AppStateStatus) => void) => void;
-        }
-      ).addEventListener?.('change', handleAppStateChange);
-    }
+    appStateListenerRef.current = AppState.addEventListener('change', handleAppStateChange);
 
     intervalRef.current = setInterval(() => {
       runSync().catch(() => undefined);

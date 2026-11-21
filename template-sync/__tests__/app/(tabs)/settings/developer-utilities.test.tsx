@@ -40,7 +40,9 @@ const mockStoreValue = jest.fn(() => '{\"answer\":42}');
 const mockPushStatus = jest
   .fn()
   .mockResolvedValue({ isRegistered: true, apnsToken: 'apns', fcmToken: 'fcm' });
-const mockFriendly: jest.Mock = jest.fn(() => ({ friendly: { description: 'Friendly error' } }));
+const mockFriendly: jest.Mock = jest.fn(() => ({
+  friendly: { originalMessage: 'Friendly error' },
+}));
 
 jest.mock('@/auth/session', () => ({ useSessionStore: (selector: any) => selector(mockState) }));
 jest.mock('@/data', () => ({
@@ -390,7 +392,7 @@ describe('developer utilities', () => {
     mockArchive.mockRejectedValueOnce(new Error('archive'));
     await fireEvent.press(screen.getByText('Archive'));
     await waitFor(() => expect(mockArchive).toHaveBeenCalled());
-    mockFriendly.mockReturnValue({ friendly: { description: 'Friendly error' } });
+    mockFriendly.mockReturnValue({ friendly: { originalMessage: 'Friendly error' } });
   });
 
   it('handles database and storage read failures', async () => {

@@ -12,7 +12,7 @@ jest.mock('react-i18next', () => ({
 }));
 
 const mockHandleError = jest.fn<{ friendly: FriendlyError }, []>(() => ({
-  friendly: { code: 'unknown', title: 'Error', type: 'error' },
+  friendly: { code: 'unknown', titleKey: 'errors.unknown.title', type: 'error' },
 }));
 
 jest.mock('@/errors/useFriendlyErrorHandler', () => ({
@@ -99,7 +99,7 @@ describe('PromptUpgradeModal', () => {
       },
     };
     mockHandleError.mockReturnValue({
-      friendly: { code: 'unknown', title: 'Error', type: 'error' },
+      friendly: { code: 'unknown', titleKey: 'errors.unknown.title', type: 'error' },
     });
   });
 

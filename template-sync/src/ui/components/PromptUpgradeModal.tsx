@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Linking, Platform, useWindowDimensions } from 'react-native';
 import Svg, { G, Path, Rect } from 'react-native-svg';
 import { Dialog, Paragraph, useTheme, XStack, YStack } from 'tamagui';
+import { themeColorSets } from '@/ui/theme/palette';
 import { PrimaryButton } from './PrimaryButton';
 
 type PromptUpgradeModalProps = {
@@ -29,7 +30,7 @@ export function PromptUpgradeModal({
   const handleError = useFriendlyErrorHandler();
   const allowCloseRef = useRef(false);
   const theme = useTheme();
-  const strokeColor = theme.color?.get() ?? '#111';
+  const strokeColor = theme.color?.get() ?? themeColorSets.light.color;
   const { width, height: windowHeight } = useWindowDimensions();
   const size = [300, 500][Number(width >= 390)];
   const dialogHeight = windowHeight * (0.85 + Number(Platform.OS === 'web') * 0.03);
@@ -87,11 +88,11 @@ export function PromptUpgradeModal({
   const handleUpdatePressSafe = useCallback(() => {
     handleUpdatePress().catch((error) => {
       const { friendly } = handleError(error, { surface: 'prompt-upgrade' });
-      const titleText =
-        friendly.title ?? (friendly.titleKey ? t(friendly.titleKey) : t('errors.unknown.title'));
+      const titleText = friendly.titleKey ? t(friendly.titleKey) : t('errors.unknown.title');
       const descriptionText =
-        friendly.description ??
-        (friendly.descriptionKey ? t(friendly.descriptionKey) : (friendly.originalMessage ?? ''));
+        (friendly.descriptionKey ? t(friendly.descriptionKey) : undefined) ??
+        friendly.originalMessage ??
+        '';
 
       setErrorMessage(descriptionText || titleText);
     });
@@ -113,17 +114,17 @@ export function PromptUpgradeModal({
           padding="4"
           alignSelf="center"
           width="100%"
-          maxWidth={480}
+          maxWidth="modalContent"
           height={dialogHeight}
-          gap="$4"
+          gap="4"
         >
-          <YStack gap="$4" flex={1} justifyContent="space-between">
-            <YStack gap="$2">
+          <YStack gap="4" flex={1} justifyContent="space-between">
+            <YStack gap="2">
               <Dialog.Title asChild>
                 <Paragraph
                   fontSize="5"
-                  fontWeight="700"
-                  lineHeight="60px"
+                  fontWeight="5"
+                  lineHeight="display"
                   textTransform="capitalize"
                 >
                   {title}
@@ -133,7 +134,7 @@ export function PromptUpgradeModal({
                 <Paragraph fontSize="4">{message}</Paragraph>
               </Dialog.Description>
               {errorMessage ? (
-                <Paragraph fontSize="3" color="red10" testID="prompt-upgrade-error">
+                <Paragraph fontSize="3" color="dangerColor" testID="prompt-upgrade-error">
                   {errorMessage}
                 </Paragraph>
               ) : null}
@@ -200,7 +201,7 @@ export function PromptUpgradeModal({
                 </G>
               </Svg>
             </XStack>
-            <XStack gap="$4" justifyContent="center">
+            <XStack gap="4" justifyContent="center">
               <PrimaryButton
                 flex={1}
                 onPress={handleNotNowPress}

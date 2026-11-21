@@ -52,7 +52,7 @@ export function SettingsSection({
     <Card
       borderRadius="4"
       backgroundColor="surface"
-      borderWidth={1}
+      borderWidth="hairline"
       borderColor="border-color"
       testID={testID}
     >
@@ -60,7 +60,7 @@ export function SettingsSection({
         <XStack flexDirection="row" alignItems="center" gap="2">
           {icon}
           <Paragraph
-            fontWeight="700"
+            fontWeight="5"
             fontSize="5"
             color="color"
             paddingBottom="1"

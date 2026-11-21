@@ -18,26 +18,26 @@ function createTextVariant(defaults: TextProps) {
 }
 
 export const TitleText = createTextVariant({
-  fontSize: 28,
-  fontWeight: '700',
+  fontSize: 'title',
+  fontWeight: '5',
   textAlign: 'left',
 });
 
 export const SubtitleText = createTextVariant({
-  fontSize: 18,
+  fontSize: '4',
   color: 'colorMuted',
 });
 
 export const BodyText = createTextVariant({
-  fontSize: 16,
+  fontSize: '3',
 });
 
 export const CaptionText = createTextVariant({
-  fontSize: 15,
+  fontSize: 'caption',
   color: 'colorMuted',
 });
 
 export const LabelText = createTextVariant({
-  fontSize: 15,
-  fontWeight: '600',
+  fontSize: 'caption',
+  fontWeight: '4',
 });

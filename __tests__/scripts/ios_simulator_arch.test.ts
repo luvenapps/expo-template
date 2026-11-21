@@ -1,5 +1,6 @@
 /** @jest-environment node */
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   scripts,
@@ -57,5 +58,51 @@ describe('ios_simulator_arch', () => {
       context.run([process.execPath, join(scripts, 'ios_simulator_arch.mjs')])
         .status,
     ).not.toBe(0);
+  });
+
+  test('resolves xcode from Expo config plugins in the temporary EAS app', () => {
+    const appRoot = mkdtempSync(join(tmpdir(), 'temporary-eas-app-'));
+    const expoCliRoot = join(appRoot, 'node_modules/@expo/cli');
+    const configPluginsRoot = join(
+      expoCliRoot,
+      'node_modules/@expo/config-plugins',
+    );
+    mkdirSync(join(configPluginsRoot, 'node_modules/xcode'), {
+      recursive: true,
+    });
+    writeFileSync(join(appRoot, 'package.json'), '{}');
+    writeFileSync(join(expoCliRoot, 'index.js'), 'module.exports = {};');
+    writeFileSync(join(configPluginsRoot, 'index.js'), 'module.exports = {};');
+    writeFileSync(
+      join(configPluginsRoot, 'node_modules/xcode/index.js'),
+      `exports.project = () => ({
+  parseSync() {},
+  updateBuildProperty() {},
+  writeSync() { return '// nested xcode'; },
+});
+`,
+    );
+    const projects = ['ios/Example.xcodeproj', 'ios/Pods/Pods.xcodeproj'];
+    for (const project of projects) {
+      mkdirSync(join(context.root, project), { recursive: true });
+      writeFileSync(join(context.root, project, 'project.pbxproj'), 'project');
+    }
+
+    try {
+      const result = context.run(
+        [process.execPath, join(scripts, 'ios_simulator_arch.mjs')],
+        { INIT_CWD: appRoot },
+      );
+
+      expect({ status: result.status, stderr: result.stderr }).toEqual({
+        status: 0,
+        stderr: '',
+      });
+      expect(context.read('ios/Example.xcodeproj/project.pbxproj')).toContain(
+        '// nested xcode',
+      );
+    } finally {
+      rmSync(appRoot, { recursive: true, force: true });
+    }
   });
 });

@@ -58,9 +58,8 @@ export default function AuthCallbackScreen() {
       });
 
       const message =
-        friendly.description ??
         (friendly.descriptionKey ? t(friendly.descriptionKey) : undefined) ??
-        friendly.title ??
+        friendly.originalMessage ??
         (friendly.titleKey ? t(friendly.titleKey) : t('errors.unknown.description'));
 
       setErrorMessage(message);
@@ -391,8 +390,8 @@ export default function AuthCallbackScreen() {
 
   return (
     <ScreenContainer justifyContent="center" alignItems="center" scrollable={false}>
-      <YStack gap="$2" alignItems="center">
-        <XStack alignItems="center" gap="$2">
+      <YStack gap="2" alignItems="center">
+        <XStack alignItems="center" gap="2">
           <TitleText>{t('auth.signingIn')}</TitleText>
           {!errorMessage ? <Spinner size="small" color="accent-color" /> : null}
         </XStack>

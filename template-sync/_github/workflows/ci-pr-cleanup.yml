@@ -33,32 +33,25 @@ jobs:
       - name: Setup mise toolchain
         uses: jdx/mise-action@v5
         with:
-          version: '2026.11.4'
+          version: '2026.11.9'
           install: true
           cache: false
           log_level: ${{ runner.debug == '1' && 'debug' || 'info' }}
         env:
           GNUPGHOME: ${{ runner.temp }}/gnupg
           MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+          MISE_ENV: ci
 
       - name: Install dependencies
         # Required so EAS can resolve app config plugins (e.g. expo-router) during alias deletion.
-        run: npm ci
-
-      - name: Validate EAS CLI version variable
-        shell: bash
-        run: |
-          if [ -z "${{ vars.EAS_CLI_VERSION }}" ]; then
-            echo "❌ Missing EAS_CLI_VERSION GitHub variable."
-            exit 1
-          fi
+        run: pnpm install --frozen-lockfile
 
       - name: Sanity check versions
         run: |
           node -v
-          npm -v
-          npx expo --version
+          pnpm --version
+          pnpm exec expo --version
 
       - name: Delete Alias
         if: ${{ env.EXPO_TOKEN != '' }}
-        run: npx eas-cli@${{ vars.EAS_CLI_VERSION }} deploy:alias:delete "pr-${{ github.event.pull_request.number }}" --non-interactive
+        run: pnpm dlx "eas-cli@$EAS_CLI_VERSION" deploy:alias:delete "pr-${{ github.event.pull_request.number }}" --non-interactive

@@ -2,14 +2,17 @@ import { PropsWithChildren } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, type ScrollViewProps } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useOptionalThemeContext } from '@/ui/theme/ThemeProvider';
+import { sizeTokenValues, spaceTokenValues } from '@/ui/theme/tokenValues';
 import { YStack } from 'tamagui';
+
+type ScreenBackgroundToken = 'background' | 'backgroundStrong' | 'surface' | 'background-hover';
 
 type ScreenContainerProps = PropsWithChildren<{
   justifyContent?: 'flex-start' | 'flex-end' | 'center' | 'space-between' | 'space-around';
   alignItems?: 'flex-start' | 'flex-end' | 'center' | 'stretch' | 'baseline';
-  paddingHorizontal?: string | number;
-  gap?: string | number;
-  backgroundColor?: string;
+  paddingHorizontal?: string;
+  gap?: string;
+  backgroundColor?: ScreenBackgroundToken;
   scrollable?: boolean;
   keyboardAvoiding?: boolean;
   contentContainerStyle?: ScrollViewProps['contentContainerStyle'];
@@ -29,20 +32,22 @@ export function ScreenContainer({
   const insets = useSafeAreaInsets();
   const themeContext = useOptionalThemeContext();
   const palette = themeContext?.palette;
-  const topPadding = Math.min(Math.max(insets.top + 8, 16), 28);
-  const bottomPadding = Math.max(insets.bottom, 12) + 12;
+  const topPadding = Math.min(
+    Math.max(insets.top + spaceTokenValues.screenTopOffset, spaceTokenValues.screenTopPaddingMin),
+    spaceTokenValues.screenTopPaddingMax,
+  );
+  const bottomPadding =
+    Math.max(insets.bottom, spaceTokenValues.screenBottomPaddingMin) +
+    spaceTokenValues.screenBottomPaddingOffset;
 
   const resolvedBackground = backgroundColor ?? 'background';
-  const backgroundTokenMap: Record<string, string | undefined> = {
+  const backgroundTokenMap: Record<ScreenBackgroundToken, string | undefined> = {
     background: palette?.background,
     backgroundStrong: palette?.surface,
     surface: palette?.surface,
     'background-hover': palette?.secondaryBackground,
   };
-  const resolvedNativeBackground =
-    typeof resolvedBackground === 'string' && resolvedBackground in backgroundTokenMap
-      ? (backgroundTokenMap[resolvedBackground] ?? palette?.background)
-      : resolvedBackground;
+  const resolvedNativeBackground = backgroundTokenMap[resolvedBackground] ?? palette?.background;
   const keyboardBehavior: 'padding' | 'height' = Platform.OS === 'ios' ? 'padding' : 'height';
 
   const content = (
@@ -83,7 +88,7 @@ export function ScreenContainer({
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: resolvedNativeBackground }}
       behavior={keyboardBehavior}
-      keyboardVerticalOffset={70}
+      keyboardVerticalOffset={sizeTokenValues.keyboardVerticalOffset}
     >
       {maybeScrollable}
     </KeyboardAvoidingView>

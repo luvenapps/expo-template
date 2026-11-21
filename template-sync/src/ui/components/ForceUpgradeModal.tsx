@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Linking, Platform, useWindowDimensions } from 'react-native';
 import Svg, { G, Path, Rect } from 'react-native-svg';
 import { Dialog, Paragraph, XStack, YStack, useTheme } from 'tamagui';
+import { themeColorSets } from '@/ui/theme/palette';
 import { PrimaryButton } from './PrimaryButton';
 
 type ForceUpgradeModalProps = {
@@ -20,7 +21,7 @@ export function ForceUpgradeModal({ open, title, message, actionLabel }: ForceUp
   const handleError = useFriendlyErrorHandler();
   const allowCloseRef = useRef(false);
   const theme = useTheme();
-  const strokeColor = theme.color?.get() ?? '#111';
+  const strokeColor = theme.color?.get() ?? themeColorSets.light.color;
   const { width, height: windowHeight } = useWindowDimensions();
   const size = [300, 500][Number(width >= 390)];
   const dialogHeight = windowHeight * (0.85 + Number(Platform.OS === 'web') * 0.03);
@@ -77,10 +78,11 @@ export function ForceUpgradeModal({ open, title, message, actionLabel }: ForceUp
   const handleUpdatePressSafe = useCallback(() => {
     handleUpdatePress().catch((error) => {
       const { friendly } = handleError(error, { surface: 'force-upgrade' });
-      const titleText = friendly.title ?? t(friendly.titleKey ?? 'errors.unknown.title');
+      const titleText = t(friendly.titleKey ?? 'errors.unknown.title');
       const descriptionText =
-        friendly.description ??
-        (friendly.descriptionKey ? t(friendly.descriptionKey) : (friendly.originalMessage ?? ''));
+        (friendly.descriptionKey ? t(friendly.descriptionKey) : undefined) ??
+        friendly.originalMessage ??
+        '';
 
       setErrorMessage(descriptionText || titleText);
     });
@@ -97,16 +99,16 @@ export function ForceUpgradeModal({ open, title, message, actionLabel }: ForceUp
           padding="4"
           alignSelf="center"
           width="100%"
-          maxWidth={480}
+          maxWidth="modalContent"
           height={dialogHeight}
         >
-          <YStack gap="$4" flex={1} justifyContent="space-between">
-            <YStack gap="$2">
+          <YStack gap="4" flex={1} justifyContent="space-between">
+            <YStack gap="2">
               <Dialog.Title asChild>
                 <Paragraph
                   fontSize="5"
-                  fontWeight="700"
-                  lineHeight="60px"
+                  fontWeight="5"
+                  lineHeight="display"
                   textTransform="capitalize"
                 >
                   {title}
@@ -116,7 +118,7 @@ export function ForceUpgradeModal({ open, title, message, actionLabel }: ForceUp
                 <Paragraph fontSize="4">{message}</Paragraph>
               </Dialog.Description>
               {errorMessage ? (
-                <Paragraph fontSize="3" color="red10" testID="force-upgrade-error">
+                <Paragraph fontSize="3" color="dangerColor" testID="force-upgrade-error">
                   {errorMessage}
                 </Paragraph>
               ) : null}

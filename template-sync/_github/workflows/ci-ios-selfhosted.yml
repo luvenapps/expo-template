@@ -14,9 +14,7 @@ env:
   EXPO_USE_LOCAL_CLI: '1'
   METRO_CACHE_PATH: ${{ github.workspace }}/.metro-cache-ci
   IOS_DEVICE: 'iPhone 17'
-  MAESTRO_VERSION: '2.0.6'
-  FASTLANE_VERSION: '2.228.0'
-  MAESTRO_DRIVER_STARTUP_TIMEOUT: 60000
+  MAESTRO_DRIVER_STARTUP_TIMEOUT: 180000
 
 jobs:
   ios-selfhosted:
@@ -57,16 +55,17 @@ jobs:
       - name: Setup mise toolchain
         uses: jdx/mise-action@v5
         with:
-          version: '2026.11.4'
+          version: '2026.11.9'
           install: true
           cache: false
           log_level: ${{ runner.debug == '1' && 'debug' || 'info' }}
         env:
           GNUPGHOME: ${{ runner.temp }}/gnupg
           MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+          MISE_ENV: ci
 
       - name: Install deps
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Map runtime variables and secrets
         shell: bash
@@ -85,36 +84,7 @@ jobs:
           FIREBASE_PROJECT_ID: ${{ secrets[format('{0}_FIREBASE_PROJECT_ID', inputs.env_prefix)] || secrets.FIREBASE_PROJECT_ID || '' }}
           FIREBASE_STORAGE_BUCKET: ${{ secrets[format('{0}_FIREBASE_STORAGE_BUCKET', inputs.env_prefix)] || secrets.FIREBASE_STORAGE_BUCKET || '' }}
           FIREBASE_VAPID_KEY: ${{ secrets[format('{0}_FIREBASE_VAPID_KEY', inputs.env_prefix)] || secrets.FIREBASE_VAPID_KEY || '' }}
-        run: .github/scripts/map_runtime_env.sh
-
-      - name: Validate EAS CLI version variable
-        shell: bash
-        run: |
-          if [ -z "${{ vars.EAS_CLI_VERSION }}" ]; then
-            echo "❌ Missing EAS_CLI_VERSION GitHub variable."
-            exit 1
-          fi
-
-      - name: Check EAS CLI
-        shell: bash
-        run: |
-          if ! command -v eas >/dev/null 2>&1; then
-            echo "❌ EAS CLI not found on this runner."
-            echo "Install it globally: npm i -g eas-cli@${{ vars.EAS_CLI_VERSION }}"
-            exit 1
-          fi
-          eas --version
-
-      - name: Make CI scripts executable
-        run: chmod +x .github/scripts/*.sh
-
-      - name: Setup Fastlane
-        shell: bash
-        run: .github/scripts/setup_fastlane.sh  "${{ env.FASTLANE_VERSION }}"
-
-      - name: Setup Maestro
-        shell: bash
-        run: .github/scripts/setup_maestro.sh "${{ env.MAESTRO_VERSION }}"
+        run: node .github/scripts/map_runtime_env.mjs
 
       - name: Compute iOS build fingerprint
         id: ios_fp
@@ -122,7 +92,7 @@ jobs:
         env:
           GOOGLE_SERVICE_INFO_PLIST_B64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_B64 }}
           GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
-        run: ./.github/scripts/compute_fingerprint.sh ios >> "$GITHUB_OUTPUT"
+        run: node .github/scripts/compute_fingerprint.mjs ios >> "$GITHUB_OUTPUT"
 
       - name: Restore the tar.gz iOS app
         id: ios_cache
@@ -131,6 +101,18 @@ jobs:
           path: ./*.tar.gz
           key: ${{ steps.ios_fp.outputs.key }}
           use-local-cache: ${{ vars.USE_LOCAL_CACHE == 'true' }}
+
+      - name: Install pinned EAS CLI
+        if: steps.ios_cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          test -n "$EAS_CLI_VERSION" || { echo "❌ EAS_CLI_VERSION is missing from .mise.ci.toml." >&2; exit 1; }
+          pnpm dlx "eas-cli@$EAS_CLI_VERSION" --version
+
+      - name: Setup Fastlane
+        if: steps.ios_cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: node .github/scripts/setup_fastlane.mjs "$FASTLANE_VERSION"
 
       - name: Build e2erelease
         if: steps.ios_cache.outputs.cache-hit != 'true'
@@ -151,12 +133,14 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.PROD_SUPABASE_ACCESS_TOKEN }}
         run: |
           set -euo pipefail
+          # EAS introspects the iOS config before its local build environment is initialized.
+          node -e "require('./plugins/withFirebaseCredentials').generateCredentials(process.cwd(), 'ios')"
           ATTEMPTS="${RETRIES:-2}"
           DELAY="${RETRY_DELAY:-2}"
           i=1
           while [ "$i" -le "$ATTEMPTS" ]; do
             echo "🏗️  iOS build attempt $i/$ATTEMPTS..."
-            if eas build --platform ios --profile e2eRelease --local --non-interactive; then
+            if pnpm dlx "eas-cli@$EAS_CLI_VERSION" build --platform ios --profile e2eRelease --local --non-interactive; then
               echo "✅ Build succeeded on attempt $i"
               exit 0
             fi
@@ -208,7 +192,7 @@ jobs:
           fi
 
           echo "[run-snippet] expo public config (engine/runtime lines)"
-          node -e "const { execSync } = require('node:child_process'); const config = JSON.parse(execSync('npx expo config --json', { encoding: 'utf8' })); const payload = { jsEngine: config.jsEngine ?? null, newArchEnabled: config.newArchEnabled ?? null, runtimeVersion: config.runtimeVersion ?? null, iosBundleIdentifier: config.ios?.bundleIdentifier ?? null }; console.log(JSON.stringify(payload, null, 2));"
+          node -e "const { execSync } = require('node:child_process'); const config = JSON.parse(execSync('pnpm exec expo config --json', { encoding: 'utf8' })); const payload = { jsEngine: config.jsEngine ?? null, newArchEnabled: config.newArchEnabled ?? null, runtimeVersion: config.runtimeVersion ?? null, iosBundleIdentifier: config.ios?.bundleIdentifier ?? null }; console.log(JSON.stringify(payload, null, 2));"
 
       - name: Prepare iOS JS bundle for repack
         if: steps.ios_cache.outputs.cache-hit == 'true'
@@ -222,7 +206,7 @@ jobs:
           set -euo pipefail
           echo "📦 Exporting release bundle before repack..."
           rm -rf ./dist
-          npx expo export --platform "$PLATFORM" --output-dir ./dist --clear
+          pnpm exec expo export --platform "$PLATFORM" --output-dir ./dist --clear
           echo "🔍 Verifying dist folder contents:"
           find ./dist -maxdepth 4 -print
           echo "expo-export" > dist/.bundle-source
@@ -230,7 +214,7 @@ jobs:
       - name: Validate Hermes + bundle compatibility before repack
         if: steps.ios_cache.outputs.cache-hit == 'true'
         shell: bash
-        run: .github/scripts/validate_hermes_bundle.sh ios
+        run: node .github/scripts/validate_hermes_bundle.mjs ios
 
       - name: Repack iOS app artifact with latest JS bundle
         if: steps.ios_cache.outputs.cache-hit == 'true'
@@ -243,7 +227,7 @@ jobs:
 
           REPACKED_APP="repacked_output.app"
           rm -rf "$REPACKED_APP"
-          npx @expo/repack-app --platform "$PLATFORM" --source-app "$SOURCE_APP" --output "$REPACKED_APP"
+          pnpm dlx @expo/repack-app --platform "$PLATFORM" --source-app "$SOURCE_APP" --output "$REPACKED_APP"
 
           if [ ! -d "$REPACKED_APP" ]; then
             echo "❌ Repacked .app not found at $REPACKED_APP"
@@ -256,9 +240,12 @@ jobs:
           mkdir -p "$(dirname "$SOURCE_APP")"
           mv "$REPACKED_APP" "$SOURCE_APP"
 
-      - name: Boot simulator
+      - name: Setup Maestro
         shell: bash
-        run: .github/scripts/ios_boot_simulator.sh
+        run: node .github/scripts/setup_maestro.mjs "$MAESTRO_VERSION"
+
+      - name: Boot selected simulator
+        run: node .github/scripts/ios_boot_simulator.mjs
 
       - name: Resolve app path for simulator install
         id: install_app
@@ -280,14 +267,12 @@ jobs:
           echo "Resolved app for install: $APP"
           echo "app=$APP" >> "$GITHUB_OUTPUT"
 
-      - name: Install on simulator and warm up
-        shell: bash
+      - name: Install app on simulator
         timeout-minutes: 10
-        run: .github/scripts/ios_install_app.sh "${{ steps.install_app.outputs.app }}"
+        run: node .github/scripts/ios_install_app.mjs "${{ steps.install_app.outputs.app }}"
 
       - name: Run E2E tests
-        shell: bash
-        run: .github/scripts/ios_run_e2e.sh
+        run: node .github/scripts/ios_run_e2e.mjs
 
       - name: Upload Xcode build artifacts
         if: failure() && steps.ios_cache.outputs.cache-hit != 'true'
@@ -313,4 +298,4 @@ jobs:
       - name: Clean self-hosted workspace
         if: always()
         shell: bash
-        run: .github/scripts/clean_selfhosted_workspace.sh
+        run: node .github/scripts/clean_selfhosted_workspace.mjs

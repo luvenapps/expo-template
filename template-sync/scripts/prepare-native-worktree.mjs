@@ -1,8 +1,17 @@
-const { execFileSync } = require('node:child_process');
-const fs = require('node:fs');
-const path = require('node:path');
+#!/usr/bin/env node
+/* global __filename */
+import { execFileSync } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+import process from 'node:process';
+import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 
-const PLATFORM_CREDENTIALS = {
+/* istanbul ignore next -- native ESM CLI uses fileURLToPath; tested via process.execPath. */
+const SCRIPT_PATH = typeof __filename === 'string' ? __filename : fileURLToPath(import.meta.url);
+const require = createRequire(SCRIPT_PATH);
+
+export const PLATFORM_CREDENTIALS = {
   ios: {
     file: path.join('credentials', 'GoogleService-Info.plist'),
     environmentVariable: 'GOOGLE_SERVICE_INFO_PLIST_B64',
@@ -13,7 +22,7 @@ const PLATFORM_CREDENTIALS = {
   },
 };
 
-function discoverPrimaryCheckout(projectRoot, runGit = execFileSync) {
+export function discoverPrimaryCheckout(projectRoot, runGit = execFileSync) {
   let output;
 
   try {
@@ -38,7 +47,7 @@ function discoverPrimaryCheckout(projectRoot, runGit = execFileSync) {
   return primaryWorktree.slice('worktree '.length);
 }
 
-function copyFileIfMissing(sourcePath, destinationPath, fileSystem = fs) {
+export function copyFileIfMissing(sourcePath, destinationPath, fileSystem = fs) {
   if (fileSystem.existsSync(destinationPath) || !fileSystem.existsSync(sourcePath)) {
     return false;
   }
@@ -57,7 +66,7 @@ function copyFileIfMissing(sourcePath, destinationPath, fileSystem = fs) {
   }
 }
 
-function readExpoEnvironment(projectRoot, shellEnvironment = process.env, parseProjectEnv) {
+export function readExpoEnvironment(projectRoot, shellEnvironment = process.env, parseProjectEnv) {
   const parseEnvironment = parseProjectEnv || require('@expo/env').parseProjectEnv;
   const { env = {} } = parseEnvironment(projectRoot, {
     mode: 'development',
@@ -68,7 +77,7 @@ function readExpoEnvironment(projectRoot, shellEnvironment = process.env, parseP
   return { ...env, ...shellEnvironment };
 }
 
-function requireSupabaseEnvironment(environment) {
+export function requireSupabaseEnvironment(environment) {
   const missing = ['EXPO_PUBLIC_SUPABASE_URL', 'EXPO_PUBLIC_SUPABASE_ANON_KEY'].filter(
     (key) => !environment[key],
   );
@@ -80,7 +89,7 @@ function requireSupabaseEnvironment(environment) {
   }
 }
 
-function prepareWorktree({
+export function prepareWorktree({
   projectRoot = process.cwd(),
   platform,
   shellEnvironment = process.env,
@@ -127,7 +136,7 @@ function prepareWorktree({
   return { primaryCheckout, copiedEnv, copiedCredentials };
 }
 
-function main(args = process.argv.slice(2), dependencies = {}) {
+export function main(args = process.argv.slice(2), dependencies = {}) {
   const platform = args[0];
   const result = prepareWorktree({ ...dependencies, platform });
   const log = dependencies.log || console.log;
@@ -143,7 +152,7 @@ function main(args = process.argv.slice(2), dependencies = {}) {
   return result;
 }
 
-function runCli(args = process.argv.slice(2), dependencies = {}) {
+export function runCli(args = process.argv.slice(2), dependencies = {}) {
   try {
     main(args, dependencies);
     return 0;
@@ -154,18 +163,8 @@ function runCli(args = process.argv.slice(2), dependencies = {}) {
   }
 }
 
-/* istanbul ignore next: npm invokes this file directly through lifecycle hooks. */
-if (require.main === module) {
+/* istanbul ignore next: the package manager invokes this through lifecycle hooks. */
+/* istanbul ignore next -- exercised as a process.execPath CLI by the test context. */
+if (process.argv[1] && SCRIPT_PATH === path.resolve(process.argv[1])) {
   process.exitCode = runCli();
 }
-
-module.exports = {
-  copyFileIfMissing,
-  discoverPrimaryCheckout,
-  main,
-  PLATFORM_CREDENTIALS,
-  prepareWorktree,
-  readExpoEnvironment,
-  requireSupabaseEnvironment,
-  runCli,
-};

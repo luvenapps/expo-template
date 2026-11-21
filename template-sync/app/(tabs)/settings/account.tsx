@@ -107,7 +107,6 @@ export default function AccountSettingsScreen() {
           suppressToast: true,
         });
         const message =
-          friendly.description ??
           (friendly.descriptionKey ? t(friendly.descriptionKey) : friendly.originalMessage) ??
           (friendly.titleKey ? t(friendly.titleKey) : t('errors.unknown.title'));
         setResetStatus(message);
@@ -135,7 +134,6 @@ export default function AccountSettingsScreen() {
         suppressToast: true,
       });
       const message =
-        friendly.description ??
         (friendly.descriptionKey ? t(friendly.descriptionKey) : friendly.originalMessage) ??
         (friendly.titleKey ? t(friendly.titleKey) : t('errors.unknown.title'));
       setResetStatus(message);
@@ -217,12 +215,12 @@ export default function AccountSettingsScreen() {
                 <Dialog.Portal>
                   <Dialog.Overlay key="reset-data-overlay" />
                   <Dialog.Content key="reset-data-content" bordered elevate>
-                    <YStack gap="$2">
+                    <YStack gap="2">
                       <Dialog.Title>{t('settings.resetConfirmTitle')}</Dialog.Title>
                       <Dialog.Description>
                         {t('settings.resetConfirmDescription')}
                       </Dialog.Description>
-                      <XStack flexDirection="row" gap="$2" paddingTop="2">
+                      <XStack flexDirection="row" gap="2" paddingTop="2">
                         <SecondaryButton
                           width="auto"
                           flex={1}
@@ -257,13 +255,13 @@ export default function AccountSettingsScreen() {
       {isSigningOut || isResettingAllData ? (
         <YStack
           position="absolute"
-          top={0}
-          right={0}
-          bottom={0}
-          left={0}
+          top="0"
+          right="0"
+          bottom="0"
+          left="0"
           alignItems="center"
           justifyContent="center"
-          backgroundColor="rgba(0,0,0,0.2)"
+          backgroundColor="overlayScrim"
         >
           <Spinner size="large" color="accent-color" />
         </YStack>

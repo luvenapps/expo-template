@@ -8,12 +8,12 @@ export default function LanguageSettingsScreen() {
   const currentLanguage = (i18n.language ?? 'en').split('-')[0];
 
   return (
-    <ScreenContainer gap="$4">
+    <ScreenContainer gap="4">
       <SettingsSection
         title={t('settings.languageTitle')}
         description={t('settings.languageDescription')}
       >
-        <YStack gap="$2" width="100%">
+        <YStack gap="2" width="100%">
           {supportedLanguages.map((lang) => {
             const isActive = currentLanguage === lang.code;
             return (
@@ -22,15 +22,19 @@ export default function LanguageSettingsScreen() {
                 testID={`language-option-${lang.code}`}
                 aria-label={lang.label}
                 role="button"
-                size="legacy5"
-                height={48}
+                size="lg"
+                height="8"
                 borderRadius="3"
                 borderStyle="solid"
                 borderColor="border-color"
-                backgroundColor={`${isActive ? 'accent-color' : 'background'} hover:${isActive ? 'accent-color' : 'background-hover'} press:${isActive ? 'accent-color' : 'background-press'}`}
-                color={`${isActive ? 'white' : 'color'}`}
-                fontSize="$4"
-                fontWeight="300"
+                backgroundColor={{
+                  default: isActive ? 'accent-color' : 'background',
+                  hover: isActive ? 'accent-color' : 'background-hover',
+                  press: isActive ? 'accent-color' : 'background-press',
+                }}
+                color={isActive ? 'white' : 'color'}
+                fontSize="4"
+                fontWeight="1"
                 opacity={1}
                 disabled={isActive}
                 onPress={() => setLanguage(lang.code)}

@@ -297,7 +297,11 @@ describe('SignUpScreen', () => {
 
   it('shows friendly message when OAuth sign-in fails', async () => {
     const friendlyHandler = jest.fn(() => ({
-      friendly: { code: 'unknown' as const, type: 'error' as const, description: 'OAuth failed' },
+      friendly: {
+        code: 'unknown' as const,
+        type: 'error' as const,
+        originalMessage: 'OAuth failed',
+      },
       toastId: 'toast-oauth',
     }));
     mockedFriendlyError.mockReturnValue(friendlyHandler);
@@ -318,7 +322,11 @@ describe('SignUpScreen', () => {
 
   it('clears the OAuth error message after a successful sign-in', async () => {
     const friendlyHandler = jest.fn(() => ({
-      friendly: { code: 'unknown' as const, type: 'error' as const, description: 'OAuth failed' },
+      friendly: {
+        code: 'unknown' as const,
+        type: 'error' as const,
+        originalMessage: 'OAuth failed',
+      },
       toastId: 'toast-oauth',
     }));
     mockedFriendlyError.mockReturnValue(friendlyHandler);
@@ -389,7 +397,7 @@ describe('SignUpScreen', () => {
 
     const { container } = await renderWithProviders(<SignUpScreen />);
     const hasZeroMarginTop = findAllByType(container, 'View').some(
-      (node) => node.props.marginTop === 0,
+      (node) => node.props.marginTop === '0',
     );
 
     expect(hasZeroMarginTop).toBe(true);
@@ -860,7 +868,7 @@ describe('SignUpScreen', () => {
         friendly: {
           code: 'unknown' as const,
           type: 'error' as const,
-          description: 'Friendly description',
+          originalMessage: 'Friendly description',
         },
         toastId: 'toast-4',
       })),
@@ -1091,7 +1099,7 @@ describe('SignUpScreen', () => {
         friendly: {
           code: 'unknown' as const,
           type: 'error' as const,
-          title: 'Friendly Title',
+          titleKey: 'errors.signup.friendlyTitle',
         },
         toastId: 'toast-7',
       })),
@@ -1110,7 +1118,7 @@ describe('SignUpScreen', () => {
     await fireEvent.press(getByTestId('create-account-button'));
 
     await waitFor(() => {
-      expect(getByText('Friendly Title')).toBeTruthy();
+      expect(getByText('errors.signup.friendlyTitle')).toBeTruthy();
     });
   });
 
@@ -1152,13 +1160,13 @@ describe('SignUpScreen', () => {
     });
   });
 
-  it('uses description when provided as empty string (truthy for nullish coalescing)', async () => {
+  it('uses empty originalMessage before titleKey fallback', async () => {
     mockedFriendlyError.mockReturnValue(
       jest.fn(() => ({
         friendly: {
           code: 'unknown' as const,
           type: 'error' as const,
-          description: '',
+          originalMessage: '',
           titleKey: 'errors.signup.fallback',
         },
         toastId: 'toast-8',
@@ -1178,19 +1186,18 @@ describe('SignUpScreen', () => {
     await fireEvent.press(getByTestId('create-account-button'));
 
     await waitFor(() => {
-      // Empty string is truthy for ??, so it should be used (InlineError shows empty)
+      // Empty string is preserved by ??, so it takes precedence over titleKey.
       // The titleKey should NOT be used
       expect(queryByText('errors.signup.fallback')).toBeNull();
     });
   });
 
-  it('uses descriptionKey fallback when description is null', async () => {
+  it('uses descriptionKey fallback when originalMessage is missing', async () => {
     mockedFriendlyError.mockReturnValue(
       jest.fn(() => ({
         friendly: {
           code: 'unknown' as const,
           type: 'error' as const,
-          description: null as any,
           descriptionKey: 'errors.signup.descriptionKey',
         },
         toastId: 'toast-9',

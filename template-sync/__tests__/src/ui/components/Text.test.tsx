@@ -18,11 +18,11 @@ describe('semantic text', () => {
   });
 
   it.each([
-    [TitleText, 28, 'color'],
-    [SubtitleText, 18, 'colorMuted'],
-    [BodyText, 16, 'color'],
-    [CaptionText, 15, 'colorMuted'],
-    [LabelText, 15, 'color'],
+    [TitleText, 'title', 'color'],
+    [SubtitleText, '4', 'colorMuted'],
+    [BodyText, '3', 'color'],
+    [CaptionText, 'caption', 'colorMuted'],
+    [LabelText, 'caption', 'color'],
   ] as const)('uses its configured size and theme color', async (Component, fontSize, color) => {
     await render(<Component testID="text">Example</Component>);
     expect(screen.getByTestId('text').props).toEqual(expect.objectContaining({ fontSize, color }));

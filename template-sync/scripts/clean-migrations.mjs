@@ -150,7 +150,10 @@ async function main() {
       log(`   • ${name}`, colors.yellow);
     });
     log('   Recommendation: Stop Supabase before cleaning migrations.', colors.yellow);
-    log('   Run: Ctrl+C in the terminal running Supabase, or `npx supabase stop`\n', colors.cyan);
+    log(
+      '   Run: Ctrl+C in the terminal running Supabase, or `pnpm exec supabase stop`\n',
+      colors.cyan,
+    );
   }
 
   if (expo.running) {
@@ -267,9 +270,9 @@ async function main() {
   // Next steps
   log('\n📝 NEXT STEPS:', colors.bold);
   log('  1. Generate fresh migrations:', colors.cyan);
-  log('     npm run db:migrate', colors.green);
+  log('     pnpm run db:migrate', colors.green);
   log('  2. If Supabase is running, restart it to apply the new migrations:', colors.cyan);
-  log('     Ctrl+C (to stop) then npm run supabase:dev', colors.green);
+  log('     Ctrl+C (to stop) then pnpm run supabase:dev', colors.green);
   log('  3. SQLite will be recreated automatically when the app launches\n', colors.cyan);
 
   log('✨ Cleanup complete!\n', colors.green + colors.bold);

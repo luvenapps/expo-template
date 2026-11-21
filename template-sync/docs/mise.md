@@ -7,7 +7,7 @@ This repository includes first-class `mise` support via the root `.mise.toml` an
 1. Bootstrap with the repo helper script:
 
    ```bash
-   npm run setup:local
+   pnpm run setup:local
    ```
 
    This installs missing Homebrew core dependencies (`mise`, `fastlane`, `watchman`), then runs `mise trust` and `mise install`.
@@ -17,14 +17,14 @@ This repository includes first-class `mise` support via the root `.mise.toml` an
    ```bash
    mise ls
    node -v
-   npm -v
+   pnpm --version
    java -version
    ```
 
 3. Install dependencies:
 
    ```bash
-   npm ci
+   pnpm install --frozen-lockfile
    ```
 
 ## Manual setup (equivalent)
@@ -35,9 +35,9 @@ mise trust
 mise install
 mise ls
 node -v
-npm -v
+pnpm --version
 java -version
-npm ci
+pnpm install --frozen-lockfile
 ```
 
 ## JAVA_HOME and shell profile notes
@@ -66,7 +66,7 @@ Example pattern:
     MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
 - run: |
     mise exec -- node -v
-    mise exec -- npm ci
+    mise exec -- pnpm install --frozen-lockfile
 ```
 
 ## Java version notation
@@ -87,8 +87,8 @@ If your team prefers a looser pin later, switch to a generic major-version Java 
 
 ## Important compatibility note
 
-- App and CI workflows in this repo still use `npm` + `package-lock.json` as the source of truth.
-- Use `npm ci` (or `npm install` for local mutation) to match the existing scripts and CI behavior.
+- App and CI workflows in this repo use `pnpm` + `pnpm-lock.yaml` as the source of truth.
+- Use `pnpm install --frozen-lockfile` for CI and `pnpm install` for local dependency changes to match the existing scripts and CI behavior.
 
 ## System prerequisites remain required
 
@@ -104,4 +104,4 @@ If your team prefers a looser pin later, switch to a generic major-version Java 
 - **fastlane**: not managed by this repo's `.mise.toml`; install via Homebrew/Gem for native build/release flows.
 - **watchman**: not managed by this repo's `.mise.toml`; install via Homebrew for faster Metro file watching.
 - **maestro**: not managed by this repo's `.mise.toml`; install the Maestro CLI separately (Java runtime itself is pinned via mise).
-- **supabase**: Supabase CLI is provided by repo dev dependencies (`npx supabase ...` / npm scripts), but local Supabase still requires a running container runtime.
+- **supabase**: Supabase CLI is provided by repo dev dependencies (`pnpm exec supabase ...` / pnpm scripts), but local Supabase still requires a running container runtime.

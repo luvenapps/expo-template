@@ -1,18 +1,63 @@
-const { execFileSync } = require('node:child_process');
-const fs = require('node:fs');
-const os = require('node:os');
-const path = require('node:path');
-const packageJson = require('../../package.json');
+const childProcess = require('node:child_process') as typeof import('node:child_process');
+const execFileSync = childProcess.execFileSync;
+import {
+  copyFileIfMissing as rawCopyFileIfMissing,
+  discoverPrimaryCheckout as rawDiscoverPrimaryCheckout,
+  main as rawMain,
+  prepareWorktree as rawPrepareWorktree,
+  readExpoEnvironment as rawReadExpoEnvironment,
+  requireSupabaseEnvironment as rawRequireSupabaseEnvironment,
+  runCli as rawRunCli,
+} from '../../scripts/prepare-native-worktree.mjs';
+const fs = require('node:fs') as typeof import('node:fs');
+const os = require('node:os') as typeof import('node:os');
+const path = require('node:path') as typeof import('node:path');
+import packageJson from '../../package.json';
 
-const {
-  copyFileIfMissing,
-  discoverPrimaryCheckout,
-  main,
-  prepareWorktree,
-  readExpoEnvironment,
-  requireSupabaseEnvironment,
-  runCli,
-} = require('../../scripts/prepare-native-worktree');
+type Environment = Record<string, string | undefined>;
+type GitRunner = (
+  command: string,
+  args: string[],
+  options?: { encoding?: string; stdio?: string[] },
+) => string;
+type ParseProjectEnv = (
+  projectRoot: string,
+  options?: Record<string, unknown>,
+) => { env?: Environment };
+type Dependencies = {
+  projectRoot?: string;
+  platform?: string;
+  shellEnvironment?: Environment;
+  runGit?: GitRunner;
+  fileSystem?: typeof fs;
+  parseProjectEnv?: ParseProjectEnv;
+  log?: (message: string) => void;
+  logError?: (message: string) => void;
+};
+type PrepareResult = { primaryCheckout: string; copiedEnv: boolean; copiedCredentials: string[] };
+
+const copyFileIfMissing = rawCopyFileIfMissing as (
+  sourcePath: string,
+  destinationPath: string,
+  fileSystem?: typeof fs,
+) => boolean;
+const discoverPrimaryCheckout = rawDiscoverPrimaryCheckout as (
+  projectRoot: string,
+  runGit?: GitRunner,
+) => string;
+const main = rawMain as (args?: string[], dependencies?: Dependencies) => PrepareResult;
+const prepareWorktree = rawPrepareWorktree as (
+  dependencies: Dependencies & { platform: string },
+) => PrepareResult;
+const readExpoEnvironment = rawReadExpoEnvironment as (
+  projectRoot: string,
+  shellEnvironment?: Environment,
+  parseProjectEnv?: ParseProjectEnv,
+) => Environment;
+const requireSupabaseEnvironment = rawRequireSupabaseEnvironment as (
+  environment: Environment,
+) => void;
+const runCli = rawRunCli as (args?: string[], dependencies?: Dependencies) => number;
 
 function createGitWorktrees() {
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'expo worktree setup-'));
@@ -32,7 +77,7 @@ function createGitWorktrees() {
     temporaryRoot,
     primaryCheckout,
     activeWorktree,
-    addWorktree(worktreePath) {
+    addWorktree(worktreePath: string) {
       execFileSync('git', [
         '-C',
         primaryCheckout,
@@ -46,7 +91,7 @@ function createGitWorktrees() {
   };
 }
 
-function validSupabaseEnvironment(overrides = {}) {
+function validSupabaseEnvironment(overrides: Environment = {}) {
   return {
     EXPO_PUBLIC_SUPABASE_URL: 'https://example.supabase.co',
     EXPO_PUBLIC_SUPABASE_ANON_KEY: 'dummy-anon-key',
@@ -54,16 +99,16 @@ function validSupabaseEnvironment(overrides = {}) {
   };
 }
 
-function parseEnvironment(env = {}) {
+function parseEnvironment(env: Environment = {}) {
   return () => ({ env });
 }
 
 describe('native worktree setup', () => {
-  let fixture;
+  let fixture: ReturnType<typeof createGitWorktrees> | undefined;
 
   afterEach(() => {
     if (fixture) {
-      fs.rmSync(fixture.temporaryRoot, { recursive: true, force: true });
+      fs.rmSync(fixture!.temporaryRoot, { recursive: true, force: true });
       fixture = undefined;
     }
     jest.restoreAllMocks();
@@ -72,8 +117,8 @@ describe('native worktree setup', () => {
   test('discovers the primary checkout from Git metadata when paths contain spaces', () => {
     fixture = createGitWorktrees();
 
-    expect(fs.realpathSync(discoverPrimaryCheckout(fixture.activeWorktree))).toBe(
-      fs.realpathSync(fixture.primaryCheckout),
+    expect(fs.realpathSync(discoverPrimaryCheckout(fixture!.activeWorktree))).toBe(
+      fs.realpathSync(fixture!.primaryCheckout),
     );
   });
 
@@ -90,68 +135,68 @@ describe('native worktree setup', () => {
 
   test('copies the environment and only the requested platform credential', () => {
     fixture = createGitWorktrees();
-    fs.writeFileSync(path.join(fixture.primaryCheckout, '.env.local'), 'local settings');
-    fs.mkdirSync(path.join(fixture.primaryCheckout, 'credentials'));
+    fs.writeFileSync(path.join(fixture!.primaryCheckout, '.env.local'), 'local settings');
+    fs.mkdirSync(path.join(fixture!.primaryCheckout, 'credentials'));
     fs.writeFileSync(
-      path.join(fixture.primaryCheckout, 'credentials', 'GoogleService-Info.plist'),
+      path.join(fixture!.primaryCheckout, 'credentials', 'GoogleService-Info.plist'),
       'ios config',
     );
     fs.writeFileSync(
-      path.join(fixture.primaryCheckout, 'credentials', 'google-services.json'),
+      path.join(fixture!.primaryCheckout, 'credentials', 'google-services.json'),
       'android config',
     );
 
     const result = prepareWorktree({
-      projectRoot: fixture.activeWorktree,
+      projectRoot: fixture!.activeWorktree,
       platform: 'ios',
       shellEnvironment: validSupabaseEnvironment(),
       parseProjectEnv: parseEnvironment(),
     });
 
     expect(result).toMatchObject({ copiedEnv: true, copiedCredentials: ['ios'] });
-    expect(fs.readFileSync(path.join(fixture.activeWorktree, '.env.local'), 'utf8')).toBe(
+    expect(fs.readFileSync(path.join(fixture!.activeWorktree, '.env.local'), 'utf8')).toBe(
       'local settings',
     );
     expect(
       fs.readFileSync(
-        path.join(fixture.activeWorktree, 'credentials', 'GoogleService-Info.plist'),
+        path.join(fixture!.activeWorktree, 'credentials', 'GoogleService-Info.plist'),
         'utf8',
       ),
     ).toBe('ios config');
     expect(
-      fs.existsSync(path.join(fixture.activeWorktree, 'credentials', 'google-services.json')),
+      fs.existsSync(path.join(fixture!.activeWorktree, 'credentials', 'google-services.json')),
     ).toBe(false);
   });
 
   test('preserves existing worktree environment and platform credentials', () => {
     fixture = createGitWorktrees();
-    fs.writeFileSync(path.join(fixture.primaryCheckout, '.env.local'), 'primary settings');
-    fs.mkdirSync(path.join(fixture.primaryCheckout, 'credentials'));
+    fs.writeFileSync(path.join(fixture!.primaryCheckout, '.env.local'), 'primary settings');
+    fs.mkdirSync(path.join(fixture!.primaryCheckout, 'credentials'));
     fs.writeFileSync(
-      path.join(fixture.primaryCheckout, 'credentials', 'google-services.json'),
+      path.join(fixture!.primaryCheckout, 'credentials', 'google-services.json'),
       'primary config',
     );
-    fs.writeFileSync(path.join(fixture.activeWorktree, '.env.local'), 'worktree settings');
-    fs.mkdirSync(path.join(fixture.activeWorktree, 'credentials'));
+    fs.writeFileSync(path.join(fixture!.activeWorktree, '.env.local'), 'worktree settings');
+    fs.mkdirSync(path.join(fixture!.activeWorktree, 'credentials'));
     fs.writeFileSync(
-      path.join(fixture.activeWorktree, 'credentials', 'google-services.json'),
+      path.join(fixture!.activeWorktree, 'credentials', 'google-services.json'),
       'worktree config',
     );
 
     const result = prepareWorktree({
-      projectRoot: fixture.activeWorktree,
+      projectRoot: fixture!.activeWorktree,
       platform: 'android',
       shellEnvironment: validSupabaseEnvironment(),
       parseProjectEnv: parseEnvironment(),
     });
 
     expect(result).toMatchObject({ copiedEnv: false, copiedCredentials: [] });
-    expect(fs.readFileSync(path.join(fixture.activeWorktree, '.env.local'), 'utf8')).toBe(
+    expect(fs.readFileSync(path.join(fixture!.activeWorktree, '.env.local'), 'utf8')).toBe(
       'worktree settings',
     );
     expect(
       fs.readFileSync(
-        path.join(fixture.activeWorktree, 'credentials', 'google-services.json'),
+        path.join(fixture!.activeWorktree, 'credentials', 'google-services.json'),
         'utf8',
       ),
     ).toBe('worktree config');
@@ -159,8 +204,8 @@ describe('native worktree setup', () => {
 
   test('uses only the primary checkout and accepts Firebase environment fallback', () => {
     fixture = createGitWorktrees();
-    const siblingWorktree = path.join(fixture.temporaryRoot, 'sibling worktree');
-    fixture.addWorktree(siblingWorktree);
+    const siblingWorktree = path.join(fixture!.temporaryRoot, 'sibling worktree');
+    fixture!.addWorktree(siblingWorktree);
     fs.writeFileSync(path.join(siblingWorktree, '.env.local'), 'sibling settings');
     fs.mkdirSync(path.join(siblingWorktree, 'credentials'));
     fs.writeFileSync(
@@ -169,15 +214,15 @@ describe('native worktree setup', () => {
     );
 
     const result = prepareWorktree({
-      projectRoot: fixture.activeWorktree,
+      projectRoot: fixture!.activeWorktree,
       platform: 'android',
       shellEnvironment: validSupabaseEnvironment({ GOOGLE_SERVICES_JSON_B64: 'ZmFsbGJhY2s=' }),
       parseProjectEnv: parseEnvironment(),
     });
 
     expect(result).toMatchObject({ copiedEnv: false, copiedCredentials: [] });
-    expect(fs.existsSync(path.join(fixture.activeWorktree, '.env.local'))).toBe(false);
-    expect(fs.existsSync(path.join(fixture.activeWorktree, 'credentials'))).toBe(false);
+    expect(fs.existsSync(path.join(fixture!.activeWorktree, '.env.local'))).toBe(false);
+    expect(fs.existsSync(path.join(fixture!.activeWorktree, 'credentials'))).toBe(false);
   });
 
   test('starts with shell configuration and does not require Firebase files', () => {
@@ -185,7 +230,7 @@ describe('native worktree setup', () => {
 
     expect(
       prepareWorktree({
-        projectRoot: fixture.activeWorktree,
+        projectRoot: fixture!.activeWorktree,
         platform: 'start',
         shellEnvironment: validSupabaseEnvironment(),
         parseProjectEnv: parseEnvironment(),
@@ -195,18 +240,18 @@ describe('native worktree setup', () => {
 
   test('copies both available Firebase credentials when starting', () => {
     fixture = createGitWorktrees();
-    fs.mkdirSync(path.join(fixture.primaryCheckout, 'credentials'));
+    fs.mkdirSync(path.join(fixture!.primaryCheckout, 'credentials'));
     fs.writeFileSync(
-      path.join(fixture.primaryCheckout, 'credentials', 'GoogleService-Info.plist'),
+      path.join(fixture!.primaryCheckout, 'credentials', 'GoogleService-Info.plist'),
       'ios config',
     );
     fs.writeFileSync(
-      path.join(fixture.primaryCheckout, 'credentials', 'google-services.json'),
+      path.join(fixture!.primaryCheckout, 'credentials', 'google-services.json'),
       'android config',
     );
 
     const result = prepareWorktree({
-      projectRoot: fixture.activeWorktree,
+      projectRoot: fixture!.activeWorktree,
       platform: 'start',
       shellEnvironment: validSupabaseEnvironment(),
       parseProjectEnv: parseEnvironment(),
@@ -215,13 +260,13 @@ describe('native worktree setup', () => {
     expect(result.copiedCredentials).toEqual(['ios', 'android']);
     expect(
       fs.readFileSync(
-        path.join(fixture.activeWorktree, 'credentials', 'GoogleService-Info.plist'),
+        path.join(fixture!.activeWorktree, 'credentials', 'GoogleService-Info.plist'),
         'utf8',
       ),
     ).toBe('ios config');
     expect(
       fs.readFileSync(
-        path.join(fixture.activeWorktree, 'credentials', 'google-services.json'),
+        path.join(fixture!.activeWorktree, 'credentials', 'google-services.json'),
         'utf8',
       ),
     ).toBe('android config');
@@ -229,11 +274,11 @@ describe('native worktree setup', () => {
 
   test('reports missing Supabase configuration and platform Firebase credentials', () => {
     fixture = createGitWorktrees();
-    fs.writeFileSync(path.join(fixture.primaryCheckout, '.env.local'), '');
+    fs.writeFileSync(path.join(fixture!.primaryCheckout, '.env.local'), '');
 
     expect(() =>
       prepareWorktree({
-        projectRoot: fixture.activeWorktree,
+        projectRoot: fixture!.activeWorktree,
         platform: 'start',
         shellEnvironment: {},
         parseProjectEnv: parseEnvironment(),
@@ -242,7 +287,7 @@ describe('native worktree setup', () => {
 
     expect(() =>
       prepareWorktree({
-        projectRoot: fixture.activeWorktree,
+        projectRoot: fixture!.activeWorktree,
         platform: 'ios',
         shellEnvironment: validSupabaseEnvironment(),
         parseProjectEnv: parseEnvironment(),
@@ -253,11 +298,11 @@ describe('native worktree setup', () => {
   test('reads Expo environment files and lets shell values take precedence', () => {
     fixture = createGitWorktrees();
     fs.writeFileSync(
-      path.join(fixture.activeWorktree, '.env.local'),
+      path.join(fixture!.activeWorktree, '.env.local'),
       'EXPO_PUBLIC_SUPABASE_URL=https://file.supabase.co\nEXPO_PUBLIC_SUPABASE_ANON_KEY=file-key\n',
     );
 
-    const environment = readExpoEnvironment(fixture.activeWorktree, {
+    const environment = readExpoEnvironment(fixture!.activeWorktree, {
       EXPO_PUBLIC_SUPABASE_URL: 'https://shell.supabase.co',
     });
 
@@ -267,22 +312,22 @@ describe('native worktree setup', () => {
 
   test('handles missing source files and exclusive-copy races without overwriting', () => {
     fixture = createGitWorktrees();
-    const missingDestination = path.join(fixture.activeWorktree, 'credentials', 'missing.json');
+    const missingDestination = path.join(fixture!.activeWorktree, 'credentials', 'missing.json');
     expect(
-      copyFileIfMissing(path.join(fixture.primaryCheckout, 'missing.json'), missingDestination),
+      copyFileIfMissing(path.join(fixture!.primaryCheckout, 'missing.json'), missingDestination),
     ).toBe(false);
 
-    fs.writeFileSync(path.join(fixture.primaryCheckout, 'config.txt'), 'source');
+    fs.writeFileSync(path.join(fixture!.primaryCheckout, 'config.txt'), 'source');
     const copyFile = jest.spyOn(fs, 'copyFileSync').mockImplementationOnce(() => {
-      const error = new Error('created by another process');
+      const error = new Error('created by another process') as NodeJS.ErrnoException;
       error.code = 'EEXIST';
       throw error;
     });
 
     expect(
       copyFileIfMissing(
-        path.join(fixture.primaryCheckout, 'config.txt'),
-        path.join(fixture.activeWorktree, 'config.txt'),
+        path.join(fixture!.primaryCheckout, 'config.txt'),
+        path.join(fixture!.activeWorktree, 'config.txt'),
       ),
     ).toBe(false);
     copyFile.mockImplementationOnce(() => {
@@ -290,8 +335,8 @@ describe('native worktree setup', () => {
     });
     expect(() =>
       copyFileIfMissing(
-        path.join(fixture.primaryCheckout, 'config.txt'),
-        path.join(fixture.activeWorktree, 'config.txt'),
+        path.join(fixture!.primaryCheckout, 'config.txt'),
+        path.join(fixture!.activeWorktree, 'config.txt'),
       ),
     ).toThrow('disk error');
   });
@@ -300,7 +345,7 @@ describe('native worktree setup', () => {
     fixture = createGitWorktrees();
     expect(() =>
       prepareWorktree({
-        projectRoot: fixture.activeWorktree,
+        projectRoot: fixture!.activeWorktree,
         platform: 'web',
       }),
     ).toThrow('supported commands');
@@ -316,15 +361,15 @@ describe('native worktree setup', () => {
 
   test('main logs only which setup files were prepared and keeps credential values private', () => {
     fixture = createGitWorktrees();
-    fs.writeFileSync(path.join(fixture.primaryCheckout, '.env.local'), 'primary settings');
-    fs.mkdirSync(path.join(fixture.primaryCheckout, 'credentials'));
+    fs.writeFileSync(path.join(fixture!.primaryCheckout, '.env.local'), 'primary settings');
+    fs.mkdirSync(path.join(fixture!.primaryCheckout, 'credentials'));
     fs.writeFileSync(
-      path.join(fixture.primaryCheckout, 'credentials', 'google-services.json'),
+      path.join(fixture!.primaryCheckout, 'credentials', 'google-services.json'),
       'secret config',
     );
     const log = jest.fn();
     const dependencies = {
-      projectRoot: fixture.activeWorktree,
+      projectRoot: fixture!.activeWorktree,
       shellEnvironment: validSupabaseEnvironment(),
       parseProjectEnv: parseEnvironment(),
       log,
@@ -335,26 +380,26 @@ describe('native worktree setup', () => {
       copiedCredentials: ['android'],
     });
     expect(log.mock.calls.flat().join(' ')).not.toContain('secret config');
-    expect(runCli(['start'], { ...dependencies, projectRoot: fixture.primaryCheckout, log })).toBe(
+    expect(runCli(['start'], { ...dependencies, projectRoot: fixture!.primaryCheckout, log })).toBe(
       0,
     );
   });
 
   test('main reports both platform credentials copied during startup without logging their contents', () => {
     fixture = createGitWorktrees();
-    fs.mkdirSync(path.join(fixture.primaryCheckout, 'credentials'));
+    fs.mkdirSync(path.join(fixture!.primaryCheckout, 'credentials'));
     fs.writeFileSync(
-      path.join(fixture.primaryCheckout, 'credentials', 'GoogleService-Info.plist'),
+      path.join(fixture!.primaryCheckout, 'credentials', 'GoogleService-Info.plist'),
       'ios secret config',
     );
     fs.writeFileSync(
-      path.join(fixture.primaryCheckout, 'credentials', 'google-services.json'),
+      path.join(fixture!.primaryCheckout, 'credentials', 'google-services.json'),
       'android secret config',
     );
     const log = jest.fn();
 
     main(['start'], {
-      projectRoot: fixture.activeWorktree,
+      projectRoot: fixture!.activeWorktree,
       shellEnvironment: validSupabaseEnvironment(),
       parseProjectEnv: parseEnvironment(),
       log,
@@ -369,13 +414,27 @@ describe('native worktree setup', () => {
     expect(log.mock.calls.flat().join(' ')).not.toContain('secret config');
   });
 
-  test('wires preparation into start and native npm lifecycle hooks without replacing troubleshooting', () => {
-    expect(packageJson.scripts.prestart).toContain('npm run troubleshoot');
-    expect(packageJson.scripts.prestart).toContain('prepare-native-worktree.js start');
-    expect(packageJson.scripts.preios).toBe('node scripts/prepare-native-worktree.js ios');
-    expect(packageJson.scripts.preandroid).toBe('node scripts/prepare-native-worktree.js android');
+  test('wires preparation into start and native package-manager lifecycle hooks without replacing troubleshooting', () => {
+    expect(packageJson.scripts.prestart).toContain('pnpm run troubleshoot');
+    expect(packageJson.scripts.prestart).toContain('prepare-native-worktree.mjs start');
+    expect(packageJson.scripts.preios).toBe('node scripts/prepare-native-worktree.mjs ios');
+    expect(packageJson.scripts.preandroid).toBe('node scripts/prepare-native-worktree.mjs android');
     expect(packageJson.scripts.ios).toBe('node scripts/run-native.mjs ios');
     expect(packageJson.scripts.android).toBe('node scripts/run-native.mjs android');
+  });
+
+  test('supports default Git discovery and the Node MJS CLI entrypoint', () => {
+    expect(() => discoverPrimaryCheckout(os.tmpdir())).toThrow(
+      'Could not find the primary Git checkout',
+    );
+
+    const script = path.resolve(__dirname, '../../scripts/prepare-native-worktree.mjs');
+    const result = childProcess.spawnSync(process.execPath, [script, 'unsupported'], {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+    });
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('Specify one of the supported commands');
   });
 });
 

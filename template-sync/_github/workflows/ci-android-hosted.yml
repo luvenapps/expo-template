@@ -16,8 +16,6 @@ env:
   METRO_CACHE_PATH: ${{ github.workspace }}/.metro-cache-ci
   ANDROID_TARGET: 'google_apis'
   ANDROID_API_LEVEL: 35
-  MAESTRO_VERSION: '2.0.6'
-  FASTLANE_VERSION: '2.228.0'
 
 concurrency:
   group: android-ci-${{ github.ref }}
@@ -28,8 +26,6 @@ jobs:
     name: Build • E2E
     runs-on: ubuntu-latest
     timeout-minutes: 90
-    env:
-      ANDROID_SDK_DIR: $HOME/Library/Android/sdk
 
     steps:
       - name: Checkout
@@ -45,15 +41,16 @@ jobs:
       - name: Setup mise toolchain
         uses: jdx/mise-action@v5
         with:
-          version: '2026.11.4'
+          version: '2026.11.9'
           install: true
           log_level: ${{ runner.debug == '1' && 'debug' || 'info' }}
         env:
           GNUPGHOME: ${{ runner.temp }}/gnupg
           MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+          MISE_ENV: ci
 
       - name: Install deps
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Map runtime variables and secrets
         shell: bash
@@ -72,32 +69,7 @@ jobs:
           FIREBASE_PROJECT_ID: ${{ secrets[format('{0}_FIREBASE_PROJECT_ID', inputs.env_prefix)] || secrets.FIREBASE_PROJECT_ID || '' }}
           FIREBASE_STORAGE_BUCKET: ${{ secrets[format('{0}_FIREBASE_STORAGE_BUCKET', inputs.env_prefix)] || secrets.FIREBASE_STORAGE_BUCKET || '' }}
           FIREBASE_VAPID_KEY: ${{ secrets[format('{0}_FIREBASE_VAPID_KEY', inputs.env_prefix)] || secrets.FIREBASE_VAPID_KEY || '' }}
-        run: .github/scripts/map_runtime_env.sh
-
-      - name: Validate EAS CLI version variable
-        shell: bash
-        run: |
-          if [ -z "${{ vars.EAS_CLI_VERSION }}" ]; then
-            echo "❌ Missing EAS_CLI_VERSION GitHub variable."
-            exit 1
-          fi
-
-      - name: Install EAS CLI
-        shell: bash
-        run: |
-          npm i -g eas-cli@${{ vars.EAS_CLI_VERSION }}
-          eas --version
-
-      - name: Make CI scripts executable
-        run: chmod +x .github/scripts/*.sh
-
-      - name: Setup Fastlane
-        shell: bash
-        run: .github/scripts/setup_fastlane.sh  "${{ env.FASTLANE_VERSION }}"
-
-      - name: Setup Maestro
-        shell: bash
-        run: .github/scripts/setup_maestro.sh "${{ env.MAESTRO_VERSION }}"
+        run: node .github/scripts/map_runtime_env.mjs
 
       - name: Compute Android build fingerprint
         id: android_fingerprint
@@ -105,7 +77,7 @@ jobs:
         env:
           GOOGLE_SERVICE_INFO_PLIST_B64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_B64 }}
           GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
-        run: ./.github/scripts/compute_fingerprint.sh android >> "$GITHUB_OUTPUT"
+        run: node .github/scripts/compute_fingerprint.mjs android >> "$GITHUB_OUTPUT"
 
       - name: Restore cached APK
         id: apk-cache
@@ -113,6 +85,13 @@ jobs:
         with:
           path: ./*.apk
           key: ${{ steps.android_fingerprint.outputs.key }}
+
+      - name: Install pinned EAS CLI
+        if: steps.apk-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          test -n "$EAS_CLI_VERSION" || { echo "❌ EAS_CLI_VERSION is missing from .mise.ci.toml." >&2; exit 1; }
+          pnpm dlx "eas-cli@$EAS_CLI_VERSION" --version
 
       - name: Create debug keystore
         if: steps.apk-cache.outputs.cache-hit != 'true'
@@ -169,7 +148,7 @@ jobs:
 
           for attempt in $(seq 1 "$ATTEMPTS"); do
             echo "🏗️ Build attempt $attempt/$ATTEMPTS"
-            if eas build --platform android --profile e2eRelease --local --non-interactive; then
+            if pnpm dlx "eas-cli@$EAS_CLI_VERSION" build --platform android --profile e2eRelease --local --non-interactive; then
               echo "✅ Build succeeded"
               exit 0
             fi
@@ -192,7 +171,7 @@ jobs:
           echo "apk=$APK" >> $GITHUB_OUTPUT
           [ -n "$APK" ] || (echo "No APK found in repo root."; ls -alh .; exit 1)
 
-          PKG=$(node -e "const { execSync } = require('node:child_process'); const config = JSON.parse(execSync('npx expo config --json', { encoding: 'utf8' })); process.stdout.write(config.android?.package ?? '');")
+          PKG=$(node -e "const { execSync } = require('node:child_process'); const config = JSON.parse(execSync('pnpm exec expo config --json', { encoding: 'utf8' })); process.stdout.write(config.android?.package ?? '');")
           echo "PKG=$PKG"
           echo "pkg=$PKG" >> $GITHUB_OUTPUT
           [ -n "$PKG" ] || (echo "No PKG found in repo root."; ls -alh .; exit 1)
@@ -233,7 +212,7 @@ jobs:
           fi
 
           echo "[run-snippet] expo public config (engine/runtime lines)"
-          node -e "const { execSync } = require('node:child_process'); const config = JSON.parse(execSync('npx expo config --json', { encoding: 'utf8' })); const payload = { jsEngine: config.jsEngine ?? null, newArchEnabled: config.newArchEnabled ?? null, runtimeVersion: config.runtimeVersion ?? null, androidPackage: config.android?.package ?? null }; console.log(JSON.stringify(payload, null, 2));"
+          node -e "const { execSync } = require('node:child_process'); const config = JSON.parse(execSync('pnpm exec expo config --json', { encoding: 'utf8' })); const payload = { jsEngine: config.jsEngine ?? null, newArchEnabled: config.newArchEnabled ?? null, runtimeVersion: config.runtimeVersion ?? null, androidPackage: config.android?.package ?? null }; console.log(JSON.stringify(payload, null, 2));"
 
       - name: Repack Android app with latest JS bundle
         if: steps.apk-cache.outputs.cache-hit == 'true'
@@ -247,9 +226,10 @@ jobs:
         run: |
           set -euo pipefail
 
-          RESOLVED_SDK_DIR="${ANDROID_SDK_DIR/#\$HOME/$HOME}"
+          RESOLVED_SDK_DIR="${ANDROID_SDK_DIR:-${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Android/Sdk}}}"
+          RESOLVED_SDK_DIR="${RESOLVED_SDK_DIR/#\$HOME/$HOME}"
           if [ ! -d "$RESOLVED_SDK_DIR/build-tools" ]; then
-            for candidate in "$HOME/Library/Android/sdk" "${ANDROID_HOME:-}" "${ANDROID_SDK_ROOT:-}"; do
+            for candidate in "${ANDROID_HOME:-}" "${ANDROID_SDK_ROOT:-}" "$HOME/Android/Sdk" "$HOME/Library/Android/sdk"; do
               if [ -n "$candidate" ] && [ -d "$candidate/build-tools" ]; then
                 RESOLVED_SDK_DIR="$candidate"
                 break
@@ -272,7 +252,7 @@ jobs:
           echo "📦 Building embedded Android bundle for repack..."
           rm -rf dist
 
-          npx expo export:embed \
+          pnpm exec expo export:embed \
             --platform android \
             --entry-file index.js \
             --bundle-output dist/index.android.bundle \
@@ -297,7 +277,7 @@ jobs:
       - name: Validate Hermes + bundle compatibility before repack
         if: steps.apk-cache.outputs.cache-hit == 'true'
         shell: bash
-        run: .github/scripts/validate_hermes_bundle.sh android
+        run: node .github/scripts/validate_hermes_bundle.mjs android
 
       - name: Repack Android app artifact with embedded bundle
         if: steps.apk-cache.outputs.cache-hit == 'true'
@@ -308,9 +288,10 @@ jobs:
         run: |
           set -euo pipefail
 
-          RESOLVED_SDK_DIR="${ANDROID_SDK_DIR/#\$HOME/$HOME}"
+          RESOLVED_SDK_DIR="${ANDROID_SDK_DIR:-${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Android/Sdk}}}"
+          RESOLVED_SDK_DIR="${RESOLVED_SDK_DIR/#\$HOME/$HOME}"
           if [ ! -d "$RESOLVED_SDK_DIR/build-tools" ]; then
-            for candidate in "$HOME/Library/Android/sdk" "${ANDROID_HOME:-}" "${ANDROID_SDK_ROOT:-}"; do
+            for candidate in "${ANDROID_HOME:-}" "${ANDROID_SDK_ROOT:-}" "$HOME/Android/Sdk" "$HOME/Library/Android/sdk"; do
               if [ -n "$candidate" ] && [ -d "$candidate/build-tools" ]; then
                 RESOLVED_SDK_DIR="$candidate"
                 break
@@ -329,7 +310,7 @@ jobs:
 
           TEMP_OUTPUT="repacked_output"
           rm -rf "$TEMP_OUTPUT"
-          npx @expo/repack-app --platform "$PLATFORM" --source-app "$SOURCE_APP" --output "$TEMP_OUTPUT"
+          pnpm dlx @expo/repack-app --platform "$PLATFORM" --source-app "$SOURCE_APP" --output "$TEMP_OUTPUT"
           echo "Replacing $SOURCE_APP with repacked version..."
           rm -rf "$SOURCE_APP"
           mv "$TEMP_OUTPUT" "$SOURCE_APP"
@@ -360,6 +341,42 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
+      - name: Record emulator image version
+        id: emulator-image
+        run: echo "version=$ImageVersion" >> "$GITHUB_OUTPUT"
+
+      - name: Restore clean Android emulator snapshot
+        id: avd-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.android/avd
+          key: avd-v1-${{ runner.os }}-${{ runner.arch }}-${{ env.ANDROID_API_LEVEL }}-${{ env.ANDROID_TARGET }}-x86_64-${{ steps.emulator-image.outputs.version }}
+
+      - name: Create clean Android emulator snapshot
+        id: create-avd-snapshot
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        timeout-minutes: 10
+        with:
+          api-level: ${{ env.ANDROID_API_LEVEL }}
+          target: ${{ env.ANDROID_TARGET }}
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          script: echo "Clean emulator snapshot ready"
+
+      - name: Save clean Android emulator snapshot
+        if: steps.create-avd-snapshot.outcome == 'success'
+        uses: actions/cache/save@v6
+        with:
+          path: ~/.android/avd
+          key: ${{ steps.avd-cache.outputs.cache-primary-key }}
+
+      - name: Setup Maestro
+        shell: bash
+        run: node .github/scripts/setup_maestro.mjs "$MAESTRO_VERSION"
+
       - name: Run E2E tests
         id: e2e_android
         uses: reactivecircus/android-emulator-runner@v2
@@ -368,18 +385,19 @@ jobs:
           api-level: ${{ env.ANDROID_API_LEVEL }}
           target: ${{ env.ANDROID_TARGET }}
           arch: x86_64
-          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          script: .github/scripts/android_run_e2e.sh ${{ steps.find_apk.outputs.apk }} ${{ steps.find_apk.outputs.pkg }}
+          script: node .github/scripts/android_run_e2e.mjs "${{ steps.find_apk.outputs.apk }}" "${{ steps.find_apk.outputs.pkg }}"
 
       - name: Collect emulator logs on failure
         if: failure() && steps.e2e_android.outcome == 'failure'
         shell: bash
         run: |
           echo "Collecting emulator diagnostics..."
+          mkdir -p e2e-artifacts
           adb logcat -d > e2e-artifacts/emulator.log || true
           adb shell "getprop" > e2e-artifacts/device-props.txt || true
-          mkdir -p e2e-artifacts
           echo "✅ Logs collected"
 
       - name: Upload E2E artifacts on failure

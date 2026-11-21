@@ -33,7 +33,7 @@ async function main() {
   // Step 1: Generate SQLite migration
   console.log('\n📱 Step 1/2: Generating SQLite migration...');
   try {
-    await run('npx', ['drizzle-kit', 'generate', '--config=drizzle.config.sqlite.ts']);
+    await run('pnpm', ['exec', 'drizzle-kit', 'generate', '--config=drizzle.config.sqlite.ts']);
     console.log('✅ SQLite migration generated');
   } catch (error) {
     console.error('❌ Failed to generate SQLite migration:', error.message);
@@ -57,8 +57,8 @@ async function main() {
   console.log('   - Postgres: supabase/migrations/\n');
   console.log('🚀 Next steps:');
   console.log('   1. Review the generated SQL files');
-  console.log('   2. Test locally: npm start');
-  console.log('   3. Deploy to Supabase: npm run supabase:deploy');
+  console.log('   2. Test locally: pnpm start');
+  console.log('   3. Deploy to Supabase: pnpm run supabase:deploy');
   console.log('━'.repeat(70));
 }
 

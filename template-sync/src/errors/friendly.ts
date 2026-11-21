@@ -20,9 +20,6 @@ export type FriendlyError = {
   descriptionKey?: string;
   type: ToastType;
   originalMessage?: string;
-  // Legacy fields for callers/tests that still pass raw strings
-  title?: string;
-  description?: string;
 };
 
 type NormalizedError = {

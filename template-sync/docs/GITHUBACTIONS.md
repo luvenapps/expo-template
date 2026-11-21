@@ -94,7 +94,7 @@ Ordering summary:
 
 - Quality: `ubuntu-latest`
 - Android hosted: `ubuntu-latest`, timeout `90`
-- iOS hosted: `macos-latest`, timeout `90`
+- iOS hosted build: `macos-latest`, timeout `90`; E2E runs in a separate `macos-latest` job, timeout `45`
 - Web deploy hosted: `macos-latest`
 - Expo preview hosted: `macos-latest`
 - Auto Claude review hosted: `ubuntu-latest`
@@ -135,7 +135,7 @@ Reusable workflows accept `env_prefix` and map runtime values dynamically:
 
 Selected values are written into `$GITHUB_ENV` for downstream steps.
 
-The mapping is performed by `.github/scripts/map_runtime_env.sh` which is called early in every mobile workflow.
+The mapping is performed by `.github/scripts/map_runtime_env.mjs` which is called early in every mobile workflow.
 
 ---
 
@@ -148,17 +148,17 @@ The mapping is performed by `.github/scripts/map_runtime_env.sh` which is called
 
 It runs:
 
-- `npm run format:check`
-- `npm run lint`
-- `npm run test -- --coverage`
+- `pnpm run format:check`
+- `pnpm run lint`
+- `pnpm run test -- --coverage`
 - Codecov uploads
-- Expo dependency verification via `.github/scripts/verify_expo_deps.sh`
+- Expo dependency verification via `.github/scripts/verify_expo_deps.mjs`
 
 `Doctor` is intentionally retained only in `ci-quality.yml`. For same-repository PRs, a failure creates or updates one comment with a link to the CI run. A later passing run updates that comment to show the issue was resolved.
 
 GPG installation is skipped on self-hosted quality runs.
 
-**Expo dep check is centralised here.** It was previously duplicated in each mobile workflow; it now runs once in quality and mobile workflows no longer call `verify_expo_deps.sh` directly.
+**Expo dep check is centralised here.** It was previously duplicated in each mobile workflow; it now runs once in quality and mobile workflows no longer call `verify_expo_deps.mjs` directly.
 
 ---
 
@@ -185,17 +185,25 @@ To speed E2E while still testing the latest PR JavaScript, Android and iOS workf
 
 ### Repack commands
 
-Both platforms follow the same pattern and use `npx` only:
+Both platforms follow the same pattern and use pnpm commands:
 
 ```bash
-npx @expo/repack-app --platform android --source-app <located-apk-path> --output <located-apk-path>
-npx @expo/repack-app --platform ios --source-app <located-app-path> --output <temp-path>
+pnpm dlx @expo/repack-app --platform android --source-app <located-apk-path> --output <located-apk-path>
+pnpm dlx @expo/repack-app --platform ios --source-app <located-app-path> --output <temp-path>
 # then replace the located .app path with the repacked output
 ```
 
+Hosted iOS builds upload the current extracted app and Maestro flows as a short-lived artifact for the separate E2E job. The self-hosted iOS workflow keeps build and E2E in one job so it can continue using the existing local cache actions.
+
 ### Hermes bundle validation
 
-Before repack, `.github/scripts/validate_hermes_bundle.sh <platform>` checks that the cached native binary and the freshly-exported JS bundle are Hermes-compatible (accepts both `.js` and `.hbc` bytecode outputs). If validation fails the workflow aborts before touching the artifact.
+Before repack, `node .github/scripts/validate_hermes_bundle.mjs <platform>` checks that the cached native binary and the freshly-exported JS bundle are Hermes-compatible (accepts both `.js` and `.hbc` bytecode outputs). If validation fails the workflow aborts before touching the artifact.
+
+Native artifact and Gradle cache keys, paths, and cache actions remain the same across hosted and self-hosted workflows.
+
+### Hosted Android emulator snapshots
+
+Hosted Android CI caches the clean AVD directory at `~/.android/avd`, keyed by runner OS, architecture, image version, API level, and target. On a cache miss it creates and saves a clean x86_64 snapshot. Snapshot creation and E2E use matching emulator hardware options, including `-camera-back none`; E2E adds `-no-snapshot-save` so test state does not overwrite the cached snapshot.
 
 ---
 
@@ -292,7 +300,7 @@ LOCAL_CACHE_MAX_GB = 50
 - The PR comment now embeds a **scannable QR code** from `qr.expo.dev` linking to the published update.
 - The update group ID and runtime version are parsed from the `eas update --json` output.
 - Falls back to the original plain-text comment if JSON parsing fails.
-- `Basic checks` (`npm run type-check`) was removed from `expo-go-preview.yml`; type checking now runs in `ci-quality.yml`.
+- `Basic checks` (`pnpm run type-check`) was removed from `expo-go-preview.yml`; type checking now runs in `ci-quality.yml`.
 
 ---
 
@@ -309,21 +317,24 @@ The same pattern is applied in `expo-go-preview.yml`.
 
 ## 📜 Shared CI scripts
 
-All helper scripts live under `.github/scripts/` and are made executable via `chmod +x .github/scripts/*.sh` early in each workflow.
+Node CI helpers are invoked with the pinned Node runtime. Remaining shell helpers keep their executable file mode and run directly.
 
-| Script                          | Purpose                                                                         |
-| ------------------------------- | ------------------------------------------------------------------------------- |
-| `map_runtime_env.sh`            | Maps `env_prefix`-scoped vars/secrets into `$GITHUB_ENV`                        |
-| `validate_hermes_bundle.sh`     | Verifies Hermes compatibility between native binary and JS bundle before repack |
-| `verify_expo_deps.sh`           | Checks that installed Expo package versions match `expo-doctor` expectations    |
-| `compute_fingerprint.sh`        | Computes a deterministic cache key for the native build (Android or iOS)        |
-| `setup_fastlane.sh`             | Installs/verifies the pinned Fastlane version                                   |
-| `setup_maestro.sh`              | Installs/verifies the pinned Maestro version                                    |
-| `android_run_e2e.sh`            | Runs the Android E2E test suite via Maestro                                     |
-| `ios_boot_simulator.sh`         | Boots the target iOS simulator                                                  |
-| `ios_install_app.sh`            | Installs the `.app` on the booted simulator                                     |
-| `ios_run_e2e.sh`                | Runs the iOS E2E test suite via Maestro                                         |
-| `clean_selfhosted_workspace.sh` | Post-job workspace cleanup on self-hosted runners                               |
+| Script                           | Purpose                                                                         |
+| -------------------------------- | ------------------------------------------------------------------------------- |
+| `map_runtime_env.mjs`            | Maps `env_prefix`-scoped vars/secrets into `$GITHUB_ENV`                        |
+| `validate_hermes_bundle.mjs`     | Verifies Hermes compatibility between native binary and JS bundle before repack |
+| `verify_expo_deps.mjs`           | Checks that installed Expo package versions match `expo-doctor` expectations    |
+| `compute_fingerprint.mjs`        | Computes a deterministic cache key for the native build (Android or iOS)        |
+| `setup_fastlane.mjs`             | Installs/verifies the pinned Fastlane version                                   |
+| `setup_maestro.mjs`              | Installs/verifies the pinned Maestro version                                    |
+| `with_timeout.mjs`               | Bounds a command and terminates its process group on timeout                    |
+| `android_run_e2e.mjs`            | Installs once and runs Android Maestro tests with data reset on retries         |
+| `ios_boot_simulator.mjs`         | Boots only the selected iOS simulator                                           |
+| `ios_install_app.mjs`            | Removes any prior app and installs the `.app` on the selected simulator         |
+| `ios_run_e2e.mjs`                | Runs iOS Maestro tests against the selected simulator                           |
+| `clean_selfhosted_workspace.mjs` | Post-job workspace cleanup on self-hosted runners                               |
+
+`MISE_ENV=ci` loads tool version pins from `.mise.ci.toml`, including EAS CLI `18.0.3`, Fastlane `2.228.0`, and Maestro `2.0.6`. Renovate tracks the EAS CLI pin in that file.
 
 ---
 

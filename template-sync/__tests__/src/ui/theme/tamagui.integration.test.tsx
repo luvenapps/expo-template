@@ -18,11 +18,17 @@ describe('Tamagui theme integration', () => {
     expect(tamaguiConfig.fonts.heading.family).toBe(tamaguiConfig.fonts.body.family);
   });
 
-  it('uses the legacy default sizing recipe without reserved true tokens', () => {
-    expect(tamaguiConfig.sizing.default).toBe('legacy4');
-    expect(tamaguiConfig.sizing.sizes.legacy4.px.height).toBe(14);
+  it('uses the default sizing recipe without reserved true tokens', () => {
+    expect(tamaguiConfig.sizing.default).toBe('md');
+    expect(tamaguiConfig.sizing.sizes.md.px.height).toBe(14);
     expect(tamaguiConfig.tokens.space).not.toHaveProperty('true');
     expect(tamaguiConfig.tokens.size).not.toHaveProperty('true');
+  });
+
+  it('registers semantic settings and overlay colors as shared tokens', () => {
+    expect(tamaguiConfig.tokens.color.settingsTheme.val).toBe('#5E5CE6');
+    expect(tamaguiConfig.tokens.color.settingsPrivacy.val).toBe('#30B0C7');
+    expect(tamaguiConfig.tokens.color.overlayScrim.val).toBe('rgba(0, 0, 0, 0.2)');
   });
 
   it('preserves the action button geometry and accent', async () => {
@@ -57,14 +63,14 @@ describe('Tamagui theme integration', () => {
       <SafeAreaProvider initialMetrics={metrics}>
         <TamaguiProvider config={tamaguiConfig} defaultTheme="light">
           <RadioGroup value="first" onValueChange={() => {}}>
-            <RadioGroup.Item testID="radio" value="first" size="legacy5">
+            <RadioGroup.Item testID="radio" value="first" size="lg">
               <RadioGroup.Indicator />
             </RadioGroup.Item>
           </RadioGroup>
           <Switch
             testID="switch"
-            size="legacy7"
-            width={56}
+            size="xxl"
+            width="switchTrack"
             checked={false}
             onCheckedChange={() => {}}
           >

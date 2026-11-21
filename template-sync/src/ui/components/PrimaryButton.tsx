@@ -6,12 +6,7 @@ export type PrimaryButtonProps = ComponentProps<typeof Button> & {
   textProps?: TextProps;
 };
 
-export function PrimaryButton({
-  size = 'legacy4',
-  textProps,
-  children,
-  ...rest
-}: PrimaryButtonProps) {
+export function PrimaryButton({ size = 'md', textProps, children, ...rest }: PrimaryButtonProps) {
   let mergedTextProps: TextProps = { textTransform: 'capitalize' };
   if (textProps) {
     mergedTextProps = { ...mergedTextProps, ...textProps };
@@ -23,9 +18,9 @@ export function PrimaryButton({
       width="100%"
       backgroundColor="accent-color hover:accentColorHover press:accentColorHover disabled:colorMuted"
       color="white"
-      fontWeight="400"
-      minHeight={48}
-      outlineWidth="focus:2px"
+      fontWeight="2"
+      minHeight="8"
+      outlineWidth="focus:focusRing"
       outlineColor="focus:outline-color"
       outlineStyle="focus:solid"
       opacity="disabled:0.7"

@@ -436,7 +436,7 @@ sequenceDiagram
 - ❌ More maintenance (two schemas)
 - ❌ Must keep in sync manually
 
-**Mitigation**: Automated checks in `npm start` via [scripts/troubleshoot.mjs](../scripts/troubleshoot.mjs)
+**Mitigation**: Automated checks in `pnpm start` via [scripts/troubleshoot.mjs](../scripts/troubleshoot.mjs)
 
 ### 3. **Outbox Pattern for Reliable Sync**
 
@@ -861,7 +861,7 @@ const habits = await db
 
 ### Development & Tooling
 
-- **Package Manager**: npm
+- **Package Manager**: pnpm 12.18.0
 - **Linting**: ESLint
 - **Formatting**: Prettier
 - **Testing**: Jest + React Native Testing Library

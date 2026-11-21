@@ -1,58 +1,30 @@
 import { createInterFont } from '@tamagui/font-inter';
 import { createFont, createTamagui, createTokens } from 'tamagui';
 import { tamaguiColorTokens } from './src/ui/theme/palette';
+import {
+  radiusTokenValues,
+  sizeTokenValues,
+  spaceTokenValues,
+  zIndexTokenValues,
+} from './src/ui/theme/tokenValues';
 
 const colorTokens = {
   ...tamaguiColorTokens,
+  overlayScrim: 'rgba(0, 0, 0, 0.2)',
   shadowColorLight: 'rgba(15, 23, 42, 0.25)',
   shadowColorDark: 'rgba(0, 0, 0, 0.65)',
 } as typeof tamaguiColorTokens & {
+  overlayScrim: string;
   shadowColorLight: string;
   shadowColorDark: string;
 };
 
 const tokens = createTokens({
   color: colorTokens,
-  space: {
-    0: 0,
-    1: 4,
-    2: 8,
-    3: 12,
-    4: 16,
-    5: 24,
-    6: 32,
-    7: 40,
-    8: 48,
-  },
-  size: {
-    0: 0,
-    1: 4,
-    2: 8,
-    3: 12,
-    4: 16,
-    5: 24,
-    6: 32,
-    7: 40,
-    8: 48,
-  },
-  radius: {
-    0: 0,
-    1: 4,
-    2: 8,
-    3: 12,
-    4: 16,
-    5: 24,
-    6: 32,
-    7: 40,
-    8: 48,
-  },
-  zIndex: {
-    0: 0,
-    1: 1,
-    2: 10,
-    3: 20,
-    4: 30,
-  },
+  space: spaceTokenValues,
+  size: sizeTokenValues,
+  radius: radiusTokenValues,
+  zIndex: zIndexTokenValues,
 });
 
 const interFont = createInterFont();
@@ -65,6 +37,9 @@ const bodyFont = createFont({
     3: 16,
     4: 18,
     5: 24,
+    caption: 15,
+    title: 28,
+    hero: 40,
     sm: 16,
   },
   lineHeight: {
@@ -75,6 +50,7 @@ const bodyFont = createFont({
     5: 32,
     6: 40,
     7: 48,
+    display: 60,
     sm: 24,
   },
   weight: {
@@ -142,11 +118,11 @@ const themes = {
   },
 };
 
-// These recipes preserve the old numeric control sizes using the existing token scale.
+// These semantic recipes preserve the control geometry used before Tamagui v3.
 const sizing = {
-  default: 'legacy4',
+  default: 'md',
   sizes: {
-    legacy2: {
+    xs: {
       fontSize: '2',
       controlFontSize: '2',
       paddingInline: '2',
@@ -155,7 +131,7 @@ const sizing = {
       radius: '2',
       px: { height: 6, icon: 14, square: 4 },
     },
-    legacy4: {
+    md: {
       fontSize: '4',
       controlFontSize: '4',
       paddingInline: '4',
@@ -164,7 +140,7 @@ const sizing = {
       radius: '4',
       px: { height: 14, icon: 18, square: 8 },
     },
-    legacy5: {
+    lg: {
       fontSize: '5',
       controlFontSize: '5',
       paddingInline: '5',
@@ -173,7 +149,7 @@ const sizing = {
       radius: '5',
       px: { height: 22, icon: 24, square: 12 },
     },
-    legacy6: {
+    xl: {
       fontSize: '5',
       controlFontSize: '5',
       paddingInline: '6',
@@ -182,7 +158,7 @@ const sizing = {
       radius: '6',
       px: { height: 30, icon: 12, square: 16 },
     },
-    legacy7: {
+    xxl: {
       fontSize: '5',
       controlFontSize: '5',
       paddingInline: '7',

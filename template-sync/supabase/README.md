@@ -42,7 +42,7 @@ export const DOMAIN = {
 ### 2. Generate Your First Migration
 
 ```bash
-npm run db:migrate
+pnpm run db:migrate
 ```
 
 This will:
@@ -65,13 +65,13 @@ Open the generated `.sql` file and verify:
 **Local development:**
 
 ```bash
-npm run supabase:dev
+pnpm run supabase:dev
 ```
 
 **Production:**
 
 ```bash
-npm run supabase:deploy
+pnpm run supabase:deploy
 ```
 
 ## Subsequent Migrations
@@ -79,7 +79,7 @@ npm run supabase:deploy
 When you change your database schema:
 
 1. Modify the schema files in `src/db/postgres/schema.ts`
-2. Run `npm run db:migrate`
+2. Run `pnpm run db:migrate`
 3. A new migration file will be created (e.g., `0001_steep_hulk.sql`)
 4. Review and apply it
 

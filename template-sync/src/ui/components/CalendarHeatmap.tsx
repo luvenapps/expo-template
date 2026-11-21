@@ -33,19 +33,19 @@ export function CalendarHeatmap({
   legendTestID,
 }: CalendarHeatmapProps) {
   return (
-    <YStack gap="$2" testID={testID}>
-      <XStack gap="$2">
+    <YStack gap="2" testID={testID}>
+      <XStack gap="2">
         {Array.from({ length: weeks }).map((_, weekIndex) => (
-          <YStack key={`week-${weekIndex}`} gap="$2">
+          <YStack key={`week-${weekIndex}`} gap="2">
             {dayLabels.map((_, dayIndex) => {
               const intensity = values?.[weekIndex]?.[dayIndex] ?? 0;
               const colorIndex = Math.min(COLOR_TOKENS.length - 1, Math.max(0, intensity));
               return (
                 <YStack
                   key={`cell-${weekIndex}-${dayIndex}`}
-                  width={16}
-                  height={16}
-                  borderRadius={4}
+                  width="4"
+                  height="4"
+                  borderRadius="1"
                   backgroundColor={COLOR_TOKENS[colorIndex]}
                   testID={getCellTestID?.(weekIndex, dayIndex)}
                 />
@@ -59,9 +59,9 @@ export function CalendarHeatmap({
           {dayLabels.join(' ')}
         </CaptionText>
         {legend ?? (
-          <XStack gap="$2" alignItems="center" testID={legendTestID}>
+          <XStack gap="2" alignItems="center" testID={legendTestID}>
             {COLOR_TOKENS.map((color) => (
-              <YStack key={color} width={16} height={8} borderRadius={2} backgroundColor={color} />
+              <YStack key={color} width="4" height="2" borderRadius="dot" backgroundColor={color} />
             ))}
             <LabelText fontSize="2">Less • More</LabelText>
           </XStack>

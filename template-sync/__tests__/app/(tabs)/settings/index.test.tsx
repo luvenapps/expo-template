@@ -29,8 +29,8 @@ jest.mock('@/ui/theme/ThemeProvider', () => {
   const { themePalettes } = jest.requireActual('@/ui/theme/palette');
   return {
     useThemeContext: jest.fn(() => ({
-      theme: 'system',
-      setTheme: jest.fn(),
+      preference: 'system',
+      setPreference: jest.fn(),
       resolvedTheme: 'dark',
       palette: {
         background: themePalettes.dark.background,
@@ -44,8 +44,8 @@ jest.mock('@/ui/theme/ThemeProvider', () => {
       },
     })),
     useOptionalThemeContext: jest.fn(() => ({
-      theme: 'system',
-      setTheme: jest.fn(),
+      preference: 'system',
+      setPreference: jest.fn(),
       resolvedTheme: 'dark',
       palette: {
         background: themePalettes.dark.background,
@@ -365,8 +365,8 @@ describe('SettingsScreen', () => {
     mockUseFeatureFlag.mockReturnValue({ value: '' });
     (globalThis as typeof globalThis & { __DEV__?: boolean }).__DEV__ = true;
     mockedUseThemeContext.mockReturnValue({
-      theme: 'system',
-      setTheme: jest.fn(),
+      preference: 'system',
+      setPreference: jest.fn(),
       resolvedTheme: 'dark',
       palette: themePalettes.dark,
     });
@@ -418,8 +418,8 @@ describe('SettingsScreen', () => {
 
     it('should display light theme when selected', async () => {
       mockedUseThemeContext.mockReturnValue({
-        theme: 'light',
-        setTheme: jest.fn(),
+        preference: 'light',
+        setPreference: jest.fn(),
         resolvedTheme: 'light',
         palette: themePalettes.light,
       });
@@ -430,8 +430,8 @@ describe('SettingsScreen', () => {
 
     it('should display dark theme when selected', async () => {
       mockedUseThemeContext.mockReturnValue({
-        theme: 'dark',
-        setTheme: jest.fn(),
+        preference: 'dark',
+        setPreference: jest.fn(),
         resolvedTheme: 'dark',
         palette: themePalettes.dark,
       });
@@ -496,7 +496,10 @@ describe('SettingsScreen', () => {
       );
 
       const rowGroups = findAllByType(rootValue!, 'View').filter(
-        (node) => node.props.style?.flexDirection === 'row',
+        (node) =>
+          node.props.padding === '4' ||
+          node.props.maxWidth === '55%' ||
+          (node.props.flexShrink === 0 && node.props.gap === '2'),
       );
       const title = findAllByType(rootValue!, 'Text').find((node) => node.props.children === 'Row');
       const value = findAllByType(rootValue!, 'Text').find(
@@ -504,22 +507,26 @@ describe('SettingsScreen', () => {
       );
 
       expect(rowGroups).toHaveLength(3);
-      expect(rowGroups[0]?.props.style).toMatchObject({
+      expect(rowGroups[0]?.props).toMatchObject({
         justifyContent: 'space-between',
-        padding: 16,
+        padding: '4',
+        gap: '2',
       });
-      expect(rowGroups[2]?.props.style).toMatchObject({ maxWidth: '55%' });
-      expect(title?.props.fontSize).toBe('$4');
-      expect(title?.props.style).toMatchObject({ fontSize: 16, fontFamily: 'Arial' });
-      expect(value?.props.style).toMatchObject({
-        fontSize: 16,
-        fontFamily: 'Arial',
-        minWidth: 0,
+      expect(rowGroups[2]?.props.maxWidth).toBe('55%');
+      expect(title?.props.fontSize).toBe('3');
+      expect(title?.props.fontFamily).toBeUndefined();
+      expect(title?.props.style).toMatchObject({
         overflow: 'hidden',
         textOverflow: 'ellipsis',
         whiteSpace: 'nowrap',
       });
-      expect(value?.props.minWidth).toBe(0);
+      expect(value?.props.style).toMatchObject({
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+      });
+      expect(value?.props.fontFamily).toBeUndefined();
+      expect(value?.props.minWidth).toBe('0');
     });
 
     it('uses the default icon background when none is provided', async () => {
@@ -528,8 +535,8 @@ describe('SettingsScreen', () => {
       );
 
       const iconWrapper = findAllByType(rootValue!, 'View').find(
-        (node: { props: { width?: number; height?: number } }) => {
-          return node.props.width === 32 && node.props.height === 32;
+        (node: { props: { width?: string; height?: string } }) => {
+          return node.props.width === '6' && node.props.height === '6';
         },
       );
 
@@ -806,11 +813,11 @@ describe('SettingsScreen', () => {
         (node) => node.props.children === 'Long email address',
       );
       expect(value?.props.style).toMatchObject({
-        minWidth: 0,
         overflow: 'hidden',
         textOverflow: 'ellipsis',
         whiteSpace: 'nowrap',
       });
+      expect(value?.props.minWidth).toBe('0');
     });
 
     it('renders MarqueeTextNative on native platforms', async () => {
@@ -1287,8 +1294,8 @@ describe('SettingsScreen', () => {
   describe('Icon Color Computation', () => {
     it('computes correct icon styles in light mode', async () => {
       mockedUseThemeContext.mockReturnValue({
-        theme: 'light',
-        setTheme: jest.fn(),
+        preference: 'light',
+        setPreference: jest.fn(),
         resolvedTheme: 'light',
         palette: themePalettes.light,
       });

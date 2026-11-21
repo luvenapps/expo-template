@@ -1,7 +1,7 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
-  "enabledManagers": ["npm", "github-actions", "mise"],
+  "enabledManagers": ["npm", "github-actions", "mise", "custom.regex"],
   "timezone": "America/New_York",
   "schedule": ["after 3am and before 5am"],
   "dependencyDashboard": true,
@@ -10,13 +10,19 @@
   },
   "packageRules": [
     {
+      "description": "Require a three-day age and release timestamp for npm updates",
+      "matchDatasources": ["npm"],
+      "minimumReleaseAge": "3 days",
+      "minimumReleaseAgeBehaviour": "timestamp-required"
+    },
+    {
       "groupName": "expo",
-      "description": "Only update the expo package itself — run npx expo install --fix after merging",
+      "description": "Only update the expo package itself — run pnpm exec expo install --fix after merging",
       "matchPackageNames": ["expo"]
     },
     {
       "enabled": false,
-      "description": "Ignore Expo SDK-coupled packages and core React/TypeScript test stack — update manually with npx expo install --fix",
+      "description": "Ignore Expo SDK-coupled packages and core React/TypeScript test stack — update manually with pnpm exec expo install --fix",
       "matchPackageNames": [
         "expo-apple-authentication",
         "expo-application",
@@ -97,9 +103,18 @@
     },
     {
       "groupName": "development-tooling",
-      "description": "Batch patch and minor GitHub Actions and mise updates with development dependencies",
-      "matchManagers": ["github-actions", "mise"],
+      "description": "Batch patch and minor GitHub Actions, mise, and EAS CLI updates with development dependencies",
+      "matchManagers": ["github-actions", "mise", "custom.regex"],
       "matchUpdateTypes": ["patch", "minor"]
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.mise\\.ci\\.toml$/"],
+      "matchStrings": ["EAS_CLI_VERSION\\s*=\\s*\"(?<currentValue>[^\"]+)\""],
+      "depNameTemplate": "eas-cli",
+      "datasourceTemplate": "npm"
     }
   ],
   "prConcurrentLimit": 2

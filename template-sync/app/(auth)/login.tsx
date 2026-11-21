@@ -13,6 +13,8 @@ import {
   ToastContainer,
   useToast,
 } from '@/ui';
+import { shadows } from '@/ui/theme/shadows';
+import { spaceTokenValues } from '@/ui/theme/tokenValues';
 import type { NavigationProp, ParamListBase } from '@react-navigation/native';
 import { Eye, EyeOff } from '@/ui/icons';
 import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
@@ -95,15 +97,15 @@ export default function LoginScreen() {
       if (
         rawError &&
         typeof rawError === 'object' &&
-        ('descriptionKey' in rawError || 'titleKey' in rawError || 'description' in rawError)
+        ('descriptionKey' in rawError || 'titleKey' in rawError || 'originalMessage' in rawError)
       ) {
         const descriptionKey = (rawError as { descriptionKey?: string }).descriptionKey;
         const titleKey = (rawError as { titleKey?: string }).titleKey;
-        const description = (rawError as { description?: string }).description;
+        const originalMessage = (rawError as { originalMessage?: string }).originalMessage;
 
         const friendlyMessage =
-          description ??
           (descriptionKey ? t(descriptionKey) : undefined) ??
+          originalMessage ??
           (titleKey ? t(titleKey) : undefined) ??
           t('auth.errorUnknown');
         setError(friendlyMessage);
@@ -116,9 +118,8 @@ export default function LoginScreen() {
       });
 
       const friendlyMessage =
-        friendly.description ??
         (friendly.descriptionKey ? t(friendly.descriptionKey) : undefined) ??
-        friendly.title ??
+        friendly.originalMessage ??
         (friendly.titleKey ? t(friendly.titleKey) : t('auth.errorUnknown'));
 
       setError(friendlyMessage);
@@ -180,14 +181,14 @@ export default function LoginScreen() {
       hoverBackgroundColor?: string;
       hoverBorderColor?: string;
       hoverTextColor?: string;
-      buttonHeight?: number;
-      fontSize?: number;
-      iconSize?: number;
-      minWidth?: number;
-      horizontalPadding?: number;
-      titlePaddingEnd?: number;
-      iconPaddingTop?: number;
-      iconPaddingBottom?: number;
+      buttonHeight?: string;
+      fontSize?: string;
+      iconSize?: string;
+      minWidth?: string;
+      horizontalPadding?: string;
+      titlePaddingEnd?: string;
+      iconPaddingTop?: string;
+      iconPaddingBottom?: string;
     };
 
     const buttons: OAuthButton[] = [];
@@ -228,14 +229,14 @@ export default function LoginScreen() {
         ),
         variant: 'apple',
         ...(isDarkMode ? appleDark : appleLight),
-        buttonHeight: 40,
-        fontSize: 16,
-        iconSize: 18,
-        minWidth: 140,
-        horizontalPadding: 12,
-        titlePaddingEnd: 16,
-        iconPaddingTop: 2,
-        iconPaddingBottom: 4,
+        buttonHeight: '7',
+        fontSize: '3',
+        iconSize: 'oauthIcon',
+        minWidth: 'oauthMinWidth',
+        horizontalPadding: '3',
+        titlePaddingEnd: '4',
+        iconPaddingTop: 'oauthIconInset',
+        iconPaddingBottom: '1',
       });
     }
 
@@ -283,14 +284,14 @@ export default function LoginScreen() {
       variant: 'google',
       disabled: false,
       ...googleStyles,
-      buttonHeight: 40,
-      fontSize: 16,
-      iconSize: 18,
-      minWidth: 140,
-      horizontalPadding: 12,
-      titlePaddingEnd: 16,
-      iconPaddingTop: 0,
-      iconPaddingBottom: 0,
+      buttonHeight: '7',
+      fontSize: '3',
+      iconSize: 'oauthIcon',
+      minWidth: 'oauthMinWidth',
+      horizontalPadding: '3',
+      titlePaddingEnd: '4',
+      iconPaddingTop: '0',
+      iconPaddingBottom: '0',
     });
 
     return buttons;
@@ -305,20 +306,20 @@ export default function LoginScreen() {
       }}
     >
       <Card
-        borderWidth={1}
+        borderWidth="hairline"
         borderColor="border-color"
-        borderRadius={12}
+        borderRadius="3"
         shadowColor="shadowColor"
-        shadowOffset={{ width: 0, height: 2 }}
+        shadowOffset={{ width: 0, height: spaceTokenValues.shadowOffset }}
         shadowOpacity={0.15}
-        shadowRadius={4}
+        shadowRadius="1"
         padding="6"
         width="100%"
-        maxWidth={440}
+        maxWidth="authContent"
         backgroundColor="backgroundStrong"
       >
         <YStack gap="5" width="100%">
-          <YStack gap="$2" alignItems="center">
+          <YStack gap="2" alignItems="center">
             <TitleText textAlign="center">{t('auth.loginTitle')}</TitleText>
             <SubtitleText textAlign="center">{t('auth.loginSubtitle')}</SubtitleText>
           </YStack>
@@ -350,16 +351,16 @@ export default function LoginScreen() {
                   testID={`oauth-${provider}-button`}
                   width="100%"
                   minWidth={minWidth}
-                  height={buttonHeight ?? 40}
+                  height={buttonHeight ?? '7'}
                   alignItems="center"
                   justifyContent="center"
-                  paddingHorizontal={horizontalPadding ?? 12}
+                  paddingHorizontal={horizontalPadding ?? '3'}
                   backgroundColor={{
                     default: backgroundColor ?? 'surface',
                     hover: hoverBackgroundColor ?? backgroundColor ?? 'surface',
                   }}
                   borderRadius="2"
-                  borderWidth={1}
+                  borderWidth="hairline"
                   borderColor={{
                     default: borderColor ?? 'border-color',
                     hover: hoverBorderColor ?? borderColor ?? '#1F1F1F',
@@ -368,7 +369,7 @@ export default function LoginScreen() {
                     default: textColor ?? 'color',
                     hover: hoverTextColor ?? textColor ?? 'color',
                   }}
-                  boxShadow={{ hover: '0 1px 3px rgba(60,64,67,0.3)' }}
+                  boxShadow={{ hover: shadows.oauthButtonHover }}
                   opacity="press:0.9 disabled:0.5"
                   disabled={disabled || isLoading}
                   aria-label={`oauth-${provider}`}
@@ -379,17 +380,17 @@ export default function LoginScreen() {
                   <XStack
                     alignItems="center"
                     justifyContent="center"
-                    gap="$2"
+                    gap="2"
                     width="100%"
-                    height={buttonHeight ?? 40}
+                    height={buttonHeight ?? '7'}
                   >
                     <View
-                      width={iconSize ?? 20}
-                      height={buttonHeight ?? 40}
+                      width={iconSize ?? 'oauthIcon'}
+                      height={buttonHeight ?? '7'}
                       alignItems="center"
                       justifyContent="center"
-                      paddingTop={iconPaddingTop ?? 0}
-                      paddingBottom={iconPaddingBottom ?? 0}
+                      paddingTop={iconPaddingTop ?? '0'}
+                      paddingBottom={iconPaddingBottom ?? '0'}
                     >
                       {icon}
                     </View>
@@ -399,11 +400,11 @@ export default function LoginScreen() {
                         default: textColor ?? 'color',
                         hover: hoverTextColor ?? textColor ?? 'color',
                       }}
-                      fontWeight="600"
-                      fontSize={fontSize ?? 16}
-                      lineHeight="20px"
+                      fontWeight="4"
+                      fontSize={fontSize ?? '3'}
+                      lineHeight="2"
                       flexShrink={1}
-                      paddingRight={titlePaddingEnd ?? 16}
+                      paddingRight={titlePaddingEnd ?? '4'}
                     >
                       {label}
                     </BodyText>
@@ -412,7 +413,7 @@ export default function LoginScreen() {
               ),
             )}
             <XStack
-              marginTop={Platform.OS === 'web' ? 0 : 10}
+              marginTop={Platform.OS === 'web' ? '0' : 'authNativeGap'}
               alignItems="center"
               gap="3"
               accessible
@@ -420,7 +421,7 @@ export default function LoginScreen() {
             >
               <View
                 flex={1}
-                height={1}
+                height="hairline"
                 backgroundColor="colorMuted"
                 aria-hidden
                 accessibilityElementsHidden
@@ -429,7 +430,7 @@ export default function LoginScreen() {
               <CaptionText color="colorMuted">{t('auth.oauthDivider')}</CaptionText>
               <View
                 flex={1}
-                height={1}
+                height="hairline"
                 backgroundColor="colorMuted"
                 aria-hidden
                 accessibilityElementsHidden
@@ -438,7 +439,7 @@ export default function LoginScreen() {
             </XStack>
           </YStack>
 
-          <Form onSubmit={handleSubmit} width="100%" gap="$4">
+          <Form onSubmit={handleSubmit} width="100%" gap="4">
             <FormField
               testID="email-field"
               labelTestID="email-label"
@@ -491,7 +492,7 @@ export default function LoginScreen() {
               testID="forgot-password-link"
               textAlign="right"
               color="accent-color"
-              fontWeight="600"
+              fontWeight="4"
               onPress={() => router.push('/(auth)/forgot-password')}
               opacity="hover:0.8"
               cursor="hover:pointer"
@@ -512,13 +513,13 @@ export default function LoginScreen() {
             </Form.Trigger>
           </Form>
 
-          <Separator marginTop={`${Platform.OS === 'web' ? '0' : '4'}`}></Separator>
+          <Separator marginTop={Platform.OS === 'web' ? '0' : '4'}></Separator>
 
           <YStack
-            gap="$2"
+            gap="2"
             width="100%"
             alignItems="center"
-            marginBottom={Platform.OS === 'web' ? -10 : '4'}
+            marginBottom={Platform.OS === 'web' ? 'authFormOverlap' : '4'}
           >
             <CaptionText color="colorMuted">{t('auth.noAccountPrompt')}</CaptionText>
             <PrimaryButton
@@ -540,13 +541,13 @@ export default function LoginScreen() {
       {showRedirectSpinner ? (
         <View
           position="absolute"
-          top={0}
-          right={0}
-          bottom={0}
-          left={0}
+          top="0"
+          right="0"
+          bottom="0"
+          left="0"
           alignItems="center"
           justifyContent="center"
-          backgroundColor="rgba(0,0,0,0.2)"
+          backgroundColor="overlayScrim"
           style={{ pointerEvents: 'auto' }}
         >
           <Spinner size="large" color="accent-color" />

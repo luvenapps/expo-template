@@ -26,8 +26,6 @@ jest.mock('@/auth/client', () => ({
 jest.mock('@/errors/friendly', () => ({
   resolveFriendlyError: jest.fn(() => ({
     code: 'unknown',
-    title: 't',
-    description: 'd',
     type: 'error',
     originalMessage: 'orig',
   })),
@@ -126,8 +124,6 @@ describe('auth/service', () => {
     resolveFriendlyError.mockReset();
     resolveFriendlyError.mockImplementation(() => ({
       code: 'unknown',
-      title: 't',
-      description: 'd',
       type: 'error',
       originalMessage: 'orig',
     }));
@@ -179,7 +175,7 @@ describe('auth/service', () => {
     );
     resolveFriendlyError.mockReturnValueOnce({
       code: 'auth.apple.no-token',
-      description: 'Missing identity token',
+      originalMessage: 'Missing identity token',
       type: 'error',
     });
 
@@ -210,7 +206,7 @@ describe('auth/service', () => {
     });
     resolveFriendlyError.mockReturnValueOnce({
       code: 'auth.invalid-credentials',
-      description: 'Invalid Apple token',
+      originalMessage: 'Invalid Apple token',
       type: 'error',
     });
 
@@ -229,7 +225,7 @@ describe('auth/service', () => {
     );
     resolveFriendlyError.mockReturnValueOnce({
       code: 'auth.canceled',
-      description: 'Sign in was canceled',
+      originalMessage: 'Sign in was canceled',
       type: 'error',
     });
 
@@ -258,7 +254,7 @@ describe('auth/service', () => {
     expect(supabase.auth.signInWithOAuth).toHaveBeenCalled();
   });
 
-  it('uses title fallback when description is missing for Apple token error', async () => {
+  it('uses titleKey fallback when originalMessage is missing for Apple token error', async () => {
     Object.defineProperty(Platform, 'OS', { value: 'ios', writable: true });
 
     appleAuth.isAvailableAsync.mockImplementationOnce(() => Promise.resolve(true));
@@ -271,14 +267,14 @@ describe('auth/service', () => {
     );
     resolveFriendlyError.mockReturnValueOnce({
       code: 'auth.apple.no-token',
-      title: 'Token Missing',
+      titleKey: 'errors.auth.failed',
       type: 'error',
     });
 
     const result = await signInWithOAuth('apple');
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe('Token Missing');
+    expect(result.error).toBe('errors.auth.failed');
   });
 
   it('uses descriptionKey fallback for Apple ID exchange error', async () => {
@@ -415,7 +411,7 @@ describe('auth/service', () => {
     supabase.auth.signOut.mockResolvedValueOnce({ error: new Error('signout') });
     resolveFriendlyError.mockReturnValueOnce({
       code: 'unknown',
-      description: 'signout fail',
+      originalMessage: 'signout fail',
       type: 'error',
     });
     const result = await signOut();
@@ -433,7 +429,7 @@ describe('auth/service', () => {
     supabase.auth.signUp.mockResolvedValueOnce({ error: new Error('signup') });
     resolveFriendlyError.mockReturnValueOnce({
       code: 'unknown',
-      description: 'signup fail',
+      originalMessage: 'signup fail',
       type: 'error',
     });
     const result = await signUpWithEmail('a@b.com', 'pw');
@@ -445,7 +441,7 @@ describe('auth/service', () => {
     supabase.auth.resetPasswordForEmail.mockResolvedValueOnce({ error: new Error('reset') });
     resolveFriendlyError.mockReturnValueOnce({
       code: 'unknown',
-      description: 'reset fail',
+      originalMessage: 'reset fail',
       type: 'error',
     });
     const result = await sendPasswordReset('a@b.com');
@@ -484,7 +480,7 @@ describe('auth/service', () => {
     });
     resolveFriendlyError.mockReturnValueOnce({
       code: 'auth.oauth.browser',
-      description: 'oauth friendly',
+      originalMessage: 'oauth friendly',
       type: 'error',
     });
     const result = await signInWithOAuth('google');
@@ -559,7 +555,7 @@ describe('auth/service', () => {
       });
       resolveFriendlyError.mockReturnValueOnce({
         code: 'auth.server-error',
-        description: 'Server error occurred',
+        originalMessage: 'Server error occurred',
         type: 'error',
       });
       const result = await signOut();
@@ -573,7 +569,7 @@ describe('auth/service', () => {
       });
       resolveFriendlyError.mockReturnValueOnce({
         code: 'auth.unknown',
-        description: 'Unknown error',
+        originalMessage: 'Unknown error',
         type: 'error',
       });
       const result = await signOut();
@@ -595,7 +591,7 @@ describe('auth/service', () => {
       });
       resolveFriendlyError.mockReturnValueOnce({
         code: 'auth.oauth.missing-tokens',
-        description: 'Missing tokens',
+        originalMessage: 'Missing tokens',
         type: 'error',
       });
 
@@ -617,7 +613,7 @@ describe('auth/service', () => {
       });
       resolveFriendlyError.mockReturnValueOnce({
         code: 'auth.oauth.missing-tokens',
-        description: 'Missing tokens',
+        originalMessage: 'Missing tokens',
         type: 'error',
       });
 
@@ -664,7 +660,7 @@ describe('auth/service', () => {
       });
       resolveFriendlyError.mockReturnValueOnce({
         code: 'auth.invalid-session',
-        description: 'Session is invalid',
+        originalMessage: 'Session is invalid',
         type: 'error',
       });
 
@@ -711,7 +707,7 @@ describe('auth/service', () => {
       });
       resolveFriendlyError.mockReturnValueOnce({
         code: 'auth.invalid-code',
-        description: 'Code is invalid',
+        originalMessage: 'Code is invalid',
         type: 'error',
       });
 
@@ -732,7 +728,7 @@ describe('auth/service', () => {
       });
       resolveFriendlyError.mockReturnValueOnce({
         code: 'auth.oauth.canceled',
-        description: 'User canceled',
+        originalMessage: 'User canceled',
         type: 'error',
       });
 
@@ -757,6 +753,12 @@ describe('auth/service', () => {
       expect(result.success).toBe(false);
       expect(result.error).toBe('Browser failed');
       expect(result.code).toBe('auth.oauth.browser');
+      expect(result.friendlyError).toMatchObject({
+        titleKey: 'errors.auth.oauthBrowser.title',
+        originalMessage: 'Browser failed',
+      });
+      expect(result.friendlyError).not.toHaveProperty('title');
+      expect(result.friendlyError).not.toHaveProperty('description');
     });
 
     it('handles OAuth browser exception with non-Error object', async () => {

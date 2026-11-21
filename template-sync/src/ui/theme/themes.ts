@@ -2,7 +2,7 @@ import type { ThemeColorSet, ThemeVariant } from './palette';
 
 /**
  * Collection of predefined theme color sets
- * Change the active theme by updating the import in palette.ts
+ * Change the active palette by updating activePaletteName in palette.ts.
  */
 
 // Current/Default theme (Tailwind-inspired blue)
@@ -411,4 +411,4 @@ export const themes = {
   coinbase: coinbaseTheme,
 } as const;
 
-export type ThemeName = keyof typeof themes;
+export type PaletteName = keyof typeof themes;

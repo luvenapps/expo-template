@@ -5,7 +5,16 @@ import { resolve } from 'node:path';
 
 const appRoot = process.env.INIT_CWD || process.env.PWD || process.cwd();
 const requireFromApp = createRequire(resolve(appRoot, 'package.json'));
-const xcode = requireFromApp('xcode');
+let xcode;
+try {
+  xcode = requireFromApp('xcode');
+} catch (error) {
+  if (error?.code !== 'MODULE_NOT_FOUND') throw error;
+  // pnpm keeps xcode nested under Expo config plugins, not at the app root.
+  const requireFromExpoCli = createRequire(requireFromApp.resolve('@expo/cli'));
+  const configPluginsPath = requireFromExpoCli.resolve('@expo/config-plugins');
+  xcode = createRequire(configPluginsPath)('xcode');
+}
 
 const projects = globSync('ios/*.xcodeproj/project.pbxproj');
 if (projects.length === 0)

@@ -25,7 +25,7 @@ export function StatCard({
 }: StatCardProps) {
   return (
     <Card
-      borderWidth={1}
+      borderWidth="hairline"
       borderColor="border-color"
       padding="3"
       backgroundColor="surface"
@@ -33,8 +33,8 @@ export function StatCard({
       minWidth={minWidth}
       maxWidth={maxWidth}
     >
-      <YStack gap="$2">
-        <XStack alignItems="center" gap="$2">
+      <YStack gap="2">
+        <XStack alignItems="center" gap="2">
           {icon}
           <CaptionText color="colorMuted">{label}</CaptionText>
         </XStack>

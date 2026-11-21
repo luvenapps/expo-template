@@ -173,6 +173,8 @@ describe('useSyncTask', () => {
     it('should run sync when app becomes active', async () => {
       await renderHook(() => useSyncTask({ engine: mockEngine as any, autoStart: false }));
 
+      expect(addEventListenerSpy).toHaveBeenCalledTimes(1);
+
       mockEngine.runSync.mockClear();
 
       await act(async () => {
@@ -194,39 +196,6 @@ describe('useSyncTask', () => {
       });
 
       expect(mockEngine.runSync).not.toHaveBeenCalled();
-    });
-
-    it('should handle legacy addEventListener API', async () => {
-      addEventListenerSpy.mockRestore();
-
-      const legacyListeners: ((state: AppStateStatus) => void)[] = [];
-      const legacyAddEventListener = jest.fn(
-        (_type: string, handler: (state: AppStateStatus) => void) => {
-          legacyListeners.push(handler);
-        },
-      );
-
-      let accessCount = 0;
-      Object.defineProperty(AppState, 'addEventListener', {
-        configurable: true,
-        get: () => {
-          accessCount += 1;
-          return accessCount === 1 ? undefined : legacyAddEventListener;
-        },
-      });
-
-      await renderHook(() => useSyncTask({ engine: mockEngine as any, autoStart: false }));
-
-      expect(legacyAddEventListener).toHaveBeenCalledWith('change', expect.any(Function));
-
-      mockEngine.runSync.mockClear();
-
-      await act(async () => {
-        legacyListeners.forEach((listener) => listener('active'));
-        await Promise.resolve();
-      });
-
-      expect(mockEngine.runSync).toHaveBeenCalledTimes(1);
     });
   });
 

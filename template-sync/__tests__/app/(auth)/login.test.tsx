@@ -358,7 +358,7 @@ describe('LoginScreen', () => {
   test('uses description from raw error object when provided', async () => {
     const signInMock = jest.fn().mockResolvedValue({
       success: false,
-      friendlyError: { description: 'Custom friendly error' },
+      friendlyError: { originalMessage: 'Custom friendly error' },
     });
     const setErrorMock = jest.fn();
     mockedUseSessionStore.mockImplementation((selector: any) =>
@@ -414,7 +414,7 @@ describe('LoginScreen', () => {
   test('uses unknown fallback when raw error object has empty fields', async () => {
     const signInMock = jest.fn().mockResolvedValue({
       success: false,
-      friendlyError: { descriptionKey: undefined, titleKey: undefined, description: undefined },
+      friendlyError: { descriptionKey: undefined, titleKey: undefined },
     });
     const setErrorMock = jest.fn();
     mockedUseSessionStore.mockImplementation((selector: any) =>
@@ -708,7 +708,7 @@ describe('LoginScreen', () => {
     });
     const setErrorMock = jest.fn();
     mockHandleFriendlyError.mockReturnValueOnce({
-      friendly: { description: 'Friendly description', type: 'error', code: 'test' },
+      friendly: { originalMessage: 'Friendly description', type: 'error', code: 'test' },
     });
     mockedUseSessionStore.mockImplementation((selector: any) =>
       selector({
@@ -770,7 +770,7 @@ describe('LoginScreen', () => {
     });
     const setErrorMock = jest.fn();
     mockHandleFriendlyError.mockReturnValueOnce({
-      friendly: { title: 'Error Title', type: 'error', code: 'test' },
+      friendly: { titleKey: 'errors.auth.failed', type: 'error', code: 'test' },
     });
     mockedUseSessionStore.mockImplementation((selector: any) =>
       selector({
@@ -791,7 +791,7 @@ describe('LoginScreen', () => {
       await waitFor(() => expect(signInMock).toHaveBeenCalled());
     });
 
-    expect(setErrorMock).toHaveBeenCalledWith('Error Title');
+    expect(setErrorMock).toHaveBeenCalledWith('errors.auth.failed');
   });
 
   test('uses titleKey fallback when other fields are missing', async () => {

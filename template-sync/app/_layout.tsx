@@ -99,14 +99,14 @@ function ThemedApp() {
                 {isWeb ? (
                   <XStack
                     width="100%"
-                    borderTopWidth={1}
+                    borderTopWidth="hairline"
                     borderTopColor="border-color"
                     paddingHorizontal="6"
                     paddingTop="3"
                     paddingBottom="2"
                     alignItems="center"
                     justifyContent="center"
-                    gap="$4"
+                    gap="4"
                     flexShrink={0}
                     testID="web-footer"
                   >
