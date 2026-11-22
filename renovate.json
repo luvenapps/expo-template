@@ -21,6 +21,12 @@
       "matchUpdateTypes": ["major"]
     },
     {
+      "description": "Require approval before creating PRs for npm major updates",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    },
+    {
       "description": "Wait three days before npm updates",
       "matchManagers": ["npm"],
       "minimumReleaseAge": "3 days"
