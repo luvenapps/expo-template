@@ -5,7 +5,9 @@
   "ignorePaths": ["template-sync/**"],
   "timezone": "America/New_York",
   "schedule": ["after 3am and before 5am"],
-  "dependencyDashboard": true,
+  "dependencyDashboard": {
+    "enabled": true
+  },
   "packageRules": [
     {
       "groupName": "ci-tooling",
