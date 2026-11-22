@@ -1,13 +1,11 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
-  "enabledManagers": ["github-actions"],
+  "enabledManagers": ["github-actions", "npm"],
+  "ignorePaths": ["template-sync/**"],
   "timezone": "America/New_York",
   "schedule": ["after 3am and before 5am"],
   "dependencyDashboard": true,
-  "major": {
-    "dependencyDashboardApproval": true
-  },
   "packageRules": [
     {
       "groupName": "ci-tooling",
@@ -16,10 +14,14 @@
       "matchUpdateTypes": ["patch", "minor"]
     },
     {
-      "description": "Open GitHub Actions major updates without dashboard approval",
+      "description": "Open GitHub Actions major updates",
       "matchManagers": ["github-actions"],
-      "matchUpdateTypes": ["major"],
-      "dependencyDashboardApproval": false
+      "matchUpdateTypes": ["major"]
+    },
+    {
+      "description": "Wait three days before npm updates",
+      "matchManagers": ["npm"],
+      "minimumReleaseAge": "3 days"
     }
   ],
   "prConcurrentLimit": 2
