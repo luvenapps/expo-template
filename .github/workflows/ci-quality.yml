@@ -17,6 +17,7 @@ on:
       - '.eslintrc*'
       - 'CODEOWNERS'
       - 'LICENSE*'
+      - 'renovate.json'
   pull_request:
     paths-ignore:
       - '**/*.md'
@@ -32,6 +33,7 @@ on:
       - '.eslintrc*'
       - 'CODEOWNERS'
       - 'LICENSE*'
+      - 'renovate.json'
   workflow_dispatch:
 
 permissions:

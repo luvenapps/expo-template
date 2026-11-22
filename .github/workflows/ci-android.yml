@@ -19,6 +19,16 @@ on:
       - '.eslintrc.*'
       - 'CODEOWNERS'
       - 'LICENSE*'
+      - 'renovate.json'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'eslint.config.js'
+      - 'jest.config.js'
+      - 'commitlint.config.js'
+      - 'tsconfig.json'
+      - 'scripts/**'
+      - '__tests__/**'
   pull_request:
     paths-ignore:
       - '**/*.md'
@@ -36,6 +46,16 @@ on:
       - '.eslintrc.*'
       - 'CODEOWNERS'
       - 'LICENSE*'
+      - 'renovate.json'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'eslint.config.js'
+      - 'jest.config.js'
+      - 'commitlint.config.js'
+      - 'tsconfig.json'
+      - 'scripts/**'
+      - '__tests__/**'
   workflow_dispatch:
 
 permissions:
