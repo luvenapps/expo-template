@@ -100,7 +100,7 @@ jobs:
       - name: Setup mise toolchain
         uses: jdx/mise-action@v3
         with:
-          version: '2026.11.12'
+          version: '2026.11.14'
           install: true
           log_level: ${{ runner.debug == '1' && 'debug' || 'info' }}
         env:
@@ -342,7 +342,7 @@ jobs:
       - name: Setup mise toolchain
         uses: jdx/mise-action@v3
         with:
-          version: '2026.11.12'
+          version: '2026.11.14'
           install: true
         env:
           GNUPGHOME: ${{ runner.temp }}/gnupg
